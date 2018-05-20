@@ -1,10 +1,10 @@
 # about
 
-sph-db is a database as a shared library for storing records with relations like a directed graph. it is supposed to be embeddable (link the shared library or include the full source code), minimalistic and fast.
-the design is documented [here](http://sph.mn/c/view/si).
+sph-db is a database as a shared library for storing records with relations like a directed graph. it is supposed to be embeddable (link the shared library or include the full source code), minimalistic and fast
 
-homepage: [sph.mn](http://sph.mn/c/view/52)
-license: lgpl3+
+* [homepage](http://sph.mn/c/view/52)
+* [design](http://sph.mn/c/view/si).
+* license: lgpl3+
 
 # features
 * fully acid compliant, memory-mapped database that can grow to any size that fits on the local filesystem, unrestricted by available ram

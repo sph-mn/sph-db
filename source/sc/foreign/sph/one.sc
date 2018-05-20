@@ -20,7 +20,7 @@
       (return 2))))
 
 (define (string-append a b) (b8* b8* b8*)
-  "return a new string that is the given strings appended"
+  "always returns a new string"
   (define a-length size-t (strlen a))
   (define b-length size-t (strlen b))
   (define result b8* (malloc (+ 1 a-length b-length)))

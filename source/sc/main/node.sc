@@ -18,7 +18,7 @@
         index types-len
         types-len (+ 20 type-id))
       (db-realloc types types-temp types-len)
-      (while (< index types-len-new)
+      (while (< index types-len)
         (set (: (+ index types) id) 0))
       (struct-pointer-set env types types types-len types-len)))
   (label exit
@@ -39,7 +39,8 @@
     (set index (+ 1 index)))
   (return 0))
 
-#;(define (db-type-new env name field-count fields flags result)
+#;(
+(define (db-type-new env name field-count fields flags result)
   (status-t db-env-t* b8* db-field-count-t db-field-t* b8 db-type-id-t)
   "key-value: type-label id -> name-len name field-count (field-type name-len name) ..."
   status-init
@@ -100,7 +101,7 @@
     (mdi-cursor-close system)
     (return status)))
 
-#;(define (db-type-delete env id) (status-t db-env-t* db-type-id-t)
+(define (db-type-delete env id) (status-t db-env-t* db-type-id-t)
   status-init
   (db-mdb-cursor-define txn.mdb-txn (struct-pointer-get txn.env dbi-system) system)
   (db-mdb-cursor-get-norequire system val-key val-null)
@@ -352,3 +353,4 @@
 
 (define (db-node-selection-destroy state) (b0 db-node-read-state-t*)
   (if (struct-pointer-get state cursor) (mdb-cursor-close (struct-pointer-get state cursor))))
+)
