@@ -10,9 +10,9 @@
     goto exit; \
   }
 #define optional_count(count) ((0 == count) ? UINT32_MAX : count)
+#define db_cursor_declare(name) db_mdb_cursor_declare(name)
 #define db_cursor_open(txn, name) \
   db_mdb_cursor_open(txn.mdb_txn, (*txn.env).dbi_##name, name)
-#define db_cursor_declare(name) db_mdb_cursor_declare(name)
 #define db_field_type_float32 4
 #define db_field_type_float64 6
 #define db_field_type_vbinary 1
@@ -80,7 +80,7 @@ status_t db_ids_to_set(db_ids_t* a, imht_set_t** result) {
     db_status_set_id_goto(db_status_id_memory);
   };
   while (a) {
-    imht_set_add((*result), db_ids_first(a));
+    imht_set_add(*result, db_ids_first(a));
     a = db_ids_rest(a);
   };
 exit:
@@ -91,7 +91,7 @@ status_t db_statistics(db_txn_t txn, db_statistics_t* result) {
   status_init;
 #define result_set(dbi_name) \
   db_mdb_status_require_x( \
-    mdb_stat(txn.mdb_txn, (*txn.env).dbi_##dbi_name, &(*result).dbi_name))
+    mdb_stat(txn.mdb_txn, (*txn.env).dbi_##dbi_name, &((*result).dbi_name)))
   result_set(system);
   result_set(id_to_data);
   result_set(left_to_right);
@@ -106,30 +106,53 @@ exit:
   after the string */
 status_t db_read_length_prefixed_string_b8(b8** data_pointer, b8** result) {
   status_init;
-  b8* data = (*data_pointer);
-  b8 len = (*data);
-  b8* name = malloc((1 + len));
+  b8* data;
+  b8 len;
+  b8* name;
+  data = *data_pointer;
+  len = *data;
+  name = malloc((1 + len));
   if (!name) {
     status_set_both_goto(db_status_group_db, db_status_id_memory);
   };
   (*(len + name)) = 0;
   memcpy(name, (1 + data), len);
 exit:
-  (*result) = name;
-  (*data_pointer) = (len + data);
+  *result = name;
+  *data_pointer = (len + data);
   return (status);
 };
 /** return one new, unique and typed identifier */
-status_t db_sequence_next(db_env_t* env, db_type_t* type, db_id_t* result) {
+status_t
+db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result) {
   status_init;
-  pthread_mutex_t mutex = (*env).mutex;
-  db_id_t sequence = (*type).sequence;
-  pthread_mutex_lock(&mutex);
+  db_id_t sequence;
+  db_id_t* sequence_pointer;
+  pthread_mutex_lock(&((*env).mutex));
+  sequence_pointer = &(*(type_id + (*env).types)).sequence;
   if ((sequence < db_id_id_max)) {
-    (*result) = db_id_set_type(sequence, (*type).id);
-    (*type).sequence = (1 + sequence);
-    pthread_mutex_unlock(&mutex);
+    *sequence_pointer = (1 + sequence);
+    pthread_mutex_unlock(&((*env).mutex));
+    *result = db_id_set_type(sequence, type_id);
   } else {
+    pthread_mutex_unlock(&((*env).mutex));
+    status_set_both_goto(db_status_group_db, db_status_id_max_id);
+  };
+exit:
+  return (status);
+};
+/** return one new, unique and typed identifier */
+status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result) {
+  status_init;
+  db_type_id_t sequence;
+  pthread_mutex_lock(&((*env).mutex));
+  sequence = ((db_type_id_t)((*(*env).types).sequence));
+  if ((sequence < db_type_id_max)) {
+    (*(*env).types).sequence = (1 + sequence);
+    pthread_mutex_unlock(&((*env).mutex));
+    *result = sequence;
+  } else {
+    pthread_mutex_unlock(&((*env).mutex));
     status_set_both_goto(db_status_group_db, db_status_id_max_id);
   };
 exit:
@@ -137,48 +160,42 @@ exit:
 };
 b0 db_free_env_types_indices(db_index_t** indices,
   db_field_count_t indices_len) {
-  db_field_count_t index;
+  db_field_count_t i;
   db_index_t* index_pointer;
-  if (!(*indices)) {
+  if (!*indices) {
     return;
   };
-  index = 0;
-  while ((index < indices_len)) {
-    index_pointer = (index + (*indices));
+  for (i = 0; (i < indices_len); i = (1 + i)) {
+    index_pointer = (i + *indices);
     free_and_set_null((*index_pointer).fields);
-    index = (1 + index);
   };
-  free_and_set_null((*indices));
+  free_and_set_null(*indices);
 };
 b0 db_free_env_types_fields(db_field_t** fields, db_field_count_t fields_len) {
-  db_field_count_t index;
-  if (!(*fields)) {
+  db_field_count_t i;
+  if (!*fields) {
     return;
   };
-  index = 0;
-  while ((index < fields_len)) {
-    free_and_set_null((*(index + (*fields))).name);
-    index = (1 + index);
+  for (i = 0; (i < fields_len); i = (1 + i)) {
+    free_and_set_null((*(i + *fields)).name);
   };
-  free_and_set_null((*fields));
+  free_and_set_null(*fields);
 };
 b0 db_free_env_types(db_type_t** types, db_type_id_t types_len) {
-  db_type_id_t index;
+  db_type_id_t i;
   db_type_t* type;
-  if (!(*types)) {
+  if (!*types) {
     return;
   };
-  index = 0;
-  while ((index < types_len)) {
-    type = (index + (*types));
+  for (i = 0; (i < types_len); i = (1 + i)) {
+    type = (i + *types);
     if ((0 == (*type).id)) {
       free_and_set_null((*type).fields_fixed_offsets);
-      db_free_env_types_fields(&(*type).fields, (*type).fields_count);
-      db_free_env_types_indices(&(*type).indices, (*type).indices_count);
+      db_free_env_types_fields(&((*type).fields), (*type).fields_count);
+      db_free_env_types_indices(&((*type).indices), (*type).indices_count);
     };
-    index = (1 + index);
   };
-  free_and_set_null((*types));
+  free_and_set_null(*types);
 };
 b0 db_close(db_env_t* env) {
   MDB_env* mdb_env = (*env).mdb_env;
@@ -191,12 +208,12 @@ b0 db_close(db_env_t* env) {
     mdb_env_close(mdb_env);
     (*env).mdb_env = 0;
   };
-  db_free_env_types(&(*env).types, (*env).types_len);
+  db_free_env_types(&((*env).types), (*env).types_len);
   if ((*env).root) {
     free_and_set_null((*env).root);
   };
   (*env).open = 0;
-  pthread_mutex_destroy(&(*env).mutex);
+  pthread_mutex_destroy(&((*env).mutex));
 };
 #include "./open.c"
 #include "./node.c"

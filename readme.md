@@ -1,6 +1,6 @@
 # about
 
-sph-db is a database as a shared library for storing records with relations like a directed graph. it is supposed to be embeddable (link the shared library or include the full source code), minimalistic and fast
+sph-db is a database as a shared library for storing records with relations like a directed graph. it is supposed to be embeddable (link the shared library or include the full source code), minimalistic and fast.
 
 * [homepage](http://sph.mn/c/view/52)
 * [design](http://sph.mn/c/view/si).
@@ -47,7 +47,7 @@ gcc example.c -o example-executable -llmdb -lsph-db
 
 ## error handling
 db routines return a "status_t" object that contains a status and a status-group identifier (error code and source library identifier). bindings to work with this small object are included with the main header "sph-db.c". sph-db usually uses a goto label named "exit" per routine where undesired return status ids are handled.
-the following examples assume this pattern of calling ``status_init`` beforehand and having a label named ``exit``:
+the following examples assume this pattern of calling ``status_init`` beforehand and having a label named ``exit``
 
 ```c
 int main() {

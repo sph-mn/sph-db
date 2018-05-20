@@ -18,7 +18,7 @@
         index types-len
         types-len (+ 20 type-id))
       (db-realloc types types-temp types-len)
-      (while (< index types-len)
+      (for ((set index 0) (< index types-len) (set index (+ 1 index)))
         (set (: (+ index types) id) 0))
       (struct-pointer-set env types types types-len types-len)))
   (label exit
@@ -30,89 +30,95 @@
     index db-type-id-t
     types-len db-type-id-t
     type db-type-t*)
-  (set
-    index 0
-    types-len env:types-len)
-  (while (< index types-len)
+  (set types-len env:types-len)
+  (for ((set index 0) (< index types-len) (set index (+ 1 index)))
     (set type (+ index env:types))
-    (if (not (strcmp name type:name)) (return type))
-    (set index (+ 1 index)))
+    (if (and type:id (= 0 (strcmp name type:name)))
+      (return type)))
   (return 0))
 
-#;(
 (define (db-type-new env name field-count fields flags result)
   (status-t db-env-t* b8* db-field-count-t db-field-t* b8 db-type-id-t)
   "key-value: type-label id -> name-len name field-count (field-type name-len name) ..."
   status-init
   (declare
-    val-key MDB-val
-    val-data MDB-val
     data b8*
-    data-temp b8*
-    name-len b8
-    index db-field-count-t
+    data-start b8*
     field db-field-t
-    types-temp db-type-t*
+    index db-field-count-t
+    key (array b8 (db-size-system-key))
+    name-len b8
     type-id db-type-id-t
-    key (array b8 (db-size-system-key)))
+    val-data MDB-val
+    val-key MDB-val)
   (db-txn-declare env txn)
-  (db-txn-write-begin txn)
+  (db-cursor-declare system)
   (sc-comment "check if type with name exists")
-  (if (db-type-get txn.env name) (status-set-both-goto db-status-group-db db-status-id-duplicate))
-  (sc-comment "check name length limit")
+  (if (db-type-get txn.env name)
+    (status-set-both-goto db-status-group-db db-status-id-duplicate))
+  (sc-comment "check name length")
   (if (< db-type-name-max-len (strlen name))
     (status-set-both-goto db-status-group-db db-status-id-data-length))
-  (sc-comment "prepare system key/value data")
+  (sc-comment "prepare insert data")
   (set
-    val-key.mv-size db-size-id-type
-    val-data.mv-size 0
+    data-start data
     name-len (strlen name)
     (db-system-key-label key) db-system-label-type
-    (pointer-get (convert-type data-temp b8*)) name-len
-    data-temp (+ 1 data-temp))
-  (memcpy data-temp name name-len)
+    (pointer-get (convert-type data b8*)) name-len
+    data (+ 1 data))
+  (memcpy data name name-len)
   (set
-    data-temp (+ name-len data-temp)
-    field-count (pointer-get (convert-type data-temp db-field-count-t*))
-    data-temp (+ (sizeof db-field-count-t) data-temp)
+    data (+ name-len data)
+    field-count (pointer-get (convert-type data db-field-count-t*))
+    data (+ (sizeof db-field-count-t) data)
     index 0)
-  (while (< index field-count)
+  (for ((set index 0) (< index field-count) (set index (+ 1 index)))
     (set
       field (pointer-get fields index)
-      (pointer-get data-temp) field.type
-      data-temp (+ 1 data-temp)
+      *data field.type
+      data (+ 1 data)
       name-len (strlen field.name)
-      (pointer-get data-temp) name-len
-      data-temp (+ 1 data-temp))
-    ; todo: use memcpy?
-    (memcpy data-temp field.name name-len)
-    (set
-      data-temp (+ name-len data-temp)
-      index (+ 1 index)))
-  (sc-comment "create id and insert")
-  (db-mdb-cursor-define txn.mdb-txn (struct-pointer-get txn.env dbi-system) system)
-  (status-require! (db-sequence-next txn.env 0 (address-of type-id)))
-  (set (db-system-key-id key) type-id)
+      *data name-len
+      data (+ 1 data))
+    (memcpy data field.name name-len)
+    (set data (+ name-len data)))
+  (status-require! (db-sequence-next-system txn.env (address-of type-id)))
+  (set
+    (db-system-key-id key) type-id
+    val-key.mv-data key
+    val-key.mv-size db-size-type-id
+    val-data.mv-size (- data data-start)
+    val-data.mv-data data)
+  (sc-comment "insert data")
+  (db-txn-write-begin txn)
+  (db-cursor-open txn system)
   (db-mdb-cursor-put system val-key val-data)
-  (sc-comment "update schema cache")
+  (db-txn-commit txn)
+  (sc-comment "update cache")
   (status-require! (db-env-types-extend txn.env type-id))
-  (db-open-type val-key.mv-data val-data.mv-data (struct-pointer-get txn.env types))
+  (status-require! (db-open-type val-key.mv-data val-data.mv-data txn.env:types))
   (label exit
-    (mdi-cursor-close system)
+    (mdb-cursor-close system)
     (return status)))
 
 (define (db-type-delete env id) (status-t db-env-t* db-type-id-t)
   status-init
-  (db-mdb-cursor-define txn.mdb-txn (struct-pointer-get txn.env dbi-system) system)
-  (db-mdb-cursor-get-norequire system val-key val-null)
+  (db-mdb-declare-val val-key db-size-type-id)
+  (db-txn-declare env txn)
+  (db-cursor-declare system)
+  (db-txn-write-begin txn)
+  (db-cursor-open txn system)
+  (db-mdb-cursor-get-norequire system val-key val-null MDB-SET)
   (if db-mdb-status-success?
-    (db-mdb-status-require! (mdb-cursor-del system 0)) db-mdb-status-require-notfound)
+    (db-mdb-status-require! (mdb-cursor-del system 0))
+    (begin
+      db-mdb-status-require-notfound
+      (status-set-id status-id-success)))
   (label exit
-    db-status-no-more-data-if-mdb-notfound
+    (mdb-cursor-close system)
     (return status)))
 
-;-- old code --;
-
+#;(
 (define (db-node-ensure txn data result) (status-t db-txn-t* db-data-list-t* db-ids-t**)
   status-init
   db-mdb-declare-val-id
@@ -297,11 +303,11 @@
   db-mdb-declare-val-data
   (pre-let
     (id->data
-      (struct-pointer-get state cursor)
+      state:cursor
       skip
-      (bit-and db-read-option-skip (struct-pointer-get state options))
-      types (struct-pointer-get state types))
-    (status-require! (struct-pointer-get state status))
+      (bit-and db-read-option-skip state:options)
+      types state:types)
+    (status-require! state:status)
     (define
       data-records db-data-records-t*
       data-record db-data-record-t)
@@ -327,7 +333,7 @@
             (mdb-cursor-get id->data (address-of val-id) (address-of val-data) MDB-NEXT-NODUP)))))
     (label exit
       db-status-no-more-data-if-mdb-notfound
-      (struct-pointer-set state status status)
+      (set state:status status)
       (return status))))
 
 (define (db-node-select txn type-bits offset result)

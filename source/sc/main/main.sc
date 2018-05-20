@@ -4,10 +4,15 @@
   (db-error-log pattern ...)
   (fprintf stderr (pre-string-concat "%s:%d error: " pattern "\n") __func__ __LINE__ __VA_ARGS__)
   reduce-count (set count (- count 1))
-  stop-if-count-zero (if (= 0 count) (goto exit))
-  (optional-count count) (if* (= 0 count) UINT32_MAX count)
-  (db-cursor-open txn name) (db-mdb-cursor-open txn.mdb-txn (: txn.env (pre-concat dbi- name)) name)
+  stop-if-count-zero
+  (if (= 0 count)
+    (goto exit))
+  (optional-count count)
+  (if* (= 0 count)
+    UINT32_MAX
+    count)
   (db-cursor-declare name) (db-mdb-cursor-declare name)
+  (db-cursor-open txn name) (db-mdb-cursor-open txn.mdb-txn (: txn.env (pre-concat dbi- name)) name)
   db-field-type-float32 4
   db-field-type-float64 6
   db-field-type-vbinary 1
@@ -27,13 +32,17 @@
     "3b:size-exponent 1b:signed 4b:id-prefix:0000
     size-bit-count: 2 ** size-exponent + 3 = 8
     example (size-exponent 4): 10000000, 10010000"
-    (bit-and (bit-shift-left size-exponent 5) (if* signed 16 0)))
+    (bit-and (bit-shift-left size-exponent 5)
+      (if* signed
+        16
+        0)))
   (db-field-type-string size-exponent)
   (begin
     "4b:size-exponent 4b:id-prefix:0010"
     (bit-and (bit-shift-left size-exponent 4) 2))
   (db-status-memory-error-if-null variable)
-  (if (not variable) (status-set-both-goto db-status-group-db db-status-id-memory))
+  (if (not variable)
+    (status-set-both-goto db-status-group-db db-status-id-memory))
   (db-malloc variable size)
   (begin
     (set variable (malloc size))
@@ -55,10 +64,11 @@
   (db-select-ensure-offset state offset reader)
   (if offset
     (begin
-      (struct-pointer-set state options (bit-or db-read-option-skip state:options))
+      (set state:options (bit-or db-read-option-skip state:options))
       (set status (reader state offset 0))
-      (if (not db-mdb-status-success?) db-mdb-status-require-notfound)
-      (struct-pointer-set state options (bit-xor db-read-option-skip state:options))))
+      (if (not db-mdb-status-success?)
+        db-mdb-status-require-notfound)
+      (set state:options (bit-xor db-read-option-skip state:options))))
   (free-and-set-null a)
   (begin
     (free a)
@@ -75,9 +85,10 @@
 
 (define (db-ids->set a result) (status-t db-ids-t* imht-set-t**)
   status-init
-  (if (not (imht-set-create (db-ids-length a) result)) (db-status-set-id-goto db-status-id-memory))
+  (if (not (imht-set-create (db-ids-length a) result))
+    (db-status-set-id-goto db-status-id-memory))
   (while a
-    (imht-set-add (pointer-get result) (db-ids-first a))
+    (imht-set-add *result (db-ids-first a))
     (set a (db-ids-rest a)))
   (label exit
     (return status)))
@@ -88,10 +99,7 @@
   (pre-let
     ( (result-set dbi-name)
       (db-mdb-status-require!
-        (mdb-stat
-          txn.mdb-txn
-          (: txn.env (pre-concat dbi- dbi-name))
-          (address-of (struct-get (pointer-get result) dbi-name)))))
+        (mdb-stat txn.mdb-txn (: txn.env (pre-concat dbi- dbi-name)) &result:dbi-name)))
     (result-set system)
     (result-set id->data) (result-set left->right) (result-set right->left) (result-set label->left))
   (label exit
@@ -101,70 +109,93 @@
   "read a length prefixed string from system type data.
   on success set result to a newly allocated string and data to the next byte after the string"
   status-init
-  (define data b8* (pointer-get data-pointer))
-  (define len b8 (pointer-get data))
-  (define name b8* (malloc (+ 1 len)))
-  (if (not name) (status-set-both-goto db-status-group-db db-status-id-memory))
+  (declare
+    data b8*
+    len b8
+    name b8*)
+  (set
+    data *data-pointer
+    len *data
+    name (malloc (+ 1 len)))
+  (if (not name)
+    (status-set-both-goto db-status-group-db db-status-id-memory))
   (pointer-set (+ len name) 0)
   (memcpy name (+ 1 data) len)
   (label exit
     (set
-      (pointer-get result) name
-      (pointer-get data-pointer) (+ len data))
+      *result name
+      *data-pointer (+ len data))
     (return status)))
 
-(define (db-sequence-next env type result) (status-t db-env-t* db-type-t* db-id-t*)
+(define (db-sequence-next env type-id result) (status-t db-env-t* db-type-id-t db-id-t*)
   "return one new, unique and typed identifier"
   status-init
-  (define mutex pthread-mutex-t env:mutex)
-  (define sequence db-id-t type:sequence)
-  (pthread-mutex-lock (address-of mutex))
+  (declare
+    sequence db-id-t
+    sequence-pointer db-id-t*)
+  (pthread-mutex-lock &env:mutex)
+  (set sequence-pointer (address-of (: (+ type-id env:types) sequence)))
   (if (< sequence db-id-id-max)
     (begin
-      (set
-        (pointer-get result) (db-id-set-type sequence type:id)
-        type:sequence (+ 1 sequence))
-      (pthread-mutex-unlock (address-of mutex)))
-    (status-set-both-goto db-status-group-db db-status-id-max-id))
+      (set *sequence-pointer (+ 1 sequence))
+      (pthread-mutex-unlock &env:mutex)
+      (set *result (db-id-set-type sequence type-id)))
+    (begin
+      (pthread-mutex-unlock &env:mutex)
+      (status-set-both-goto db-status-group-db db-status-id-max-id)))
+  (label exit
+    (return status)))
+
+(define (db-sequence-next-system env result) (status-t db-env-t* db-type-id-t*)
+  "return one new, unique and typed identifier"
+  status-init
+  (declare sequence db-type-id-t)
+  (pthread-mutex-lock &env:mutex)
+  (set sequence (convert-type env:types:sequence db-type-id-t))
+  (if (< sequence db-type-id-max)
+    (begin
+      (set env:types:sequence (+ 1 sequence))
+      (pthread-mutex-unlock &env:mutex)
+      (set *result sequence))
+    (begin
+      (pthread-mutex-unlock &env:mutex)
+      (status-set-both-goto db-status-group-db db-status-id-max-id)))
   (label exit
     (return status)))
 
 (define (db-free-env-types-indices indices indices-len) (b0 db-index-t** db-field-count-t)
   (declare
-    index db-field-count-t
+    i db-field-count-t
     index-pointer db-index-t*)
-  (if (not (pointer-get indices)) return)
-  (set index 0)
-  (while (< index indices-len)
-    (set index-pointer (+ index (pointer-get indices)))
-    (free-and-set-null index-pointer:fields)
-    (set index (+ 1 index)))
-  (free-and-set-null (pointer-get indices)))
+  (if (not *indices)
+    return)
+  (for ((set i 0) (< i indices-len) (set i (+ 1 i)))
+    (set index-pointer (+ i *indices))
+    (free-and-set-null index-pointer:fields))
+  (free-and-set-null *indices))
 
 (define (db-free-env-types-fields fields fields-len) (b0 db-field-t** db-field-count-t)
-  (declare index db-field-count-t)
-  (if (not (pointer-get fields)) return)
-  (set index 0)
-  (while (< index fields-len)
-    (free-and-set-null (: (+ index (pointer-get fields)) name))
-    (set index (+ 1 index)))
-  (free-and-set-null (pointer-get fields)))
+  (declare i db-field-count-t)
+  (if (not *fields)
+    return)
+  (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
+    (free-and-set-null (: (+ i *fields) name)))
+  (free-and-set-null *fields))
 
 (define (db-free-env-types types types-len) (b0 db-type-t** db-type-id-t)
   (declare
-    index db-type-id-t
+    i db-type-id-t
     type db-type-t*)
-  (if (not (pointer-get types)) return)
-  (set index 0)
-  (while (< index types-len)
-    (set type (+ index (pointer-get types)))
+  (if (not *types)
+    return)
+  (for ((set i 0) (< i types-len) (set i (+ 1 i)))
+    (set type (+ i *types))
     (if (= 0 type:id)
       (begin
         (free-and-set-null type:fields-fixed-offsets)
-        (db-free-env-types-fields (address-of type:fields) type:fields-count)
-        (db-free-env-types-indices (address-of type:indices) type:indices-count)))
-    (set index (+ 1 index)))
-  (free-and-set-null (pointer-get types)))
+        (db-free-env-types-fields &type:fields type:fields-count)
+        (db-free-env-types-indices &type:indices type:indices-count))))
+  (free-and-set-null *types))
 
 (define (db-close env) (b0 db-env-t*)
   (define mdb-env MDB-env* env:mdb-env)
@@ -176,11 +207,12 @@
       (mdb-dbi-close mdb-env env:dbi-right->left)
       (mdb-dbi-close mdb-env env:dbi-label->left)
       (mdb-env-close mdb-env)
-      (struct-pointer-set env mdb-env 0)))
-  (db-free-env-types (address-of env:types) env:types-len)
-  (if env:root (free-and-set-null env:root))
+      (set env:mdb-env 0)))
+  (db-free-env-types &env:types env:types-len)
+  (if env:root
+    (free-and-set-null env:root))
   (set env:open #f)
-  (pthread-mutex-destroy (address-of env:mutex)))
+  (pthread-mutex-destroy &env:mutex))
 
 (pre-include "./open.c" "./node.c"
   ;"main/graph"
