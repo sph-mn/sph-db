@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# run tests and check for memory leaks with valgrind
+
+#--suppressions=other/valgrind-test/custom.supp
+
+options="--leak-check=yes"
+valgrind --tool=memcheck $options ./exe/test $@

@@ -1,0 +1,21 @@
+#!/bin/sh
+
+optimisation=0
+warnings="-Wunused-label -Wunused-value -Wunused-variable"
+gcc_options="$warnings -Wfatal-errors -std=c11 -O$optimisation"
+c=source/c-precompiled
+
+compile_libsph_db() {
+  # compile from c to machine code in a shared library. the version-script specifies the list of exported bindings
+  gcc "$c/main/main.c" -o temp/libsph-db.so -Wl,--version-script=other/export -shared -fpic -llmdb $gcc_options
+}
+
+compile_test() {
+  export LIBRARY_PATH="$PWD/temp"
+  gcc "$c/test/main.c" -o temp/test-libsph-db -llmdb -lsph-db -lpthread $gcc_options
+}
+
+mkdir -p temp &&
+compile_libsph_db $@
+#compile_test $@ &&
+#chmod 755 temp/*

@@ -1,0 +1,4 @@
+#!/bin/sh
+s=source/sc
+export SC_LOAD_PATH="$PWD/$s:$PWD/$s/foreign"
+sc $@

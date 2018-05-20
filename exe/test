@@ -1,0 +1,6 @@
+#!/bin/sh
+# the shared library must have already been compiled,
+# but it does not need to have been installed.
+
+export LD_LIBRARY_PATH="$PWD/temp"
+./temp/test-libsph-db

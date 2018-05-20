@@ -1,0 +1,3 @@
+#!/bin/sh
+
+./exe/compile-sc && ./exe/compile-c

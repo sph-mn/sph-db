@@ -1,0 +1,21 @@
+#!/usr/bin/guile
+!#
+
+(import (sph) (sph filesystem) (sph string) (sph process))
+(define execute* execute-and-check-result)
+
+(define (compile-sc-dir source target) (ensure-directory-structure target)
+  (let
+    (paths
+      (directory-tree source #:select?
+        (l (a s) (and (not (eq? (q directory) (stat:type s))) (string-suffix? ".sc" a)))))
+    (every
+      (l (a)
+        (let
+          (b (string-append target (string-drop-suffix ".sc" (string-drop-prefix source a)) ".c"))
+          (and (ensure-directory-structure (dirname b)) (execute* "echo" "sc" a b)
+            (execute* "sc" a b) (execute* "clang-format" "-i" b))))
+      paths)))
+
+(setenv "SC_LOAD_PATH" (string-append (getcwd) "/source/sc"))
+(compile-sc-dir "source/sc" "source/c-precompiled")
