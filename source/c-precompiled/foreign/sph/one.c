@@ -43,6 +43,9 @@ b8* string_clone(b8* a) {
   };
   return (result);
 };
+#define free_and_set_null(a) \
+  free(a); \
+  a = 0
 #include <unistd.h>
 #include <sys/stat.h>
 #include <libgen.h>

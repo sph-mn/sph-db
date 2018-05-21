@@ -295,7 +295,27 @@ typedef b32 db_ordinal_t;
 #define db_read_option_is_set_right 4
 #define db_read_option_initialised 8
 #define db_null 0
-#define env_define(name) db_env_t* name = calloc(1, sizeof(db_env_t))
+#define db_status_memory_error_if_null(variable) \
+  if (!variable) { \
+    status_set_both_goto(db_status_group_db, db_status_id_memory); \
+  }
+#define db_malloc(variable, size) \
+  variable = malloc(size); \
+  db_status_memory_error_if_null(variable)
+/** allocate memory and set the last element to zero */
+#define db_malloc_string(variable, size) \
+  db_malloc(variable, size); \
+  (*((size - 1) + variable)) = 0
+#define db_calloc(variable, count, size) \
+  variable = calloc(count, size); \
+  db_status_memory_error_if_null(variable)
+#define db_realloc(variable, variable_temp, size) \
+  variable_temp = realloc(variable, size); \
+  db_status_memory_error_if_null(variable_temp); \
+  variable = variable_temp
+#define db_env_define(name) \
+  db_env_t* name; \
+  db_calloc(name, 1, sizeof(db_env_t))
 #define db_data_t MDB_val
 #define db_data_data(a) data.mv_data
 #define db_data_data_set(a, value) data.mv_data = value
@@ -304,11 +324,12 @@ typedef b32 db_ordinal_t;
 #define db_type_id(id) (*((db_type_id_t*)(&id)))
 #define db_id_id(id) (*((db_id_t*)((1 + ((db_type_id_t*)(&id))))))
 #define db_txn_declare(env, name) db_txn_t name = { 0, env }
-#define db_txn_begin(a) \
+#define db_txn_begin(txn) \
   db_mdb_status_require_x( \
-    mdb_txn_begin((*a.env).mdb_env, 0, MDB_RDONLY, &a.mdb_txn))
-#define db_txn_write_begin(a) \
-  db_mdb_status_require_x(mdb_txn_begin((*a.env).mdb_env, 0, 0, &a.mdb_txn))
+    mdb_txn_begin((*txn.env).mdb_env, 0, MDB_RDONLY, &(txn.mdb_txn)))
+#define db_txn_write_begin(txn) \
+  db_mdb_status_require_x( \
+    mdb_txn_begin((*txn.env).mdb_env, 0, 0, &(txn.mdb_txn)))
 #define db_txn_abort(a) \
   mdb_txn_abort(a.mdb_txn); \
   a.mdb_txn = 0

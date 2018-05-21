@@ -20,7 +20,9 @@
       (db-realloc types types-temp types-len)
       (for ((set index 0) (< index types-len) (set index (+ 1 index)))
         (set (: (+ index types) id) 0))
-      (struct-pointer-set env types types types-len types-len)))
+      (struct-pointer-set env
+        types types
+        types-len types-len)))
   (label exit
     (return status)))
 
@@ -116,6 +118,7 @@
       (status-set-id status-id-success)))
   (label exit
     (mdb-cursor-close system)
+    (if status-success? (db-txn-commit txn))
     (return status)))
 
 #;(

@@ -1,26 +1,37 @@
-(pre-include "stdio.h" "stdlib.h" "errno.h" "pthread.h")
-(pre-define (increment a) (set a (+ 1 a)))
-(pre-define (decrement a) (set a (- a 1)))
 (pre-define debug-log? #t)
-(pre-include "../main/sph-db.h" "../main/lib/lmdb.c" "../main/lib/debug.c" "../foreign/sph/one.c")
-(pre-define test-helper-db-root "/tmp/test-sph-db")
-(pre-define test-helper-path-data (pre-string-concat test-helper-db-root "/data"))
+(pre-include "stdio.h" "stdlib.h" "errno.h" "pthread.h" "../main/sph-db.h" "../foreign/sph/one.c")
 
-(define (test-helper-db-reset env re-use) (status-t db-env-t* boolean)
-  status-init
-  (if (struct-pointer-get env open) (db-close env))
-  (if (and (not re-use) (file-exists? test-helper-path-data))
-    (status-set-id (system (pre-string-concat "rm " test-helper-path-data))))
-  status-require
-  (status-require! (db-open test-helper-db-root 0 env))
-  (label exit
-    (return status)))
+(pre-define
+  test-helper-db-root "/tmp/test-sph-db"
+  test-helper-path-data (pre-string-concat test-helper-db-root "/data")
+  (set-plus-one a) (set a (+ 1 a))
+  (set-minus-one a) (set a (- a 1)))
+
+(pre-define (test-helper-init env-name)
+  (begin
+    status-init
+    (db-env-define env-name)))
+
+(pre-define test-helper-report-status
+  (if status-success? (printf "--\ntests finished successfully.\n")
+    (printf "\ntests failed. %d %s\n" status.id (db-status-description status))))
 
 (pre-define (test-helper-test-one env func)
   (begin
     (printf "%s\n" (pre-stringify func))
-    (status-require! (test-helper-db-reset env #f))
+    (status-require! (test-helper-reset env #f))
     (status-require! (func env))))
+
+(define (test-helper-reset env re-use) (status-t db-env-t* boolean)
+  status-init
+  (if env:open (db-close env))
+  (if (and (not re-use) (file-exists? test-helper-path-data))
+    (begin
+      (status-set-id (system (pre-string-concat "rm " test-helper-path-data)))
+      status-require))
+  (status-require! (db-open test-helper-db-root 0 env))
+  (label exit
+    (return status)))
 
 #;(
 (define (db-ids-reverse source result) (status-t db-ids-t* db-ids-t**)
@@ -143,7 +154,7 @@
 (define
   (test-helper-estimate-relation-read-result-count left-count right-count label-count ordinal)
   (b32 b32 b32 b32 db-ordinal-match-data-t*)
-  ;assumes linearly incremented ordinal integers starting at 1 and queries for all or no ids
+  ;assumes linearly set-plus-oneed ordinal integers starting at 1 and queries for all or no ids
   (define count b32 (* left-count right-count label-count))
   (define max b32)
   (define min b32)
@@ -163,7 +174,7 @@
     existing-left-count existing-right-count existing-label-count ordinal)
   (b32 b32 b32 b32 db-ordinal-match-data-t*)
   ;calculates the number of btree entries affected by a relation read or delete.
-  ;assumes linearly incremented ordinal integers starting at 1 and queries for all or no ids
+  ;assumes linearly set-plus-oneed ordinal integers starting at 1 and queries for all or no ids
   (define ordinal-min b32 0)
   (define ordinal-max b32 0)
   (if ordinal
@@ -183,16 +194,16 @@
   (while (< label-count existing-label-count)
     (while (< left-count existing-left-count)
       (if (and (<= ordinal-value ordinal-max) (>= ordinal-value ordinal-min))
-        (increment label-left-count))
+        (set-plus-one label-left-count))
       (while (< right-count existing-right-count)
         (if (and (<= ordinal-value ordinal-max) (>= ordinal-value ordinal-min))
           (begin
-            (increment ordinal-value)
-            (increment left-right-count)
-            (increment right-left-count)))
-        (increment right-count))
-      (increment left-count))
-    (increment label-count))
+            (set-plus-one ordinal-value)
+            (set-plus-one left-right-count)
+            (set-plus-one right-left-count)))
+        (set-plus-one right-count))
+      (set-plus-one left-count))
+    (set-plus-one label-count))
   (return (+ left-right-count right-left-count label-left-count)))
 
 (define (test-helper-ids-add-new-ids ids-old result) (status-t db-ids-t* db-ids-t**)

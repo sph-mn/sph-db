@@ -121,5 +121,8 @@ status_t db_type_delete(db_env_t* env, db_type_id_t id) {
   };
 exit:
   mdb_cursor_close(system);
+  if (status_success_p) {
+    db_txn_commit(txn);
+  };
   return (status);
 };

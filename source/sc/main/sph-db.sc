@@ -14,7 +14,9 @@
   db-size-ordinal (sizeof db-ordinal-t)
   db-size-type-id (sizeof db-type-id-t)
   (db-id-equal? a b) (= a b)
-  (db-id-compare a b) (if* (< a b) -1 (> a b))
+  (db-id-compare a b)
+  (if* (< a b) -1
+    (> a b))
   (db-pointer->id a index) (pointer-get (+ index (convert-type a db-id-t*))))
 
 (pre-define
@@ -26,22 +28,46 @@
   db-read-option-is-set-right 4
   db-read-option-initialised 8
   db-null 0
-  (env-define name) (define name db-env-t* (calloc 1 (sizeof db-env-t)))
+  (db-status-memory-error-if-null variable)
+  (if (not variable) (status-set-both-goto db-status-group-db db-status-id-memory))
+  (db-malloc variable size)
+  (begin
+    (set variable (malloc size))
+    (db-status-memory-error-if-null variable))
+  (db-malloc-string variable size)
+  (begin
+    "allocate memory and set the last element to zero"
+    (db-malloc variable size)
+    (pointer-set (+ (- size 1) variable) 0))
+  (db-calloc variable count size)
+  (begin
+    (set variable (calloc count size))
+    (db-status-memory-error-if-null variable))
+  (db-realloc variable variable-temp size)
+  (begin
+    (set variable-temp (realloc variable size))
+    (db-status-memory-error-if-null variable-temp)
+    (set variable variable-temp))
+  (db-env-define name)
+  (begin
+    (declare name db-env-t*)
+    (db-calloc name 1 (sizeof db-env-t)))
   db-data-t MDB-val
   (db-data-data a) data.mv-data
-  (db-data-data-set a value) (struct-set data mv-data value)
+  (db-data-data-set a value)
+  (struct-set data
+    mv-data value)
   (db-data-size a) data.mv-size
-  (db-data-size-set a value) (struct-set data mv-size value)
+  (db-data-size-set a value)
+  (struct-set data
+    mv-size value)
   (db-type-id id) (pointer-get (convert-type (address-of id) db-type-id-t*))
   (db-id-id id)
   (pointer-get (convert-type (+ 1 (convert-type (address-of id) db-type-id-t*)) db-id-t*))
   (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
-  (db-txn-begin a)
-  (db-mdb-status-require!
-    (mdb-txn-begin (struct-pointer-get a.env mdb-env) 0 MDB-RDONLY (address-of a.mdb-txn)))
-  (db-txn-write-begin a)
-  (db-mdb-status-require!
-    (mdb-txn-begin (struct-pointer-get a.env mdb-env) 0 0 (address-of a.mdb-txn)))
+  (db-txn-begin txn)
+  (db-mdb-status-require! (mdb-txn-begin txn.env:mdb-env 0 MDB-RDONLY &txn.mdb-txn))
+  (db-txn-write-begin txn) (db-mdb-status-require! (mdb-txn-begin txn.env:mdb-env 0 0 &txn.mdb-txn))
   (db-txn-abort a)
   (begin
     (mdb-txn-abort a.mdb-txn)
@@ -57,7 +83,8 @@
   (db-pointer-allocation-set result expression result-temp)
   (begin
     (set result-temp expression)
-    (if result-temp (set result result-temp) (db-status-set-id-goto db-status-id-memory)))
+    (if result-temp (set result result-temp)
+      (db-status-set-id-goto db-status-id-memory)))
   (db-ids-add! target source ids-temp)
   (db-pointer-allocation-set target (db-ids-add target source) ids-temp) (db-define-ids name)
   (define name db-ids-t* 0) (db-define-ids-2 name-1 name-2)

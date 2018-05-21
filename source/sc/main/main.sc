@@ -4,12 +4,9 @@
   (db-error-log pattern ...)
   (fprintf stderr (pre-string-concat "%s:%d error: " pattern "\n") __func__ __LINE__ __VA_ARGS__)
   reduce-count (set count (- count 1))
-  stop-if-count-zero
-  (if (= 0 count)
-    (goto exit))
+  stop-if-count-zero (if (= 0 count) (goto exit))
   (optional-count count)
-  (if* (= 0 count)
-    UINT32_MAX
+  (if* (= 0 count) UINT32_MAX
     count)
   (db-cursor-declare name) (db-mdb-cursor-declare name)
   (db-cursor-open txn name) (db-mdb-cursor-open txn.mdb-txn (: txn.env (pre-concat dbi- name)) name)
@@ -33,46 +30,19 @@
     size-bit-count: 2 ** size-exponent + 3 = 8
     example (size-exponent 4): 10000000, 10010000"
     (bit-and (bit-shift-left size-exponent 5)
-      (if* signed
-        16
+      (if* signed 16
         0)))
   (db-field-type-string size-exponent)
   (begin
     "4b:size-exponent 4b:id-prefix:0010"
     (bit-and (bit-shift-left size-exponent 4) 2))
-  (db-status-memory-error-if-null variable)
-  (if (not variable)
-    (status-set-both-goto db-status-group-db db-status-id-memory))
-  (db-malloc variable size)
-  (begin
-    (set variable (malloc size))
-    (db-status-memory-error-if-null variable))
-  (db-malloc-string variable size)
-  (begin
-    "allocate memory and set the last element to zero"
-    (db-malloc variable size)
-    (pointer-set (+ (- size 1) variable) 0))
-  (db-calloc variable count size)
-  (begin
-    (set variable (calloc count size))
-    (db-status-memory-error-if-null variable))
-  (db-realloc variable variable-temp size)
-  (begin
-    (set variable-temp (realloc variable size))
-    (db-status-memory-error-if-null variable-temp)
-    (set variable variable-temp))
   (db-select-ensure-offset state offset reader)
   (if offset
     (begin
       (set state:options (bit-or db-read-option-skip state:options))
       (set status (reader state offset 0))
-      (if (not db-mdb-status-success?)
-        db-mdb-status-require-notfound)
-      (set state:options (bit-xor db-read-option-skip state:options))))
-  (free-and-set-null a)
-  (begin
-    (free a)
-    (set a 0)))
+      (if (not db-mdb-status-success?) db-mdb-status-require-notfound)
+      (set state:options (bit-xor db-read-option-skip state:options)))))
 
 (define (db-field-type-size a) (b8 b8)
   "size in octets. only for fixed size types"
@@ -85,8 +55,7 @@
 
 (define (db-ids->set a result) (status-t db-ids-t* imht-set-t**)
   status-init
-  (if (not (imht-set-create (db-ids-length a) result))
-    (db-status-set-id-goto db-status-id-memory))
+  (if (not (imht-set-create (db-ids-length a) result)) (db-status-set-id-goto db-status-id-memory))
   (while a
     (imht-set-add *result (db-ids-first a))
     (set a (db-ids-rest a)))
@@ -117,8 +86,7 @@
     data *data-pointer
     len *data
     name (malloc (+ 1 len)))
-  (if (not name)
-    (status-set-both-goto db-status-group-db db-status-id-memory))
+  (if (not name) (status-set-both-goto db-status-group-db db-status-id-memory))
   (pointer-set (+ len name) 0)
   (memcpy name (+ 1 data) len)
   (label exit
@@ -167,8 +135,7 @@
   (declare
     i db-field-count-t
     index-pointer db-index-t*)
-  (if (not *indices)
-    return)
+  (if (not *indices) return)
   (for ((set i 0) (< i indices-len) (set i (+ 1 i)))
     (set index-pointer (+ i *indices))
     (free-and-set-null index-pointer:fields))
@@ -176,8 +143,7 @@
 
 (define (db-free-env-types-fields fields fields-len) (b0 db-field-t** db-field-count-t)
   (declare i db-field-count-t)
-  (if (not *fields)
-    return)
+  (if (not *fields) return)
   (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
     (free-and-set-null (: (+ i *fields) name)))
   (free-and-set-null *fields))
@@ -186,8 +152,7 @@
   (declare
     i db-type-id-t
     type db-type-t*)
-  (if (not *types)
-    return)
+  (if (not *types) return)
   (for ((set i 0) (< i types-len) (set i (+ 1 i)))
     (set type (+ i *types))
     (if (= 0 type:id)
@@ -209,8 +174,7 @@
       (mdb-env-close mdb-env)
       (set env:mdb-env 0)))
   (db-free-env-types &env:types env:types-len)
-  (if env:root
-    (free-and-set-null env:root))
+  (if env:root (free-and-set-null env:root))
   (set env:open #f)
   (pthread-mutex-destroy &env:mutex))
 

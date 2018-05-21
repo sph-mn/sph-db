@@ -37,6 +37,11 @@
   (if result (memcpy result a a-size))
   (return result))
 
+(pre-define (free-and-set-null a)
+  (begin
+    (free a)
+    (set a 0)))
+
 ;-- filesystem
 ; access, mkdir dirname
 (pre-include "unistd.h" "sys/stat.h" "libgen.h" "errno.h")
@@ -49,8 +54,7 @@
 
 (define (ensure-directory-structure path mkdir-mode) (boolean b8* mode-t)
   "return 1 if the path exists or has been successfully created"
-  (if (file-exists? path)
-    (return #t)
+  (if (file-exists? path) (return #t)
     (begin
       (define path-dirname b8* (dirname-2 path))
       (define status boolean (ensure-directory-structure path-dirname mkdir-mode))

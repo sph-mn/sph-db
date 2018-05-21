@@ -1,7 +1,35 @@
 (pre-include "./helper.c")
 
-#;(
+(define (test-statistics env) (status-t db-env-t*)
+  status-init
+  (declare stat db-statistics-t)
+  (db-txn-declare env txn)
+  (db-txn-begin txn)
+  (status-require! (db-statistics txn (address-of stat)))
+  (label exit
+    (db-txn-abort txn)
+    (return status)))
 
+(define (main) int
+  (test-helper-init env)
+  (test-helper-test-one env test-statistics)
+  #;(
+  (test-helper-test-one test-id-creation)
+  (test-helper-test-one test-concurrent-write/read)
+  (test-helper-test-one test-relation-read)
+  (test-helper-test-one test-relation-delete)
+  (test-helper-test-one test-id-create-identify-exists)
+  (test-helper-test-one test-intern)
+  (test-helper-test-one test-extern)
+  (test-helper-test-one test-node-read)
+  (test-helper-test-one test-relation)
+  (test-helper-test-one test-index)
+  )
+  (label exit
+    test-helper-report-status
+    (return status.id)))
+
+#;(
 ; these values should not be below 3, or important cases would not be tested.
 ; the values should also not be so high that the linearly created ordinals exceed the size of the ordinal type.
 ; tip: reduce for debugging
@@ -500,42 +528,3 @@
     (return status)))
 
   )
-
-(define (test-statistics db-s) (status-t db-env-t*)
-  status-init
-  (db-txn-define db-s txn)
-  (declare stat db-statistics-t)
-  (status-require! (db-statistics txn (address-of stat)))
-  (label exit
-    (if txn.mdb-txn (db-txn-abort txn))
-    (return status)))
-
-(define (test-init db-s) (status-t db-env-t*)
-  status-init
-  (status-require! (test-helper-db-reset db-s #t))
-  (label exit
-    (return status)))
-
-(define (main) int
-  status-init
-  (db-s-define db-s)
-  (test-helper-test-one db-s test-init)
-  (test-helper-test-one db-s test-statistics)
-  #;(
-  (test-helper-test-one test-id-creation)
-  (test-helper-test-one test-concurrent-write/read)
-  (test-helper-test-one test-relation-read)
-  (test-helper-test-one test-relation-delete)
-  (test-helper-test-one test-id-create-identify-exists)
-  (test-helper-test-one test-intern)
-  (test-helper-test-one test-extern)
-  (test-helper-test-one test-node-read)
-  (test-helper-test-one test-relation)
-  (test-helper-test-one test-index)
-  )
-  (label exit
-    ;(if db-initialised (db-exit))
-    (if status-success?
-      (printf "--\ntests finished successfully.\n")
-      (printf "\ntests failed. %d %s\n" (struct-get status id) (db-status-description status)))
-    (return (struct-get status id))))

@@ -34,24 +34,6 @@
   ((size_exponent << 5) & (signed ? 16 : 0))
 /** 4b:size-exponent 4b:id-prefix:0010 */
 #define db_field_type_string(size_exponent) ((size_exponent << 4) & 2)
-#define db_status_memory_error_if_null(variable) \
-  if (!variable) { \
-    status_set_both_goto(db_status_group_db, db_status_id_memory); \
-  }
-#define db_malloc(variable, size) \
-  variable = malloc(size); \
-  db_status_memory_error_if_null(variable)
-/** allocate memory and set the last element to zero */
-#define db_malloc_string(variable, size) \
-  db_malloc(variable, size); \
-  (*((size - 1) + variable)) = 0
-#define db_calloc(variable, count, size) \
-  variable = calloc(count, size); \
-  db_status_memory_error_if_null(variable)
-#define db_realloc(variable, variable_temp, size) \
-  variable_temp = realloc(variable, size); \
-  db_status_memory_error_if_null(variable_temp); \
-  variable = variable_temp
 #define db_select_ensure_offset(state, offset, reader) \
   if (offset) { \
     (*state).options = (db_read_option_skip | (*state).options); \
@@ -61,9 +43,6 @@
     }; \
     (*state).options = (db_read_option_skip ^ (*state).options); \
   }
-#define free_and_set_null(a) \
-  free(a); \
-  a = 0
 /** size in octets. only for fixed size types */
 b8 db_field_type_size(b8 a) {
   return (((db_field_type_float32 == a)
