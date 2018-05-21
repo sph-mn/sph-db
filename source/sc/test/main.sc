@@ -6,24 +6,29 @@
   (db-txn-declare env txn)
   (db-txn-begin txn)
   (status-require! (db-statistics txn (address-of stat)))
+  (test-helper-assert "dbi-system has one entry" (= 1 stat.system.ms_entries))
   (label exit
     (db-txn-abort txn)
+    (return status)))
+
+(define (test-type-create env) (status-t db-env-t*)
+  status-init
+  (declare
+    stat db-statistics-t
+    type-id db-type-id-t)
+  (status-require! (db-type-create env "test-type" 0 0 0 &type-id))
+  (test-helper-assert "first type id" (= 1 type-id))
+  (label exit
     (return status)))
 
 (define (main) int
   (test-helper-init env)
   (test-helper-test-one env test-statistics)
+  (test-helper-test-one env test-type-create)
   #;(
-  (test-helper-test-one test-id-creation)
   (test-helper-test-one test-concurrent-write/read)
   (test-helper-test-one test-relation-read)
   (test-helper-test-one test-relation-delete)
-  (test-helper-test-one test-id-create-identify-exists)
-  (test-helper-test-one test-intern)
-  (test-helper-test-one test-extern)
-  (test-helper-test-one test-node-read)
-  (test-helper-test-one test-relation)
-  (test-helper-test-one test-index)
   )
   (label exit
     test-helper-report-status

@@ -241,9 +241,14 @@ b8* db_status_name(status_t a) {
   };
   return (((b8*)(b)));
 };
-typedef b64 db_id_t;
-typedef b16 db_type_id_t;
-typedef b32 db_ordinal_t;
+#define db_id_t b64
+#define db_type_id_t b16
+#define db_ordinal_t b32
+#define db_index_count_t b8
+#define db_field_count_t b8
+#define db_field_name_len_t b8
+#define db_field_type_t b8
+#define db_type_name_len_t b8
 #define db_id_max UINT64_MAX
 #define db_size_id sizeof(db_id_t)
 #define db_size_type_id sizeof(db_type_id_t)
@@ -366,7 +371,8 @@ db_id_t db_type_id_mask;
 db_id_t db_id_id_max;
 typedef struct {
   b8* name;
-  b8 type;
+  db_field_name_len_t name_len;
+  db_field_type_t type;
 } db_field_t;
 typedef struct {
   MDB_dbi dbi;
@@ -433,6 +439,14 @@ typedef struct {
 status_t db_statistics(db_txn_t txn, db_statistics_t* result);
 b0 db_close(db_env_t* env);
 status_t db_open(b8* root, db_open_options_t* options, db_env_t* env);
+db_type_t* db_type_get(db_env_t* env, b8* name);
+status_t db_type_create(db_env_t* env,
+  b8* name,
+  db_field_count_t field_count,
+  db_field_t* fields,
+  b8 flags,
+  db_type_id_t* result);
+status_t db_type_delete(db_env_t* env, db_type_id_t id);
 #define imht_set_key_t db_id_t
 #include <stdlib.h>
 #include <inttypes.h>

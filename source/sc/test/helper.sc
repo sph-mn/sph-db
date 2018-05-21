@@ -22,6 +22,12 @@
     (status-require! (test-helper-reset env #f))
     (status-require! (func env))))
 
+(pre-define (test-helper-assert description expression)
+  (if (not expression)
+    (begin
+      (printf "%s failed\n" description)
+      (status-set-id-goto 1))))
+
 (define (test-helper-reset env re-use) (status-t db-env-t* boolean)
   status-init
   (if env:open (db-close env))
@@ -76,11 +82,7 @@
 (db-debug-define-relation-records-contains-at? right)
 (db-debug-define-relation-records-contains-at? label)
 
-(pre-define (test-helper-assert description expression)
-  (if (not expression)
-    (begin
-      (printf "%s failed\n" description)
-      (status-set-id-goto 1))))
+
 
 (pre-define (test-helper-filter-ids->reader-suffix-integer left right label ordinal)
   (bit-or (if* left 8 0) (if* right 4 0) (if* label 2 0) (if* ordinal 1 0)))

@@ -388,7 +388,7 @@ db_type_last_id(MDB_cursor* id_to_data, db_type_id_t type_id, db_id_t* result) {
   db_id_t id;
   db_mdb_declare_val_id;
   /* if last key is of type then there are no greater type-ids and data of type
-   * exists */
+     exists. if there is no last key, the database is empty */
   status = db_type_last_key_id(id_to_data, type_id, &id);
   if (db_mdb_status_success_p) {
     if (id) {
@@ -403,8 +403,8 @@ db_type_last_id(MDB_cursor* id_to_data, db_type_id_t type_id, db_id_t* result) {
       status_goto;
     };
   };
-  /* database is not empty, and the last key is not of searched type.
-       type-id +1 is not greater than max */
+  /* database is not empty and the last key is not of searched type.
+       type-id +1 is not greater than max possible type-id */
   status_require_x(db_type_first_id(id_to_data, (1 + type_id), &id));
   if (!id) {
     /* no greater type-id found. since the searched type is not the last,
@@ -435,7 +435,6 @@ status_t db_open_sequences(db_txn_t txn) {
   db_mdb_declare_val_id;
   types = (*txn.env).types;
   types_len = (*txn.env).types_len;
-  debug_log("types-len %lu", (*txn.env).types_len);
   db_cursor_open(txn, id_to_data);
   for (index = 0; (index < types_len); index = (1 + index)) {
     id = 0;

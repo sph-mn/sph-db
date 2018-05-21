@@ -23,6 +23,11 @@
   printf("%s\n", #func); \
   status_require_x(test_helper_reset(env, 0)); \
   status_require_x(func(env))
+#define test_helper_assert(description, expression) \
+  if (!expression) { \
+    printf("%s failed\n", description); \
+    status_set_id_goto(1); \
+  }
 status_t test_helper_reset(db_env_t* env, boolean re_use) {
   status_init;
   if ((*env).open) {

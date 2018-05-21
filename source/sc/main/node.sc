@@ -35,62 +35,68 @@
   (set types-len env:types-len)
   (for ((set index 0) (< index types-len) (set index (+ 1 index)))
     (set type (+ index env:types))
-    (if (and type:id (= 0 (strcmp name type:name)))
-      (return type)))
+    (if (and type:id (= 0 (strcmp name type:name))) (return type)))
   (return 0))
 
-(define (db-type-new env name field-count fields flags result)
-  (status-t db-env-t* b8* db-field-count-t db-field-t* b8 db-type-id-t)
-  "key-value: type-label id -> name-len name field-count (field-type name-len name) ..."
+(pre-define dg-field-name-len-max 255)
+
+(define (db-type-create env name field-count fields flags result)
+  (status-t db-env-t* b8* db-field-count-t db-field-t* b8 db-type-id-t*)
+  "the data format is documented in main/open.c"
   status-init
   (declare
     data b8*
     data-start b8*
     field db-field-t
-    index db-field-count-t
+    i db-field-count-t
     key (array b8 (db-size-system-key))
     name-len b8
+    data-size size-t
     type-id db-type-id-t
     val-data MDB-val
     val-key MDB-val)
   (db-txn-declare env txn)
   (db-cursor-declare system)
   (sc-comment "check if type with name exists")
-  (if (db-type-get txn.env name)
-    (status-set-both-goto db-status-group-db db-status-id-duplicate))
+  (debug-log "%s" "type-exists?")
+  (if (db-type-get txn.env name) (status-set-both-goto db-status-group-db db-status-id-duplicate))
   (sc-comment "check name length")
   (if (< db-type-name-max-len (strlen name))
     (status-set-both-goto db-status-group-db db-status-id-data-length))
-  (sc-comment "prepare insert data")
+  (sc-comment "allocate insert data")
+  (set data-size (+ (sizeof db-type-name-len-t) name-len (sizeof db-field-count-t)))
+  (for ((set i 0) (< i field-count) (set i (+ 1 i)))
+    (set data-size
+      (+ data-size (sizeof db-field-type-t) (sizeof db-field-name-len-t) (: (+ i fields) name-len))))
+  (debug-log "data-size: %lu" data-size)
+  (db-malloc data data-size)
+  (sc-comment "set insert data")
   (set
     data-start data
-    name-len (strlen name)
     (db-system-key-label key) db-system-label-type
-    (pointer-get (convert-type data b8*)) name-len
-    data (+ 1 data))
+    (pointer-get (convert-type data db-type-name-len-t*)) name-len
+    data (+ 1 (convert-type data db-type-name-len-t*)))
   (memcpy data name name-len)
   (set
     data (+ name-len data)
-    field-count (pointer-get (convert-type data db-field-count-t*))
-    data (+ (sizeof db-field-count-t) data)
-    index 0)
-  (for ((set index 0) (< index field-count) (set index (+ 1 index)))
+    (pointer-get (convert-type data db-field-count-t*)) field-count
+    data (+ 1 (convert-type data db-field-count-t*)))
+  (for ((set i 0) (< i field-count) (set i (+ 1 i)))
     (set
-      field (pointer-get fields index)
-      *data field.type
-      data (+ 1 data)
-      name-len (strlen field.name)
-      *data name-len
-      data (+ 1 data))
-    (memcpy data field.name name-len)
-    (set data (+ name-len data)))
+      field (pointer-get fields i)
+      (pointer-get (convert-type data db-field-type-t*)) field.type
+      data (+ 1 (convert-type data db-field-type-t*))
+      (pointer-get (convert-type data db-field-name-len-t*)) field.name-len
+      data (+ 1 (convert-type data db-field-name-len-t*)))
+    (memcpy data field.name field.name-len)
+    (set data (+ field.name-len data)))
   (status-require! (db-sequence-next-system txn.env (address-of type-id)))
   (set
     (db-system-key-id key) type-id
     val-key.mv-data key
     val-key.mv-size db-size-type-id
-    val-data.mv-size (- data data-start)
-    val-data.mv-data data)
+    val-data.mv-data data
+    val-data.mv-size data-size)
   (sc-comment "insert data")
   (db-txn-write-begin txn)
   (db-cursor-open txn system)
@@ -99,6 +105,7 @@
   (sc-comment "update cache")
   (status-require! (db-env-types-extend txn.env type-id))
   (status-require! (db-open-type val-key.mv-data val-data.mv-data txn.env:types))
+  (set *result type-id)
   (label exit
     (mdb-cursor-close system)
     (return status)))
@@ -111,8 +118,7 @@
   (db-txn-write-begin txn)
   (db-cursor-open txn system)
   (db-mdb-cursor-get-norequire system val-key val-null MDB-SET)
-  (if db-mdb-status-success?
-    (db-mdb-status-require! (mdb-cursor-del system 0))
+  (if db-mdb-status-success? (db-mdb-status-require! (mdb-cursor-del system 0))
     (begin
       db-mdb-status-require-notfound
       (status-set-id status-id-success)))

@@ -112,7 +112,8 @@
   (type
     (struct
       (name b8*)
-      (type b8)))
+      (name-len db-field-name-len-t)
+      (type db-field-type-t)))
   db-index-t
   (type
     (struct
@@ -186,7 +187,11 @@
       (file-permissions b16)))
   (db-statistics txn result) (status-t db-txn-t db-statistics-t*)
   (db-close env) (b0 db-env-t*)
-  (db-open root options env) (status-t b8* db-open-options-t* db-env-t*))
+  (db-open root options env) (status-t b8* db-open-options-t* db-env-t*)
+  (db-type-get env name) (db-type-t* db-env-t* b8*)
+  (db-type-create env name field-count fields flags result)
+  (status-t db-env-t* b8* db-field-count-t db-field-t* b8 db-type-id-t*) (db-type-delete env id)
+  (status-t db-env-t* db-type-id-t))
 
 (pre-define imht-set-key-t db-id-t)
 (sc-include "foreign/sph/imht-set")
