@@ -1,3 +1,4 @@
+/* development helpers */
 b0 db_debug_log_ids(db_ids_t* a) {
   while (a) {
     debug_log("%lu", db_ids_first(a));

@@ -1,7 +1,7 @@
 (define (db-debug-display-content-left->right txn) (status-t db-txn-t)
   status-init
-  (db-mdb-cursor-define txn.mdb-txn (struct-pointer-get txn.s dbi-left->right) left->right)
-  (define
+  (db-mdb-cursor-define txn.mdb-txn txn.env:dbi-left->right left->right)
+  (declare
     id-left db-id-t
     id-right db-id-t
     id-label db-id-t
@@ -30,13 +30,13 @@
 
 (define (db-debug-display-content-right->left txn) (status-t db-txn-t)
   status-init
-  (db-mdb-cursor-define txn.mdb-txn (struct-pointer-get txn.s dbi-right->left) right->left)
-  (define
+  (declare
     id-left db-id-t
     id-right db-id-t
     id-label db-id-t)
   db-mdb-declare-val-graph-key
   db-mdb-declare-val-id
+  (db-mdb-cursor-define txn.mdb-txn txn.env:dbi-right->left right->left)
   (printf "right->left\n")
   (db-mdb-cursor-each-key
     right->left

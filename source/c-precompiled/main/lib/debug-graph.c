@@ -1,6 +1,7 @@
 status_t db_debug_display_content_left_to_right(db_txn_t txn) {
   status_init;
-  db_mdb_cursor_define(txn.mdb_txn, (*txn.s).dbi_left_to_right, left_to_right);
+  db_mdb_cursor_define(
+    txn.mdb_txn, (*txn.env).dbi_left_to_right, left_to_right);
   db_id_t id_left;
   db_id_t id_right;
   db_id_t id_label;
@@ -25,12 +26,13 @@ exit:
 };
 status_t db_debug_display_content_right_to_left(db_txn_t txn) {
   status_init;
-  db_mdb_cursor_define(txn.mdb_txn, (*txn.s).dbi_right_to_left, right_to_left);
   db_id_t id_left;
   db_id_t id_right;
   db_id_t id_label;
   db_mdb_declare_val_graph_key;
   db_mdb_declare_val_id;
+  db_mdb_cursor_define(
+    txn.mdb_txn, (*txn.env).dbi_right_to_left, right_to_left);
   printf("right->left\n");
   db_mdb_cursor_each_key(right_to_left, val_graph_key, val_id, {
     id_right = db_mdb_val_to_id_at(val_graph_key, 0);

@@ -504,7 +504,7 @@
 (define (test-statistics db-s) (status-t db-env-t*)
   status-init
   (db-txn-define db-s txn)
-  (define stat db-statistics-t)
+  (declare stat db-statistics-t)
   (status-require! (db-statistics txn (address-of stat)))
   (label exit
     (if txn.mdb-txn (db-txn-abort txn))
