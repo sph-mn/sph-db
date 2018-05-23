@@ -28,6 +28,37 @@
   db-read-option-is-set-right 4
   db-read-option-initialised 8
   db-null 0
+  db-type-id-max db-type-id-mask
+  db-element-id-mask (bit-xor db-type-id-mask db-id-mask)
+  db-element-id-max db-element-id-mask
+  db-type-flag-virtual 1
+  dg-field-name-len-max 255
+  db-type-name-max-len 255
+  db-field-type-float32 4
+  db-field-type-float64 6
+  db-field-type-vbinary 1
+  db-field-type-vstring 3
+  db-system-label-format 0
+  db-system-label-type 1
+  db-system-label-index 2
+  (db-field-type-fixed? a) (not (bit-and 1 a))
+  (db-system-key-label a) (pointer-get (convert-type a b8*))
+  (db-system-key-id a) (pointer-get (convert-type (+ 1 (convert-type a b8*)) db-type-id-t*))
+  (db-field-type-integer? a) (not (bit-and 15 a))
+  (db-field-type-string? a) (= 2 (bit-and 15 a))
+  (db-id-add-type id type-id) (bit-or id (bit-shift-left type-id (* 8 (sizeof db-type-id-t))))
+  (db-field-type-integer signed size-exponent)
+  (begin
+    "3b:size-exponent 1b:signed 4b:id-prefix:0000
+    size-bit-count: 2 ** size-exponent + 3 = 8
+    example (size-exponent 4): 10000000, 10010000"
+    (bit-and (bit-shift-left size-exponent 5)
+      (if* signed 16
+        0)))
+  (db-field-type-string size-exponent)
+  (begin
+    "4b:size-exponent 4b:id-prefix:0010"
+    (bit-and (bit-shift-left size-exponent 4) 2))
   (db-status-memory-error-if-null variable)
   (if (not variable) (status-set-both-goto db-status-group-db db-status-id-memory))
   (db-malloc variable size)
@@ -61,9 +92,14 @@
   (db-data-size-set a value)
   (struct-set data
     mv-size value)
-  (db-type-id id) (pointer-get (convert-type (address-of id) db-type-id-t*))
-  (db-id-id id)
-  (pointer-get (convert-type (+ 1 (convert-type (address-of id) db-type-id-t*)) db-id-t*))
+  (db-id-type id)
+  (begin
+    "get the type id part from a node id. a node id without element id"
+    (bit-and db-type-id-mask id))
+  (db-id-element id)
+  (begin
+    "get the element id part from a node id. a node id without type id"
+    (bit-and db-element-id-mask id))
   (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
   (db-txn-begin txn)
   (db-mdb-status-require! (mdb-txn-begin txn.env:mdb-env 0 MDB-RDONLY &txn.mdb-txn))
@@ -105,9 +141,6 @@
     (db-graph-data-set-id id)))
 
 (declare
-  db-type-id-max db-type-id-t
-  db-type-id-mask db-id-t
-  db-id-id-max db-id-t
   db-field-t
   (type
     (struct

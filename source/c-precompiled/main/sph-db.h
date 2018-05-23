@@ -249,7 +249,8 @@ b8* db_status_name(status_t a) {
 #define db_field_name_len_t b8
 #define db_field_type_t b8
 #define db_type_name_len_t b8
-#define db_id_max UINT64_MAX
+#define db_id_mask UINT64_MAX
+#define db_type_id_mask UINT16_MAX
 #define db_size_id sizeof(db_id_t)
 #define db_size_type_id sizeof(db_type_id_t)
 #define db_size_ordinal sizeof(db_ordinal_t)
@@ -300,6 +301,9 @@ b8* db_status_name(status_t a) {
 #define db_read_option_is_set_right 4
 #define db_read_option_initialised 8
 #define db_null 0
+#define db_type_id_max db_type_id_mask
+#define db_element_id_mask (db_type_id_mask ^ db_id_mask)
+#define db_element_id_max db_element_id_mask
 #define db_status_memory_error_if_null(variable) \
   if (!variable) { \
     status_set_both_goto(db_status_group_db, db_status_id_memory); \
@@ -326,8 +330,10 @@ b8* db_status_name(status_t a) {
 #define db_data_data_set(a, value) data.mv_data = value
 #define db_data_size(a) data.mv_size
 #define db_data_size_set(a, value) data.mv_size = value
-#define db_type_id(id) (*((db_type_id_t*)(&id)))
-#define db_id_id(id) (*((db_id_t*)((1 + ((db_type_id_t*)(&id))))))
+/** get the type id part from a node id. a node id without element id */
+#define db_id_type(id) (db_type_id_mask & id)
+/** get the element id part from a node id. a node id without type id */
+#define db_id_element(id) (db_element_id_mask & id)
 #define db_txn_declare(env, name) db_txn_t name = { 0, env }
 #define db_txn_begin(txn) \
   db_mdb_status_require_x( \
@@ -366,9 +372,6 @@ b8* db_status_name(status_t a) {
 #define db_graph_data_set_both(a, ordinal, id) \
   db_graph_data_set_ordinal(ordinal); \
   db_graph_data_set_id(id)
-db_type_id_t db_type_id_max;
-db_id_t db_type_id_mask;
-db_id_t db_id_id_max;
 typedef struct {
   b8* name;
   db_field_name_len_t name_len;

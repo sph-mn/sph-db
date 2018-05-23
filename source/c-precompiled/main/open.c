@@ -3,18 +3,12 @@
    (b8:field-type b8:name-len name) ... index-label db-type-id-t:type-id
    db-field-count-t:field-offset ... -> () */
 /** prepare the database filesystem root path.
-  create the full directory path if it does not exist.
-  on success sets path and data-path to new strings */
-status_t db_open_root(db_open_options_t* options,
-  b8* path_argument,
-  b8** path,
-  b8** data_path) {
+  create the full directory path if it does not exist */
+status_t db_open_root(db_env_t* env, db_open_options_t* options, b8* path) {
   status_init;
   b8* path_temp;
-  b8* data_path_temp;
   path_temp = 0;
-  data_path_temp = 0;
-  path_temp = string_clone(path_argument);
+  path_temp = string_clone(path);
   if (!path_temp) {
     db_status_set_id_goto(db_status_id_memory);
   };
@@ -22,16 +16,10 @@ status_t db_open_root(db_open_options_t* options,
         path_temp, (73 | (*options).file_permissions))) {
     db_status_set_id_goto(db_status_id_path_not_accessible_db_root);
   };
-  data_path_temp = string_append(path_temp, "/data");
-  if (!data_path_temp) {
-    db_status_set_id_goto(db_status_id_memory);
-  };
-  *path = path_temp;
-  *data_path = data_path_temp;
+  (*env).root = path_temp;
 exit:
   if (status_failure_p) {
     free(path_temp);
-    free(data_path_temp);
   };
   return (status);
 };
@@ -42,10 +30,15 @@ b32 db_open_mdb_env_flags(db_open_options_t* options) {
           ((*options).read_only_p ? MDB_RDONLY : 0) |
           ((*options).filesystem_has_ordered_writes_p ? MDB_MAPASYNC : 0))));
 };
-status_t
-db_open_mdb_env(db_env_t* env, b8* data_path, db_open_options_t* options) {
+status_t db_open_mdb_env(db_env_t* env, db_open_options_t* options) {
   status_init;
+  b8* data_path;
   MDB_env* mdb_env;
+  mdb_env = 0;
+  data_path = string_append((*env).root, "/data");
+  if (!data_path) {
+    db_status_set_id_goto(db_status_id_memory);
+  };
   db_mdb_status_require_x(mdb_env_create(&mdb_env));
   db_mdb_status_require_x(
     mdb_env_set_maxdbs(mdb_env, (*options).maximum_db_count));
@@ -59,6 +52,7 @@ db_open_mdb_env(db_env_t* env, b8* data_path, db_open_options_t* options) {
     (*options).file_permissions));
   (*env).mdb_env = mdb_env;
 exit:
+  free(data_path);
   if (status_failure_p) {
     if (mdb_env) {
       mdb_env_close(mdb_env);
@@ -153,7 +147,7 @@ status_t db_open_system_sequence(MDB_cursor* system, db_type_id_t* result) {
   };
 exit:
   db_status_success_if_mdb_notfound;
-  (*result) = ((db_type_id_max == current) ? db_type_id_max : (1 + current));
+  (*result) = ((db_type_id_max == current) ? current : (1 + current));
   return (status);
 };
 /** read information for fields from system btree type data */
@@ -346,12 +340,11 @@ status_t db_type_first_id(MDB_cursor* id_to_data,
   db_mdb_declare_val_id;
   db_id_t id;
   (*result) = 0;
-  id = 0;
+  id = db_id_add_type(0, type_id);
   val_id.mv_data = &id;
-  db_id_set_type(id, type_id);
   db_mdb_cursor_get_norequire(id_to_data, val_id, val_null, MDB_SET_RANGE);
   if (db_mdb_status_success_p) {
-    if ((type_id == db_type_id(db_mdb_val_to_id(val_id)))) {
+    if ((type_id == db_id_type(db_mdb_val_to_id(val_id)))) {
       (*result) = db_mdb_val_to_id(val_id);
     };
   } else {
@@ -375,12 +368,13 @@ status_t db_type_last_key_id(MDB_cursor* id_to_data,
   (*result) = 0;
   db_mdb_cursor_get_norequire(id_to_data, val_id, val_null, MDB_LAST);
   if ((db_mdb_status_success_p &&
-        ((type_id == db_type_id(db_mdb_val_to_id(val_id)))))) {
+        ((type_id == db_id_type(db_mdb_val_to_id(val_id)))))) {
     (*result) = db_mdb_val_to_id(val_id);
   };
   return (status);
 };
-/** algorithm: check if data of type exists, if yes then check if last key is of
+/** get the last existing node id for type or zero if none exist.
+   algorithm: check if data of type exists, if yes then check if last key is of
    type or position next type and step back */
 status_t
 db_type_last_id(MDB_cursor* id_to_data, db_type_id_t type_id, db_id_t* result) {
@@ -414,7 +408,7 @@ db_type_last_id(MDB_cursor* id_to_data, db_type_id_t type_id, db_id_t* result) {
   };
   /* greater type found, step back */
   db_mdb_cursor_get(id_to_data, val_id, val_null, MDB_PREV);
-  (*result) = ((type_id == db_type_id(db_mdb_val_to_id(val_id)))
+  (*result) = ((type_id == db_id_type(db_mdb_val_to_id(val_id)))
       ? db_mdb_val_to_id(val_id)
       : 0);
 exit:
@@ -430,17 +424,17 @@ status_t db_open_sequences(db_txn_t txn) {
   db_id_t id;
   db_type_t* types;
   db_type_id_t types_len;
-  db_type_id_t index;
+  db_type_id_t i;
   db_cursor_declare(id_to_data);
   db_mdb_declare_val_id;
   types = (*txn.env).types;
   types_len = (*txn.env).types_len;
   db_cursor_open(txn, id_to_data);
-  for (index = 0; (index < types_len); index = (1 + index)) {
+  for (i = 0; (i < types_len); i = (1 + i)) {
     id = 0;
-    status_require_x(db_type_last_id(id_to_data, (*(index + types)).id, &id));
-    id = db_id_id(id);
-    (*(index + types)).sequence = ((id < db_id_id_max) ? (1 + id) : id);
+    status_require_x(db_type_last_id(id_to_data, (*(i + types)).id, &id));
+    id = db_id_element(id);
+    (*(i + types)).sequence = ((id < db_element_id_max) ? (1 + id) : id);
   };
 exit:
   return (status);
@@ -519,31 +513,24 @@ status_t db_open_nodes(db_txn_t txn) {
 exit:
   return (status);
 };
-status_t
-db_open(b8* path_argument, db_open_options_t* options_pointer, db_env_t* env) {
+status_t db_open(b8* path, db_open_options_t* options_pointer, db_env_t* env) {
   status_init;
-  b8* path;
   db_open_options_t options;
-  b8* data_path;
   db_txn_declare(env, txn);
   if ((*env).open) {
     return (status);
   };
-  data_path = 0;
-  if (!path_argument) {
+  if (!path) {
     db_status_set_id_goto(db_status_id_missing_argument_db_root);
   };
   db_mdb_reset_val_null;
-  db_type_id_max = (pow(2, (8 * sizeof(db_type_id_t))) - 1);
-  db_type_id_mask = db_type_id_max;
-  db_id_id_max = ~(~db_id_max & db_type_id_mask);
   if (options_pointer) {
     options = *options_pointer;
   } else {
     db_open_options_set_defaults(&options);
   };
-  status_require_x(db_open_root(&options, path_argument, &path, &data_path));
-  status_require_x(db_open_mdb_env(env, data_path, &options));
+  status_require_x(db_open_root(env, &options, path));
+  status_require_x(db_open_mdb_env(env, &options));
   db_txn_write_begin(txn);
   status_require_x(db_open_nodes(txn));
   status_require_x(db_open_system(txn));
@@ -551,7 +538,6 @@ db_open(b8* path_argument, db_open_options_t* options_pointer, db_env_t* env) {
   pthread_mutex_init(&((*env).mutex), 0);
   (*env).open = 1;
 exit:
-  free(data_path);
   if (status_failure_p) {
     db_txn_abort(txn);
     db_close(env);

@@ -10,32 +10,7 @@
     count)
   (db-cursor-declare name) (db-mdb-cursor-declare name)
   (db-cursor-open txn name) (db-mdb-cursor-open txn.mdb-txn (: txn.env (pre-concat dbi- name)) name)
-  db-field-type-float32 4
-  db-field-type-float64 6
-  db-field-type-vbinary 1
-  db-field-type-vstring 3
-  db-system-label-format 0
-  db-system-label-type 1
-  db-system-label-index 2
   db-size-system-key (+ 1 (sizeof db-type-id-t))
-  (db-field-type-fixed? a) (not (bit-and 1 a))
-  (db-system-key-label a) (pointer-get (convert-type a b8*))
-  (db-system-key-id a) (pointer-get (convert-type (+ 1 (convert-type a b8*)) db-type-id-t*))
-  (db-field-type-integer? a) (not (bit-and 15 a))
-  (db-field-type-string? a) (= 2 (bit-and 15 a))
-  (db-id-set-type id type-id) (set (db-type-id id) type-id)
-  (db-field-type-integer signed size-exponent)
-  (begin
-    "3b:size-exponent 1b:signed 4b:id-prefix:0000
-    size-bit-count: 2 ** size-exponent + 3 = 8
-    example (size-exponent 4): 10000000, 10010000"
-    (bit-and (bit-shift-left size-exponent 5)
-      (if* signed 16
-        0)))
-  (db-field-type-string size-exponent)
-  (begin
-    "4b:size-exponent 4b:id-prefix:0010"
-    (bit-and (bit-shift-left size-exponent 4) 2))
   (db-select-ensure-offset state offset reader)
   (if offset
     (begin
@@ -103,11 +78,11 @@
     sequence-pointer db-id-t*)
   (pthread-mutex-lock &env:mutex)
   (set sequence-pointer (address-of (: (+ type-id env:types) sequence)))
-  (if (< sequence db-id-id-max)
+  (if (< sequence db-element-id-max)
     (begin
       (set *sequence-pointer (+ 1 sequence))
       (pthread-mutex-unlock &env:mutex)
-      (set *result (db-id-set-type sequence type-id)))
+      (set *result (db-id-add-type sequence type-id)))
     (begin
       (pthread-mutex-unlock &env:mutex)
       (status-set-both-goto db-status-group-db db-status-id-max-id)))

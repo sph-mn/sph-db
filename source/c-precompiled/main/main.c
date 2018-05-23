@@ -26,7 +26,8 @@
 #define db_system_key_id(a) (*((db_type_id_t*)((1 + ((b8*)(a))))))
 #define db_field_type_integer_p(a) !(15 & a)
 #define db_field_type_string_p(a) (2 == (15 & a))
-#define db_id_set_type(id, type_id) db_type_id(id) = type_id
+#define db_id_add_type(id, type_id) \
+  (id | (type_id << (8 * sizeof(db_type_id_t))))
 /** 3b:size-exponent 1b:signed 4b:id-prefix:0000
     size-bit-count: 2 ** size-exponent + 3 = 8
     example (size-exponent 4): 10000000, 10010000 */
@@ -109,10 +110,10 @@ db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result) {
   db_id_t* sequence_pointer;
   pthread_mutex_lock(&((*env).mutex));
   sequence_pointer = &(*(type_id + (*env).types)).sequence;
-  if ((sequence < db_id_id_max)) {
+  if ((sequence < db_element_id_max)) {
     *sequence_pointer = (1 + sequence);
     pthread_mutex_unlock(&((*env).mutex));
-    *result = db_id_set_type(sequence, type_id);
+    *result = db_id_add_type(sequence, type_id);
   } else {
     pthread_mutex_unlock(&((*env).mutex));
     status_set_both_goto(db_status_group_db, db_status_id_max_id);

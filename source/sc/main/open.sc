@@ -3,32 +3,20 @@
      type-label id -> 8b:name-len name db-field-count-t:field-count (b8:field-type b8:name-len name) ...
      index-label db-type-id-t:type-id db-field-count-t:field-offset ... -> ()")
 
-(define (db-open-root options path-argument path data-path)
-  (status-t db-open-options-t* b8* b8** b8**)
+(define (db-open-root env options path) (status-t db-env-t* db-open-options-t* b8*)
   "prepare the database filesystem root path.
-  create the full directory path if it does not exist.
-  on success sets path and data-path to new strings"
+  create the full directory path if it does not exist"
   status-init
-  (declare
-    path-temp b8*
-    data-path-temp b8*)
+  (declare path-temp b8*)
   (set
     path-temp 0
-    data-path-temp 0
-    path-temp (string-clone path-argument))
+    path-temp (string-clone path))
   (if (not path-temp) (db-status-set-id-goto db-status-id-memory))
   (if (not (ensure-directory-structure path-temp (bit-or 73 options:file-permissions)))
     (db-status-set-id-goto db-status-id-path-not-accessible-db-root))
-  (set data-path-temp (string-append path-temp "/data"))
-  (if (not data-path-temp) (db-status-set-id-goto db-status-id-memory))
-  (set
-    *path path-temp
-    *data-path data-path-temp)
+  (set env:root path-temp)
   (label exit
-    (if status-failure?
-      (begin
-        (free path-temp)
-        (free data-path-temp)))
+    (if status-failure? (free path-temp))
     (return status)))
 
 (define (db-open-mdb-env-flags options) (b32 db-open-options-t*)
@@ -42,9 +30,15 @@
         (if* options:filesystem-has-ordered-writes? MDB-MAPASYNC
           0)))))
 
-(define (db-open-mdb-env env data-path options) (status-t db-env-t* b8* db-open-options-t*)
+(define (db-open-mdb-env env options) (status-t db-env-t* db-open-options-t*)
   status-init
-  (declare mdb-env MDB-env*)
+  (declare
+    data-path b8*
+    mdb-env MDB-env*)
+  (set
+    mdb-env 0
+    data-path (string-append env:root "/data"))
+  (if (not data-path) (db-status-set-id-goto db-status-id-memory))
   (db-mdb-status-require! (mdb-env-create &mdb-env))
   (db-mdb-status-require! (mdb-env-set-maxdbs mdb-env options:maximum-db-count))
   (db-mdb-status-require! (mdb-env-set-mapsize mdb-env options:maximum-size-octets))
@@ -53,6 +47,7 @@
     (mdb-env-open mdb-env data-path (db-open-mdb-env-flags options) options:file-permissions))
   (set env:mdb-env mdb-env)
   (label exit
+    (free data-path)
     (if status-failure? (if mdb-env (mdb-env-close mdb-env)))
     (return status)))
 
@@ -149,7 +144,7 @@
   (label exit
     db-status-success-if-mdb-notfound
     (set (pointer-get result)
-      (if* (= db-type-id-max current) db-type-id-max
+      (if* (= db-type-id-max current) current
         (+ 1 current)))
     (return status)))
 
@@ -332,12 +327,11 @@
   (declare id db-id-t)
   (set
     (pointer-get result) 0
-    id 0
+    id (db-id-add-type 0 type-id)
     val-id.mv-data &id)
-  (db-id-set-type id type-id)
   (db-mdb-cursor-get-norequire id->data val-id val-null MDB-SET-RANGE)
   (if db-mdb-status-success?
-    (if (= type-id (db-type-id (db-mdb-val->id val-id)))
+    (if (= type-id (db-id-type (db-mdb-val->id val-id)))
       (set (pointer-get result) (db-mdb-val->id val-id)))
     (if db-mdb-status-notfound? (status-set-id status-id-success)
       (status-set-group-goto db-status-group-lmdb)))
@@ -351,12 +345,13 @@
   db-mdb-declare-val-id
   (set (pointer-get result) 0)
   (db-mdb-cursor-get-norequire id->data val-id val-null MDB-LAST)
-  (if (and db-mdb-status-success? (= type-id (db-type-id (db-mdb-val->id val-id))))
+  (if (and db-mdb-status-success? (= type-id (db-id-type (db-mdb-val->id val-id))))
     (set (pointer-get result) (db-mdb-val->id val-id)))
   (return status))
 
 (define (db-type-last-id id->data type-id result) (status-t MDB-cursor* db-type-id-t db-id-t*)
-  "algorithm: check if data of type exists, if yes then check if last key is of type or
+  "get the last existing node id for type or zero if none exist.
+   algorithm: check if data of type exists, if yes then check if last key is of type or
    position next type and step back"
   status-init
   (declare id db-id-t)
@@ -390,7 +385,7 @@
   (sc-comment "greater type found, step back")
   (db-mdb-cursor-get id->data val-id val-null MDB-PREV)
   (set (pointer-get result)
-    (if* (= type-id (db-type-id (db-mdb-val->id val-id))) (db-mdb-val->id val-id)
+    (if* (= type-id (db-id-type (db-mdb-val->id val-id))) (db-mdb-val->id val-id)
       0))
   (label exit
     (return status)))
@@ -406,20 +401,20 @@
     id db-id-t
     types db-type-t*
     types-len db-type-id-t
-    index db-type-id-t)
+    i db-type-id-t)
   (db-cursor-declare id->data)
   db-mdb-declare-val-id
   (set
     types txn.env:types
     types-len txn.env:types-len)
   (db-cursor-open txn id->data)
-  (for ((set index 0) (< index types-len) (set index (+ 1 index)))
+  (for ((set i 0) (< i types-len) (set i (+ 1 i)))
     (set id 0)
-    (status-require! (db-type-last-id id->data (: (+ index types) id) &id))
+    (status-require! (db-type-last-id id->data (: (+ i types) id) &id))
     (set
-      id (db-id-id id)
-      (: (+ index types) sequence)
-      (if* (< id db-id-id-max) (+ 1 id)
+      id (db-id-element id)
+      (: (+ i types) sequence)
+      (if* (< id db-element-id-max) (+ 1 id)
         id)))
   (label exit
     (return status)))
@@ -496,25 +491,17 @@
   (label exit
     (return status)))
 
-(define (db-open path-argument options-pointer env) (status-t b8* db-open-options-t* db-env-t*)
+(define (db-open path options-pointer env) (status-t b8* db-open-options-t* db-env-t*)
   status-init
-  (declare
-    path b8*
-    options db-open-options-t
-    data-path b8*)
+  (declare options db-open-options-t)
   (db-txn-declare env txn)
   (if env:open (return status))
-  (set data-path 0)
-  (if (not path-argument) (db-status-set-id-goto db-status-id-missing-argument-db-root))
+  (if (not path) (db-status-set-id-goto db-status-id-missing-argument-db-root))
   db-mdb-reset-val-null
-  (set
-    db-type-id-max (- (pow 2 (* 8 (sizeof db-type-id-t))) 1)
-    db-type-id-mask db-type-id-max
-    db-id-id-max (bit-not (bit-and (bit-not db-id-max) db-type-id-mask)))
   (if options-pointer (set options *options-pointer)
     (db-open-options-set-defaults &options))
-  (status-require! (db-open-root &options path-argument &path &data-path))
-  (status-require! (db-open-mdb-env env data-path &options))
+  (status-require! (db-open-root env &options path))
+  (status-require! (db-open-mdb-env env &options))
   (db-txn-write-begin txn)
   (status-require! (db-open-nodes txn))
   (status-require! (db-open-system txn))
@@ -523,7 +510,6 @@
   (pthread-mutex-init &env:mutex 0)
   (set env:open #t)
   (label exit
-    (free data-path)
     (if status-failure?
       (begin
         (db-txn-abort txn)

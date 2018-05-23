@@ -1,7 +1,3 @@
-(pre-define
-  db-type-flag-virtual 1
-  db-type-name-max-len 255)
-
 (define (db-env-types-extend env type-id) (status-t db-env-t* db-type-id-t)
   "extend the types array if type-id is an index out of bounds"
   status-init
@@ -37,8 +33,6 @@
     (set type (+ index env:types))
     (if (and type:id (= 0 (strcmp name type:name))) (return type)))
   (return 0))
-
-(pre-define dg-field-name-len-max 255)
 
 (define (db-type-create env name field-count fields flags result)
   (status-t db-env-t* b8* db-field-count-t db-field-t* b8 db-type-id-t*)

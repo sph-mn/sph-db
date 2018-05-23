@@ -1,5 +1,12 @@
 (pre-include "./helper.c")
 
+(define (test-open-empty env) (status-t db-env-t*)
+  status-init
+  (test-helper-assert "env.open is true" (= #t env:open))
+  (test-helper-assert "env.root is set" (= 0 (strcmp env:root test-helper-db-root)))
+  (label exit
+    (return status)))
+
 (define (test-statistics env) (status-t db-env-t*)
   status-init
   (declare stat db-statistics-t)
@@ -13,18 +20,36 @@
 
 (define (test-type-create env) (status-t db-env-t*)
   status-init
-  (declare
-    stat db-statistics-t
-    type-id db-type-id-t)
-  (status-require! (db-type-create env "test-type" 0 0 0 &type-id))
+  (declare fields (array dg-field-t 3)  type-id db-type-id-t)
+  (status-require! (db-type-create env "test-type-2" 0 0 0 &type-id))
   (test-helper-assert "first type id" (= 1 type-id))
+  (test-helper-assert "type sequence" (= 2 env:types:sequence))
+  (test-helper-assert "type cache id" (= type-id (: (+ type-id env:types) id)))
+
+  ; (db-type-create env name field-count fields flags result)
+  (set
+    fields:type (db-field-type-integer #f )
+    fields:name
+    fields:name-len
+
+    )
+  (status-require! (db-type-create env "test-type-2" 3 fields 0 &type-id))
+  (label exit
+    (return status)))
+
+(define (test-open-nonempty env) (status-t db-env-t*)
+  status-init
+  (test-type-create env)
+  (test-helper-reset env #t)
   (label exit
     (return status)))
 
 (define (main) int
   (test-helper-init env)
-  (test-helper-test-one env test-statistics)
+  ;(test-helper-test-one env test-open-empty)
   (test-helper-test-one env test-type-create)
+  ;(test-helper-test-one env test-open-nonempty)
+  ;(test-helper-test-one env test-statistics)
   #;(
   (test-helper-test-one test-concurrent-write/read)
   (test-helper-test-one test-relation-read)
