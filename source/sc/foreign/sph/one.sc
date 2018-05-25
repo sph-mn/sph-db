@@ -6,7 +6,7 @@
   "set result to a new string with a trailing slash added, or the given string if it already has a trailing slash.
   returns 0 if result is the given string, 1 if new memory could not be allocated, 2 if result is a new string"
   (define a-len b32 (strlen a))
-  (if (or (not a-len) (equal? #\/ (pointer-get (+ a (- a-len 1)))))
+  (if (or (not a-len) (= #\/ (pointer-get (+ a (- a-len 1)))))
     (begin
       (set (pointer-get result) a)
       (return 0))
@@ -37,15 +37,10 @@
   (if result (memcpy result a a-size))
   (return result))
 
-(pre-define (free-and-set-null a)
-  (begin
-    (free a)
-    (set a 0)))
-
 ;-- filesystem
 ; access, mkdir dirname
 (pre-include "unistd.h" "sys/stat.h" "libgen.h" "errno.h")
-(pre-define (file-exists? path) (not (equal? (access path F-OK) -1)))
+(pre-define (file-exists? path) (not (= (access path F-OK) -1)))
 
 (define (dirname-2 a) (b8* b8*)
   "like posix dirname, but never modifies its argument and always returns a new string"
@@ -54,7 +49,8 @@
 
 (define (ensure-directory-structure path mkdir-mode) (boolean b8* mode-t)
   "return 1 if the path exists or has been successfully created"
-  (if (file-exists? path) (return #t)
+  (if (file-exists? path)
+    (return #t)
     (begin
       (define path-dirname b8* (dirname-2 path))
       (define status boolean (ensure-directory-structure path-dirname mkdir-mode))

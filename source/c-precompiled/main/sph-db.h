@@ -40,7 +40,7 @@
 #define status_init \
   status_t status = { status_id_success, status_group_undefined }
 #define status_reset status_set_both(status_group_undefined, status_id_success)
-#define status_success_p equal_p(status_id_success, status.id)
+#define status_success_p (status_id_success == status.id)
 #define status_failure_p !status_success_p
 #define status_goto goto exit
 #define status_require \
@@ -69,7 +69,7 @@
 #define status_set_both_goto(group_id, status_id) \
   status_set_both(group_id, status_id); \
   status_goto
-#define status_id_is_p(status_id) equal_p(status_id, status.id)
+#define status_id_is_p(status_id) (status_id == status.id)
 /** update status with the result of expression, check for failure and goto
  * error if so */
 #define status_i_require_x(expression) \

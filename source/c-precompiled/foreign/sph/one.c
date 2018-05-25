@@ -7,7 +7,7 @@
   allocated, 2 if result is a new string */
 b8 ensure_trailing_slash(b8* a, b8** result) {
   b32 a_len = strlen(a);
-  if ((!a_len || equal_p('/', (*(a + (a_len - 1)))))) {
+  if ((!a_len || (('/' == (*(a + (a_len - 1))))))) {
     (*result) = a;
     return (0);
   } else {
@@ -43,14 +43,11 @@ b8* string_clone(b8* a) {
   };
   return (result);
 };
-#define free_and_set_null(a) \
-  free(a); \
-  a = 0
 #include <unistd.h>
 #include <sys/stat.h>
 #include <libgen.h>
 #include <errno.h>
-#define file_exists_p(path) !equal_p(access(path, F_OK), -1)
+#define file_exists_p(path) !(access(path, F_OK) == -1)
 /** like posix dirname, but never modifies its argument and always returns a new
  * string */
 b8* dirname_2(b8* a) {

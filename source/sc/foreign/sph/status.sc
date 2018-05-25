@@ -14,7 +14,7 @@
   status-group-undefined 0
   status-init (define status status-t (struct-literal status-id-success status-group-undefined))
   status-reset (status-set-both status-group-undefined status-id-success)
-  status-success? (equal? status-id-success (struct-get status id))
+  status-success? (= status-id-success (struct-get status id))
   status-failure? (not status-success?)
   status-goto (goto exit)
   status-require (if status-failure? status-goto)
@@ -42,7 +42,7 @@
   (begin
     (status-set-both group-id status-id)
     status-goto)
-  (status-id-is? status-id) (equal? status-id (struct-get status id))
+  (status-id-is? status-id) (= status-id (struct-get status id))
   (status-i-require! expression)
   (begin
     "update status with the result of expression, check for failure and goto error if so"
