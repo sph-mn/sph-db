@@ -55,14 +55,14 @@
   (debug-log "%s" "type-exists?")
   (if (db-type-get txn.env name) (status-set-both-goto db-status-group-db db-status-id-duplicate))
   (sc-comment "check name length")
-  (if (< db-type-name-max-len (strlen name))
+  (set name-len (strlen name))
+  (if (< db-type-name-max-len name-len)
     (status-set-both-goto db-status-group-db db-status-id-data-length))
   (sc-comment "allocate insert data")
   (set data-size (+ (sizeof db-type-name-len-t) name-len (sizeof db-field-count-t)))
   (for ((set i 0) (< i field-count) (set i (+ 1 i)))
     (set data-size
       (+ data-size (sizeof db-field-type-t) (sizeof db-field-name-len-t) (: (+ i fields) name-len))))
-  (debug-log "data-size: %lu" data-size)
   (db-malloc data data-size)
   (sc-comment "set insert data")
   (set

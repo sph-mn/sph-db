@@ -13,28 +13,7 @@
 #define db_cursor_declare(name) db_mdb_cursor_declare(name)
 #define db_cursor_open(txn, name) \
   db_mdb_cursor_open(txn.mdb_txn, (*txn.env).dbi_##name, name)
-#define db_field_type_float32 4
-#define db_field_type_float64 6
-#define db_field_type_vbinary 1
-#define db_field_type_vstring 3
-#define db_system_label_format 0
-#define db_system_label_type 1
-#define db_system_label_index 2
 #define db_size_system_key (1 + sizeof(db_type_id_t))
-#define db_field_type_fixed_p(a) !(1 & a)
-#define db_system_key_label(a) (*((b8*)(a)))
-#define db_system_key_id(a) (*((db_type_id_t*)((1 + ((b8*)(a))))))
-#define db_field_type_integer_p(a) !(15 & a)
-#define db_field_type_string_p(a) (2 == (15 & a))
-#define db_id_add_type(id, type_id) \
-  (id | (type_id << (8 * sizeof(db_type_id_t))))
-/** 3b:size-exponent 1b:signed 4b:id-prefix:0000
-    size-bit-count: 2 ** size-exponent + 3 = 8
-    example (size-exponent 4): 10000000, 10010000 */
-#define db_field_type_integer(signed, size_exponent) \
-  ((size_exponent << 5) & (signed ? 16 : 0))
-/** 4b:size-exponent 4b:id-prefix:0010 */
-#define db_field_type_string(size_exponent) ((size_exponent << 4) & 2)
 #define db_select_ensure_offset(state, offset, reader) \
   if (offset) { \
     (*state).options = (db_read_option_skip | (*state).options); \
@@ -46,13 +25,20 @@
   }
 /** size in octets. only for fixed size types */
 b8 db_field_type_size(b8 a) {
-  return (((db_field_type_float32 == a)
-      ? 4
-      : ((db_field_type_float64 == a)
-            ? 8
-            : (db_field_type_integer_p(a)
-                  ? (a >> 5)
-                  : (db_field_type_string_p(a) ? (a >> 4) : 0)))));
+  return (((((db_field_type_int64 == a)) || ((db_field_type_uint64 == a)) ||
+             ((db_field_type_char64 == a)) || ((db_field_type_float64 == a)))
+      ? 64
+      : ((((db_field_type_int32 == a)) || ((db_field_type_uint32 == a)) ||
+           ((db_field_type_char32 == a)) || ((db_field_type_float32 == a)))
+            ? 32
+            : ((((db_field_type_int16 == a)) || ((db_field_type_uint16 == a)) ||
+                 ((db_field_type_char16 == a)))
+                  ? 16
+                  : ((((db_field_type_int8 == a)) ||
+                       ((db_field_type_uint8 == a)) ||
+                       ((db_field_type_char8 == a)))
+                        ? 8
+                        : 0)))));
 };
 status_t db_ids_to_set(db_ids_t* a, imht_set_t** result) {
   status_init;

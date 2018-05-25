@@ -32,33 +32,31 @@
   db-element-id-mask (bit-xor db-type-id-mask db-id-mask)
   db-element-id-max db-element-id-mask
   db-type-flag-virtual 1
-  dg-field-name-len-max 255
   db-type-name-max-len 255
+  db-system-label-format 0
+  db-system-label-type 1
+  db-system-label-index 2
+  dg-field-name-len-max 255
   db-field-type-float32 4
   db-field-type-float64 6
   db-field-type-vbinary 1
   db-field-type-vstring 3
-  db-system-label-format 0
-  db-system-label-type 1
-  db-system-label-index 2
+  db-field-type-int8 48
+  db-field-type-int16 80
+  db-field-type-int32 112
+  db-field-type-int64 144
+  db-field-type-uint8 32
+  db-field-type-uint16 64
+  db-field-type-uint32 96
+  db-field-type-uint64 128
+  db-field-type-char8 34
+  db-field-type-char16 66
+  db-field-type-char32 98
+  db-field-type-char64 130
   (db-field-type-fixed? a) (not (bit-and 1 a))
   (db-system-key-label a) (pointer-get (convert-type a b8*))
   (db-system-key-id a) (pointer-get (convert-type (+ 1 (convert-type a b8*)) db-type-id-t*))
-  (db-field-type-integer? a) (not (bit-and 15 a))
-  (db-field-type-string? a) (= 2 (bit-and 15 a))
   (db-id-add-type id type-id) (bit-or id (bit-shift-left type-id (* 8 (sizeof db-type-id-t))))
-  (db-field-type-integer signed size-exponent)
-  (begin
-    "3b:size-exponent 1b:signed 4b:id-prefix:0000
-    size-bit-count: 2 ** size-exponent + 3 = 8
-    example (size-exponent 4): 10000000, 10010000"
-    (bit-and (bit-shift-left size-exponent 5)
-      (if* signed 16
-        0)))
-  (db-field-type-string size-exponent)
-  (begin
-    "4b:size-exponent 4b:id-prefix:0010"
-    (bit-and (bit-shift-left size-exponent 4) 2))
   (db-status-memory-error-if-null variable)
   (if (not variable) (status-set-both-goto db-status-group-db db-status-id-memory))
   (db-malloc variable size)
@@ -224,7 +222,7 @@
   (db-type-get env name) (db-type-t* db-env-t* b8*)
   (db-type-create env name field-count fields flags result)
   (status-t db-env-t* b8* db-field-count-t db-field-t* b8 db-type-id-t*) (db-type-delete env id)
-  (status-t db-env-t* db-type-id-t))
+  (status-t db-env-t* db-type-id-t) (db-field-type-size a) (b8 b8))
 
 (pre-define imht-set-key-t db-id-t)
 (sc-include "foreign/sph/imht-set")

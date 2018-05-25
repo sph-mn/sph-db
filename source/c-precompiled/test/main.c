@@ -18,29 +18,44 @@ exit:
   db_txn_abort(txn);
   return (status);
 };
+#define db_field_set(a, a_type, a_name, a_name_len) \
+  a.type = a_type; \
+  a.name = a_name; \
+  a.name_len = a_name_len
 status_t test_type_create(db_env_t* env) {
   status_init;
+  db_field_t fields[3];
+  db_type_t type;
   db_type_id_t type_id;
-  status_require_x(db_type_create(env, "test-type", 0, 0, 0, &type_id));
-  test_helper_assert("first type id", (1 == type_id));
-  test_helper_assert("type sequence", (2 == (*(*env).types).sequence));
+  status_require_x(db_type_create(env, "test-type-1", 0, 0, 0, &type_id));
+  type = (*((*env).types + type_id));
+  test_helper_assert("type id", (1 == type_id) && (type_id == type.id));
+  test_helper_assert("type sequence", (1 == type.sequence));
+  test_helper_assert("type field count", (0 == type.fields_count));
+  db_field_set((*(fields + 0)), db_field_type_int8, "test-field-1", 12);
+  db_field_set((*(fields + 1)), db_field_type_int8, "test-field-2", 12);
+  db_field_set((*(fields + 2)), db_field_type_int8, "test-field-3", 12);
+  status_require_x(db_type_create(env, "test-type-2", 3, fields, 0, &type_id));
+  type = (*((*env).types + type_id));
+  debug_log("%lu %lu", type_id, type.id);
+  test_helper_assert("second type id", (2 == type_id) && (type_id == type.id));
+  test_helper_assert("second type sequence", (2 == type.sequence));
+  test_helper_assert("second type field-count", (3 == type.fields_count));
   test_helper_assert(
-    "type cache id", (type_id == (*(type_id + (*env).types)).id));
+    "second type name", (0 == strcmp("test-type-2", type.name)));
 exit:
   return (status);
 };
 status_t test_open_nonempty(db_env_t* env) {
   status_init;
-  test_type_create(env);
-  test_helper_reset(env, 1);
+  status_require_x(test_type_create(env));
+  status_require_x(test_helper_reset(env, 1));
 exit:
   return (status);
 };
 int main() {
   test_helper_init(env);
-  test_helper_test_one(env, test_open_empty);
   test_helper_test_one(env, test_type_create);
-  test_helper_test_one(env, test_open_nonempty);
 exit:
   test_helper_report_status;
   return (status.id);

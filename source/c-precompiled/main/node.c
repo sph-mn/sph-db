@@ -1,5 +1,3 @@
-#define db_type_flag_virtual 1
-#define db_type_name_max_len 255
 /** extend the types array if type-id is an index out of bounds */
 status_t db_env_types_extend(db_env_t* env, db_type_id_t type_id) {
   status_init;
@@ -37,7 +35,6 @@ db_type_t* db_type_get(db_env_t* env, b8* name) {
   };
   return (0);
 };
-#define dg_field_name_len_max 255
 /** the data format is documented in main/open.c */
 status_t db_type_create(db_env_t* env,
   b8* name,
@@ -64,7 +61,8 @@ status_t db_type_create(db_env_t* env,
     status_set_both_goto(db_status_group_db, db_status_id_duplicate);
   };
   /* check name length */
-  if ((db_type_name_max_len < strlen(name))) {
+  name_len = strlen(name);
+  if ((db_type_name_max_len < name_len)) {
     status_set_both_goto(db_status_group_db, db_status_id_data_length);
   };
   /* allocate insert data */
@@ -74,7 +72,6 @@ status_t db_type_create(db_env_t* env,
     data_size = (data_size + sizeof(db_field_type_t) +
       sizeof(db_field_name_len_t) + (*(i + fields)).name_len);
   };
-  debug_log("data-size: %lu", data_size);
   db_malloc(data, data_size);
   /* set insert data */
   data_start = data;

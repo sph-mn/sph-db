@@ -18,29 +18,40 @@
     (db-txn-abort txn)
     (return status)))
 
+(pre-define (db-field-set a a-type a-name a-name-len)
+  (set
+    a.type a-type
+    a.name a-name
+    a.name-len a-name-len))
+
 (define (test-type-create env) (status-t db-env-t*)
   status-init
-  (declare fields (array dg-field-t 3)  type-id db-type-id-t)
-  (status-require! (db-type-create env "test-type-2" 0 0 0 &type-id))
-  (test-helper-assert "first type id" (= 1 type-id))
-  (test-helper-assert "type sequence" (= 2 env:types:sequence))
-  (test-helper-assert "type cache id" (= type-id (: (+ type-id env:types) id)))
-
-  ; (db-type-create env name field-count fields flags result)
-  (set
-    fields:type (db-field-type-integer #f )
-    fields:name
-    fields:name-len
-
-    )
+  (declare
+    fields (array db-field-t 3)
+    type db-type-t
+    type-id db-type-id-t)
+  (status-require! (db-type-create env "test-type-1" 0 0 0 &type-id))
+  (set type (pointer-get env:types type-id))
+  (test-helper-assert "type id" (= 1 type-id type.id))
+  (test-helper-assert "type sequence" (= 1 type.sequence))
+  (test-helper-assert "type field count" (= 0 type.fields-count))
+  (db-field-set (pointer-get fields 0) db-field-type-int8 "test-field-1" 12)
+  (db-field-set (pointer-get fields 1) db-field-type-int8 "test-field-2" 12)
+  (db-field-set (pointer-get fields 2) db-field-type-int8 "test-field-3" 12)
   (status-require! (db-type-create env "test-type-2" 3 fields 0 &type-id))
+  (set type (pointer-get env:types type-id))
+  (debug-log "%lu %lu" type-id type.id)
+  (test-helper-assert "second type id" (= 2 type-id type.id))
+  (test-helper-assert "second type sequence" (= 2 type.sequence))
+  (test-helper-assert "second type field-count" (= 3 type.fields-count))
+  (test-helper-assert "second type name" (= 0 (strcmp "test-type-2" type.name)))
   (label exit
     (return status)))
 
 (define (test-open-nonempty env) (status-t db-env-t*)
   status-init
-  (test-type-create env)
-  (test-helper-reset env #t)
+  (status-require! (test-type-create env))
+  (status-require! (test-helper-reset env #t))
   (label exit
     (return status)))
 

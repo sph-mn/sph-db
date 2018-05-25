@@ -22,11 +22,12 @@
 (define (db-field-type-size a) (b8 b8)
   "size in octets. only for fixed size types"
   (return
-    (cond*
-      ((= db-field-type-float32 a) 4)
-      ((= db-field-type-float64 a) 8)
-      ((db-field-type-integer? a) (bit-shift-right a 5))
-      ((db-field-type-string? a) (bit-shift-right a 4)) (else 0))))
+    (case* = a
+      ((db-field-type-int64 db-field-type-uint64 db-field-type-char64 db-field-type-float64) 64)
+      ((db-field-type-int32 db-field-type-uint32 db-field-type-char32 db-field-type-float32) 32)
+      ((db-field-type-int16 db-field-type-uint16 db-field-type-char16) 16)
+      ((db-field-type-int8 db-field-type-uint8 db-field-type-char8) 8)
+      (else 0))))
 
 (define (db-ids->set a result) (status-t db-ids-t* imht-set-t**)
   status-init

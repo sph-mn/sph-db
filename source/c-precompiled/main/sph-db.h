@@ -40,7 +40,7 @@
 #define status_init \
   status_t status = { status_id_success, status_group_undefined }
 #define status_reset status_set_both(status_group_undefined, status_id_success)
-#define status_success_p (status_id_success == status.id)
+#define status_success_p equal_p(status_id_success, status.id)
 #define status_failure_p !status_success_p
 #define status_goto goto exit
 #define status_require \
@@ -69,7 +69,7 @@
 #define status_set_both_goto(group_id, status_id) \
   status_set_both(group_id, status_id); \
   status_goto
-#define status_id_is_p(status_id) (status_id == status.id)
+#define status_id_is_p(status_id) equal_p(status_id, status.id)
 /** update status with the result of expression, check for failure and goto
  * error if so */
 #define status_i_require_x(expression) \
@@ -304,6 +304,33 @@ b8* db_status_name(status_t a) {
 #define db_type_id_max db_type_id_mask
 #define db_element_id_mask (db_type_id_mask ^ db_id_mask)
 #define db_element_id_max db_element_id_mask
+#define db_type_flag_virtual 1
+#define db_type_name_max_len 255
+#define db_system_label_format 0
+#define db_system_label_type 1
+#define db_system_label_index 2
+#define dg_field_name_len_max 255
+#define db_field_type_float32 4
+#define db_field_type_float64 6
+#define db_field_type_vbinary 1
+#define db_field_type_vstring 3
+#define db_field_type_int8 48
+#define db_field_type_int16 80
+#define db_field_type_int32 112
+#define db_field_type_int64 144
+#define db_field_type_uint8 32
+#define db_field_type_uint16 64
+#define db_field_type_uint32 96
+#define db_field_type_uint64 128
+#define db_field_type_char8 34
+#define db_field_type_char16 66
+#define db_field_type_char32 98
+#define db_field_type_char64 130
+#define db_field_type_fixed_p(a) !(1 & a)
+#define db_system_key_label(a) (*((b8*)(a)))
+#define db_system_key_id(a) (*((db_type_id_t*)((1 + ((b8*)(a))))))
+#define db_id_add_type(id, type_id) \
+  (id | (type_id << (8 * sizeof(db_type_id_t))))
 #define db_status_memory_error_if_null(variable) \
   if (!variable) { \
     status_set_both_goto(db_status_group_db, db_status_id_memory); \
@@ -450,6 +477,7 @@ status_t db_type_create(db_env_t* env,
   b8 flags,
   db_type_id_t* result);
 status_t db_type_delete(db_env_t* env, db_type_id_t id);
+b8 db_field_type_size(b8 a);
 #define imht_set_key_t db_id_t
 #include <stdlib.h>
 #include <inttypes.h>
