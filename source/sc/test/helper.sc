@@ -16,7 +16,7 @@
   (if status-success? (printf "--\ntests finished successfully.\n")
     (printf "\ntests failed. %d %s\n" status.id (db-status-description status))))
 
-(pre-define (test-helper-test-one env func)
+(pre-define (test-helper-test-one func env)
   (begin
     (printf "%s\n" (pre-stringify func))
     (status-require! (test-helper-reset env #f))
@@ -191,8 +191,8 @@
   (define left-count b32 0)
   (define right-count b32 0)
   (define label-count b32 0)
-  ;the number of relations is not proportional to the number of entries in label->left.
-  ;use a process similar to relation creation to correctly calculate label->left and ordinal dependent entries
+  ;the number of relations is not proportional to the number of entries in graph-ll.
+  ;use a process similar to relation creation to correctly calculate graph-ll and ordinal dependent entries
   (while (< label-count existing-label-count)
     (while (< left-count existing-left-count)
       (if (and (<= ordinal-value ordinal-max) (>= ordinal-value ordinal-min))

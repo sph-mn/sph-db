@@ -246,9 +246,9 @@ b8* db_status_name(status_t a) {
 #define db_ordinal_t b32
 #define db_index_count_t b8
 #define db_field_count_t b8
-#define db_field_name_len_t b8
+#define db_name_len_t b8
+#define db_name_len_max 255
 #define db_field_type_t b8
-#define db_type_name_len_t b8
 #define db_id_mask UINT64_MAX
 #define db_type_id_mask UINT16_MAX
 #define db_size_id sizeof(db_id_t)
@@ -305,15 +305,13 @@ b8* db_status_name(status_t a) {
 #define db_element_id_mask (db_type_id_mask ^ db_id_mask)
 #define db_element_id_max db_element_id_mask
 #define db_type_flag_virtual 1
-#define db_type_name_max_len 255
 #define db_system_label_format 0
 #define db_system_label_type 1
 #define db_system_label_index 2
-#define dg_field_name_len_max 255
 #define db_field_type_float32 4
 #define db_field_type_float64 6
-#define db_field_type_vbinary 1
-#define db_field_type_vstring 3
+#define db_field_type_binary 1
+#define db_field_type_string 3
 #define db_field_type_int8 48
 #define db_field_type_int16 80
 #define db_field_type_int32 112
@@ -338,10 +336,10 @@ b8* db_status_name(status_t a) {
 #define db_malloc(variable, size) \
   variable = malloc(size); \
   db_status_memory_error_if_null(variable)
-/** allocate memory and set the last element to zero */
-#define db_malloc_string(variable, size) \
-  db_malloc(variable, size); \
-  (*((size - 1) + variable)) = 0
+/** allocate memory for a string with size and one extra last null element */
+#define db_malloc_string(variable, len) \
+  db_malloc(variable, (1 + len)); \
+  (*(len + variable)) = 0
 #define db_calloc(variable, count, size) \
   variable = calloc(count, size); \
   db_status_memory_error_if_null(variable)
@@ -401,7 +399,7 @@ b8* db_status_name(status_t a) {
   db_graph_data_set_id(id)
 typedef struct {
   b8* name;
-  db_field_name_len_t name_len;
+  db_name_len_t name_len;
   db_field_type_t type;
 } db_field_t;
 typedef struct {
@@ -423,10 +421,10 @@ typedef struct {
   db_id_t sequence;
 } db_type_t;
 typedef struct {
-  MDB_dbi dbi_id_to_data;
-  MDB_dbi dbi_label_to_left;
-  MDB_dbi dbi_left_to_right;
-  MDB_dbi dbi_right_to_left;
+  MDB_dbi dbi_nodes;
+  MDB_dbi dbi_graph_ll;
+  MDB_dbi dbi_graph_lr;
+  MDB_dbi dbi_graph_rl;
   MDB_dbi dbi_system;
   MDB_env* mdb_env;
   boolean open;
@@ -452,10 +450,10 @@ typedef struct {
 } db_txn_t;
 typedef struct {
   MDB_stat system;
-  MDB_stat id_to_data;
-  MDB_stat left_to_right;
-  MDB_stat right_to_left;
-  MDB_stat label_to_left;
+  MDB_stat nodes;
+  MDB_stat graph_lr;
+  MDB_stat graph_rl;
+  MDB_stat graph_ll;
 } db_statistics_t;
 typedef struct {
   b8 read_only_p;

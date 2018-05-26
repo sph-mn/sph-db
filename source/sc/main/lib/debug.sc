@@ -26,8 +26,8 @@
   (set (pointer-get result)
     (+
       stat.system.ms_entries
-      stat.id->data.ms_entries
-      stat.left->right.ms_entries stat.right->left.ms_entries stat.label->left.ms_entries))
+      stat.nodes.ms_entries
+      stat.graph-lr.ms_entries stat.graph-rl.ms_entries stat.graph-ll.ms_entries))
   (label exit
     (return status)))
 
@@ -36,9 +36,9 @@
   (declare stat db-statistics-t)
   (status-require! (db-statistics txn &stat))
   (printf
-    "btree entry count\n  id->data %d data-intern->id %d\n  data-extern->extern %d left->right %d\n  right->left %d label->left %d\n"
+    "btree entry count\n  nodes %d data-intern->id %d\n  data-extern->extern %d graph-lr %d\n  graph-rl %d graph-ll %d\n"
     stat.system.ms_entries
-    stat.id->data.ms_entries
-    stat.left->right.ms_entries stat.right->left.ms_entries stat.label->left.ms_entries)
+    stat.nodes.ms_entries
+    stat.graph-lr.ms_entries stat.graph-rl.ms_entries stat.graph-ll.ms_entries)
   (label exit
     (return status)))

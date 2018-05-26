@@ -167,7 +167,7 @@
     fixed-count 0
     fields 0
     count (pointer-get (convert-type data db-field-count-t*))
-    data (+ 1 (convert-type data db-field-count-t*)))
+    data (+ (sizeof db-field-count-t) data))
   (db-calloc fields count (sizeof db-field-t))
   (sc-comment "field")
   (for ((set i 0) (< i count) (set i (+ 1 i)))
@@ -175,10 +175,10 @@
     (set
       field-pointer (+ i fields)
       field-type (pointer-get data)
-      data (+ 1 data)
-      field-pointer:type field-type)
-    (sc-comment "name")
-    (status-require! (db-read-length-prefixed-string-b8 &data &field-pointer:name))
+      data (+ (sizeof db-field-type-t) data)
+      field-pointer:type field-type
+      field-pointer:name-len (pointer-get (convert-type data db-name-len-t*)))
+    (db-read-name &data (address-of (: field-pointer name)))
     (if (db-field-type-fixed? field-type) (set fixed-count (+ 1 fixed-count))))
   (sc-comment "offsets")
   (if fixed-count
@@ -207,7 +207,7 @@
     id (db-system-key-id system-key)
     type-pointer (+ id types)
     type-pointer:id id)
-  (status-require! (db-read-length-prefixed-string-b8 &system-value &type-pointer:name))
+  (status-require! (db-read-name &system-value &type-pointer:name))
   (status-require! (db-open-type-read-fields &system-value type-pointer))
   (label exit
     (return status)))
@@ -320,7 +320,7 @@
     (if status-failure? (db-free-env-types-indices &indices indices-count))
     (return status)))
 
-(define (db-type-first-id id->data type-id result) (status-t MDB-cursor* db-type-id-t db-id-t*)
+(define (db-type-first-id nodes type-id result) (status-t MDB-cursor* db-type-id-t db-id-t*)
   "get the first data id of type and save it in result. result is set to zero if none has been found"
   status-init
   db-mdb-declare-val-id
@@ -329,7 +329,7 @@
     (pointer-get result) 0
     id (db-id-add-type 0 type-id)
     val-id.mv-data &id)
-  (db-mdb-cursor-get-norequire id->data val-id val-null MDB-SET-RANGE)
+  (db-mdb-cursor-get-norequire nodes val-id val-null MDB-SET-RANGE)
   (if db-mdb-status-success?
     (if (= type-id (db-id-type (db-mdb-val->id val-id)))
       (set (pointer-get result) (db-mdb-val->id val-id)))
@@ -338,18 +338,18 @@
   (label exit
     (return status)))
 
-(define (db-type-last-key-id id->data type-id result) (status-t MDB-cursor* db-type-id-t db-id-t*)
+(define (db-type-last-key-id nodes type-id result) (status-t MDB-cursor* db-type-id-t db-id-t*)
   "sets result to the last key id if the last key is of type, otherwise sets result to zero.
   leaves cursor at last key. status is mdb-notfound if database is empty"
   status-init
   db-mdb-declare-val-id
   (set (pointer-get result) 0)
-  (db-mdb-cursor-get-norequire id->data val-id val-null MDB-LAST)
+  (db-mdb-cursor-get-norequire nodes val-id val-null MDB-LAST)
   (if (and db-mdb-status-success? (= type-id (db-id-type (db-mdb-val->id val-id))))
     (set (pointer-get result) (db-mdb-val->id val-id)))
   (return status))
 
-(define (db-type-last-id id->data type-id result) (status-t MDB-cursor* db-type-id-t db-id-t*)
+(define (db-type-last-id nodes type-id result) (status-t MDB-cursor* db-type-id-t db-id-t*)
   "get the last existing node id for type or zero if none exist.
    algorithm: check if data of type exists, if yes then check if last key is of type or
    position next type and step back"
@@ -359,7 +359,7 @@
   (sc-comment
     "if last key is of type then there are no greater type-ids and data of type exists.
     if there is no last key, the database is empty")
-  (set status (db-type-last-key-id id->data type-id &id))
+  (set status (db-type-last-key-id nodes type-id &id))
   (if db-mdb-status-success?
     (if id
       (begin
@@ -374,7 +374,7 @@
   (sc-comment
     "database is not empty and the last key is not of searched type.
      type-id +1 is not greater than max possible type-id")
-  (status-require! (db-type-first-id id->data (+ 1 type-id) &id))
+  (status-require! (db-type-first-id nodes (+ 1 type-id) &id))
   (if (not id)
     (begin
       (sc-comment
@@ -383,7 +383,7 @@
       (set (pointer-get result) 0)
       (goto exit)))
   (sc-comment "greater type found, step back")
-  (db-mdb-cursor-get id->data val-id val-null MDB-PREV)
+  (db-mdb-cursor-get nodes val-id val-null MDB-PREV)
   (set (pointer-get result)
     (if* (= type-id (db-id-type (db-mdb-val->id val-id))) (db-mdb-val->id val-id)
       0))
@@ -402,15 +402,15 @@
     types db-type-t*
     types-len db-type-id-t
     i db-type-id-t)
-  (db-cursor-declare id->data)
+  (db-cursor-declare nodes)
   db-mdb-declare-val-id
   (set
     types txn.env:types
     types-len txn.env:types-len)
-  (db-cursor-open txn id->data)
+  (db-cursor-open txn nodes)
   (for ((set i 0) (< i types-len) (set i (+ 1 i)))
     (set id 0)
-    (status-require! (db-type-last-id id->data (: (+ i types) id) &id))
+    (status-require! (db-type-last-id nodes (: (+ i types) id) &id))
     (set
       id (db-id-element id)
       (: (+ i types) sequence)
@@ -443,32 +443,32 @@
   status-init
   (declare
     db-options b32
-    dbi-left->right MDB-dbi
-    dbi-right->left MDB-dbi
-    dbi-label->left MDB-dbi)
+    dbi-graph-lr MDB-dbi
+    dbi-graph-rl MDB-dbi
+    dbi-graph-ll MDB-dbi)
   (set db-options (bit-or MDB-CREATE MDB-DUPSORT MDB-DUPFIXED))
-  (db-mdb-status-require! (mdb-dbi-open txn.mdb-txn "left->right" db-options &dbi-left->right))
-  (db-mdb-status-require! (mdb-dbi-open txn.mdb-txn "right->left" db-options &dbi-right->left))
-  (db-mdb-status-require! (mdb-dbi-open txn.mdb-txn "label->left" db-options &dbi-label->left))
+  (db-mdb-status-require! (mdb-dbi-open txn.mdb-txn "graph-lr" db-options &dbi-graph-lr))
+  (db-mdb-status-require! (mdb-dbi-open txn.mdb-txn "graph-rl" db-options &dbi-graph-rl))
+  (db-mdb-status-require! (mdb-dbi-open txn.mdb-txn "graph-ll" db-options &dbi-graph-ll))
   (db-mdb-status-require!
     (mdb-set-compare
-      txn.mdb-txn dbi-left->right (convert-type db-mdb-compare-graph-key MDB-cmp-func*)))
+      txn.mdb-txn dbi-graph-lr (convert-type db-mdb-compare-graph-key MDB-cmp-func*)))
   (db-mdb-status-require!
     (mdb-set-compare
-      txn.mdb-txn dbi-right->left (convert-type db-mdb-compare-graph-key MDB-cmp-func*)))
+      txn.mdb-txn dbi-graph-rl (convert-type db-mdb-compare-graph-key MDB-cmp-func*)))
   (db-mdb-status-require!
-    (mdb-set-compare txn.mdb-txn dbi-label->left (convert-type db-mdb-compare-id MDB-cmp-func*)))
+    (mdb-set-compare txn.mdb-txn dbi-graph-ll (convert-type db-mdb-compare-id MDB-cmp-func*)))
   (db-mdb-status-require!
     (mdb-set-dupsort
-      txn.mdb-txn dbi-left->right (convert-type db-mdb-compare-graph-data MDB-cmp-func*)))
+      txn.mdb-txn dbi-graph-lr (convert-type db-mdb-compare-graph-data MDB-cmp-func*)))
   (db-mdb-status-require!
-    (mdb-set-dupsort txn.mdb-txn dbi-right->left (convert-type db-mdb-compare-id MDB-cmp-func*)))
+    (mdb-set-dupsort txn.mdb-txn dbi-graph-rl (convert-type db-mdb-compare-id MDB-cmp-func*)))
   (db-mdb-status-require!
-    (mdb-set-dupsort txn.mdb-txn dbi-label->left (convert-type db-mdb-compare-id MDB-cmp-func*)))
+    (mdb-set-dupsort txn.mdb-txn dbi-graph-ll (convert-type db-mdb-compare-id MDB-cmp-func*)))
   (set
-    txn.env:dbi-left->right dbi-left->right
-    txn.env:dbi-right->left dbi-right->left
-    txn.env:dbi-label->left dbi-label->left)
+    txn.env:dbi-graph-lr dbi-graph-lr
+    txn.env:dbi-graph-rl dbi-graph-rl
+    txn.env:dbi-graph-ll dbi-graph-ll)
   (label exit
     (return status)))
 
@@ -484,10 +484,10 @@
 
 (define (db-open-nodes txn) (status-t db-txn-t)
   status-init
-  (db-mdb-status-require! (mdb-dbi-open txn.mdb-txn "id->data" MDB-CREATE &txn.env:dbi-id->data))
+  (db-mdb-status-require! (mdb-dbi-open txn.mdb-txn "nodes" MDB-CREATE &txn.env:dbi-nodes))
   (db-mdb-status-require!
     (mdb-set-compare
-      txn.mdb-txn txn.env:dbi-id->data (convert-type db-mdb-compare-id MDB-cmp-func*)))
+      txn.mdb-txn txn.env:dbi-nodes (convert-type db-mdb-compare-id MDB-cmp-func*)))
   (label exit
     (return status)))
 

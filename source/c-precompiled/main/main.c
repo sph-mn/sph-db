@@ -2,6 +2,9 @@
 #include "../foreign/sph/one.c"
 #include "./lib/lmdb.c"
 #include "./lib/debug.c"
+#define free_and_set_null(a) \
+  free(a); \
+  a = 0
 #define db_error_log(pattern, ...) \
   fprintf(stderr, "%s:%d error: " pattern "\n", __func__, __LINE__, __VA_ARGS__)
 #define reduce_count count = (count - 1)
@@ -52,6 +55,24 @@ status_t db_ids_to_set(db_ids_t* a, imht_set_t** result) {
 exit:
   return (status);
 };
+/** read a length prefixed string from system type data.
+  on success set result to a newly allocated string and data to the next byte
+  after the string */
+status_t db_read_name(b8** data_pointer, b8** result) {
+  status_init;
+  b8* data;
+  db_name_len_t len;
+  b8* name;
+  data = *data_pointer;
+  len = (*((db_name_len_t*)(data)));
+  data = (sizeof(db_name_len_t) + data);
+  db_malloc_string(name, len);
+  memcpy(name, data, len);
+exit:
+  *data_pointer = (len + data);
+  *result = name;
+  return (status);
+};
 /** expects an allocated db-statistics-t */
 status_t db_statistics(db_txn_t txn, db_statistics_t* result) {
   status_init;
@@ -59,33 +80,12 @@ status_t db_statistics(db_txn_t txn, db_statistics_t* result) {
   db_mdb_status_require_x( \
     mdb_stat(txn.mdb_txn, (*txn.env).dbi_##dbi_name, &((*result).dbi_name)))
   result_set(system);
-  result_set(id_to_data);
-  result_set(left_to_right);
-  result_set(right_to_left);
-  result_set(label_to_left);
+  result_set(nodes);
+  result_set(graph_lr);
+  result_set(graph_rl);
+  result_set(graph_ll);
 #undef result_set
 exit:
-  return (status);
-};
-/** read a length prefixed string from system type data.
-  on success set result to a newly allocated string and data to the next byte
-  after the string */
-status_t db_read_length_prefixed_string_b8(b8** data_pointer, b8** result) {
-  status_init;
-  b8* data;
-  b8 len;
-  b8* name;
-  data = *data_pointer;
-  len = *data;
-  name = malloc((1 + len));
-  if (!name) {
-    status_set_both_goto(db_status_group_db, db_status_id_memory);
-  };
-  (*(len + name)) = 0;
-  memcpy(name, (1 + data), len);
-exit:
-  *result = name;
-  *data_pointer = (len + data);
   return (status);
 };
 /** return one new, unique and typed identifier */
@@ -167,10 +167,10 @@ b0 db_close(db_env_t* env) {
   MDB_env* mdb_env = (*env).mdb_env;
   if (mdb_env) {
     mdb_dbi_close(mdb_env, (*env).dbi_system);
-    mdb_dbi_close(mdb_env, (*env).dbi_id_to_data);
-    mdb_dbi_close(mdb_env, (*env).dbi_left_to_right);
-    mdb_dbi_close(mdb_env, (*env).dbi_right_to_left);
-    mdb_dbi_close(mdb_env, (*env).dbi_label_to_left);
+    mdb_dbi_close(mdb_env, (*env).dbi_nodes);
+    mdb_dbi_close(mdb_env, (*env).dbi_graph_lr);
+    mdb_dbi_close(mdb_env, (*env).dbi_graph_rl);
+    mdb_dbi_close(mdb_env, (*env).dbi_graph_ll);
     mdb_env_close(mdb_env);
     (*env).mdb_env = 0;
   };

@@ -15,18 +15,18 @@
   (db-graph-records-add! target record target-temp)
   (db-pointer-allocation-set target (db-graph-records-add target record) target-temp))
 
-(define (db-mdb-left->right-seek-right left->right id-right) (status-t MDB-cursor* db-id-t)
+(define (db-mdb-graph-lr-seek-right graph-lr id-right) (status-t MDB-cursor* db-id-t)
   "search data until the given id-right has been found"
   status-init
   db-mdb-declare-val-graph-key
   db-mdb-declare-val-graph-data
-  (db-mdb-cursor-get-norequire left->right val-graph-key val-graph-data MDB-GET-CURRENT)
+  (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
   (label each-data
     (if db-mdb-status-success?
       (if (= id-right (db-mdb-val-graph-data->id val-graph-data))
         (return status)
         (begin
-          (db-mdb-cursor-next-dup! left->right val-graph-key val-graph-data)
+          (db-mdb-cursor-next-dup! graph-lr val-graph-key val-graph-data)
           (goto each-data)))
       db-mdb-status-require-notfound))
   (label exit
@@ -52,10 +52,10 @@
   db-mdb-declare-val-graph-data
   (db-mdb-cursor-define-3
     txn.mdb-txn
-    (struct-pointer-get txn.s dbi-left->right)
-    left->right
-    (struct-pointer-get txn.s dbi-right->left)
-    right->left (struct-pointer-get txn.s dbi-label->left) label->left)
+    (struct-pointer-get txn.s dbi-graph-lr)
+    graph-lr
+    (struct-pointer-get txn.s dbi-graph-rl)
+    graph-rl (struct-pointer-get txn.s dbi-graph-ll) graph-ll)
   (while left
     (set
       id-left (db-ids-first left)
@@ -70,13 +70,13 @@
         (array-set-index graph-key 0 id-right 1 id-label)
         (struct-set val-graph-key mv-data graph-key)
         (struct-set val-id mv-data (address-of id-left))
-        (db-mdb-cursor-get-norequire right->left val-graph-key val-id MDB-GET-BOTH)
+        (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-GET-BOTH)
         (if (= MDB-NOTFOUND status.id)
           (begin
             (db-mdb-status-require!
-              (mdb-cursor-put right->left (address-of val-graph-key) (address-of val-id) 0))
+              (mdb-cursor-put graph-rl (address-of val-graph-key) (address-of val-id) 0))
             (db-mdb-status-require!
-              (mdb-cursor-put label->left (address-of val-id-2) (address-of val-id) 0))
+              (mdb-cursor-put graph-ll (address-of val-id-2) (address-of val-id) 0))
             (array-set-index graph-key 0 id-left 1 id-label)
             (if ordinal-generator
               (set ordinal ((pointer-get ordinal-generator) ordinal-generator-state)))
@@ -84,13 +84,13 @@
             (db-graph-data-id-set graph-data id-right)
             (struct-set val-graph-data mv-data graph-data)
             (db-mdb-status-require!
-              (mdb-cursor-put left->right (address-of val-graph-key) (address-of val-graph-data) 0)))
+              (mdb-cursor-put graph-lr (address-of val-graph-key) (address-of val-graph-data) 0)))
           (if (not db-mdb-status-success?) (status-set-group-goto db-status-group-lmdb)))
         (set right-pointer (db-ids-rest right-pointer)))
       (set label-pointer (db-ids-rest label-pointer)))
     (set left (db-ids-rest left)))
   (label exit
-    (db-mdb-cursor-close-3 left->right right->left label->left)
+    (db-mdb-cursor-close-3 graph-lr graph-rl graph-ll)
     (return status)))
 
 (pre-include "graph-delete" "graph-read" "lib/debug-graph")

@@ -29,9 +29,9 @@ status_t db_debug_count_all_btree_entries(db_txn_t txn, b32* result) {
   status_init;
   db_statistics_t stat;
   status_require_x(db_statistics(txn, &stat));
-  (*result) = (stat.system.ms_entries + stat.id_to_data.ms_entries +
-    stat.left_to_right.ms_entries + stat.right_to_left.ms_entries +
-    stat.label_to_left.ms_entries);
+  (*result) =
+    (stat.system.ms_entries + stat.nodes.ms_entries + stat.graph_lr.ms_entries +
+      stat.graph_rl.ms_entries + stat.graph_ll.ms_entries);
 exit:
   return (status);
 };
@@ -39,14 +39,13 @@ status_t db_debug_display_btree_counts(db_txn_t txn) {
   status_init;
   db_statistics_t stat;
   status_require_x(db_statistics(txn, &stat));
-  printf(
-    "btree entry count\n  id->data %d data-intern->id %d\n  "
-    "data-extern->extern %d left->right %d\n  right->left %d label->left %d\n",
+  printf("btree entry count\n  nodes %d data-intern->id %d\n  "
+         "data-extern->extern %d graph-lr %d\n  graph-rl %d graph-ll %d\n",
     stat.system.ms_entries,
-    stat.id_to_data.ms_entries,
-    stat.left_to_right.ms_entries,
-    stat.right_to_left.ms_entries,
-    stat.label_to_left.ms_entries);
+    stat.nodes.ms_entries,
+    stat.graph_lr.ms_entries,
+    stat.graph_rl.ms_entries,
+    stat.graph_ll.ms_entries);
 exit:
   return (status);
 };

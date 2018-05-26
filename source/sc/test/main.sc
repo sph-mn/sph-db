@@ -1,5 +1,11 @@
 (pre-include "./helper.c")
 
+(pre-define (db-field-set a a-type a-name a-name-len)
+  (set
+    a.type a-type
+    a.name a-name
+    a.name-len a-name-len))
+
 (define (test-open-empty env) (status-t db-env-t*)
   status-init
   (test-helper-assert "env.open is true" (= #t env:open))
@@ -18,33 +24,60 @@
     (db-txn-abort txn)
     (return status)))
 
-(pre-define (db-field-set a a-type a-name a-name-len)
-  (set
-    a.type a-type
-    a.name a-name
-    a.name-len a-name-len))
-
 (define (test-type-create env) (status-t db-env-t*)
   status-init
   (declare
     fields (array db-field-t 3)
-    type db-type-t
-    type-id db-type-id-t)
-  (status-require! (db-type-create env "test-type-1" 0 0 0 &type-id))
-  (set type (pointer-get env:types type-id))
-  (test-helper-assert "type id" (= 1 type-id type.id))
-  (test-helper-assert "type sequence" (= 1 type.sequence))
-  (test-helper-assert "type field count" (= 0 type.fields-count))
+    i db-field-count-t
+    type-1 db-type-t
+    type-1-pointer db-type-t*
+    type-id-1 db-type-id-t
+    type-2 db-type-t
+    type-id-2 db-type-id-t
+    type-2-pointer db-type-t*)
+  (sc-comment "type 1")
+  (status-require! (db-type-create env "test-type-1" 0 0 0 &type-id-1))
+  (set type-1 (pointer-get env:types type-id-1))
+  (test-helper-assert "type id" (= 1 type-id-1 type-1.id))
+  (test-helper-assert "type sequence" (= 1 type-1.sequence))
+  (test-helper-assert "type field count" (= 0 type-1.fields-count))
   (db-field-set (pointer-get fields 0) db-field-type-int8 "test-field-1" 12)
   (db-field-set (pointer-get fields 1) db-field-type-int8 "test-field-2" 12)
-  (db-field-set (pointer-get fields 2) db-field-type-int8 "test-field-3" 12)
-  (status-require! (db-type-create env "test-type-2" 3 fields 0 &type-id))
-  (set type (pointer-get env:types type-id))
-  (debug-log "%lu %lu" type-id type.id)
-  (test-helper-assert "second type id" (= 2 type-id type.id))
-  (test-helper-assert "second type sequence" (= 2 type.sequence))
-  (test-helper-assert "second type field-count" (= 3 type.fields-count))
-  (test-helper-assert "second type name" (= 0 (strcmp "test-type-2" type.name)))
+  (db-field-set (pointer-get fields 2) db-field-type-string "test-field-3" 12)
+  (sc-comment "type 2")
+  (status-require! (db-type-create env "test-type-2" 3 fields 0 &type-id-2))
+  (set type-2 (pointer-get env:types type-id-2))
+  (test-helper-assert "second type id" (= 2 type-id-2 type-2.id))
+  (test-helper-assert "second type sequence" (= 1 type-2.sequence))
+  (test-helper-assert "second type field-count" (= 3 type-2.fields-count))
+  (test-helper-assert "second type name" (= 0 (strcmp "test-type-2" type-2.name)))
+  (for ((set i 0) (< i type-2.fields-count) (set i (+ 1 i)))
+    (test-helper-assert
+      "second type field name len equality"
+      (= (: (+ i fields) name-len) (: (+ i type-2.fields) name-len)))
+    (test-helper-assert
+      "second type field name equality"
+      (= 0 (strcmp (: (+ i fields) name) (: (+ i type-2.fields) name))))
+    (test-helper-assert
+      "second type type equality" (= (: (+ i fields) type) (: (+ i type-2.fields) type))))
+  (sc-comment "type-get")
+  (test-helper-assert "non existent type" (not (db-type-get env "test-type-x")))
+  (set
+    type-1-pointer (db-type-get env "test-type-1")
+    type-2-pointer (db-type-get env "test-type-2"))
+  (test-helper-assert "existent types" (and type-1-pointer type-2-pointer))
+  (test-helper-assert
+    "existent type ids" (and (= type-id-1 type-1-pointer:id) (= type-id-2 type-2-pointer:id)))
+  (test-helper-assert
+    "existent types" (and (db-type-get env "test-type-1") (db-type-get env "test-type-2")))
+  (sc-comment "type-delete")
+  ;(status-require! (db-type-delete env type-id-1))
+  ;(status-require! (db-type-delete env type-id-2))
+  #;(set
+    type-1-pointer (db-type-get env "test-type-1")
+    type-2-pointer (db-type-get env "test-type-2"))
+  #;(test-helper-assert "type-delete type-get" (and (not type-1-pointer) (not type-2-pointer)))
+  ; todo: test cache directly
   (label exit
     (return status)))
 
@@ -57,10 +90,10 @@
 
 (define (main) int
   (test-helper-init env)
-  ;(test-helper-test-one env test-open-empty)
-  (test-helper-test-one env test-type-create)
-  ;(test-helper-test-one env test-open-nonempty)
-  ;(test-helper-test-one env test-statistics)
+  ;(test-helper-test-one test-open-empty env)
+  ;(test-helper-test-one test-statistics env)
+  (test-helper-test-one test-type-create env)
+  ;(test-helper-test-one test-open-nonempty env)
   #;(
   (test-helper-test-one test-concurrent-write/read)
   (test-helper-test-one test-relation-read)
@@ -312,7 +345,7 @@
   (status-require! (db-extern-create db-txn 50 (address-of data-element) (address-of data-ids)))
   (test-helper-assert "db-extern? 1" (and data-ids (db-extern? (db-ids-first data-ids))))
   (define data-list db-data-list-t* 0)
-  (status-require! (db-extern-id->data db-txn data-ids #t (address-of data-list)))
+  (status-require! (db-extern-nodes db-txn data-ids #t (address-of data-list)))
   (test-helper-assert
     "data-equal?"
     (equal?
@@ -344,9 +377,9 @@
   (test-helper-assert "db-intern?" (and data-ids (db-intern? id-first)))
   (define data-2 db-data-list-t* 0)
   (define data-ids-2 db-ids-t* 0)
-  (status-require! (db-intern-id->data db-txn data-ids #t (address-of data-2)))
+  (status-require! (db-intern-nodes db-txn data-ids #t (address-of data-2)))
   (test-helper-assert
-    "id->data return length" (and data (= (db-ids-length data-ids) (db-data-list-length data-2))))
+    "nodes return length" (and data (= (db-ids-length data-ids) (db-data-list-length data-2))))
   (status-require! (db-intern-data->id db-txn data #t (address-of data-ids-2)))
   db-txn-commit
   (test-helper-assert
@@ -361,7 +394,7 @@
   db-txn-begin
   (define data-ids-3 db-ids-t* (db-ids-add 0 id-first))
   (define data-3 db-data-list-t* 0)
-  (status-require! (db-intern-id->data db-txn data-ids-3 #t (address-of data-3)))
+  (status-require! (db-intern-nodes db-txn data-ids-3 #t (address-of data-3)))
   db-txn-abort
   (label exit
     (if db-txn db-txn-abort)

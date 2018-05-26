@@ -1,6 +1,10 @@
 (pre-include "./sph-db.h" "../foreign/sph/one.c" "./lib/lmdb.c" "./lib/debug.c")
 
 (pre-define
+  (free-and-set-null a)
+  (begin
+    (free a)
+    (set a 0))
   (db-error-log pattern ...)
   (fprintf stderr (pre-string-concat "%s:%d error: " pattern "\n") __func__ __LINE__ __VA_ARGS__)
   reduce-count (set count (- count 1))
@@ -38,6 +42,26 @@
   (label exit
     (return status)))
 
+(define (db-read-name data-pointer result) (status-t b8** b8**)
+  "read a length prefixed string from system type data.
+  on success set result to a newly allocated string and data to the next byte after the string"
+  status-init
+  (declare
+    data b8*
+    len db-name-len-t
+    name b8*)
+  (set
+    data *data-pointer
+    len (pointer-get (convert-type data db-name-len-t*))
+    data (+ (sizeof db-name-len-t) data))
+  (db-malloc-string name len)
+  (memcpy name data len)
+  (label exit
+    (set
+      *data-pointer (+ len data)
+      *result name)
+    (return status)))
+
 (define (db-statistics txn result) (status-t db-txn-t db-statistics-t*)
   "expects an allocated db-statistics-t"
   status-init
@@ -46,29 +70,8 @@
       (db-mdb-status-require!
         (mdb-stat txn.mdb-txn (: txn.env (pre-concat dbi- dbi-name)) &result:dbi-name)))
     (result-set system)
-    (result-set id->data) (result-set left->right) (result-set right->left) (result-set label->left))
+    (result-set nodes) (result-set graph-lr) (result-set graph-rl) (result-set graph-ll))
   (label exit
-    (return status)))
-
-(define (db-read-length-prefixed-string-b8 data-pointer result) (status-t b8** b8**)
-  "read a length prefixed string from system type data.
-  on success set result to a newly allocated string and data to the next byte after the string"
-  status-init
-  (declare
-    data b8*
-    len b8
-    name b8*)
-  (set
-    data *data-pointer
-    len *data
-    name (malloc (+ 1 len)))
-  (if (not name) (status-set-both-goto db-status-group-db db-status-id-memory))
-  (pointer-set (+ len name) 0)
-  (memcpy name (+ 1 data) len)
-  (label exit
-    (set
-      *result name
-      *data-pointer (+ len data))
     (return status)))
 
 (define (db-sequence-next env type-id result) (status-t db-env-t* db-type-id-t db-id-t*)
@@ -143,10 +146,10 @@
   (if mdb-env
     (begin
       (mdb-dbi-close mdb-env env:dbi-system)
-      (mdb-dbi-close mdb-env env:dbi-id->data)
-      (mdb-dbi-close mdb-env env:dbi-left->right)
-      (mdb-dbi-close mdb-env env:dbi-right->left)
-      (mdb-dbi-close mdb-env env:dbi-label->left)
+      (mdb-dbi-close mdb-env env:dbi-nodes)
+      (mdb-dbi-close mdb-env env:dbi-graph-lr)
+      (mdb-dbi-close mdb-env env:dbi-graph-rl)
+      (mdb-dbi-close mdb-env env:dbi-graph-ll)
       (mdb-env-close mdb-env)
       (set env:mdb-env 0)))
   (db-free-env-types &env:types env:types-len)

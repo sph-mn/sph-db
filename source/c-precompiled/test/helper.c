@@ -19,7 +19,7 @@
     printf( \
       "\ntests failed. %d %s\n", status.id, db_status_description(status)); \
   }
-#define test_helper_test_one(env, func) \
+#define test_helper_test_one(func, env) \
   printf("%s\n", #func); \
   status_require_x(test_helper_reset(env, 0)); \
   status_require_x(func(env))

@@ -47,9 +47,9 @@
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-graph-reader-header state)
   db-mdb-declare-val-graph-data
-  (define left->right MDB-cursor* (struct-pointer-get state cursor))
+  (define graph-lr MDB-cursor* (struct-pointer-get state cursor))
   (define left db-ids-t* (struct-pointer-get state left))
-  (db-mdb-cursor-get! left->right val-graph-key val-graph-data MDB-GET-CURRENT)
+  (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
   db-mdb-status-require
   (array-set-index graph-key 0 (db-ids-first left))
   (if (db-id-equal? (db-mdb-val->id-at val-graph-key 0) (array-get graph-key 0))
@@ -57,7 +57,7 @@
     (label set-range
       (struct-set val-graph-key
         mv-data graph-key)
-      (db-mdb-cursor-get! left->right val-graph-key val-graph-data MDB-SET-RANGE)
+      (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-RANGE)
       (label each-key
         (if db-mdb-status-success?
           (if (db-id-equal? (db-mdb-val->id-at val-graph-key 0) (array-get graph-key 0))
@@ -80,11 +80,11 @@
           ordinal (db-mdb-val-graph-data->ordinal val-graph-data))
         (db-graph-records-add! (pointer-get result) record result-temp)))
     reduce-count
-    (db-mdb-cursor-next-dup! left->right val-graph-key val-graph-data)
+    (db-mdb-cursor-next-dup! graph-lr val-graph-key val-graph-data)
     (if db-mdb-status-success?
       (goto each-data)
       db-mdb-status-require-notfound))
-  (db-mdb-cursor-next-nodup! left->right val-graph-key val-graph-data)
+  (db-mdb-cursor-next-nodup! graph-lr val-graph-key val-graph-data)
   (goto each-key)
   (label exit
     (struct-pointer-set state
@@ -96,11 +96,11 @@
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-graph-reader-header state)
   db-mdb-declare-val-graph-data
-  (define left->right MDB-cursor* (struct-pointer-get state cursor))
+  (define graph-lr MDB-cursor* (struct-pointer-get state cursor))
   (define left db-ids-t* (struct-pointer-get state left))
   (define left-first db-ids-t* (struct-pointer-get state left-first))
   (define label db-ids-t* (struct-pointer-get state label))
-  (db-mdb-cursor-get! left->right val-graph-key val-graph-data MDB-GET-CURRENT)
+  (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
   db-mdb-status-require
   (array-set-index graph-key 0 (db-ids-first left) 1 (db-ids-first label))
   (if (db-graph-key-equal? graph-key (db-mdb-val->graph-key val-graph-key))
@@ -108,7 +108,7 @@
     (label set-key
       (struct-set val-graph-key
         mv-data graph-key)
-      (db-mdb-cursor-get! left->right val-graph-key val-graph-data MDB-SET-KEY)
+      (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-KEY)
       (if db-mdb-status-success?
         (goto each-data)
         db-mdb-status-require-notfound)
@@ -137,7 +137,7 @@
           ordinal (db-mdb-val-graph-data->ordinal val-graph-data))
         (db-graph-records-add! (pointer-get result) record result-temp)))
     reduce-count
-    (db-mdb-cursor-next-dup! left->right val-graph-key val-graph-data)
+    (db-mdb-cursor-next-dup! graph-lr val-graph-key val-graph-data)
     (if db-mdb-status-success?
       (goto each-data)
       (goto next-key)))
@@ -152,11 +152,11 @@
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-graph-reader-header state)
   db-mdb-declare-val-id
-  (define right->left MDB-cursor* (struct-pointer-get state cursor))
+  (define graph-rl MDB-cursor* (struct-pointer-get state cursor))
   (define left db-ids-t* (struct-pointer-get state left))
   (define left-first db-ids-t* (struct-pointer-get state left-first))
   (define right db-ids-t* (struct-pointer-get state right))
-  (db-mdb-cursor-get! right->left val-graph-key val-id MDB-GET-CURRENT)
+  (db-mdb-cursor-get! graph-rl val-graph-key val-id MDB-GET-CURRENT)
   db-mdb-status-require
   (array-set-index graph-key 0 (db-ids-first right))
   (if (db-id-equal? (db-mdb-val->id-at val-graph-key 0) (array-get graph-key 0))
@@ -164,7 +164,7 @@
     (label set-range
       (struct-set val-graph-key
         mv-data graph-key)
-      (db-mdb-cursor-get! right->left val-graph-key val-id MDB-SET-RANGE)
+      (db-mdb-cursor-get! graph-rl val-graph-key val-id MDB-SET-RANGE)
       (label each-right
         (if db-mdb-status-success?
           (if (db-id-equal? (db-mdb-val->id-at val-graph-key 0) (array-get graph-key 0))
@@ -179,7 +179,7 @@
     stop-if-count-zero
     (struct-set val-id
       mv-data (db-ids-first-address left))
-    (db-mdb-cursor-get! right->left val-graph-key val-id MDB-GET-BOTH)
+    (db-mdb-cursor-get! graph-rl val-graph-key val-id MDB-GET-BOTH)
     (if db-mdb-status-success?
       (begin
         (if (not skip?)
@@ -195,7 +195,7 @@
     (if left
       (goto each-left)
       (set left left-first)))
-  (db-mdb-cursor-next-nodup! right->left val-graph-key val-id)
+  (db-mdb-cursor-next-nodup! graph-rl val-graph-key val-id)
   (goto each-right)
   (label exit
     (struct-pointer-set state
@@ -208,7 +208,7 @@
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-graph-reader-header state)
   db-mdb-declare-val-id
-  (define right->left MDB-cursor* (struct-pointer-get state cursor))
+  (define graph-rl MDB-cursor* (struct-pointer-get state cursor))
   (define left db-ids-t* (struct-pointer-get state left))
   (define left-first db-ids-t* (struct-pointer-get state left-first))
   (define right db-ids-t* (struct-pointer-get state right))
@@ -223,7 +223,7 @@
       mv-data graph-key)
     (struct-set val-id
       mv-data (address-of id-left))
-    (db-mdb-cursor-get! right->left val-graph-key val-id MDB-GET-BOTH)
+    (db-mdb-cursor-get! graph-rl val-graph-key val-id MDB-GET-BOTH)
     (if db-mdb-status-success?
       (goto match)
       db-mdb-status-require-notfound)
@@ -275,13 +275,13 @@
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-graph-reader-header state)
   db-mdb-declare-val-graph-data
-  (define left->right MDB-cursor* (struct-pointer-get state cursor))
+  (define graph-lr MDB-cursor* (struct-pointer-get state cursor))
   (define left db-ids-t* (struct-pointer-get state left))
   (define right imht-set-t* (struct-pointer-get state right))
   (db-graph-reader-get-ordinal-data state)
   (db-define-graph-data graph-data)
   (db-graph-data-set-ordinal graph-data ordinal-min)
-  (db-mdb-cursor-get! left->right val-graph-key val-graph-data MDB-GET-CURRENT)
+  (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
   db-mdb-status-require
   (if left
     (array-set-index graph-key 0 (db-ids-first left))
@@ -295,18 +295,18 @@
     (label each-left
       (struct-set val-graph-key
         mv-data graph-key)
-      (db-mdb-cursor-get! left->right val-graph-key val-graph-data MDB-SET-RANGE)
+      (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-RANGE)
       (label each-key
         (if db-mdb-status-success?
           (if (db-id-equal? (db-mdb-val->id-at val-graph-key 0) (array-get graph-key 0))
             (begin
               (struct-set val-graph-data
                 mv-data graph-data)
-              (db-mdb-cursor-get! left->right val-graph-key val-graph-data MDB-GET-BOTH-RANGE)
+              (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-GET-BOTH-RANGE)
               (if db-mdb-status-success?
                 (goto each-data)
                 db-mdb-status-require-notfound)
-              (db-mdb-cursor-next-nodup! left->right val-graph-key val-graph-data)
+              (db-mdb-cursor-next-nodup! graph-lr val-graph-key val-graph-data)
               (goto each-key)))
           db-mdb-status-require-notfound)
         (set left (db-ids-rest left))
@@ -329,11 +329,11 @@
                   right (db-mdb-val-graph-data->id val-graph-data))
                 (db-graph-records-add! (pointer-get result) record result-temp)))
             reduce-count))
-        (db-mdb-cursor-next-dup! left->right val-graph-key val-graph-data)
+        (db-mdb-cursor-next-dup! graph-lr val-graph-key val-graph-data)
         (if db-mdb-status-success?
           (goto each-data)
           db-mdb-status-require-notfound))))
-  (db-mdb-cursor-next-nodup! left->right val-graph-key val-graph-data)
+  (db-mdb-cursor-next-nodup! graph-lr val-graph-key val-graph-data)
   (goto each-key)
   (label exit
     (struct-pointer-set state
@@ -346,14 +346,14 @@
   (db-graph-reader-header state)
   db-mdb-declare-val-graph-data
   (db-define-graph-data graph-data)
-  (define left->right MDB-cursor* (struct-pointer-get state cursor))
+  (define graph-lr MDB-cursor* (struct-pointer-get state cursor))
   (define left db-ids-t* (struct-pointer-get state left))
   (define left-first db-ids-t* (struct-pointer-get state left-first))
   (define label db-ids-t* (struct-pointer-get state label))
   (define right imht-set-t* (struct-pointer-get state right))
   (db-graph-reader-get-ordinal-data state)
   (db-graph-data-set-ordinal graph-data ordinal-min)
-  (db-mdb-cursor-get! left->right val-graph-key val-graph-data MDB-GET-CURRENT)
+  (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
   db-mdb-status-require
   (array-set-index graph-key 0 (db-ids-first left) 1 (db-ids-first label))
   (if (db-graph-key-equal? graph-key (db-mdb-val->graph-key val-graph-key))
@@ -363,7 +363,7 @@
         mv-data graph-key)
       (struct-set val-graph-data
         mv-data graph-data)
-      (db-mdb-cursor-get! left->right val-graph-key val-graph-data MDB-GET-BOTH-RANGE)
+      (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-GET-BOTH-RANGE)
       (if db-mdb-status-success?
         (goto each-data)
         (begin
@@ -396,7 +396,7 @@
                   ordinal (db-mdb-val-graph-data->ordinal val-graph-data))
                 (db-graph-records-add! (pointer-get result) record result-temp)))
             reduce-count))
-        (db-mdb-cursor-next-dup! left->right val-graph-key val-graph-data)
+        (db-mdb-cursor-next-dup! graph-lr val-graph-key val-graph-data)
         (if db-mdb-status-success?
           (goto each-data)
           (goto each-key)))
@@ -414,15 +414,15 @@
   db-mdb-declare-val-id
   db-mdb-declare-val-id-2
   db-mdb-declare-val-graph-data
-  (define label->left MDB-cursor* (struct-pointer-get state cursor))
-  (define left->right MDB-cursor* (struct-pointer-get state cursor-2))
+  (define graph-ll MDB-cursor* (struct-pointer-get state cursor))
+  (define graph-lr MDB-cursor* (struct-pointer-get state cursor-2))
   (define label db-ids-t* (struct-pointer-get state label))
   (declare
     id-left db-id-t
     id-label db-id-t)
-  (db-mdb-cursor-get! label->left val-id val-id-2 MDB-GET-CURRENT)
+  (db-mdb-cursor-get! graph-ll val-id val-id-2 MDB-GET-CURRENT)
   db-mdb-status-require
-  (db-mdb-cursor-get! left->right val-graph-key val-graph-data MDB-GET-CURRENT)
+  (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
   db-mdb-status-require
   (if label
     (set id-label (db-ids-first label))
@@ -434,7 +434,7 @@
     (label set-label-key
       (struct-set val-id
         mv-data (address-of id-label))
-      (db-mdb-cursor-get! label->left val-id val-id-2 MDB-SET-KEY)
+      (db-mdb-cursor-get! graph-ll val-id val-id-2 MDB-SET-KEY)
       (if db-mdb-status-success?
         (begin
           (array-set-index graph-key 1 id-label)
@@ -454,7 +454,7 @@
         (array-set-index graph-key 0 id-left)
         (struct-set val-graph-key
           mv-data graph-key)
-        (db-mdb-cursor-get! left->right val-graph-key val-graph-data MDB-SET-KEY)
+        (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-KEY)
         (if db-mdb-status-success?
           (goto each-left-data)
           (goto exit))))
@@ -468,11 +468,11 @@
             label id-label)
           (db-graph-records-add! (pointer-get result) record result-temp)))
       reduce-count
-      (db-mdb-cursor-next-dup! left->right val-graph-key val-graph-data)
+      (db-mdb-cursor-next-dup! graph-lr val-graph-key val-graph-data)
       (if db-mdb-status-success?
         (goto each-left-data)
         db-mdb-status-require-notfound))
-    (db-mdb-cursor-next-dup! label->left val-id val-id-2)
+    (db-mdb-cursor-next-dup! graph-ll val-id val-id-2)
     (if db-mdb-status-success?
       (goto each-label-data)
       (begin
@@ -491,11 +491,11 @@
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-graph-reader-header state)
   db-mdb-declare-val-id
-  (define right->left MDB-cursor* (struct-pointer-get state cursor))
+  (define graph-rl MDB-cursor* (struct-pointer-get state cursor))
   (define label db-ids-t* (struct-pointer-get state label))
   (define right db-ids-t* (struct-pointer-get state right))
   (define right-first db-ids-t* (struct-pointer-get state right-first))
-  (db-mdb-cursor-get! right->left val-graph-key val-id MDB-GET-CURRENT)
+  (db-mdb-cursor-get! graph-rl val-graph-key val-id MDB-GET-CURRENT)
   db-mdb-status-require
   (array-set-index graph-key 1 (db-ids-first label))
   (array-set-index graph-key 0 (db-ids-first right))
@@ -504,7 +504,7 @@
     (label set-key
       (struct-set val-graph-key
         mv-data graph-key)
-      (db-mdb-cursor-get! right->left val-graph-key val-id MDB-SET-KEY)
+      (db-mdb-cursor-get! graph-rl val-graph-key val-id MDB-SET-KEY)
       (if db-mdb-status-success?
         (goto each-data)
         (label each-key
@@ -531,7 +531,7 @@
           label (array-get graph-key 1))
         (db-graph-records-add! (pointer-get result) record result-temp)))
     reduce-count
-    (db-mdb-cursor-next-dup! right->left val-graph-key val-id)
+    (db-mdb-cursor-next-dup! graph-rl val-graph-key val-id)
     (if db-mdb-status-success?
       (goto each-data)
       (goto each-key)))
@@ -546,9 +546,9 @@
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-graph-reader-header state)
   db-mdb-declare-val-id
-  (define right->left MDB-cursor* (struct-pointer-get state cursor))
+  (define graph-rl MDB-cursor* (struct-pointer-get state cursor))
   (define right db-ids-t* (struct-pointer-get state right))
-  (db-mdb-cursor-get! right->left val-graph-key val-id MDB-GET-CURRENT)
+  (db-mdb-cursor-get! graph-rl val-graph-key val-id MDB-GET-CURRENT)
   db-mdb-status-require
   (array-set-index graph-key 0 (db-ids-first right))
   (if (db-id-equal? (array-get graph-key 0) (db-mdb-val->id-at val-graph-key 0))
@@ -556,7 +556,7 @@
     (label set-range
       (struct-set val-graph-key
         mv-data graph-key)
-      (db-mdb-cursor-get! right->left val-graph-key val-id MDB-SET-RANGE)
+      (db-mdb-cursor-get! graph-rl val-graph-key val-id MDB-SET-RANGE)
       (if db-mdb-status-success?
         (if (db-id-equal? (array-get graph-key 0) (db-mdb-val->id-at val-graph-key 0))
           (goto each-key))
@@ -577,11 +577,11 @@
             label (db-mdb-val->id-at val-graph-key 1))
           (db-graph-records-add! (pointer-get result) record result-temp)))
       reduce-count
-      (db-mdb-cursor-next-dup! right->left val-graph-key val-id)
+      (db-mdb-cursor-next-dup! graph-rl val-graph-key val-id)
       (if db-mdb-status-success?
         (goto each-data)
         db-mdb-status-require-notfound))
-    (db-mdb-cursor-next-nodup! right->left val-graph-key val-id)
+    (db-mdb-cursor-next-nodup! graph-rl val-graph-key val-id)
     (if db-mdb-status-success?
       (if (db-id-equal? (array-get graph-key 0) (db-mdb-val->id-at val-graph-key 0))
         (goto each-key))
@@ -601,8 +601,8 @@
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-graph-reader-header-0000 state)
   db-mdb-declare-val-graph-data
-  (define left->right MDB-cursor* (struct-pointer-get state cursor))
-  (db-mdb-cursor-get! left->right val-graph-key val-graph-data MDB-GET-CURRENT)
+  (define graph-lr MDB-cursor* (struct-pointer-get state cursor))
+  (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
   db-mdb-status-require
   (label each-key
     (label each-data
@@ -616,11 +616,11 @@
             ordinal (db-mdb-val-graph-data->ordinal val-graph-data))
           (db-graph-records-add! (pointer-get result) record result-temp)))
       reduce-count
-      (db-mdb-cursor-next-dup! left->right val-graph-key val-graph-data)
+      (db-mdb-cursor-next-dup! graph-lr val-graph-key val-graph-data)
       (if db-mdb-status-success?
         (goto each-data)
         db-mdb-status-require-notfound))
-    (db-mdb-cursor-next-nodup! left->right val-graph-key val-graph-data)
+    (db-mdb-cursor-next-nodup! graph-lr val-graph-key val-graph-data)
     (if db-mdb-status-success?
       (goto each-key)
       db-mdb-status-require-notfound))
@@ -638,7 +638,7 @@
   1 stands for filter given, 0 stands for not given. the order is left-right-label-ordinal.
   readers always leave cursors at a valid entry, usually the next entry unless the results have been exhausted"
   status-init
-  (db-mdb-cursor-declare-3 left->right right->left label->left)
+  (db-mdb-cursor-declare-3 graph-lr graph-rl graph-ll)
   (struct-pointer-set result
     status status
     left left
@@ -655,7 +655,7 @@
       (begin
         (if right
           (db-graph-select-initialise-set right result))
-        (db-graph-select-cursor-initialise left->right result cursor)
+        (db-graph-select-cursor-initialise graph-lr result cursor)
         (if label
           (struct-pointer-set result
             reader db-graph-read-1011-1111)
@@ -663,14 +663,14 @@
             reader db-graph-read-1001-1101)))
       (if right
         (begin
-          (db-graph-select-cursor-initialise right->left result cursor)
+          (db-graph-select-cursor-initialise graph-rl result cursor)
           (if label
             (struct-pointer-set result
               reader db-graph-read-1110)
             (struct-pointer-set result
               reader db-graph-read-1100)))
         (begin
-          (db-graph-select-cursor-initialise left->right result cursor)
+          (db-graph-select-cursor-initialise graph-lr result cursor)
           (if label
             (struct-pointer-set result
               reader db-graph-read-1010)
@@ -678,7 +678,7 @@
               reader db-graph-read-1000)))))
     (if right
       (begin
-        (db-graph-select-cursor-initialise right->left result cursor)
+        (db-graph-select-cursor-initialise graph-rl result cursor)
         (struct-pointer-set result
           reader
           (if* label
@@ -686,12 +686,12 @@
             db-graph-read-0100)))
       (if label
         (begin
-          (db-graph-select-cursor-initialise label->left result cursor)
-          (db-graph-select-cursor-initialise left->right result cursor-2)
+          (db-graph-select-cursor-initialise graph-ll result cursor)
+          (db-graph-select-cursor-initialise graph-lr result cursor-2)
           (struct-pointer-set result
             reader db-graph-read-0010))
         (begin
-          (db-graph-select-cursor-initialise left->right result cursor)
+          (db-graph-select-cursor-initialise graph-lr result cursor)
           (struct-pointer-set result
             reader db-graph-read-0000)))))
   (define reader db-graph-reader-t (struct-pointer-get result reader))

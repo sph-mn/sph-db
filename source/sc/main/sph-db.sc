@@ -32,15 +32,13 @@
   db-element-id-mask (bit-xor db-type-id-mask db-id-mask)
   db-element-id-max db-element-id-mask
   db-type-flag-virtual 1
-  db-type-name-max-len 255
   db-system-label-format 0
   db-system-label-type 1
   db-system-label-index 2
-  dg-field-name-len-max 255
   db-field-type-float32 4
   db-field-type-float64 6
-  db-field-type-vbinary 1
-  db-field-type-vstring 3
+  db-field-type-binary 1
+  db-field-type-string 3
   db-field-type-int8 48
   db-field-type-int16 80
   db-field-type-int32 112
@@ -63,11 +61,11 @@
   (begin
     (set variable (malloc size))
     (db-status-memory-error-if-null variable))
-  (db-malloc-string variable size)
+  (db-malloc-string variable len)
   (begin
-    "allocate memory and set the last element to zero"
-    (db-malloc variable size)
-    (pointer-set (+ (- size 1) variable) 0))
+    "allocate memory for a string with size and one extra last null element"
+    (db-malloc variable (+ 1 len))
+    (pointer-set (+ len variable) 0))
   (db-calloc variable count size)
   (begin
     (set variable (calloc count size))
@@ -143,7 +141,7 @@
   (type
     (struct
       (name b8*)
-      (name-len db-field-name-len-t)
+      (name-len db-name-len-t)
       (type db-field-type-t)))
   db-index-t
   (type
@@ -169,10 +167,10 @@
   db-env-t
   (type
     (struct
-      (dbi-id->data MDB-dbi)
-      (dbi-label->left MDB-dbi)
-      (dbi-left->right MDB-dbi)
-      (dbi-right->left MDB-dbi)
+      (dbi-nodes MDB-dbi)
+      (dbi-graph-ll MDB-dbi)
+      (dbi-graph-lr MDB-dbi)
+      (dbi-graph-rl MDB-dbi)
       (dbi-system MDB-dbi)
       (mdb-env MDB-env*)
       (open boolean)
@@ -202,10 +200,10 @@
   (type
     (struct
       (system MDB-stat)
-      (id->data MDB-stat)
-      (left->right MDB-stat)
-      (right->left MDB-stat)
-      (label->left MDB-stat)))
+      (nodes MDB-stat)
+      (graph-lr MDB-stat)
+      (graph-rl MDB-stat)
+      (graph-ll MDB-stat)))
   db-open-options-t
   (type
     (struct
@@ -336,12 +334,12 @@
 (define (db-intern-update txn id data) (status-t db-txn-t db-id-t db-data-t))
 (define (db-extern-update txn id data) (status-t db-txn-t db-id-t db-data-t))
 
-(define (db-intern-id->data txn ids every? result)
+(define (db-intern-nodes txn ids every? result)
   (status-t db-txn-t db-ids-t* boolean db-data-list-t**))
 
 (define (db-extern-create txn count data result) (status-t db-txn-t b32 db-data-t* db-ids-t**))
 
-(define (db-extern-id->data txn ids every? result)
+(define (db-extern-nodes txn ids every? result)
   (status-t db-txn-t db-ids-t* boolean db-data-list-t**))
 
 (define (db-extern-data->id txn data result) (status-t db-txn-t db-data-t db-ids-t**))
@@ -385,6 +383,6 @@
 (define (db-debug-display-graph-records records) (b0 db-graph-records-t*))
 (define (db-debug-count-all-btree-entries txn result) (status-t db-txn-t b32*))
 (define (db-debug-display-btree-counts txn) (status-t db-txn-t))
-(define (db-debug-display-content-left->right txn) (status-t db-txn-t))
-(define (db-debug-display-content-right->left txn) (status-t db-txn-t))
+(define (db-debug-display-content-graph-lr txn) (status-t db-txn-t))
+(define (db-debug-display-content-graph-rl txn) (status-t db-txn-t))
 )

@@ -34,10 +34,9 @@ status_t db_graph_read_1000(db_graph_read_state_t* state,
   db_graph_records_t** result) {
   db_graph_reader_header(state);
   db_mdb_declare_val_graph_data;
-  MDB_cursor* left_to_right = (*state).cursor;
+  MDB_cursor* graph_lr = (*state).cursor;
   db_ids_t* left = (*state).left;
-  db_mdb_cursor_get_x(
-    left_to_right, val_graph_key, val_graph_data, MDB_GET_CURRENT);
+  db_mdb_cursor_get_x(graph_lr, val_graph_key, val_graph_data, MDB_GET_CURRENT);
   db_mdb_status_require;
   (*(graph_key + 0)) = db_ids_first(left);
   if (db_id_equal_p(
@@ -46,8 +45,7 @@ status_t db_graph_read_1000(db_graph_read_state_t* state,
   } else {
   set_range:
     val_graph_key.mv_data = graph_key;
-    db_mdb_cursor_get_x(
-      left_to_right, val_graph_key, val_graph_data, MDB_SET_RANGE);
+    db_mdb_cursor_get_x(graph_lr, val_graph_key, val_graph_data, MDB_SET_RANGE);
   each_key:
     if (db_mdb_status_success_p) {
       if (db_id_equal_p(
@@ -75,13 +73,13 @@ each_data:
     db_graph_records_add_x((*result), record, result_temp);
   };
   reduce_count;
-  db_mdb_cursor_next_dup_x(left_to_right, val_graph_key, val_graph_data);
+  db_mdb_cursor_next_dup_x(graph_lr, val_graph_key, val_graph_data);
   if (db_mdb_status_success_p) {
     goto each_data;
   } else {
     db_mdb_status_require_notfound;
   };
-  db_mdb_cursor_next_nodup_x(left_to_right, val_graph_key, val_graph_data);
+  db_mdb_cursor_next_nodup_x(graph_lr, val_graph_key, val_graph_data);
   goto each_key;
 exit:
   (*state).status = status;
@@ -93,12 +91,11 @@ status_t db_graph_read_1010(db_graph_read_state_t* state,
   db_graph_records_t** result) {
   db_graph_reader_header(state);
   db_mdb_declare_val_graph_data;
-  MDB_cursor* left_to_right = (*state).cursor;
+  MDB_cursor* graph_lr = (*state).cursor;
   db_ids_t* left = (*state).left;
   db_ids_t* left_first = (*state).left_first;
   db_ids_t* label = (*state).label;
-  db_mdb_cursor_get_x(
-    left_to_right, val_graph_key, val_graph_data, MDB_GET_CURRENT);
+  db_mdb_cursor_get_x(graph_lr, val_graph_key, val_graph_data, MDB_GET_CURRENT);
   db_mdb_status_require;
   (*(graph_key + 0)) = db_ids_first(left);
   (*(graph_key + 1)) = db_ids_first(label);
@@ -107,8 +104,7 @@ status_t db_graph_read_1010(db_graph_read_state_t* state,
   } else {
   set_key:
     val_graph_key.mv_data = graph_key;
-    db_mdb_cursor_get_x(
-      left_to_right, val_graph_key, val_graph_data, MDB_SET_KEY);
+    db_mdb_cursor_get_x(graph_lr, val_graph_key, val_graph_data, MDB_SET_KEY);
     if (db_mdb_status_success_p) {
       goto each_data;
     } else {
@@ -141,7 +137,7 @@ each_data:
     db_graph_records_add_x((*result), record, result_temp);
   };
   reduce_count;
-  db_mdb_cursor_next_dup_x(left_to_right, val_graph_key, val_graph_data);
+  db_mdb_cursor_next_dup_x(graph_lr, val_graph_key, val_graph_data);
   if (db_mdb_status_success_p) {
     goto each_data;
   } else {
@@ -158,11 +154,11 @@ status_t db_graph_read_1100(db_graph_read_state_t* state,
   db_graph_records_t** result) {
   db_graph_reader_header(state);
   db_mdb_declare_val_id;
-  MDB_cursor* right_to_left = (*state).cursor;
+  MDB_cursor* graph_rl = (*state).cursor;
   db_ids_t* left = (*state).left;
   db_ids_t* left_first = (*state).left_first;
   db_ids_t* right = (*state).right;
-  db_mdb_cursor_get_x(right_to_left, val_graph_key, val_id, MDB_GET_CURRENT);
+  db_mdb_cursor_get_x(graph_rl, val_graph_key, val_id, MDB_GET_CURRENT);
   db_mdb_status_require;
   (*(graph_key + 0)) = db_ids_first(right);
   if (db_id_equal_p(
@@ -171,7 +167,7 @@ status_t db_graph_read_1100(db_graph_read_state_t* state,
   } else {
   set_range:
     val_graph_key.mv_data = graph_key;
-    db_mdb_cursor_get_x(right_to_left, val_graph_key, val_id, MDB_SET_RANGE);
+    db_mdb_cursor_get_x(graph_rl, val_graph_key, val_id, MDB_SET_RANGE);
   each_right:
     if (db_mdb_status_success_p) {
       if (db_id_equal_p(
@@ -192,7 +188,7 @@ status_t db_graph_read_1100(db_graph_read_state_t* state,
 each_left:
   stop_if_count_zero;
   val_id.mv_data = db_ids_first_address(left);
-  db_mdb_cursor_get_x(right_to_left, val_graph_key, val_id, MDB_GET_BOTH);
+  db_mdb_cursor_get_x(graph_rl, val_graph_key, val_id, MDB_GET_BOTH);
   if (db_mdb_status_success_p) {
     if (!skip_p) {
       record.left = db_mdb_val_to_id(val_id);
@@ -210,7 +206,7 @@ each_left:
   } else {
     left = left_first;
   };
-  db_mdb_cursor_next_nodup_x(right_to_left, val_graph_key, val_id);
+  db_mdb_cursor_next_nodup_x(graph_rl, val_graph_key, val_id);
   goto each_right;
 exit:
   (*state).status = status;
@@ -223,7 +219,7 @@ status_t db_graph_read_1110(db_graph_read_state_t* state,
   db_graph_records_t** result) {
   db_graph_reader_header(state);
   db_mdb_declare_val_id;
-  MDB_cursor* right_to_left = (*state).cursor;
+  MDB_cursor* graph_rl = (*state).cursor;
   db_ids_t* left = (*state).left;
   db_ids_t* left_first = (*state).left_first;
   db_ids_t* right = (*state).right;
@@ -236,7 +232,7 @@ status_t db_graph_read_1110(db_graph_read_state_t* state,
 set_cursor:
   val_graph_key.mv_data = graph_key;
   val_id.mv_data = &id_left;
-  db_mdb_cursor_get_x(right_to_left, val_graph_key, val_id, MDB_GET_BOTH);
+  db_mdb_cursor_get_x(graph_rl, val_graph_key, val_id, MDB_GET_BOTH);
   if (db_mdb_status_success_p) {
     goto match;
   } else {
@@ -290,14 +286,13 @@ status_t db_graph_read_1001_1101(db_graph_read_state_t* state,
   db_graph_records_t** result) {
   db_graph_reader_header(state);
   db_mdb_declare_val_graph_data;
-  MDB_cursor* left_to_right = (*state).cursor;
+  MDB_cursor* graph_lr = (*state).cursor;
   db_ids_t* left = (*state).left;
   imht_set_t* right = (*state).right;
   db_graph_reader_get_ordinal_data(state);
   db_define_graph_data(graph_data);
   db_graph_data_set_ordinal(graph_data, ordinal_min);
-  db_mdb_cursor_get_x(
-    left_to_right, val_graph_key, val_graph_data, MDB_GET_CURRENT);
+  db_mdb_cursor_get_x(graph_lr, val_graph_key, val_graph_data, MDB_GET_CURRENT);
   db_mdb_status_require;
   if (left) {
     (*(graph_key + 0)) = db_ids_first(left);
@@ -316,22 +311,20 @@ status_t db_graph_read_1001_1101(db_graph_read_state_t* state,
   } else {
   each_left:
     val_graph_key.mv_data = graph_key;
-    db_mdb_cursor_get_x(
-      left_to_right, val_graph_key, val_graph_data, MDB_SET_RANGE);
+    db_mdb_cursor_get_x(graph_lr, val_graph_key, val_graph_data, MDB_SET_RANGE);
   each_key:
     if (db_mdb_status_success_p) {
       if (db_id_equal_p(
             db_mdb_val_to_id_at(val_graph_key, 0), (*(graph_key + 0)))) {
         val_graph_data.mv_data = graph_data;
         db_mdb_cursor_get_x(
-          left_to_right, val_graph_key, val_graph_data, MDB_GET_BOTH_RANGE);
+          graph_lr, val_graph_key, val_graph_data, MDB_GET_BOTH_RANGE);
         if (db_mdb_status_success_p) {
           goto each_data;
         } else {
           db_mdb_status_require_notfound;
         };
-        db_mdb_cursor_next_nodup_x(
-          left_to_right, val_graph_key, val_graph_data);
+        db_mdb_cursor_next_nodup_x(graph_lr, val_graph_key, val_graph_data);
         goto each_key;
       };
     } else {
@@ -361,14 +354,14 @@ each_data:
       };
       reduce_count;
     };
-    db_mdb_cursor_next_dup_x(left_to_right, val_graph_key, val_graph_data);
+    db_mdb_cursor_next_dup_x(graph_lr, val_graph_key, val_graph_data);
     if (db_mdb_status_success_p) {
       goto each_data;
     } else {
       db_mdb_status_require_notfound;
     };
   };
-  db_mdb_cursor_next_nodup_x(left_to_right, val_graph_key, val_graph_data);
+  db_mdb_cursor_next_nodup_x(graph_lr, val_graph_key, val_graph_data);
   goto each_key;
 exit:
   (*state).status = status;
@@ -381,15 +374,14 @@ status_t db_graph_read_1011_1111(db_graph_read_state_t* state,
   db_graph_reader_header(state);
   db_mdb_declare_val_graph_data;
   db_define_graph_data(graph_data);
-  MDB_cursor* left_to_right = (*state).cursor;
+  MDB_cursor* graph_lr = (*state).cursor;
   db_ids_t* left = (*state).left;
   db_ids_t* left_first = (*state).left_first;
   db_ids_t* label = (*state).label;
   imht_set_t* right = (*state).right;
   db_graph_reader_get_ordinal_data(state);
   db_graph_data_set_ordinal(graph_data, ordinal_min);
-  db_mdb_cursor_get_x(
-    left_to_right, val_graph_key, val_graph_data, MDB_GET_CURRENT);
+  db_mdb_cursor_get_x(graph_lr, val_graph_key, val_graph_data, MDB_GET_CURRENT);
   db_mdb_status_require;
   (*(graph_key + 0)) = db_ids_first(left);
   (*(graph_key + 1)) = db_ids_first(label);
@@ -400,7 +392,7 @@ status_t db_graph_read_1011_1111(db_graph_read_state_t* state,
     val_graph_key.mv_data = graph_key;
     val_graph_data.mv_data = graph_data;
     db_mdb_cursor_get_x(
-      left_to_right, val_graph_key, val_graph_data, MDB_GET_BOTH_RANGE);
+      graph_lr, val_graph_key, val_graph_data, MDB_GET_BOTH_RANGE);
     if (db_mdb_status_success_p) {
       goto each_data;
     } else {
@@ -438,7 +430,7 @@ each_data:
       };
       reduce_count;
     };
-    db_mdb_cursor_next_dup_x(left_to_right, val_graph_key, val_graph_data);
+    db_mdb_cursor_next_dup_x(graph_lr, val_graph_key, val_graph_data);
     if (db_mdb_status_success_p) {
       goto each_data;
     } else {
@@ -460,15 +452,14 @@ status_t db_graph_read_0010(db_graph_read_state_t* state,
   db_mdb_declare_val_id;
   db_mdb_declare_val_id_2;
   db_mdb_declare_val_graph_data;
-  MDB_cursor* label_to_left = (*state).cursor;
-  MDB_cursor* left_to_right = (*state).cursor_2;
+  MDB_cursor* graph_ll = (*state).cursor;
+  MDB_cursor* graph_lr = (*state).cursor_2;
   db_ids_t* label = (*state).label;
   db_id_t id_left;
   db_id_t id_label;
-  db_mdb_cursor_get_x(label_to_left, val_id, val_id_2, MDB_GET_CURRENT);
+  db_mdb_cursor_get_x(graph_ll, val_id, val_id_2, MDB_GET_CURRENT);
   db_mdb_status_require;
-  db_mdb_cursor_get_x(
-    left_to_right, val_graph_key, val_graph_data, MDB_GET_CURRENT);
+  db_mdb_cursor_get_x(graph_lr, val_graph_key, val_graph_data, MDB_GET_CURRENT);
   db_mdb_status_require;
   if (label) {
     id_label = db_ids_first(label);
@@ -481,7 +472,7 @@ status_t db_graph_read_0010(db_graph_read_state_t* state,
   } else {
   set_label_key:
     val_id.mv_data = &id_label;
-    db_mdb_cursor_get_x(label_to_left, val_id, val_id_2, MDB_SET_KEY);
+    db_mdb_cursor_get_x(graph_ll, val_id, val_id_2, MDB_SET_KEY);
     if (db_mdb_status_success_p) {
       (*(graph_key + 1)) = id_label;
       goto each_label_data;
@@ -503,8 +494,7 @@ each_label_data:
   } else {
     (*(graph_key + 0)) = id_left;
     val_graph_key.mv_data = graph_key;
-    db_mdb_cursor_get_x(
-      left_to_right, val_graph_key, val_graph_data, MDB_SET_KEY);
+    db_mdb_cursor_get_x(graph_lr, val_graph_key, val_graph_data, MDB_SET_KEY);
     if (db_mdb_status_success_p) {
       goto each_left_data;
     } else {
@@ -520,13 +510,13 @@ each_left_data:
     db_graph_records_add_x((*result), record, result_temp);
   };
   reduce_count;
-  db_mdb_cursor_next_dup_x(left_to_right, val_graph_key, val_graph_data);
+  db_mdb_cursor_next_dup_x(graph_lr, val_graph_key, val_graph_data);
   if (db_mdb_status_success_p) {
     goto each_left_data;
   } else {
     db_mdb_status_require_notfound;
   };
-  db_mdb_cursor_next_dup_x(label_to_left, val_id, val_id_2);
+  db_mdb_cursor_next_dup_x(graph_ll, val_id, val_id_2);
   if (db_mdb_status_success_p) {
     goto each_label_data;
   } else {
@@ -548,11 +538,11 @@ status_t db_graph_read_0110(db_graph_read_state_t* state,
   db_graph_records_t** result) {
   db_graph_reader_header(state);
   db_mdb_declare_val_id;
-  MDB_cursor* right_to_left = (*state).cursor;
+  MDB_cursor* graph_rl = (*state).cursor;
   db_ids_t* label = (*state).label;
   db_ids_t* right = (*state).right;
   db_ids_t* right_first = (*state).right_first;
-  db_mdb_cursor_get_x(right_to_left, val_graph_key, val_id, MDB_GET_CURRENT);
+  db_mdb_cursor_get_x(graph_rl, val_graph_key, val_id, MDB_GET_CURRENT);
   db_mdb_status_require;
   (*(graph_key + 1)) = db_ids_first(label);
   (*(graph_key + 0)) = db_ids_first(right);
@@ -561,7 +551,7 @@ status_t db_graph_read_0110(db_graph_read_state_t* state,
   } else {
   set_key:
     val_graph_key.mv_data = graph_key;
-    db_mdb_cursor_get_x(right_to_left, val_graph_key, val_id, MDB_SET_KEY);
+    db_mdb_cursor_get_x(graph_rl, val_graph_key, val_id, MDB_SET_KEY);
     if (db_mdb_status_success_p) {
       goto each_data;
     } else {
@@ -592,7 +582,7 @@ each_data:
     db_graph_records_add_x((*result), record, result_temp);
   };
   reduce_count;
-  db_mdb_cursor_next_dup_x(right_to_left, val_graph_key, val_id);
+  db_mdb_cursor_next_dup_x(graph_rl, val_graph_key, val_id);
   if (db_mdb_status_success_p) {
     goto each_data;
   } else {
@@ -609,9 +599,9 @@ status_t db_graph_read_0100(db_graph_read_state_t* state,
   db_graph_records_t** result) {
   db_graph_reader_header(state);
   db_mdb_declare_val_id;
-  MDB_cursor* right_to_left = (*state).cursor;
+  MDB_cursor* graph_rl = (*state).cursor;
   db_ids_t* right = (*state).right;
-  db_mdb_cursor_get_x(right_to_left, val_graph_key, val_id, MDB_GET_CURRENT);
+  db_mdb_cursor_get_x(graph_rl, val_graph_key, val_id, MDB_GET_CURRENT);
   db_mdb_status_require;
   (*(graph_key + 0)) = db_ids_first(right);
   if (db_id_equal_p(
@@ -620,7 +610,7 @@ status_t db_graph_read_0100(db_graph_read_state_t* state,
   } else {
   set_range:
     val_graph_key.mv_data = graph_key;
-    db_mdb_cursor_get_x(right_to_left, val_graph_key, val_id, MDB_SET_RANGE);
+    db_mdb_cursor_get_x(graph_rl, val_graph_key, val_id, MDB_SET_RANGE);
     if (db_mdb_status_success_p) {
       if (db_id_equal_p(
             (*(graph_key + 0)), db_mdb_val_to_id_at(val_graph_key, 0))) {
@@ -647,13 +637,13 @@ each_data:
     db_graph_records_add_x((*result), record, result_temp);
   };
   reduce_count;
-  db_mdb_cursor_next_dup_x(right_to_left, val_graph_key, val_id);
+  db_mdb_cursor_next_dup_x(graph_rl, val_graph_key, val_id);
   if (db_mdb_status_success_p) {
     goto each_data;
   } else {
     db_mdb_status_require_notfound;
   };
-  db_mdb_cursor_next_nodup_x(right_to_left, val_graph_key, val_id);
+  db_mdb_cursor_next_nodup_x(graph_rl, val_graph_key, val_id);
   if (db_mdb_status_success_p) {
     if (db_id_equal_p(
           (*(graph_key + 0)), db_mdb_val_to_id_at(val_graph_key, 0))) {
@@ -679,9 +669,8 @@ status_t db_graph_read_0000(db_graph_read_state_t* state,
   db_graph_records_t** result) {
   db_graph_reader_header_0000(state);
   db_mdb_declare_val_graph_data;
-  MDB_cursor* left_to_right = (*state).cursor;
-  db_mdb_cursor_get_x(
-    left_to_right, val_graph_key, val_graph_data, MDB_GET_CURRENT);
+  MDB_cursor* graph_lr = (*state).cursor;
+  db_mdb_cursor_get_x(graph_lr, val_graph_key, val_graph_data, MDB_GET_CURRENT);
   db_mdb_status_require;
 each_key:
 each_data:
@@ -694,13 +683,13 @@ each_data:
     db_graph_records_add_x((*result), record, result_temp);
   };
   reduce_count;
-  db_mdb_cursor_next_dup_x(left_to_right, val_graph_key, val_graph_data);
+  db_mdb_cursor_next_dup_x(graph_lr, val_graph_key, val_graph_data);
   if (db_mdb_status_success_p) {
     goto each_data;
   } else {
     db_mdb_status_require_notfound;
   };
-  db_mdb_cursor_next_nodup_x(left_to_right, val_graph_key, val_graph_data);
+  db_mdb_cursor_next_nodup_x(graph_lr, val_graph_key, val_graph_data);
   if (db_mdb_status_success_p) {
     goto each_key;
   } else {
@@ -725,7 +714,7 @@ status_t db_graph_select(db_txn_t txn,
   b32 offset,
   db_graph_read_state_t* result) {
   status_init;
-  db_mdb_cursor_declare_3(left_to_right, right_to_left, label_to_left);
+  db_mdb_cursor_declare_3(graph_lr, graph_rl, graph_ll);
   (*result).status = status;
   (*result).left = left;
   (*result).left_first = left;
@@ -741,7 +730,7 @@ status_t db_graph_select(db_txn_t txn,
       if (right) {
         db_graph_select_initialise_set(right, result);
       };
-      db_graph_select_cursor_initialise(left_to_right, result, cursor);
+      db_graph_select_cursor_initialise(graph_lr, result, cursor);
       if (label) {
         (*result).reader = db_graph_read_1011_1111;
       } else {
@@ -749,14 +738,14 @@ status_t db_graph_select(db_txn_t txn,
       };
     } else {
       if (right) {
-        db_graph_select_cursor_initialise(right_to_left, result, cursor);
+        db_graph_select_cursor_initialise(graph_rl, result, cursor);
         if (label) {
           (*result).reader = db_graph_read_1110;
         } else {
           (*result).reader = db_graph_read_1100;
         };
       } else {
-        db_graph_select_cursor_initialise(left_to_right, result, cursor);
+        db_graph_select_cursor_initialise(graph_lr, result, cursor);
         if (label) {
           (*result).reader = db_graph_read_1010;
         } else {
@@ -766,15 +755,15 @@ status_t db_graph_select(db_txn_t txn,
     };
   } else {
     if (right) {
-      db_graph_select_cursor_initialise(right_to_left, result, cursor);
+      db_graph_select_cursor_initialise(graph_rl, result, cursor);
       (*result).reader = (label ? db_graph_read_0110 : db_graph_read_0100);
     } else {
       if (label) {
-        db_graph_select_cursor_initialise(label_to_left, result, cursor);
-        db_graph_select_cursor_initialise(left_to_right, result, cursor_2);
+        db_graph_select_cursor_initialise(graph_ll, result, cursor);
+        db_graph_select_cursor_initialise(graph_lr, result, cursor_2);
         (*result).reader = db_graph_read_0010;
       } else {
-        db_graph_select_cursor_initialise(left_to_right, result, cursor);
+        db_graph_select_cursor_initialise(graph_lr, result, cursor);
         (*result).reader = db_graph_read_0000;
       };
     };

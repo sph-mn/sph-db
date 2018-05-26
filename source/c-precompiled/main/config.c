@@ -3,9 +3,9 @@
 #define db_ordinal_t b32
 #define db_index_count_t b8
 #define db_field_count_t b8
-#define db_field_name_len_t b8
+#define db_name_len_t b8
+#define db_name_len_max 255
 #define db_field_type_t b8
-#define db_type_name_len_t b8
 #define db_id_mask UINT64_MAX
 #define db_type_id_mask UINT16_MAX
 #define db_size_id sizeof(db_id_t)

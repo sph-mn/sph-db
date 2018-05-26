@@ -167,18 +167,17 @@ status_t db_open_type_read_fields(b8** data_pointer, db_type_t* type) {
   fixed_count = 0;
   fields = 0;
   count = (*((db_field_count_t*)(data)));
-  data = (1 + ((db_field_count_t*)(data)));
+  data = (sizeof(db_field_count_t) + data);
   db_calloc(fields, count, sizeof(db_field_t));
   /* field */
   for (i = 0; (i < count); i = (1 + i)) {
     /* type */
     field_pointer = (i + fields);
     field_type = (*data);
-    data = (1 + data);
+    data = (sizeof(db_field_type_t) + data);
     (*field_pointer).type = field_type;
-    /* name */
-    status_require_x(
-      db_read_length_prefixed_string_b8(&data, &((*field_pointer).name)));
+    (*field_pointer).name_len = (*((db_name_len_t*)(data)));
+    db_read_name(&data, &(*field_pointer).name);
     if (db_field_type_fixed_p(field_type)) {
       fixed_count = (1 + fixed_count);
     };
@@ -209,8 +208,7 @@ status_t db_open_type(b8* system_key, b8* system_value, db_type_t* types) {
   id = db_system_key_id(system_key);
   type_pointer = (id + types);
   (*type_pointer).id = id;
-  status_require_x(
-    db_read_length_prefixed_string_b8(&system_value, &((*type_pointer).name)));
+  status_require_x(db_read_name(&system_value, &((*type_pointer).name)));
   status_require_x(db_open_type_read_fields(&system_value, type_pointer));
 exit:
   return (status);
@@ -333,16 +331,15 @@ exit:
 };
 /** get the first data id of type and save it in result. result is set to zero
  * if none has been found */
-status_t db_type_first_id(MDB_cursor* id_to_data,
-  db_type_id_t type_id,
-  db_id_t* result) {
+status_t
+db_type_first_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* result) {
   status_init;
   db_mdb_declare_val_id;
   db_id_t id;
   (*result) = 0;
   id = db_id_add_type(0, type_id);
   val_id.mv_data = &id;
-  db_mdb_cursor_get_norequire(id_to_data, val_id, val_null, MDB_SET_RANGE);
+  db_mdb_cursor_get_norequire(nodes, val_id, val_null, MDB_SET_RANGE);
   if (db_mdb_status_success_p) {
     if ((type_id == db_id_type(db_mdb_val_to_id(val_id)))) {
       (*result) = db_mdb_val_to_id(val_id);
@@ -360,13 +357,12 @@ exit:
 /** sets result to the last key id if the last key is of type, otherwise sets
   result to zero.
   leaves cursor at last key. status is mdb-notfound if database is empty */
-status_t db_type_last_key_id(MDB_cursor* id_to_data,
-  db_type_id_t type_id,
-  db_id_t* result) {
+status_t
+db_type_last_key_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* result) {
   status_init;
   db_mdb_declare_val_id;
   (*result) = 0;
-  db_mdb_cursor_get_norequire(id_to_data, val_id, val_null, MDB_LAST);
+  db_mdb_cursor_get_norequire(nodes, val_id, val_null, MDB_LAST);
   if ((db_mdb_status_success_p &&
         ((type_id == db_id_type(db_mdb_val_to_id(val_id)))))) {
     (*result) = db_mdb_val_to_id(val_id);
@@ -377,13 +373,13 @@ status_t db_type_last_key_id(MDB_cursor* id_to_data,
    algorithm: check if data of type exists, if yes then check if last key is of
    type or position next type and step back */
 status_t
-db_type_last_id(MDB_cursor* id_to_data, db_type_id_t type_id, db_id_t* result) {
+db_type_last_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* result) {
   status_init;
   db_id_t id;
   db_mdb_declare_val_id;
   /* if last key is of type then there are no greater type-ids and data of type
      exists. if there is no last key, the database is empty */
-  status = db_type_last_key_id(id_to_data, type_id, &id);
+  status = db_type_last_key_id(nodes, type_id, &id);
   if (db_mdb_status_success_p) {
     if (id) {
       *result = id;
@@ -399,7 +395,7 @@ db_type_last_id(MDB_cursor* id_to_data, db_type_id_t type_id, db_id_t* result) {
   };
   /* database is not empty and the last key is not of searched type.
        type-id +1 is not greater than max possible type-id */
-  status_require_x(db_type_first_id(id_to_data, (1 + type_id), &id));
+  status_require_x(db_type_first_id(nodes, (1 + type_id), &id));
   if (!id) {
     /* no greater type-id found. since the searched type is not the last,
              all existing type-ids are smaller */
@@ -407,7 +403,7 @@ db_type_last_id(MDB_cursor* id_to_data, db_type_id_t type_id, db_id_t* result) {
     goto exit;
   };
   /* greater type found, step back */
-  db_mdb_cursor_get(id_to_data, val_id, val_null, MDB_PREV);
+  db_mdb_cursor_get(nodes, val_id, val_null, MDB_PREV);
   (*result) = ((type_id == db_id_type(db_mdb_val_to_id(val_id)))
       ? db_mdb_val_to_id(val_id)
       : 0);
@@ -425,14 +421,14 @@ status_t db_open_sequences(db_txn_t txn) {
   db_type_t* types;
   db_type_id_t types_len;
   db_type_id_t i;
-  db_cursor_declare(id_to_data);
+  db_cursor_declare(nodes);
   db_mdb_declare_val_id;
   types = (*txn.env).types;
   types_len = (*txn.env).types_len;
-  db_cursor_open(txn, id_to_data);
+  db_cursor_open(txn, nodes);
   for (i = 0; (i < types_len); i = (1 + i)) {
     id = 0;
-    status_require_x(db_type_last_id(id_to_data, (*(i + types)).id, &id));
+    status_require_x(db_type_last_id(nodes, (*(i + types)).id, &id));
     id = db_id_element(id);
     (*(i + types)).sequence = ((id < db_element_id_max) ? (1 + id) : id);
   };
@@ -463,34 +459,31 @@ exit:
 status_t db_open_graph(db_txn_t txn) {
   status_init;
   b32 db_options;
-  MDB_dbi dbi_left_to_right;
-  MDB_dbi dbi_right_to_left;
-  MDB_dbi dbi_label_to_left;
+  MDB_dbi dbi_graph_lr;
+  MDB_dbi dbi_graph_rl;
+  MDB_dbi dbi_graph_ll;
   db_options = (MDB_CREATE | MDB_DUPSORT | MDB_DUPFIXED);
   db_mdb_status_require_x(
-    mdb_dbi_open(txn.mdb_txn, "left->right", db_options, &dbi_left_to_right));
+    mdb_dbi_open(txn.mdb_txn, "graph-lr", db_options, &dbi_graph_lr));
   db_mdb_status_require_x(
-    mdb_dbi_open(txn.mdb_txn, "right->left", db_options, &dbi_right_to_left));
+    mdb_dbi_open(txn.mdb_txn, "graph-rl", db_options, &dbi_graph_rl));
   db_mdb_status_require_x(
-    mdb_dbi_open(txn.mdb_txn, "label->left", db_options, &dbi_label_to_left));
-  db_mdb_status_require_x(mdb_set_compare(txn.mdb_txn,
-    dbi_left_to_right,
-    ((MDB_cmp_func*)(db_mdb_compare_graph_key))));
-  db_mdb_status_require_x(mdb_set_compare(txn.mdb_txn,
-    dbi_right_to_left,
-    ((MDB_cmp_func*)(db_mdb_compare_graph_key))));
+    mdb_dbi_open(txn.mdb_txn, "graph-ll", db_options, &dbi_graph_ll));
   db_mdb_status_require_x(mdb_set_compare(
-    txn.mdb_txn, dbi_label_to_left, ((MDB_cmp_func*)(db_mdb_compare_id))));
-  db_mdb_status_require_x(mdb_set_dupsort(txn.mdb_txn,
-    dbi_left_to_right,
-    ((MDB_cmp_func*)(db_mdb_compare_graph_data))));
+    txn.mdb_txn, dbi_graph_lr, ((MDB_cmp_func*)(db_mdb_compare_graph_key))));
+  db_mdb_status_require_x(mdb_set_compare(
+    txn.mdb_txn, dbi_graph_rl, ((MDB_cmp_func*)(db_mdb_compare_graph_key))));
+  db_mdb_status_require_x(mdb_set_compare(
+    txn.mdb_txn, dbi_graph_ll, ((MDB_cmp_func*)(db_mdb_compare_id))));
   db_mdb_status_require_x(mdb_set_dupsort(
-    txn.mdb_txn, dbi_right_to_left, ((MDB_cmp_func*)(db_mdb_compare_id))));
+    txn.mdb_txn, dbi_graph_lr, ((MDB_cmp_func*)(db_mdb_compare_graph_data))));
   db_mdb_status_require_x(mdb_set_dupsort(
-    txn.mdb_txn, dbi_label_to_left, ((MDB_cmp_func*)(db_mdb_compare_id))));
-  (*txn.env).dbi_left_to_right = dbi_left_to_right;
-  (*txn.env).dbi_right_to_left = dbi_right_to_left;
-  (*txn.env).dbi_label_to_left = dbi_label_to_left;
+    txn.mdb_txn, dbi_graph_rl, ((MDB_cmp_func*)(db_mdb_compare_id))));
+  db_mdb_status_require_x(mdb_set_dupsort(
+    txn.mdb_txn, dbi_graph_ll, ((MDB_cmp_func*)(db_mdb_compare_id))));
+  (*txn.env).dbi_graph_lr = dbi_graph_lr;
+  (*txn.env).dbi_graph_rl = dbi_graph_rl;
+  (*txn.env).dbi_graph_ll = dbi_graph_ll;
 exit:
   return (status);
 };
@@ -505,11 +498,10 @@ db_open_options_t db_open_options_set_defaults(db_open_options_t* a) {
 };
 status_t db_open_nodes(db_txn_t txn) {
   status_init;
-  db_mdb_status_require_x(mdb_dbi_open(
-    txn.mdb_txn, "id->data", MDB_CREATE, &((*txn.env).dbi_id_to_data)));
-  db_mdb_status_require_x(mdb_set_compare(txn.mdb_txn,
-    (*txn.env).dbi_id_to_data,
-    ((MDB_cmp_func*)(db_mdb_compare_id))));
+  db_mdb_status_require_x(
+    mdb_dbi_open(txn.mdb_txn, "nodes", MDB_CREATE, &((*txn.env).dbi_nodes)));
+  db_mdb_status_require_x(mdb_set_compare(
+    txn.mdb_txn, (*txn.env).dbi_nodes, ((MDB_cmp_func*)(db_mdb_compare_id))));
 exit:
   return (status);
 };

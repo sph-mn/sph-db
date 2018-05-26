@@ -52,36 +52,35 @@
   (db-txn-declare env txn)
   (db-cursor-declare system)
   (sc-comment "check if type with name exists")
-  (debug-log "%s" "type-exists?")
   (if (db-type-get txn.env name) (status-set-both-goto db-status-group-db db-status-id-duplicate))
   (sc-comment "check name length")
   (set name-len (strlen name))
-  (if (< db-type-name-max-len name-len)
+  (if (< db-name-len-max name-len)
     (status-set-both-goto db-status-group-db db-status-id-data-length))
   (sc-comment "allocate insert data")
-  (set data-size (+ (sizeof db-type-name-len-t) name-len (sizeof db-field-count-t)))
+  (set data-size (+ (sizeof db-name-len-t) name-len (sizeof db-field-count-t)))
   (for ((set i 0) (< i field-count) (set i (+ 1 i)))
     (set data-size
-      (+ data-size (sizeof db-field-type-t) (sizeof db-field-name-len-t) (: (+ i fields) name-len))))
+      (+ data-size (sizeof db-field-type-t) (sizeof db-name-len-t) (: (+ i fields) name-len))))
   (db-malloc data data-size)
   (sc-comment "set insert data")
   (set
     data-start data
     (db-system-key-label key) db-system-label-type
-    (pointer-get (convert-type data db-type-name-len-t*)) name-len
-    data (+ 1 (convert-type data db-type-name-len-t*)))
+    (pointer-get (convert-type data db-name-len-t*)) name-len
+    data (+ (sizeof db-name-len-t) data))
   (memcpy data name name-len)
   (set
     data (+ name-len data)
     (pointer-get (convert-type data db-field-count-t*)) field-count
-    data (+ 1 (convert-type data db-field-count-t*)))
+    data (+ (sizeof db-field-count-t) data))
   (for ((set i 0) (< i field-count) (set i (+ 1 i)))
     (set
       field (pointer-get fields i)
       (pointer-get (convert-type data db-field-type-t*)) field.type
       data (+ 1 (convert-type data db-field-type-t*))
-      (pointer-get (convert-type data db-field-name-len-t*)) field.name-len
-      data (+ 1 (convert-type data db-field-name-len-t*)))
+      (pointer-get (convert-type data db-name-len-t*)) field.name-len
+      data (+ 1 (convert-type data db-name-len-t*)))
     (memcpy data field.name field.name-len)
     (set data (+ field.name-len data)))
   (status-require! (db-sequence-next-system txn.env (address-of type-id)))
@@ -89,7 +88,7 @@
     (db-system-key-id key) type-id
     val-key.mv-data key
     val-key.mv-size db-size-type-id
-    val-data.mv-data data
+    val-data.mv-data data-start
     val-data.mv-size data-size)
   (sc-comment "insert data")
   (db-txn-write-begin txn)
@@ -105,20 +104,30 @@
     (return status)))
 
 (define (db-type-delete env id) (status-t db-env-t* db-type-id-t)
+  "delete system entry and all nodes"
   status-init
   (db-mdb-declare-val val-key db-size-type-id)
   (db-txn-declare env txn)
   (db-cursor-declare system)
+  (db-cursor-declare nodes)
   (db-txn-write-begin txn)
   (db-cursor-open txn system)
+  (sc-comment "schema")
   (db-mdb-cursor-get-norequire system val-key val-null MDB-SET)
-  (if db-mdb-status-success? (db-mdb-status-require! (mdb-cursor-del system 0))
+  (if db-mdb-status-success?
     (begin
+      (set status.id (mdb-cursor-del system 0))
+      (if status-success? (db-txn-commit txn)
+        (db-txn-abort txn)))
+    (begin
+      (db-txn-abort txn)
       db-mdb-status-require-notfound
       (status-set-id status-id-success)))
+  (sc-comment "data")
+  (db-mdb-cursor-get-norequire nodes val-key val-null MDB-SET)
+
   (label exit
     (mdb-cursor-close system)
-    (if status-success? (db-txn-commit txn))
     (return status)))
 
 #;(
@@ -126,7 +135,7 @@
   status-init
   db-mdb-declare-val-id
   db-mdb-declare-val-data
-  (db-mdb-cursor-define-2 txn id->data data-intern->id)
+  (db-mdb-cursor-define-2 txn nodes data-intern->id)
   (define id db-id-t)
   (struct-set val-id mv-data (address-of id))
   (while data
@@ -142,7 +151,7 @@
       (begin
         (status-require! (db-id-next-intern (address-of id)))
         (db-mdb-status-require!
-          (mdb-cursor-put id->data (address-of val-id) (address-of val-data) 0))
+          (mdb-cursor-put nodes (address-of val-id) (address-of val-data) 0))
         (db-mdb-status-require!
           (mdb-cursor-put data-intern->id (address-of val-data) (address-of val-id) 0))
         (set (pointer-get result) (db-ids-add (pointer-get result) id)))
@@ -153,34 +162,34 @@
         (status-set-group-goto db-status-group-lmdb)))
     (set data (db-data-list-rest data)))
   (label exit
-    (db-mdb-cursor-close-2 id->data data-intern->id)
+    (db-mdb-cursor-close-2 nodes data-intern->id)
     (return status)))
 
 (define (db-node-identify txn ids result) (status-t db-txn-t* db-ids-t* db-ids-t**)
   "filter existing ids from the list of given ids and add the result to \"result\""
   status-init
   db-mdb-declare-val-id
-  (db-mdb-cursor-declare id->data)
-  (db-mdb-cursor-open txn id->data)
+  (db-mdb-cursor-declare nodes)
+  (db-mdb-cursor-open txn nodes)
   (while ids
     (set (struct-get val-id mv-data) (db-ids-first-address ids))
-    (set status.id (mdb-cursor-get id->data (address-of val-id) (address-of val-null) MDB-SET))
+    (set status.id (mdb-cursor-get nodes (address-of val-id) (address-of val-null) MDB-SET))
     (if db-mdb-status-success?
       (set (pointer-get result) (db-ids-add (pointer-get result) (db-ids-first ids)))
       db-mdb-status-require-notfound)
     (set ids (db-ids-rest ids)))
   (label exit
-    (mdb-cursor-close id->data)
+    (mdb-cursor-close nodes)
     (if (= MDB-NOTFOUND status.id) (set status.id status-id-success))
     (return status)))
 
 (define (db-node-exists? txn ids result) (status-t db-txn-t* db-ids-t* boolean*)
   status-init
   db-mdb-declare-val-id
-  (db-mdb-cursor-define txn id->data)
+  (db-mdb-cursor-define txn nodes)
   (while ids
     (set (struct-get val-id mv-data) (db-ids-first-address ids))
-    (set status.id (mdb-cursor-get id->data (address-of val-id) (address-of val-null) MDB-SET))
+    (set status.id (mdb-cursor-get nodes (address-of val-id) (address-of val-null) MDB-SET))
     (if (= MDB-NOTFOUND status.id)
       (begin
         (set (pointer-get result) #f)
@@ -190,15 +199,15 @@
     (set ids (db-ids-rest ids)))
   (set (pointer-get result) #t)
   (label exit
-    (mdb-cursor-close id->data)
+    (mdb-cursor-close nodes)
     (return status)))
 
 (define (db-id-create txn count result) (status-t db-txn-t* b32 db-ids-t**)
   "create \"count\" number of id-type nodes and add their ids to \"result\""
   status-init
   db-mdb-reset-val-null
-  (db-mdb-cursor-declare id->data)
-  (db-mdb-cursor-open txn id->data)
+  (db-mdb-cursor-declare nodes)
+  (db-mdb-cursor-open txn nodes)
   db-mdb-declare-val-id
   (define
     id db-id-t
@@ -206,11 +215,11 @@
   (set (struct-get val-id mv-data) (address-of id))
   (while count
     (status-require! (db-id-next-id (address-of id)))
-    (db-mdb-status-require! (mdb-cursor-put id->data (address-of val-id) (address-of val-null) 0))
+    (db-mdb-status-require! (mdb-cursor-put nodes (address-of val-id) (address-of val-null) 0))
     (db-ids-add! (pointer-get result) id ids-temp)
     (decrement count))
   (label exit
-    (mdb-cursor-close id->data)
+    (mdb-cursor-close nodes)
     (return status)))
 
 (define (db-intern-update txn id data) (status-t db-txn-t* db-id-t db-data-t)
@@ -218,14 +227,14 @@
   db-mdb-declare-val-id
   db-mdb-declare-val-data
   (struct-set val-data mv-data (struct-get data data) mv-size (struct-get data size))
-  (db-mdb-cursor-declare-2 id->data data-intern->id)
-  (db-mdb-cursor-open-2 txn id->data data-intern->id)
+  (db-mdb-cursor-declare-2 nodes data-intern->id)
+  (db-mdb-cursor-open-2 txn nodes data-intern->id)
   ; duplicate prevention
   (db-mdb-cursor-get! data-intern->id val-data val-null MDB-SET)
   (if db-mdb-status-success?
     (db-status-set-id-goto db-status-id-duplicate) db-mdb-status-require-notfound)
   (struct-set val-id mv-data (address-of id))
-  (set status.id (mdb-cursor-get id->data (address-of val-id) (address-of val-data) MDB-SET-KEY))
+  (set status.id (mdb-cursor-get nodes (address-of val-id) (address-of val-data) MDB-SET-KEY))
   (if db-mdb-status-success?
     (begin
       (set status.id
@@ -233,21 +242,21 @@
       (if db-mdb-status-success? (mdb-cursor-del data-intern->id 0) db-mdb-status-require-notfound)
       (struct-set val-data mv-data (struct-get data data) mv-size (struct-get data size))
       (db-mdb-status-require!
-        (mdb-cursor-put id->data (address-of val-id) (address-of val-data) MDB-CURRENT))
+        (mdb-cursor-put nodes (address-of val-id) (address-of val-data) MDB-CURRENT))
       (db-mdb-status-require!
         (mdb-cursor-put data-intern->id (address-of val-data) (address-of val-id) 0)))
     db-mdb-status-require-notfound)
   (label exit
     (return status)))
 
-(define (db-graph-internal-delete txn left right label ordinal left->right right->left label->left)
+(define (db-graph-internal-delete txn left right label ordinal graph-lr graph-rl graph-ll)
   (status-t
     db-txn-t*
     db-ids-t* db-ids-t* db-ids-t* db-ordinal-match-data-t* MDB-cursor* MDB-cursor* MDB-cursor*))
 
 (define
   (db-delete-one
-    txn id id->data data-intern->id data-extern->extern left->right right->left label->left)
+    txn id nodes data-intern->id data-extern->extern graph-lr graph-rl graph-ll)
   (status-t
     db-txn-t* db-id-t MDB-cursor* MDB-cursor* MDB-cursor* MDB-cursor* MDB-cursor* MDB-cursor*)
   status-init
@@ -256,7 +265,7 @@
   db-mdb-declare-val-id-2
   db-mdb-declare-val-data
   (struct-set val-id mv-data (address-of id))
-  (db-mdb-cursor-get! id->data val-id val-data MDB-SET-KEY)
+  (db-mdb-cursor-get! nodes val-id val-data MDB-SET-KEY)
   (if db-mdb-status-success?
     ;delete index references
     (cond
@@ -272,7 +281,7 @@
         (if db-mdb-status-success?
           (db-mdb-cursor-del! data-extern->extern 0) db-mdb-status-require-notfound)))
     db-mdb-status-require-notfound)
-  (db-mdb-cursor-del! id->data 0)
+  (db-mdb-cursor-del! nodes 0)
   (label exit
     (return status)))
 
@@ -280,23 +289,23 @@
   status-init
   ;checking for empty ids because it would be an non-filter in db-graph-internal-delete
   (if (not ids) (return status))
-  (db-mdb-cursor-declare-3 id->data data-intern->id data-extern->extern)
-  (db-mdb-cursor-declare-3 left->right right->left label->left)
-  (db-mdb-cursor-open-3 txn left->right right->left label->left)
-  (status-require! (db-graph-internal-delete txn 0 0 ids 0 left->right right->left label->left))
-  (status-require! (db-graph-internal-delete txn ids 0 0 0 left->right right->left label->left))
-  (status-require! (db-graph-internal-delete txn 0 ids 0 0 left->right right->left label->left))
-  (db-mdb-cursor-open-3 txn id->data data-intern->id data-extern->extern)
+  (db-mdb-cursor-declare-3 nodes data-intern->id data-extern->extern)
+  (db-mdb-cursor-declare-3 graph-lr graph-rl graph-ll)
+  (db-mdb-cursor-open-3 txn graph-lr graph-rl graph-ll)
+  (status-require! (db-graph-internal-delete txn 0 0 ids 0 graph-lr graph-rl graph-ll))
+  (status-require! (db-graph-internal-delete txn ids 0 0 0 graph-lr graph-rl graph-ll))
+  (status-require! (db-graph-internal-delete txn 0 ids 0 0 graph-lr graph-rl graph-ll))
+  (db-mdb-cursor-open-3 txn nodes data-intern->id data-extern->extern)
   (while (and ids status-success?)
     (set status
       (db-delete-one
         txn
         (db-ids-first ids)
-        id->data data-intern->id data-extern->extern left->right right->left label->left))
+        nodes data-intern->id data-extern->extern graph-lr graph-rl graph-ll))
     (set ids (db-ids-rest ids)))
   (label exit
-    (db-mdb-cursor-close-3 id->data data-intern->id data-extern->extern)
-    (db-mdb-cursor-close-3 left->right right->left label->left)
+    (db-mdb-cursor-close-3 nodes data-intern->id data-extern->extern)
+    (db-mdb-cursor-close-3 graph-lr graph-rl graph-ll)
     (return status)))
 
 (define (db-node-read state count result) (status-t db-node-read-state-t* b32 db-data-records-t**)
@@ -305,7 +314,7 @@
   db-mdb-declare-val-id
   db-mdb-declare-val-data
   (pre-let
-    (id->data
+    (nodes
       state:cursor
       skip
       (bit-and db-read-option-skip state:options)
@@ -317,11 +326,11 @@
     (if skip
       (while count
         (db-mdb-status-require!
-          (mdb-cursor-get id->data (address-of val-null) (address-of val-null) MDB-NEXT-NODUP))
+          (mdb-cursor-get nodes (address-of val-null) (address-of val-null) MDB-NEXT-NODUP))
         (if (db-node-types-match? types (db-mdb-val->id val-id)) (set count (- count 1))))
       (begin
         (db-mdb-status-require!
-          (mdb-cursor-get id->data (address-of val-id) (address-of val-data) MDB-GET-CURRENT))
+          (mdb-cursor-get nodes (address-of val-id) (address-of val-data) MDB-GET-CURRENT))
         (while count
           (if (db-node-types-match? types (db-mdb-val->id val-id))
             (begin
@@ -333,7 +342,7 @@
               (set (pointer-get result) data-records)
               (set count (- count 1))))
           (db-mdb-status-require!
-            (mdb-cursor-get id->data (address-of val-id) (address-of val-data) MDB-NEXT-NODUP)))))
+            (mdb-cursor-get nodes (address-of val-id) (address-of val-data) MDB-NEXT-NODUP)))))
     (label exit
       db-status-no-more-data-if-mdb-notfound
       (set state:status status)
@@ -344,15 +353,15 @@
   "select nodes optionally filtered by type.
   type-bits is the bit-or of db-type-bit-* values"
   status-init
-  (db-mdb-cursor-define txn id->data)
+  (db-mdb-cursor-define txn nodes)
   (db-mdb-status-require!
-    (mdb-cursor-get id->data (address-of val-null) (address-of val-null) MDB-FIRST))
-  (struct-pointer-set result cursor id->data types type-bits status status options 0)
+    (mdb-cursor-get nodes (address-of val-null) (address-of val-null) MDB-FIRST))
+  (struct-pointer-set result cursor nodes types type-bits status status options 0)
   (db-select-ensure-offset result offset db-node-read)
   (label exit
     (if (not db-mdb-status-success?)
       (begin
-        (mdb-cursor-close id->data)
+        (mdb-cursor-close nodes)
         (if (status-id-is? MDB-NOTFOUND)
           (begin
             (status-set-id db-status-id-no-more-data)
