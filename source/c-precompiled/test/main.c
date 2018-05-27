@@ -3,6 +3,12 @@
   a.type = a_type; \
   a.name = a_name; \
   a.name_len = a_name_len
+/* these values should not be below 3, or important cases would not be tested.
+   the values should also not be so high that the linearly created ordinals
+   exceed the size of the ordinal type.
+   tip: reduce when debugging to make tests run faster */
+b32 common_element_count = 40;
+b32 common_label_count = 40;
 status_t test_open_empty(db_env_t* env) {
   status_init;
   test_helper_assert("env.open is true", (1 == (*env).open));

@@ -477,7 +477,27 @@ typedef struct {
   db_ordinal_t ordinal;
 } db_graph_record_t;
 typedef db_ordinal_t (*db_graph_ordinal_generator_t)(b0*);
+typedef struct {
+  db_ordinal_t min;
+  db_ordinal_t max;
+} db_ordinal_condition_t;
 #include "./lib/data-structures.c"
+typedef struct {
+  status_t status;
+  MDB_cursor* restrict cursor;
+  MDB_cursor* restrict cursor_2;
+  b0* left;
+  b0* right;
+  b0* label;
+  db_ids_t* left_first;
+  db_ids_t* right_first;
+  db_ordinal_condition_t* ordinal;
+  b8 options;
+  b0* reader;
+} db_graph_read_state_t;
+typedef status_t (
+  *db_graph_reader_t)(db_graph_read_state_t*, b32, db_graph_records_t**);
+b0 db_graph_selection_destroy(db_graph_read_state_t* state);
 status_t db_statistics(db_txn_t txn, db_statistics_t* result);
 b0 db_close(db_env_t* env);
 status_t db_open(b8* root, db_open_options_t* options, db_env_t* env);
@@ -501,3 +521,24 @@ status_t db_graph_ensure(db_txn_t txn,
 b8* db_status_description(status_t a);
 b8* db_status_name(status_t a);
 b8* db_status_group_id_to_name(status_i_t a);
+status_t db_graph_ensure(db_txn_t txn,
+  db_ids_t* left,
+  db_ids_t* right,
+  db_ids_t* label,
+  db_graph_ordinal_generator_t ordinal_generator,
+  b0* ordinal_generator_state);
+status_t db_graph_delete(db_txn_t txn,
+  db_ids_t* left,
+  db_ids_t* right,
+  db_ids_t* label,
+  db_ordinal_condition_t* ordinal);
+status_t db_graph_select(db_txn_t txn,
+  db_ids_t* left,
+  db_ids_t* right,
+  db_ids_t* label,
+  db_ordinal_condition_t* ordinal,
+  b32 offset,
+  db_graph_read_state_t* result);
+status_t db_graph_read(db_graph_read_state_t* state,
+  b32 count,
+  db_graph_records_t** result);

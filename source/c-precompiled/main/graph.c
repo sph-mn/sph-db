@@ -108,3 +108,4 @@ exit:
   db_cursor_close_if_active(graph_ll);
   return (status);
 };
+#include "./graph-read.c"

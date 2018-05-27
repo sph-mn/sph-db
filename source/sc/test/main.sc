@@ -6,6 +6,14 @@
     a.name a-name
     a.name-len a-name-len))
 
+(sc-comment
+  "these values should not be below 3, or important cases would not be tested.
+   the values should also not be so high that the linearly created ordinals exceed the size of the ordinal type.
+   tip: reduce when debugging to make tests run faster")
+
+(define common-element-count b32 40)
+(define common-label-count b32 40)
+
 (define (test-open-empty env) (status-t db-env-t*)
   status-init
   (test-helper-assert "env.open is true" (= #t env:open))
@@ -171,62 +179,56 @@
     (return status.id)))
 
 #;(
-; these values should not be below 3, or important cases would not be tested.
-; the values should also not be so high that the linearly created ordinals exceed the size of the ordinal type.
-; tip: reduce for debugging
-(define common-element-count b32 40)
-(define common-label-count b32 40)
-
-(pre-define (test-relation-read-records-validate-one name)
+(pre-define (test-graph-read-records-validate-one name)
   ;test that the result records contain all filter-ids, and the filter-ids contain all result record values for field "name".
   (set records-temp records)
   (while records-temp
     (if
       (not
         (db-ids-contains?
-          (pre-concat existing_ name) (struct-get (db-relation-records-first records-temp) name)))
+          (pre-concat existing_ name) (struct-get (db-graph-records-first records-temp) name)))
       (begin
         (printf "\n  result records contain inexistant %s ids\n" (pre-stringify name))
-        (db-debug-display-relation-records records)
+        (db-debug-display-graph-records records)
         (status-set-id-goto 1)))
-    (set records-temp (db-relation-records-rest records-temp)))
+    (set records-temp (db-graph-records-rest records-temp)))
   (set ids-temp (pre-concat existing_ name))
   (while ids-temp
     (if
       (not
-        ( (pre-concat db-debug-relation-records-contains-at_ name _p)
+        ( (pre-concat db-debug-graph-records-contains-at_ name _p)
           records (db-ids-first ids-temp)))
       (begin
         (printf "\n  %s result records do not contain all existing-ids\n" (pre-stringify name))
-        (db-debug-display-relation-records records)
+        (db-debug-display-graph-records records)
         (status-set-id-goto 2)))
     (set ids-temp (db-ids-rest ids-temp))))
 
 (define
-  (test-relation-read-records-validate
+  (test-graph-read-records-validate
     records left existing-left right existing-right label existing-label ordinal)
   (status-t
-    db-relation-records-t*
+    db-graph-records-t*
     db-ids-t* db-ids-t* db-ids-t* db-ids-t* db-ids-t* db-ids-t* db-ordinal-match-data-t*)
   status-init
   (define
-    records-temp db-relation-records-t*
+    records-temp db-graph-records-t*
     ids-temp db-ids-t*)
-  (test-relation-read-records-validate-one left)
-  (test-relation-read-records-validate-one right)
-  (test-relation-read-records-validate-one label)
+  (test-graph-read-records-validate-one left)
+  (test-graph-read-records-validate-one right)
+  (test-graph-read-records-validate-one label)
   (label exit
     (return status)))
 
-(pre-define test-relation-read-header
+(pre-define test-graph-read-header
   (begin
     status-init
-    (define state db-relation-read-state-t)
+    (define state db-graph-read-state-t)
     (define ordinal-min b32 2)
     (define ordinal-max b32 5)
     (define ordinal-match-data db-ordinal-match-data-t (struct-literal ordinal-min ordinal-max))
     (define ordinal db-ordinal-match-data-t* (address-of ordinal-match-data))
-    (define records db-relation-records-t* 0)
+    (define records db-graph-records-t* 0)
     (define existing-left-count b32 common-label-count)
     (define existing-right-count b32 common-element-count)
     (define existing-label-count b32 common-label-count)
@@ -237,12 +239,12 @@
     (db-define-ids-3 existing-left existing-right existing-label)
     (db-define-ids-3 left right label)
     (status-require!
-      (test-helper-create-relations
+      (test-helper-create-graphs
         existing-left-count
         existing-right-count
         existing-label-count
         (address-of existing-left) (address-of existing-right) (address-of existing-label)))
-    ;add additional ids that do not exist in any relation
+    ;add additional ids that do not exist in any graph
     (status-require! (test-helper-ids-add-new-ids existing-left (address-of left)))
     (status-require! (test-helper-ids-add-new-ids existing-right (address-of right)))
     (status-require! (test-helper-ids-add-new-ids existing-label (address-of label)))
@@ -250,46 +252,46 @@
     db-txn-begin
     (printf " ")))
 
-(pre-define (test-relation-read-one left right label ordinal offset)
+(pre-define (test-graph-read-one left right label ordinal offset)
   (set reader-suffix (test-helper-filter-ids->reader-suffix-integer left right label ordinal))
   (set reader-suffix-string (test-helper-reader-suffix-integer->string reader-suffix))
   (printf " %s" reader-suffix-string)
   (free reader-suffix-string)
   (set records 0)
-  (status-require! (db-relation-select db-txn left right label ordinal offset (address-of state)))
-  (db-status-require-read! (db-relation-read (address-of state) 2 (address-of records)))
-  (db-status-require-read! (db-relation-read (address-of state) 0 (address-of records)))
+  (status-require! (db-graph-select db-txn left right label ordinal offset (address-of state)))
+  (db-status-require-read! (db-graph-read (address-of state) 2 (address-of records)))
+  (db-status-require-read! (db-graph-read (address-of state) 0 (address-of records)))
   (if (status-id-is? db-status-id-no-more-data)
     (status-set-id status-id-success)
     (begin
       (printf "\n  final read result does not indicate that there is no more data")
       (status-set-id-goto 1)))
   (set expected-count
-    (test-helper-estimate-relation-read-result-count
+    (test-helper-estimate-graph-read-result-count
       existing-left-count existing-right-count existing-label-count ordinal))
-  (if (not (= (db-relation-records-length records) expected-count))
+  (if (not (= (db-graph-records-length records) expected-count))
     (begin
       (printf
         "\n  expected %lu read %lu. ordinal min %d max %d\n"
         expected-count
-        (db-relation-records-length records) (if* ordinal ordinal-min 0) (if* ordinal ordinal-max 0))
+        (db-graph-records-length records) (if* ordinal ordinal-min 0) (if* ordinal ordinal-max 0))
       (printf "the read ")
-      (db-debug-display-relation-records records)
-      (db-debug-display-all-relations db-txn)
+      (db-debug-display-graph-records records)
+      (db-debug-display-all-graphs db-txn)
       (status-set-id-goto 1)))
   (if (not ordinal)
     (status-require!
-      (test-relation-read-records-validate
+      (test-graph-read-records-validate
         records left existing-left right existing-right label existing-label ordinal)))
   db-status-success-if-no-more-data
-  (db-relation-selection-destroy (address-of state))
-  (db-relation-records-destroy records))
+  (db-graph-selection-destroy (address-of state))
+  (db-graph-records-destroy records))
 
-(pre-define test-relation-delete-header
+(pre-define test-graph-delete-header
   (begin
     status-init
-    (define state db-relation-read-state-t)
-    (define records db-relation-records-t* 0)
+    (define state db-graph-read-state-t)
+    (define records db-graph-records-t* 0)
     (db-define-ids-3 left right label)
     (define ordinal-match-data db-ordinal-match-data-t (struct-literal 2 5))
     (define ordinal db-ordinal-match-data-t* (address-of ordinal-match-data))
@@ -304,7 +306,7 @@
     db-txn-introduce
     (printf " ")))
 
-(pre-define (test-relation-delete-one left? right? label? ordinal?)
+(pre-define (test-graph-delete-one left? right? label? ordinal?)
   ; for any given argument permutation:
   ; * checks btree entry count difference
   ; * checks read result count after deletion, using the same search query
@@ -312,44 +314,44 @@
   db-txn-begin
   (db-debug-count-all-btree-entries db-txn (address-of btree-count-before-delete))
   db-txn-abort
-  ; add non-relation elements
+  ; add non-graph elements
   (status-require!
-    (test-helper-create-relations
+    (test-helper-create-graphs
       common-label-count
       common-element-count common-label-count (address-of left) (address-of right) (address-of label)))
   db-txn-write-begin
   (status-require!
-    (db-relation-delete
+    (db-graph-delete
       db-txn (if* left? left 0) (if* right? right 0) (if* label? label 0) (if* ordinal? ordinal 0)))
   (db-debug-count-all-btree-entries db-txn (address-of btree-count-after-delete))
   (db-status-require-read!
-    (db-relation-select
+    (db-graph-select
       db-txn
       (if* left? left 0)
       (if* right? right 0) (if* label? label 0) (if* ordinal? ordinal 0) 0 (address-of state)))
   ;checks that readers can handle selections with no elements
-  (db-status-require-read! (db-relation-read (address-of state) 0 (address-of records)))
-  (db-relation-selection-destroy (address-of state))
+  (db-status-require-read! (db-graph-read (address-of state) 0 (address-of records)))
+  (db-graph-selection-destroy (address-of state))
   db-txn-commit
   (set read-count-before-expected
-    (test-helper-estimate-relation-read-result-count
+    (test-helper-estimate-graph-read-result-count
       existing-left-count existing-right-count existing-label-count ordinal))
-  ;relations are assumed to have linearly incremented ordinals starting with 1
-  (if (not (= 0 (db-relation-records-length records)))
+  ;graphs are assumed to have linearly incremented ordinals starting with 1
+  (if (not (= 0 (db-graph-records-length records)))
     (begin
       (printf
-        "\n    failed deletion. %lu relations not deleted\n" (db-relation-records-length records))
-      (db-debug-display-relation-records records)
+        "\n    failed deletion. %lu graphs not deleted\n" (db-graph-records-length records))
+      (db-debug-display-graph-records records)
       db-txn-begin
-      ;(db-debug-display-all-relations db-txn)
+      ;(db-debug-display-all-graphs db-txn)
       db-txn-abort
       (status-set-id-goto 1)))
-  (db-relation-records-destroy records)
+  (db-graph-records-destroy records)
   (set records 0)
   (set btree-count-before-delete
     (+ btree-count-before-delete existing-left-count existing-right-count existing-label-count))
   (set btree-count-deleted-expected
-    (test-helper-estimate-relation-read-btree-entry-count
+    (test-helper-estimate-graph-read-btree-entry-count
       existing-left-count existing-right-count existing-label-count ordinal))
   (set btree-count-after-expected (- btree-count-after-delete btree-count-deleted-expected))
   (if
@@ -363,11 +365,11 @@
         btree-count-after-delete btree-count-after-expected)
       db-txn-begin
       (db-debug-display-btree-counts db-txn)
-      (db-status-require-read! (db-relation-select db-txn 0 0 0 0 0 (address-of state)))
-      (db-status-require-read! (db-relation-read (address-of state) 0 (address-of records)))
+      (db-status-require-read! (db-graph-select db-txn 0 0 0 0 0 (address-of state)))
+      (db-status-require-read! (db-graph-read (address-of state) 0 (address-of records)))
       (printf "all remaining ")
-      (db-debug-display-relation-records records)
-      (db-relation-selection-destroy (address-of state))
+      (db-debug-display-graph-records records)
+      (db-graph-selection-destroy (address-of state))
       db-txn-abort
       (status-set-id-goto 1)))
   (db-ids-destroy left)
@@ -398,8 +400,6 @@
     (db-ids-destroy ids)
     (db-ids-destroy ids-result)
     (return status)))
-
-
 
 (define (test-extern) status-t
   (define data-ids db-ids-t* 0)
@@ -476,39 +476,24 @@
   (define ids db-ids-t*)
   (db-define-ids-3 left right label)
   (status-require!
-    (test-helper-create-relations
+    (test-helper-create-graphs
       common-label-count
       common-element-count common-label-count (address-of left) (address-of right) (address-of label)))
   (status-require! (test-helper-create-interns common-element-count (address-of ids)))
   db-txn-introduce
   (status-require! (db-index-recreate-intern))
   (status-require! (db-index-recreate-extern))
-  ;(status-require! (db-index-recreate-relation))
+  ;(status-require! (db-index-recreate-graph))
   (define index-errors-extern db-index-errors-extern-t)
   (define index-errors-intern db-index-errors-intern-t)
-  (define index-errors-relation db-index-errors-relation-t)
+  (define index-errors-graph db-index-errors-graph-t)
   db-txn-begin
   (status-require! (db-index-errors-intern db-txn (address-of index-errors-intern)))
   (status-require! (db-index-errors-extern db-txn (address-of index-errors-extern)))
-  (status-require! (db-index-errors-relation db-txn (address-of index-errors-relation)))
+  (status-require! (db-index-errors-graph db-txn (address-of index-errors-graph)))
   (test-helper-assert "errors-intern?" (not (struct-get index-errors-intern errors?)))
   (test-helper-assert "errors-extern?" (not (struct-get index-errors-extern errors?)))
-  (test-helper-assert "errors-relation?" (not (struct-get index-errors-relation errors?)))
-  (label exit
-    (if db-txn db-txn-abort)
-    (return status)))
-
-(define (test-relation) status-t
-  status-init
-  (db-define-ids-3 right left label)
-  (status-require!
-    (test-helper-create-relations
-      common-label-count
-      common-element-count common-label-count (address-of left) (address-of right) (address-of label)))
-  db-txn-introduce
-  db-txn-write-begin
-  (status-require! (db-relation-ensure db-txn left right label 0 0))
-  db-txn-commit
+  (test-helper-assert "errors-graph?" (not (struct-get index-errors-graph errors?)))
   (label exit
     (if db-txn db-txn-abort)
     (return status)))
@@ -542,44 +527,44 @@
     db-status-success-if-no-more-data
     (return status)))
 
-(pre-define test-relation-read-body
+(pre-define test-graph-read-body
   (begin
-    (test-relation-read-one left 0 0 0 0)
-    (test-relation-read-one left 0 label 0 0)
-    (test-relation-read-one left right 0 0 0)
-    (test-relation-read-one left right label 0 0)
-    (test-relation-read-one 0 0 0 0 0)
-    (test-relation-read-one 0 0 label 0 0)
-    (test-relation-read-one 0 right 0 0 0)
-    (test-relation-read-one 0 right label 0 0)
-    (test-relation-read-one left 0 0 ordinal 0)
-    (test-relation-read-one left 0 label ordinal 0)
-    (test-relation-read-one left right 0 ordinal 0)
-    (test-relation-read-one left right label ordinal 0)
+    (test-graph-read-one left 0 0 0 0)
+    (test-graph-read-one left 0 label 0 0)
+    (test-graph-read-one left right 0 0 0)
+    (test-graph-read-one left right label 0 0)
+    (test-graph-read-one 0 0 0 0 0)
+    (test-graph-read-one 0 0 label 0 0)
+    (test-graph-read-one 0 right 0 0 0)
+    (test-graph-read-one 0 right label 0 0)
+    (test-graph-read-one left 0 0 ordinal 0)
+    (test-graph-read-one left 0 label ordinal 0)
+    (test-graph-read-one left right 0 ordinal 0)
+    (test-graph-read-one left right label ordinal 0)
     db-status-success-if-no-more-data))
 
-(define (test-relation-read) status-t
-  test-relation-read-header
-  test-relation-read-body
+(define (test-graph-read) status-t
+  test-graph-read-header
+  test-graph-read-body
   (label exit
     (printf "\n")
     (if db-txn db-txn-abort)
     (return status)))
 
-(define (test-relation-delete) status-t
-  ;the tests depend partly on the correctness of relation-read
-  test-relation-delete-header
-  (test-relation-delete-one 1 0 0 0)
-  (test-relation-delete-one 1 0 1 0)
-  (test-relation-delete-one 1 1 0 0)
-  (test-relation-delete-one 1 1 1 0)
-  (test-relation-delete-one 0 0 1 0)
-  (test-relation-delete-one 0 1 0 0)
-  (test-relation-delete-one 0 1 1 0)
-  (test-relation-delete-one 1 0 0 1)
-  (test-relation-delete-one 1 0 1 1)
-  (test-relation-delete-one 1 1 0 1)
-  (test-relation-delete-one 1 1 1 1)
+(define (test-graph-delete) status-t
+  ;the tests depend partly on the correctness of graph-read
+  test-graph-delete-header
+  (test-graph-delete-one 1 0 0 0)
+  (test-graph-delete-one 1 0 1 0)
+  (test-graph-delete-one 1 1 0 0)
+  (test-graph-delete-one 1 1 1 0)
+  (test-graph-delete-one 0 0 1 0)
+  (test-graph-delete-one 0 1 0 0)
+  (test-graph-delete-one 0 1 1 0)
+  (test-graph-delete-one 1 0 0 1)
+  (test-graph-delete-one 1 0 1 1)
+  (test-graph-delete-one 1 1 0 1)
+  (test-graph-delete-one 1 1 1 1)
   (label exit
     (printf "\n")
     (return status)))
@@ -587,14 +572,14 @@
 (define (test-concurrent-write/read-thread status-pointer) (b0* b0*)
   status-init
   (set status (pointer-get (convert-type status-pointer status-t*)))
-  (define state db-relation-read-state-t)
-  (define records db-relation-records-t* 0)
+  (define state db-graph-read-state-t)
+  (define records db-graph-records-t* 0)
   db-txn-introduce
   db-txn-begin
   (set records 0)
-  (status-require! (db-relation-select db-txn 0 0 0 0 0 (address-of state)))
-  (db-status-require-read! (db-relation-read (address-of state) 2 (address-of records)))
-  (db-status-require-read! (db-relation-read (address-of state) 0 (address-of records)))
+  (status-require! (db-graph-select db-txn 0 0 0 0 0 (address-of state)))
+  (db-status-require-read! (db-graph-read (address-of state) 2 (address-of records)))
+  (db-status-require-read! (db-graph-read (address-of state) 0 (address-of records)))
   db-txn-abort
   (label exit
     db-status-success-if-no-more-data
@@ -608,7 +593,7 @@
   (status-require! (test-helper-db-reset #f))
   (db-define-ids-3 left right label)
   (status-require!
-    (test-helper-create-relations
+    (test-helper-create-graphs
       common-element-count
       common-element-count common-label-count (address-of left) (address-of right) (address-of label)))
   (define thread-two-result status-t (struct-literal 0 0))

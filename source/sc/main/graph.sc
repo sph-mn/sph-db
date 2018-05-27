@@ -93,4 +93,6 @@
     (db-cursor-close-if-active graph-ll)
     (return status)))
 
-;(pre-include "graph-delete" "graph-read" "lib/debug-graph")
+(pre-include "./graph-read.c"
+  ;"graph-delete" "lib/debug-graph"
+  )

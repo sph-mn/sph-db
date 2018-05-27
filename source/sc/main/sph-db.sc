@@ -229,11 +229,33 @@
       (right db-id-t)
       (label db-id-t)
       (ordinal db-ordinal-t)))
-  db-graph-ordinal-generator-t (type (function-pointer db-ordinal-t b0*)))
+  db-graph-ordinal-generator-t (type (function-pointer db-ordinal-t b0*))
+  db-ordinal-condition-t
+  (type
+    (struct
+      (min db-ordinal-t)
+      (max db-ordinal-t))))
 
 (pre-include "./lib/data-structures.c")
 
 (declare
+  db-graph-read-state-t
+  (type
+    (struct
+      (status status-t)
+      (cursor (MDB-cursor* restrict))
+      (cursor-2 (MDB-cursor* restrict))
+      (left b0*)
+      (right b0*)
+      (label b0*)
+      (left-first db-ids-t*)
+      (right-first db-ids-t*)
+      (ordinal db-ordinal-condition-t*)
+      (options b8)
+      (reader b0*)))
+  db-graph-reader-t
+  (type (function-pointer status-t db-graph-read-state-t* b32 db-graph-records-t**))
+  (db-graph-selection-destroy state) (b0 db-graph-read-state-t*)
   (db-statistics txn result) (status-t db-txn-t db-statistics-t*)
   (db-close env) (b0 db-env-t*)
   (db-open root options env) (status-t b8* db-open-options-t* db-env-t*)
@@ -247,7 +269,15 @@
   (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-graph-ordinal-generator-t b0*)
   (db-status-description a) (b8* status-t)
   (db-status-name a) (b8* status-t)
-  (db-status-group-id->name a) (b8* status-i-t))
+  (db-status-group-id->name a) (b8* status-i-t)
+  (db-graph-ensure txn left right label ordinal-generator ordinal-generator-state)
+  (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-graph-ordinal-generator-t b0*)
+  (db-graph-delete txn left right label ordinal)
+  (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t*)
+  (db-graph-select txn left right label ordinal offset result)
+  (status-t
+    db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* b32 db-graph-read-state-t*)
+  (db-graph-read state count result) (status-t db-graph-read-state-t* b32 db-graph-records-t**))
 
 ;-- old --;
 
@@ -271,11 +301,6 @@
 (define db-index-errors-graph-null db-index-errors-graph-t (struct-literal 0 0 0 0 0))
 (define db-index-errors-null db-index-errors-t (struct-literal 0 0 0 0 0))
 
-(define-type db-ordinal-condition-t
-  (struct
-    (min db-ordinal-t)
-    (max db-ordinal-t)))
-
 (define-type db-node-read-state-t
   (struct
     (status status-t)
@@ -289,78 +314,31 @@
     (cursor (MDB-cursor* restrict))
     (options b8)))
 
-(define-type db-graph-read-state-t
-  (struct
-    (status status-t)
-    (cursor (MDB-cursor* restrict))
-    (cursor-2 (MDB-cursor* restrict))
-    (left b0*)
-    (right b0*)
-    (label b0*)
-    (left-first db-ids-t*)
-    (right-first db-ids-t*)
-    (ordinal db-ordinal-condition-t*)
-    (options b8)
-    (reader b0*)))
-
-(define-type db-graph-reader-t
-  (function-pointer status-t db-graph-read-state-t* b32 db-graph-records-t**))
-
-
-(pre-define (db-type? db-type-name id) (= db-type-name (bit-and id db-type-mask)))
+(define (db-intern-data->id txn data every? result)
+  (status-t db-txn-t db-data-list-t* boolean db-ids-t**))
+(define (db-intern-nodes txn ids every? result)
+  (status-t db-txn-t db-ids-t* boolean db-data-list-t**))
+(define (db-extern-nodes txn ids every? result)
+  (status-t db-txn-t db-ids-t* boolean db-data-list-t**))
 (define (db-node-read state count result) (status-t db-node-read-state-t* b32 db-data-records-t**))
 (define (db-node-select txn types offset state) (status-t db-txn-t b8 b32 db-node-read-state-t*))
 (define (db-node-selection-destroy state) (b0 db-node-read-state-t*))
-(define (db-graph-selection-destroy state) (b0 db-graph-read-state-t*))
-
-(define (db-intern-data->id txn data every? result)
-  (status-t db-txn-t db-data-list-t* boolean db-ids-t**))
-
 (define (db-intern-ensure txn data result) (status-t db-txn-t db-data-list-t* db-ids-t**))
 (define (db-intern-update txn id data) (status-t db-txn-t db-id-t db-data-t))
 (define (db-extern-update txn id data) (status-t db-txn-t db-id-t db-data-t))
-
-(define (db-intern-nodes txn ids every? result)
-  (status-t db-txn-t db-ids-t* boolean db-data-list-t**))
-
 (define (db-extern-create txn count data result) (status-t db-txn-t b32 db-data-t* db-ids-t**))
-
-(define (db-extern-nodes txn ids every? result)
-  (status-t db-txn-t db-ids-t* boolean db-data-list-t**))
-
 (define (db-extern-data->id txn data result) (status-t db-txn-t db-data-t db-ids-t**))
 (define (db-id-create txn count result) (status-t db-txn-t b32 db-ids-t**))
 (define (db-exists? txn ids result) (status-t db-txn-t db-ids-t* boolean*))
-(define (db-extern? id) (boolean db-id-t))
-(define (db-id? id) (boolean db-id-t))
 (define (db-intern-small? id) (boolean db-id-t))
 (define (db-identify txn ids result) (status-t db-txn-t db-ids-t* db-ids-t**))
-(define (db-intern? id) (boolean db-id-t))
-(define (db-graph? id) (boolean db-id-t))
 (define (db-index-errors txn result) (status-t db-txn-t db-index-errors-t*))
 (define (db-index-errors-graph txn result) (status-t db-txn-t db-index-errors-graph-t*))
 (define (db-index-recreate-extern) status-t)
 (define (db-index-recreate-intern) status-t)
 (define (db-index-recreate-graph) status-t)
-
 (define (db-open-options-set-defaults a) (db-open-options-t db-open-options-t*))
-
-(define (db-graph-ensure txn left right label ordinal-generator ordinal-generator-state)
-  (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-graph-ordinal-generator-t b0*))
-
 (define (db-delete txn ids) (status-t db-txn-t db-ids-t*))
-
-(define (db-graph-delete txn left right label ordinal)
-  (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t*))
-
-
-(define (db-graph-select txn left right label ordinal offset result)
-  (status-t
-    db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* b32 db-graph-read-state-t*))
-
-(define (db-graph-read state count result)
-  (status-t db-graph-read-state-t* b32 db-graph-records-t**))
-
 (define (db-debug-log-ids a) (b0 db-ids-t*))
 (define (db-debug-log-ids-set a) (b0 imht-set-t))
 (define (db-debug-display-graph-records records) (b0 db-graph-records-t*))
