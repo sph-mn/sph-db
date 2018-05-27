@@ -104,11 +104,11 @@ status_t test_sequence(db_env_t* env) {
   db_type_id_t type_id;
   /* node sequence */
   status_require_x(db_type_create(env, "test-type", 0, 0, 0, &type_id));
-  prev_id = db_id_add_type(0, type_id);
-  for (i = 0; (i <= db_element_id_limit); i = (i + 1)) {
+  (*(type_id + (*env).types)).sequence = (db_element_id_limit - 100);
+  prev_id = db_id_add_type((db_element_id_limit - 100 - 1), type_id);
+  for (i = db_element_id_limit; (i <= db_element_id_limit); i = (i + 1)) {
     status = db_sequence_next(env, type_id, &id);
-    debug_log("type-id: %lu, id: %lu", type_id, id);
-    if ((db_element_id_limit <= (1 + prev_id))) {
+    if ((db_element_id_limit <= db_id_element((1 + prev_id)))) {
       test_helper_assert(
         "node sequence is limited", (db_status_id_max_element_id == status.id));
       status_set_id(status_id_success);
@@ -119,8 +119,8 @@ status_t test_sequence(db_env_t* env) {
     prev_id = id;
   };
   /* system sequence. test last, otherwise type ids would be exhausted */
-  prev_type_id = 0;
-  for (i = 0; (i <= db_type_id_limit); i = (i + 1)) {
+  prev_type_id = type_id;
+  for (i = type_id; (i <= db_type_id_limit); i = (i + 1)) {
     status = db_sequence_next_system(env, &type_id);
     if ((db_type_id_limit <= (1 + prev_type_id))) {
       test_helper_assert(
@@ -163,10 +163,10 @@ exit:
 };
 int main() {
   test_helper_init(env);
-  test_helper_test_one(test_sequence, env);
-  test_helper_test_one(test_id_construction, env);
   test_helper_test_one(test_open_empty, env);
   test_helper_test_one(test_statistics, env);
+  test_helper_test_one(test_id_construction, env);
+  test_helper_test_one(test_sequence, env);
   test_helper_test_one(test_type_create, env);
   test_helper_test_one(test_type_create_many, env);
   test_helper_test_one(test_open_nonempty, env);

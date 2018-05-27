@@ -12,12 +12,11 @@ status_t db_env_types_extend(db_env_t* env, db_type_id_t type_id) {
   /* resize */
   types = (*env).types;
   types_len = (db_env_types_extra_count + type_id);
-  db_realloc(types, types_temp, types_len);
+  db_realloc(types, types_temp, (types_len * sizeof(db_type_t)));
   /* set new type struct ids to zero */
   for (i = type_id; (i < types_len); i = (1 + i)) {
     (*(i + types)).id = 0;
   };
-  debug_log("set env to %lu", types_len);
   (*env).types = types;
   (*env).types_len = types_len;
 exit:

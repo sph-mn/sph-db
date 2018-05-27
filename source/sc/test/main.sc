@@ -104,11 +104,11 @@
     type-id db-type-id-t)
   (sc-comment "node sequence")
   (status-require! (db-type-create env "test-type" 0 0 0 &type-id))
-  (set prev-id (db-id-add-type 0 type-id))
-  (for ((set i 0) (<= i db-element-id-limit) (set i (+ i 1)))
+  (set (: (+ type-id env:types) sequence) (- db-element-id-limit 100))
+  (set prev-id (db-id-add-type (- db-element-id-limit 100 1) type-id))
+  (for ((set i db-element-id-limit) (<= i db-element-id-limit) (set i (+ i 1)))
     (set status (db-sequence-next env type-id &id))
-    (debug-log "type-id: %lu, id: %lu" type-id id)
-    (if (<= db-element-id-limit (+ 1 prev-id))
+    (if (<= db-element-id-limit (db-id-element (+ 1 prev-id)))
       (begin
         (test-helper-assert "node sequence is limited" (= db-status-id-max-element-id status.id))
         (status-set-id status-id-success))
@@ -116,16 +116,17 @@
         "node sequence is monotonically increasing" (and status-success? (= 1 (- id prev-id)))))
     (set prev-id id))
   (sc-comment "system sequence. test last, otherwise type ids would be exhausted")
-  (set prev-type-id 0)
-  (for ((set i 0) (<= i db-type-id-limit) (set i (+ i 1)))
+  (set prev-type-id type-id)
+  (for ((set i type-id) (<= i db-type-id-limit) (set i (+ i 1)))
     (set status (db-sequence-next-system env &type-id))
     (if (<= db-type-id-limit (+ 1 prev-type-id))
       (begin
         (test-helper-assert "system sequence is limited" (= db-status-id-max-type-id status.id))
         (status-set-id status-id-success))
-      (test-helper-assert
-        "system sequence is monotonically increasing"
-        (and status-success? (= 1 (- type-id prev-type-id)))))
+      (begin
+        (test-helper-assert
+          "system sequence is monotonically increasing"
+          (and status-success? (= 1 (- type-id prev-type-id))))))
     (set prev-type-id type-id))
   (label exit
     (return status)))
@@ -158,18 +159,13 @@
 
 (define (main) int
   (test-helper-init env)
+  (test-helper-test-one test-open-empty env)
+  (test-helper-test-one test-statistics env)
+  (test-helper-test-one test-id-construction env)
   (test-helper-test-one test-sequence env)
-  ;(test-helper-test-one test-id-construction env)
-  ;(test-helper-test-one test-open-empty env)
-  ;(test-helper-test-one test-statistics env)
-  ;(test-helper-test-one test-type-create env)
-  ;(test-helper-test-one test-type-create-many env)
-  ;(test-helper-test-one test-open-nonempty env)
-  #;(
-  (test-helper-test-one test-concurrent-write/read)
-  (test-helper-test-one test-relation-read)
-  (test-helper-test-one test-relation-delete)
-  )
+  (test-helper-test-one test-type-create env)
+  (test-helper-test-one test-type-create-many env)
+  (test-helper-test-one test-open-nonempty env)
   (label exit
     test-helper-report-status
     (return status.id)))

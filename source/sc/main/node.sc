@@ -12,11 +12,10 @@
   (set
     types env:types
     types-len (+ db-env-types-extra-count type-id))
-  (db-realloc types types-temp types-len)
+  (db-realloc types types-temp (* types-len (sizeof db-type-t)))
   (sc-comment "set new type struct ids to zero")
   (for ((set i type-id) (< i types-len) (set i (+ 1 i)))
     (set (: (+ i types) id) 0))
-  (debug-log "set env to %lu" types-len)
   (struct-pointer-set env
     types types
     types-len types-len)
