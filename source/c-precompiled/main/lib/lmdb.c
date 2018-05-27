@@ -56,11 +56,12 @@
 #define db_mdb_declare_val_id db_mdb_declare_val(val_id, db_size_id)
 #define db_mdb_declare_val_id_2 db_mdb_declare_val(val_id_2, db_size_id)
 #define db_mdb_declare_val_id_3 db_mdb_declare_val(val_id_3, db_size_id)
+#define db_mdb_declare_val_null db_mdb_declare_val(val_null, 0)
 #define db_mdb_declare_val_graph_data \
   db_mdb_declare_val(val_graph_data, db_size_graph_data)
 #define db_mdb_declare_val_graph_key \
   db_mdb_declare_val(val_graph_key, db_size_graph_key)
-#define db_mdb_reset_val_null val_null.mv_size = 0;
+#define db_mdb_reset_val_null val_null.mv_size = 0
 #define db_mdb_val_graph_data_to_id(a) db_graph_data_to_id(a.mv_data)
 #define db_mdb_val_graph_data_to_ordinal(a) db_graph_data_to_ordinal(a.mv_data)
 #define db_mdb_compare_get_mv_data(mdb_val) (*mdb_val).mv_data
@@ -75,7 +76,6 @@
   db_mdb_status_require_x( \
     mdb_cursor_get(cursor, &val_null, &val_null, MDB_FIRST))
 #define db_mdb_val_to_graph_key(a) ((db_id_t*)(a.mv_data))
-MDB_val val_null;
 /** mdb comparison routines are used by lmdb for search, insert and delete */
 static int db_mdb_compare_id(const MDB_val* a, const MDB_val* b) {
   return (db_id_compare(db_pointer_to_id(db_mdb_compare_get_mv_data(a), 0),

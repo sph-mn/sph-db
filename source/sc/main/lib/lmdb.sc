@@ -33,7 +33,7 @@
   (db-mdb-cursor-get-norequire cursor val-a val-b cursor-operation)
   (begin
     "only updates status, no goto on error"
-    (status-set-id (mdb-cursor-get cursor (address-of val-a) (address-of val-b) cursor-operation)))
+    (status-set-id (mdb-cursor-get cursor &val-a &val-b cursor-operation)))
   (db-mdb-cursor-next-dup-norequire cursor val-a val-b)
   (db-mdb-cursor-get-norequire cursor val-a val-b MDB-NEXT-DUP)
   (db-mdb-cursor-next-nodup-norequire cursor val-a val-b)
@@ -46,8 +46,7 @@
   (db-mdb-status-require! (mdb-cursor-put cursor (address-of val-a) (address-of val-b) 0))
   (db-mdb-put txn dbi val-a val-b)
   (db-mdb-status-require! (mdb-put dbi (address-of val-a) (address-of val-b) 0))
-  (db-mdb-cursor-open txn dbi name)
-  (db-mdb-status-require! (mdb-cursor-open txn dbi (address-of name)))
+  (db-mdb-cursor-open txn dbi name) (db-mdb-status-require! (mdb-cursor-open txn dbi &name))
   (db-mdb-cursor-open-two txn dbi-a name-a dbi-b name-b)
   (begin
     (db-mdb-cursor-open txn dbi-a name-a)
@@ -61,13 +60,15 @@
   (db-mdb-declare-val name size)
   (begin
     (declare name MDB-val)
-    (struct-set name mv-size size))
+    (struct-set name
+      mv-size size))
   db-mdb-declare-val-id (db-mdb-declare-val val-id db-size-id)
   db-mdb-declare-val-id-2 (db-mdb-declare-val val-id-2 db-size-id)
   db-mdb-declare-val-id-3 (db-mdb-declare-val val-id-3 db-size-id)
+  db-mdb-declare-val-null (db-mdb-declare-val val-null 0)
   db-mdb-declare-val-graph-data (db-mdb-declare-val val-graph-data db-size-graph-data)
   db-mdb-declare-val-graph-key (db-mdb-declare-val val-graph-key db-size-graph-key)
-  db-mdb-reset-val-null (struct-set val-null mv-size 0)
+  db-mdb-reset-val-null (set val-null.mv-size 0)
   (db-mdb-val-graph-data->id a) (db-graph-data->id (struct-get a mv-data))
   (db-mdb-val-graph-data->ordinal a) (db-graph-data->ordinal (struct-get a mv-data))
   (db-mdb-compare-get-mv-data mdb-val) (struct-pointer-get mdb-val mv-data)
@@ -79,11 +80,8 @@
       (db-mdb-cursor-next-nodup! cursor val-key val-value))
     db-mdb-status-require-notfound)
   (db-mdb-cursor-set-first! cursor)
-  (db-mdb-status-require!
-    (mdb-cursor-get cursor (address-of val-null) (address-of val-null) MDB-FIRST))
+  (db-mdb-status-require! (mdb-cursor-get cursor &val-null &val-null MDB-FIRST))
   (db-mdb-val->graph-key a) (convert-type (struct-get a mv-data) db-id-t*))
-
-(declare val-null MDB-val)
 
 (define (db-mdb-compare-id a b) ((static int) (const MDB-val*) (const MDB-val*))
   "mdb comparison routines are used by lmdb for search, insert and delete"
@@ -94,12 +92,10 @@
 
 (define (db-mdb-compare-graph-key a b) ((static int) (const MDB-val*) (const MDB-val*))
   (return
-    (if* (< (db-mdb-val->id-at (pointer-get a) 0) (db-mdb-val->id-at (pointer-get b) 0))
-      -1
-      (if* (> (db-mdb-val->id-at (pointer-get a) 0) (db-mdb-val->id-at (pointer-get b) 0))
-        1
-        (if* (< (db-mdb-val->id-at (pointer-get a) 1) (db-mdb-val->id-at (pointer-get b) 1))
-          -1 (> (db-mdb-val->id-at (pointer-get a) 1) (db-mdb-val->id-at (pointer-get b) 1)))))))
+    (if* (< (db-mdb-val->id-at (pointer-get a) 0) (db-mdb-val->id-at (pointer-get b) 0)) -1
+      (if* (> (db-mdb-val->id-at (pointer-get a) 0) (db-mdb-val->id-at (pointer-get b) 0)) 1
+        (if* (< (db-mdb-val->id-at (pointer-get a) 1) (db-mdb-val->id-at (pointer-get b) 1)) -1
+          (> (db-mdb-val->id-at (pointer-get a) 1) (db-mdb-val->id-at (pointer-get b) 1)))))))
 
 (define (db-mdb-compare-graph-data a b) ((static int) (const MDB-val*) (const MDB-val*))
   "memcmp does not work here, gives -1 for 256 vs 1"
@@ -128,6 +124,7 @@
       (convert-type (struct-pointer-get b mv-size) ssize-t)))
   (return
     (if* length-difference
-      (if* (< length-difference 0) -1 1)
+      (if* (< length-difference 0) -1
+        1)
       (memcmp
         (struct-pointer-get a mv-data) (struct-pointer-get b mv-data) (struct-pointer-get a mv-size)))))

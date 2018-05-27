@@ -19,7 +19,7 @@
   (db-txn-declare env txn)
   (db-txn-begin txn)
   (status-require! (db-statistics txn (address-of stat)))
-  (test-helper-assert "dbi-system has one entry" (= 1 stat.system.ms_entries))
+  (test-helper-assert "dbi-system contanis only one entry" (= 1 stat.system.ms_entries))
   (label exit
     (db-txn-abort txn)
     (return status)))
@@ -71,13 +71,62 @@
   (test-helper-assert
     "existent types" (and (db-type-get env "test-type-1") (db-type-get env "test-type-2")))
   (sc-comment "type-delete")
-  ;(status-require! (db-type-delete env type-id-1))
-  ;(status-require! (db-type-delete env type-id-2))
-  #;(set
+  (status-require! (db-type-delete env type-id-1))
+  (status-require! (db-type-delete env type-id-2))
+  (set
     type-1-pointer (db-type-get env "test-type-1")
     type-2-pointer (db-type-get env "test-type-2"))
-  #;(test-helper-assert "type-delete type-get" (and (not type-1-pointer) (not type-2-pointer)))
-  ; todo: test cache directly
+  (test-helper-assert "type-delete type-get" (not (or type-1-pointer type-2-pointer)))
+  (label exit
+    (return status)))
+
+(define (test-type-create-many env) (status-t db-env-t*)
+  "create several types, particularly to test automatic env:types array resizing"
+  status-init
+  (declare
+    i db-type-id-t
+    name (array b8 255)
+    type-id db-type-id-t)
+  (sc-comment "10 times as many as there is extra room left for new types in env:types")
+  (for ((set i 0) (< i (* 10 db-env-types-extra-count)) (set i (+ 1 i)))
+    (sprintf name "test-type-%lu" i)
+    (status-require! (db-type-create env name 0 0 0 &type-id)))
+  (label exit
+    (return status)))
+
+(define (test-sequence env) (status-t db-env-t*)
+  status-init
+  (declare
+    i size-t
+    id db-id-t
+    prev-id db-id-t
+    prev-type-id db-type-id-t
+    type-id db-type-id-t)
+  (sc-comment "node sequence")
+  (status-require! (db-type-create env "test-type" 0 0 0 &type-id))
+  (set prev-id (db-id-add-type 0 type-id))
+  (for ((set i 0) (<= i db-element-id-limit) (set i (+ i 1)))
+    (set status (db-sequence-next env type-id &id))
+    (debug-log "type-id: %lu, id: %lu" type-id id)
+    (if (<= db-element-id-limit (+ 1 prev-id))
+      (begin
+        (test-helper-assert "node sequence is limited" (= db-status-id-max-element-id status.id))
+        (status-set-id status-id-success))
+      (test-helper-assert
+        "node sequence is monotonically increasing" (and status-success? (= 1 (- id prev-id)))))
+    (set prev-id id))
+  (sc-comment "system sequence. test last, otherwise type ids would be exhausted")
+  (set prev-type-id 0)
+  (for ((set i 0) (<= i db-type-id-limit) (set i (+ i 1)))
+    (set status (db-sequence-next-system env &type-id))
+    (if (<= db-type-id-limit (+ 1 prev-type-id))
+      (begin
+        (test-helper-assert "system sequence is limited" (= db-status-id-max-type-id status.id))
+        (status-set-id status-id-success))
+      (test-helper-assert
+        "system sequence is monotonically increasing"
+        (and status-success? (= 1 (- type-id prev-type-id)))))
+    (set prev-type-id type-id))
   (label exit
     (return status)))
 
@@ -88,11 +137,33 @@
   (label exit
     (return status)))
 
+(define (test-id-construction env) (status-t db-env-t*)
+  status-init
+  (sc-comment "id creation")
+  (declare type-id db-type-id-t)
+  (set type-id (/ db-type-id-limit 2))
+  (test-helper-assert
+    "type-id-size + element-id-size = id-size" (= db-size-id (+ db-size-type-id db-size-element-id)))
+  (test-helper-assert
+    "type and element masks not conflicting" (not (bit-and db-id-type-mask db-id-element-mask)))
+  (test-helper-assert
+    "type-id-mask | element-id-mask = id-mask"
+    (= db-id-mask (bit-or db-id-type-mask db-id-element-mask)))
+  (test-helper-assert
+    "id type" (= type-id (db-id-type (db-id-add-type db-element-id-limit type-id))))
+  (sc-comment "take a low value to be compatible with different configurations")
+  (test-helper-assert "id element" (= 254 (db-id-element (db-id-add-type 254 type-id))))
+  (label exit
+    (return status)))
+
 (define (main) int
   (test-helper-init env)
+  (test-helper-test-one test-sequence env)
+  ;(test-helper-test-one test-id-construction env)
   ;(test-helper-test-one test-open-empty env)
   ;(test-helper-test-one test-statistics env)
-  (test-helper-test-one test-type-create env)
+  ;(test-helper-test-one test-type-create env)
+  ;(test-helper-test-one test-type-create-many env)
   ;(test-helper-test-one test-open-nonempty env)
   #;(
   (test-helper-test-one test-concurrent-write/read)

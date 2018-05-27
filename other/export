@@ -10,5 +10,7 @@
     db_type_create;
     db_type_delete;
     db_type_get;
+    db_sequence_next;
+    db_sequence_next_system;
   local: *;
 };

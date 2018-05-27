@@ -89,7 +89,7 @@ enum {
   db_status_id_different_format,
   db_status_id_duplicate,
   db_status_id_input_type,
-  db_status_id_max_id,
+  db_status_id_max_element_id,
   db_status_id_max_type_id,
   db_status_id_max_type_id_size,
   db_status_id_memory,
@@ -177,13 +177,14 @@ b8* db_status_description(status_t a) {
       b = "root not accessible";
     } else if ((db_status_id_memory == a.id)) {
       b = "not enough memory or other memory allocation error";
-    } else if ((db_status_id_max_id == a.id)) {
-      b = "maximum identifier value for the type has been reached";
+    } else if ((db_status_id_max_element_id == a.id)) {
+      b = "maximum element identifier value has been reached for the type";
     } else if ((db_status_id_max_type_id == a.id)) {
       b = "maximum type identifier value has been reached";
     } else if ((db_status_id_max_type_id_size == a.id)) {
-      b = "type identifier size is configured to be greater than 16 bit, which "
-          "is currently not supported";
+      b =
+        "type identifier size is either configured to be greater than 16 bit, "
+        "which is currently not supported, or is not smaller than node id size";
     } else if ((db_status_id_condition_unfulfilled == a.id)) {
       b = "condition unfulfilled";
     } else if ((db_status_id_no_more_data == a.id)) {
@@ -219,8 +220,8 @@ b8* db_status_name(status_t a) {
       b = "path-not-accessible-db-root";
     } else if ((db_status_id_memory == a.id)) {
       b = "memory";
-    } else if ((db_status_id_max_id == a.id)) {
-      b = "max-id-reached";
+    } else if ((db_status_id_max_element_id == a.id)) {
+      b = "max-element-id-reached";
     } else if ((db_status_id_max_type_id == a.id)) {
       b = "max-type-id-reached";
     } else if ((db_status_id_max_type_id_size == a.id)) {
@@ -241,27 +242,22 @@ b8* db_status_name(status_t a) {
   };
   return (((b8*)(b)));
 };
-#define db_id_t b64
-#define db_type_id_t b16
-#define db_ordinal_t b32
-#define db_index_count_t b8
 #define db_field_count_t b8
-#define db_name_len_t b8
-#define db_name_len_max 255
 #define db_field_type_t b8
 #define db_id_mask UINT64_MAX
+#define db_id_t b64
+#define db_index_count_t b8
+#define db_name_len_max UINT8_MAX
+#define db_name_len_t b8
+#define db_ordinal_t b32
 #define db_type_id_mask UINT16_MAX
-#define db_size_id sizeof(db_id_t)
-#define db_size_type_id sizeof(db_type_id_t)
-#define db_size_ordinal sizeof(db_ordinal_t)
-#define db_id_equal_p(a, b) (a == b)
-#define db_id_compare(a, b) ((a < b) ? -1 : (a > b))
+#define db_type_id_t b16
 #define db_pointer_to_id(a, index) (*(index + ((db_id_t*)(a))))
 #ifndef db_id_t
 #define db_id_t b64
 #endif
 #ifndef db_type_id_t
-#define db_type_id_t b8
+#define db_type_id_t b16
 #endif
 #ifndef db_ordinal_t
 #define db_ordinal_t b32
@@ -272,17 +268,20 @@ b8* db_status_name(status_t a) {
 #ifndef db_field_count_t
 #define db_field_count_t b8
 #endif
-#ifndef db_id_max
-#define db_id_max UINT64_MAX
+#ifndef db_name_len_t
+#define db_name_len_t b8
 #endif
-#ifndef db_size_id
-#define db_size_id sizeof(db_id_t)
+#ifndef db_name_len_max
+#define db_name_len_max UINT8_MAX
 #endif
-#ifndef db_size_ordinal
-#define db_size_ordinal sizeof(db_ordinal_t)
+#ifndef db_field_type_t
+#define db_field_type_t b8
 #endif
-#ifndef db_size_type_id
-#define db_size_type_id sizeof(db_type_id_t)
+#ifndef db_id_mask
+#define db_id_mask UINT64_MAX
+#endif
+#ifndef db_type_id_mask
+#define db_type_id_mask UINT16_MAX
 #endif
 #ifndef db_id_equal_p
 #define db_id_equal_p(a, b) (a == b)
@@ -290,9 +289,9 @@ b8* db_status_name(status_t a) {
 #ifndef db_id_compare
 #define db_id_compare(a, b) ((a < b) ? -1 : (a > b))
 #endif
-#ifndef db_pointer_to_id
-#define db_pointer_to_id(a, index) (*(index + ((db_id_t*)(a))))
-#endif
+#define db_size_id sizeof(db_id_t)
+#define db_size_type_id sizeof(db_type_id_t)
+#define db_size_ordinal sizeof(db_ordinal_t)
 #define db_ordinal_compare db_id_compare
 #define db_size_graph_data (db_size_ordinal + db_size_id)
 #define db_size_graph_key (2 * db_size_id)
@@ -301,9 +300,12 @@ b8* db_status_name(status_t a) {
 #define db_read_option_is_set_right 4
 #define db_read_option_initialised 8
 #define db_null 0
-#define db_type_id_max db_type_id_mask
-#define db_element_id_mask (db_type_id_mask ^ db_id_mask)
-#define db_element_id_max db_element_id_mask
+#define db_type_id_limit db_type_id_mask
+#define db_size_element_id (sizeof(db_id_t) - sizeof(db_type_id_t))
+#define db_id_type_mask \
+  (((db_id_t)(db_type_id_mask)) << (8 * db_size_element_id))
+#define db_id_element_mask ~db_id_type_mask
+#define db_element_id_limit db_id_element_mask
 #define db_type_flag_virtual 1
 #define db_system_label_format 0
 #define db_system_label_type 1
@@ -324,11 +326,20 @@ b8* db_status_name(status_t a) {
 #define db_field_type_char16 66
 #define db_field_type_char32 98
 #define db_field_type_char64 130
+#define db_env_types_extra_count 20
+#define db_size_type_id_max 16
+#define db_size_system_label 1
+#define db_id_add_type(id, type_id) \
+  (id | (((db_id_t)(type_id)) << (8 * db_size_element_id)))
+/** get the type id part from a node id. a node id without element id */
+#define db_id_type(id) (id >> (8 * db_size_element_id))
+/** get the element id part from a node id. a node id without type id */
+#define db_id_element(id) (db_id_element_mask & id)
+#define db_pointer_to_id(a, index) (*(index + ((db_id_t*)(a))))
 #define db_field_type_fixed_p(a) !(1 & a)
 #define db_system_key_label(a) (*((b8*)(a)))
-#define db_system_key_id(a) (*((db_type_id_t*)((1 + ((b8*)(a))))))
-#define db_id_add_type(id, type_id) \
-  (id | (type_id << (8 * sizeof(db_type_id_t))))
+#define db_system_key_id(a) \
+  (*((db_type_id_t*)((db_size_system_label + ((b8*)(a))))))
 #define db_status_memory_error_if_null(variable) \
   if (!variable) { \
     status_set_both_goto(db_status_group_db, db_status_id_memory); \
@@ -355,10 +366,6 @@ b8* db_status_name(status_t a) {
 #define db_data_data_set(a, value) data.mv_data = value
 #define db_data_size(a) data.mv_size
 #define db_data_size_set(a, value) data.mv_size = value
-/** get the type id part from a node id. a node id without element id */
-#define db_id_type(id) (db_type_id_mask & id)
-/** get the element id part from a node id. a node id without type id */
-#define db_id_element(id) (db_element_id_mask & id)
 #define db_txn_declare(env, name) db_txn_t name = { 0, env }
 #define db_txn_begin(txn) \
   db_mdb_status_require_x( \
@@ -369,6 +376,11 @@ b8* db_status_name(status_t a) {
 #define db_txn_abort(a) \
   mdb_txn_abort(a.mdb_txn); \
   a.mdb_txn = 0
+#define db_txn_abort_if_active(a) \
+  if (a.mdb_txn) { \
+    db_txn_abort(a); \
+  }
+#define db_txn_active_p(a) (a.mdb_txn ? 1 : 0)
 #define db_txn_commit(a) \
   db_mdb_status_require_x(mdb_txn_commit(a.mdb_txn)); \
   a.mdb_txn = 0
@@ -475,6 +487,8 @@ status_t db_type_create(db_env_t* env,
   b8 flags,
   db_type_id_t* result);
 status_t db_type_delete(db_env_t* env, db_type_id_t id);
+status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result);
+status_t db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result);
 b8 db_field_type_size(b8 a);
 #define imht_set_key_t db_id_t
 #include <stdlib.h>

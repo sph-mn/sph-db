@@ -5,32 +5,33 @@
     types-temp db-type-t*
     types-len db-type-id-t
     types db-type-t*
-    index db-type-id-t)
+    i db-type-id-t)
   (set types-len env:types-len)
-  (if (< types-len type-id)
-    (begin
-      (set
-        types env:types
-        index types-len
-        types-len (+ 20 type-id))
-      (db-realloc types types-temp types-len)
-      (for ((set index 0) (< index types-len) (set index (+ 1 index)))
-        (set (: (+ index types) id) 0))
-      (struct-pointer-set env
-        types types
-        types-len types-len)))
+  (if (> types-len type-id) (goto exit))
+  (sc-comment "resize")
+  (set
+    types env:types
+    types-len (+ db-env-types-extra-count type-id))
+  (db-realloc types types-temp types-len)
+  (sc-comment "set new type struct ids to zero")
+  (for ((set i type-id) (< i types-len) (set i (+ 1 i)))
+    (set (: (+ i types) id) 0))
+  (debug-log "set env to %lu" types-len)
+  (struct-pointer-set env
+    types types
+    types-len types-len)
   (label exit
     (return status)))
 
 (define (db-type-get env name) (db-type-t* db-env-t* b8*)
   "return a pointer to the type struct for the type with the given name. zero if not found"
   (declare
-    index db-type-id-t
+    i db-type-id-t
     types-len db-type-id-t
     type db-type-t*)
   (set types-len env:types-len)
-  (for ((set index 0) (< index types-len) (set index (+ 1 index)))
-    (set type (+ index env:types))
+  (for ((set i 0) (< i types-len) (set i (+ 1 i)))
+    (set type (+ i env:types))
     (if (and type:id (= 0 (strcmp name type:name))) (return type)))
   (return 0))
 
@@ -51,6 +52,7 @@
     val-key MDB-val)
   (db-txn-declare env txn)
   (db-cursor-declare system)
+  (db-cursor-declare nodes)
   (sc-comment "check if type with name exists")
   (if (db-type-get txn.env name) (status-set-both-goto db-status-group-db db-status-id-duplicate))
   (sc-comment "check name length")
@@ -66,7 +68,6 @@
   (sc-comment "set insert data")
   (set
     data-start data
-    (db-system-key-label key) db-system-label-type
     (pointer-get (convert-type data db-name-len-t*)) name-len
     data (+ (sizeof db-name-len-t) data))
   (memcpy data name name-len)
@@ -83,51 +84,78 @@
       data (+ 1 (convert-type data db-name-len-t*)))
     (memcpy data field.name field.name-len)
     (set data (+ field.name-len data)))
-  (status-require! (db-sequence-next-system txn.env (address-of type-id)))
+  (status-require! (db-sequence-next-system txn.env &type-id))
   (set
+    (db-system-key-label key) db-system-label-type
     (db-system-key-id key) type-id
     val-key.mv-data key
-    val-key.mv-size db-size-type-id
+    val-key.mv-size db-size-system-key
     val-data.mv-data data-start
     val-data.mv-size data-size)
   (sc-comment "insert data")
   (db-txn-write-begin txn)
   (db-cursor-open txn system)
   (db-mdb-cursor-put system val-key val-data)
-  (db-txn-commit txn)
+  (db-cursor-close system)
   (sc-comment "update cache")
   (status-require! (db-env-types-extend txn.env type-id))
-  (status-require! (db-open-type val-key.mv-data val-data.mv-data txn.env:types))
+  (db-cursor-open txn nodes)
+  (status-require! (db-open-type val-key.mv-data val-data.mv-data txn.env:types nodes))
+  (db-cursor-close nodes)
+  (db-txn-commit txn)
   (set *result type-id)
   (label exit
-    (mdb-cursor-close system)
+    (if (db-txn-active? txn)
+      (begin
+        (db-cursor-close-if-active system)
+        (db-cursor-close-if-active nodes)
+        (db-txn-abort txn)))
     (return status)))
 
-(define (db-type-delete env id) (status-t db-env-t* db-type-id-t)
-  "delete system entry and all nodes"
+(define (db-type-delete env type-id) (status-t db-env-t* db-type-id-t)
+  "delete system entry and/or all nodes and cache entries"
   status-init
-  (db-mdb-declare-val val-key db-size-type-id)
-  (db-txn-declare env txn)
+  (declare
+    id db-id-t
+    key (array b8 (db-size-system-key)))
+  db-mdb-declare-val-null
   (db-cursor-declare system)
   (db-cursor-declare nodes)
+  (db-mdb-declare-val val-key db-size-system-key)
+  (db-txn-declare env txn)
+  (set
+    (db-system-key-label key) db-system-label-type
+    (db-system-key-id key) type-id
+    val-key.mv-data key)
   (db-txn-write-begin txn)
+  (sc-comment "system. continue even if not found")
   (db-cursor-open txn system)
-  (sc-comment "schema")
   (db-mdb-cursor-get-norequire system val-key val-null MDB-SET)
-  (if db-mdb-status-success?
+  (if db-mdb-status-success? (db-mdb-status-require! (mdb-cursor-del system 0))
     (begin
-      (set status.id (mdb-cursor-del system 0))
-      (if status-success? (db-txn-commit txn)
-        (db-txn-abort txn)))
-    (begin
-      (db-txn-abort txn)
       db-mdb-status-require-notfound
       (status-set-id status-id-success)))
-  (sc-comment "data")
-  (db-mdb-cursor-get-norequire nodes val-key val-null MDB-SET)
-
+  (db-cursor-close system)
+  (sc-comment "nodes")
+  (db-cursor-open txn nodes)
+  (set
+    val-key.mv-size db-size-id
+    id (db-id-add-type 0 type-id)
+    val-key.mv-data &id)
+  (db-mdb-cursor-get-norequire nodes val-key val-null MDB-SET-RANGE)
+  (while (and db-mdb-status-success? (= type-id (db-id-type (db-mdb-val->id val-key))))
+    (db-mdb-status-require! (mdb-cursor-del nodes 0))
+    (db-mdb-cursor-get-norequire nodes val-key val-null MDB-NEXT-NODUP))
+  (if status-failure?
+    (if db-mdb-status-notfound? (status-set-id status-id-success)
+      (status-set-group-goto db-status-group-lmdb)))
+  (sc-comment "cache")
+  (db-free-env-type (+ type-id env:types))
   (label exit
-    (mdb-cursor-close system)
+    (db-cursor-close-if-active system)
+    (db-cursor-close-if-active nodes)
+    (if status-success? (db-txn-commit txn)
+      (db-txn-abort txn))
     (return status)))
 
 #;(

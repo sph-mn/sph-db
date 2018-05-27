@@ -13,9 +13,17 @@
     goto exit; \
   }
 #define optional_count(count) ((0 == count) ? UINT32_MAX : count)
-#define db_cursor_declare(name) db_mdb_cursor_declare(name)
+#define db_cursor_declare(name) MDB_cursor* name = 0
 #define db_cursor_open(txn, name) \
-  db_mdb_cursor_open(txn.mdb_txn, (*txn.env).dbi_##name, name)
+  db_mdb_status_require_x( \
+    mdb_cursor_open(txn.mdb_txn, (*txn.env).dbi_##name, &name))
+#define db_cursor_close(name) \
+  mdb_cursor_close(name); \
+  name = 0
+#define db_cursor_close_if_active(name) \
+  if (name) { \
+    db_cursor_close(name); \
+  }
 #define db_size_system_key (1 + sizeof(db_type_id_t))
 #define db_select_ensure_offset(state, offset, reader) \
   if (offset) { \
@@ -28,20 +36,22 @@
   }
 /** size in octets. only for fixed size types */
 b8 db_field_type_size(b8 a) {
-  return (((((db_field_type_int64 == a)) || ((db_field_type_uint64 == a)) ||
-             ((db_field_type_char64 == a)) || ((db_field_type_float64 == a)))
-      ? 64
-      : ((((db_field_type_int32 == a)) || ((db_field_type_uint32 == a)) ||
-           ((db_field_type_char32 == a)) || ((db_field_type_float32 == a)))
-            ? 32
-            : ((((db_field_type_int16 == a)) || ((db_field_type_uint16 == a)) ||
-                 ((db_field_type_char16 == a)))
-                  ? 16
-                  : ((((db_field_type_int8 == a)) ||
-                       ((db_field_type_uint8 == a)) ||
-                       ((db_field_type_char8 == a)))
-                        ? 8
-                        : 0)))));
+  if ((((db_field_type_int64 == a)) || ((db_field_type_uint64 == a)) ||
+        ((db_field_type_char64 == a)) || ((db_field_type_float64 == a)))) {
+    return (64);
+  } else if ((((db_field_type_int32 == a)) || ((db_field_type_uint32 == a)) ||
+               ((db_field_type_char32 == a)) ||
+               ((db_field_type_float32 == a)))) {
+    return (32);
+  } else if ((((db_field_type_int16 == a)) || ((db_field_type_uint16 == a)) ||
+               ((db_field_type_char16 == a)))) {
+    return (16);
+  } else if ((((db_field_type_int8 == a)) || ((db_field_type_uint8 == a)) ||
+               ((db_field_type_char8 == a)))) {
+    return (8);
+  } else {
+    return (0);
+  };
 };
 status_t db_ids_to_set(db_ids_t* a, imht_set_t** result) {
   status_init;
@@ -88,38 +98,39 @@ status_t db_statistics(db_txn_t txn, db_statistics_t* result) {
 exit:
   return (status);
 };
-/** return one new, unique and typed identifier */
-status_t
-db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result) {
-  status_init;
-  db_id_t sequence;
-  db_id_t* sequence_pointer;
-  pthread_mutex_lock(&((*env).mutex));
-  sequence_pointer = &(*(type_id + (*env).types)).sequence;
-  if ((sequence < db_element_id_max)) {
-    *sequence_pointer = (1 + sequence);
-    pthread_mutex_unlock(&((*env).mutex));
-    *result = db_id_add_type(sequence, type_id);
-  } else {
-    pthread_mutex_unlock(&((*env).mutex));
-    status_set_both_goto(db_status_group_db, db_status_id_max_id);
-  };
-exit:
-  return (status);
-};
-/** return one new, unique and typed identifier */
+/** return one new unique type identifier.
+  the maximum identifier returned is db-type-id-limit minus one */
 status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result) {
   status_init;
   db_type_id_t sequence;
   pthread_mutex_lock(&((*env).mutex));
   sequence = ((db_type_id_t)((*(*env).types).sequence));
-  if ((sequence < db_type_id_max)) {
+  if ((db_type_id_limit > sequence)) {
     (*(*env).types).sequence = (1 + sequence);
     pthread_mutex_unlock(&((*env).mutex));
     *result = sequence;
   } else {
     pthread_mutex_unlock(&((*env).mutex));
-    status_set_both_goto(db_status_group_db, db_status_id_max_id);
+    status_set_both_goto(db_status_group_db, db_status_id_max_type_id);
+  };
+exit:
+  return (status);
+};
+/** return one new unique type node identifier.
+  the maximum identifier returned is db-id-limit minus one */
+status_t
+db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result) {
+  status_init;
+  db_id_t sequence;
+  pthread_mutex_lock(&((*env).mutex));
+  sequence = (*(type_id + (*env).types)).sequence;
+  if ((db_element_id_limit > sequence)) {
+    (*(type_id + (*env).types)).sequence = (1 + sequence);
+    pthread_mutex_unlock(&((*env).mutex));
+    *result = db_id_add_type(sequence, type_id);
+  } else {
+    pthread_mutex_unlock(&((*env).mutex));
+    status_set_both_goto(db_status_group_db, db_status_id_max_element_id);
   };
 exit:
   return (status);
@@ -147,19 +158,22 @@ b0 db_free_env_types_fields(db_field_t** fields, db_field_count_t fields_len) {
   };
   free_and_set_null(*fields);
 };
+b0 db_free_env_type(db_type_t* type) {
+  if ((0 == (*type).id)) {
+    return;
+  };
+  free_and_set_null((*type).fields_fixed_offsets);
+  db_free_env_types_fields(&((*type).fields), (*type).fields_count);
+  db_free_env_types_indices(&((*type).indices), (*type).indices_count);
+  (*type).id = 0;
+};
 b0 db_free_env_types(db_type_t** types, db_type_id_t types_len) {
   db_type_id_t i;
-  db_type_t* type;
   if (!*types) {
     return;
   };
   for (i = 0; (i < types_len); i = (1 + i)) {
-    type = (i + *types);
-    if ((0 == (*type).id)) {
-      free_and_set_null((*type).fields_fixed_offsets);
-      db_free_env_types_fields(&((*type).fields), (*type).fields_count);
-      db_free_env_types_indices(&((*type).indices), (*type).indices_count);
-    };
+    db_free_env_type((i + *types));
   };
   free_and_set_null(*types);
 };

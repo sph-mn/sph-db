@@ -62,7 +62,7 @@ enum {
   db_status_id_different_format,
   db_status_id_duplicate,
   db_status_id_input_type,
-  db_status_id_max_id,
+  db_status_id_max_element_id,
   db_status_id_max_type_id,
   db_status_id_max_type_id_size,
   db_status_id_memory,
@@ -150,13 +150,14 @@ b8* db_status_description(status_t a) {
       b = "root not accessible";
     } else if ((db_status_id_memory == a.id)) {
       b = "not enough memory or other memory allocation error";
-    } else if ((db_status_id_max_id == a.id)) {
-      b = "maximum identifier value for the type has been reached";
+    } else if ((db_status_id_max_element_id == a.id)) {
+      b = "maximum element identifier value has been reached for the type";
     } else if ((db_status_id_max_type_id == a.id)) {
       b = "maximum type identifier value has been reached";
     } else if ((db_status_id_max_type_id_size == a.id)) {
-      b = "type identifier size is configured to be greater than 16 bit, which "
-          "is currently not supported";
+      b =
+        "type identifier size is either configured to be greater than 16 bit, "
+        "which is currently not supported, or is not smaller than node id size";
     } else if ((db_status_id_condition_unfulfilled == a.id)) {
       b = "condition unfulfilled";
     } else if ((db_status_id_no_more_data == a.id)) {
@@ -192,8 +193,8 @@ b8* db_status_name(status_t a) {
       b = "path-not-accessible-db-root";
     } else if ((db_status_id_memory == a.id)) {
       b = "memory";
-    } else if ((db_status_id_max_id == a.id)) {
-      b = "max-id-reached";
+    } else if ((db_status_id_max_element_id == a.id)) {
+      b = "max-element-id-reached";
     } else if ((db_status_id_max_type_id == a.id)) {
       b = "max-type-id-reached";
     } else if ((db_status_id_max_type_id_size == a.id)) {

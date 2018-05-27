@@ -12,8 +12,14 @@
   (optional-count count)
   (if* (= 0 count) UINT32_MAX
     count)
-  (db-cursor-declare name) (db-mdb-cursor-declare name)
-  (db-cursor-open txn name) (db-mdb-cursor-open txn.mdb-txn (: txn.env (pre-concat dbi- name)) name)
+  (db-cursor-declare name) (define name MDB-cursor* 0)
+  (db-cursor-open txn name)
+  (db-mdb-status-require! (mdb-cursor-open txn.mdb-txn (: txn.env (pre-concat dbi- name)) &name))
+  (db-cursor-close name)
+  (begin
+    (mdb-cursor-close name)
+    (set name 0))
+  (db-cursor-close-if-active name) (if name (db-cursor-close name))
   db-size-system-key (+ 1 (sizeof db-type-id-t))
   (db-select-ensure-offset state offset reader)
   (if offset
@@ -25,13 +31,14 @@
 
 (define (db-field-type-size a) (b8 b8)
   "size in octets. only for fixed size types"
-  (return
-    (case* = a
-      ((db-field-type-int64 db-field-type-uint64 db-field-type-char64 db-field-type-float64) 64)
-      ((db-field-type-int32 db-field-type-uint32 db-field-type-char32 db-field-type-float32) 32)
-      ((db-field-type-int16 db-field-type-uint16 db-field-type-char16) 16)
-      ((db-field-type-int8 db-field-type-uint8 db-field-type-char8) 8)
-      (else 0))))
+  (case = a
+    ( (db-field-type-int64 db-field-type-uint64 db-field-type-char64 db-field-type-float64)
+      (return 64))
+    ( (db-field-type-int32 db-field-type-uint32 db-field-type-char32 db-field-type-float32)
+      (return 32))
+    ((db-field-type-int16 db-field-type-uint16 db-field-type-char16) (return 16))
+    ((db-field-type-int8 db-field-type-uint8 db-field-type-char8) (return 8))
+    (else (return 0))))
 
 (define (db-ids->set a result) (status-t db-ids-t* imht-set-t**)
   status-init
@@ -74,39 +81,39 @@
   (label exit
     (return status)))
 
-(define (db-sequence-next env type-id result) (status-t db-env-t* db-type-id-t db-id-t*)
-  "return one new, unique and typed identifier"
-  status-init
-  (declare
-    sequence db-id-t
-    sequence-pointer db-id-t*)
-  (pthread-mutex-lock &env:mutex)
-  (set sequence-pointer (address-of (: (+ type-id env:types) sequence)))
-  (if (< sequence db-element-id-max)
-    (begin
-      (set *sequence-pointer (+ 1 sequence))
-      (pthread-mutex-unlock &env:mutex)
-      (set *result (db-id-add-type sequence type-id)))
-    (begin
-      (pthread-mutex-unlock &env:mutex)
-      (status-set-both-goto db-status-group-db db-status-id-max-id)))
-  (label exit
-    (return status)))
-
 (define (db-sequence-next-system env result) (status-t db-env-t* db-type-id-t*)
-  "return one new, unique and typed identifier"
+  "return one new unique type identifier.
+  the maximum identifier returned is db-type-id-limit minus one"
   status-init
   (declare sequence db-type-id-t)
   (pthread-mutex-lock &env:mutex)
   (set sequence (convert-type env:types:sequence db-type-id-t))
-  (if (< sequence db-type-id-max)
+  (if (> db-type-id-limit sequence)
     (begin
       (set env:types:sequence (+ 1 sequence))
       (pthread-mutex-unlock &env:mutex)
       (set *result sequence))
     (begin
       (pthread-mutex-unlock &env:mutex)
-      (status-set-both-goto db-status-group-db db-status-id-max-id)))
+      (status-set-both-goto db-status-group-db db-status-id-max-type-id)))
+  (label exit
+    (return status)))
+
+(define (db-sequence-next env type-id result) (status-t db-env-t* db-type-id-t db-id-t*)
+  "return one new unique type node identifier.
+  the maximum identifier returned is db-id-limit minus one"
+  status-init
+  (declare sequence db-id-t)
+  (pthread-mutex-lock &env:mutex)
+  (set sequence (: (+ type-id env:types) sequence))
+  (if (> db-element-id-limit sequence)
+    (begin
+      (set (: (+ type-id env:types) sequence) (+ 1 sequence))
+      (pthread-mutex-unlock &env:mutex)
+      (set *result (db-id-add-type sequence type-id)))
+    (begin
+      (pthread-mutex-unlock &env:mutex)
+      (status-set-both-goto db-status-group-db db-status-id-max-element-id)))
   (label exit
     (return status)))
 
@@ -127,18 +134,18 @@
     (free-and-set-null (: (+ i *fields) name)))
   (free-and-set-null *fields))
 
+(define (db-free-env-type type) (b0 db-type-t*)
+  (if (= 0 type:id) return)
+  (free-and-set-null type:fields-fixed-offsets)
+  (db-free-env-types-fields &type:fields type:fields-count)
+  (db-free-env-types-indices &type:indices type:indices-count)
+  (set type:id 0))
+
 (define (db-free-env-types types types-len) (b0 db-type-t** db-type-id-t)
-  (declare
-    i db-type-id-t
-    type db-type-t*)
+  (declare i db-type-id-t)
   (if (not *types) return)
   (for ((set i 0) (< i types-len) (set i (+ 1 i)))
-    (set type (+ i *types))
-    (if (= 0 type:id)
-      (begin
-        (free-and-set-null type:fields-fixed-offsets)
-        (db-free-env-types-fields &type:fields type:fields-count)
-        (db-free-env-types-indices &type:indices type:indices-count))))
+    (db-free-env-type (+ i *types)))
   (free-and-set-null *types))
 
 (define (db-close env) (b0 db-env-t*)

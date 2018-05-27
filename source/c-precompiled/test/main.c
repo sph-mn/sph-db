@@ -17,7 +17,8 @@ status_t test_statistics(db_env_t* env) {
   db_txn_declare(env, txn);
   db_txn_begin(txn);
   status_require_x(db_statistics(txn, &stat));
-  test_helper_assert("dbi-system has one entry", (1 == stat.system.ms_entries));
+  test_helper_assert(
+    "dbi-system contanis only one entry", (1 == stat.system.ms_entries));
 exit:
   db_txn_abort(txn);
   return (status);
@@ -69,7 +70,68 @@ status_t test_type_create(db_env_t* env) {
       ((type_id_2 == (*type_2_pointer).id))));
   test_helper_assert("existent types",
     (db_type_get(env, "test-type-1") && db_type_get(env, "test-type-2")));
-/* type-delete */
+  /* type-delete */
+  status_require_x(db_type_delete(env, type_id_1));
+  status_require_x(db_type_delete(env, type_id_2));
+  type_1_pointer = db_type_get(env, "test-type-1");
+  type_2_pointer = db_type_get(env, "test-type-2");
+  test_helper_assert(
+    "type-delete type-get", !(type_1_pointer || type_2_pointer));
+exit:
+  return (status);
+};
+/** create several types, particularly to test automatic env:types array
+ * resizing */
+status_t test_type_create_many(db_env_t* env) {
+  status_init;
+  db_type_id_t i;
+  b8 name[255];
+  db_type_id_t type_id;
+  /* 10 times as many as there is extra room left for new types in env:types */
+  for (i = 0; (i < (10 * db_env_types_extra_count)); i = (1 + i)) {
+    sprintf(name, "test-type-%lu", i);
+    status_require_x(db_type_create(env, name, 0, 0, 0, &type_id));
+  };
+exit:
+  return (status);
+};
+status_t test_sequence(db_env_t* env) {
+  status_init;
+  size_t i;
+  db_id_t id;
+  db_id_t prev_id;
+  db_type_id_t prev_type_id;
+  db_type_id_t type_id;
+  /* node sequence */
+  status_require_x(db_type_create(env, "test-type", 0, 0, 0, &type_id));
+  prev_id = db_id_add_type(0, type_id);
+  for (i = 0; (i <= db_element_id_limit); i = (i + 1)) {
+    status = db_sequence_next(env, type_id, &id);
+    debug_log("type-id: %lu, id: %lu", type_id, id);
+    if ((db_element_id_limit <= (1 + prev_id))) {
+      test_helper_assert(
+        "node sequence is limited", (db_status_id_max_element_id == status.id));
+      status_set_id(status_id_success);
+    } else {
+      test_helper_assert("node sequence is monotonically increasing",
+        (status_success_p && ((1 == (id - prev_id)))));
+    };
+    prev_id = id;
+  };
+  /* system sequence. test last, otherwise type ids would be exhausted */
+  prev_type_id = 0;
+  for (i = 0; (i <= db_type_id_limit); i = (i + 1)) {
+    status = db_sequence_next_system(env, &type_id);
+    if ((db_type_id_limit <= (1 + prev_type_id))) {
+      test_helper_assert(
+        "system sequence is limited", (db_status_id_max_type_id == status.id));
+      status_set_id(status_id_success);
+    } else {
+      test_helper_assert("system sequence is monotonically increasing",
+        (status_success_p && ((1 == (type_id - prev_type_id)))));
+    };
+    prev_type_id = type_id;
+  };
 exit:
   return (status);
 };
@@ -80,9 +142,34 @@ status_t test_open_nonempty(db_env_t* env) {
 exit:
   return (status);
 };
+status_t test_id_construction(db_env_t* env) {
+  status_init;
+  /* id creation */
+  db_type_id_t type_id;
+  type_id = (db_type_id_limit / 2);
+  test_helper_assert("type-id-size + element-id-size = id-size",
+    (db_size_id == (db_size_type_id + db_size_element_id)));
+  test_helper_assert("type and element masks not conflicting",
+    !(db_id_type_mask & db_id_element_mask));
+  test_helper_assert("type-id-mask | element-id-mask = id-mask",
+    (db_id_mask == (db_id_type_mask | db_id_element_mask)));
+  test_helper_assert("id type",
+    (type_id == db_id_type(db_id_add_type(db_element_id_limit, type_id))));
+  /* take a low value to be compatible with different configurations */
+  test_helper_assert(
+    "id element", (254 == db_id_element(db_id_add_type(254, type_id))));
+exit:
+  return (status);
+};
 int main() {
   test_helper_init(env);
+  test_helper_test_one(test_sequence, env);
+  test_helper_test_one(test_id_construction, env);
+  test_helper_test_one(test_open_empty, env);
+  test_helper_test_one(test_statistics, env);
   test_helper_test_one(test_type_create, env);
+  test_helper_test_one(test_type_create_many, env);
+  test_helper_test_one(test_open_nonempty, env);
 exit:
   test_helper_report_status;
   return (status.id);

@@ -4,31 +4,34 @@ status_t db_env_types_extend(db_env_t* env, db_type_id_t type_id) {
   db_type_t* types_temp;
   db_type_id_t types_len;
   db_type_t* types;
-  db_type_id_t index;
+  db_type_id_t i;
   types_len = (*env).types_len;
-  if ((types_len < type_id)) {
-    types = (*env).types;
-    index = types_len;
-    types_len = (20 + type_id);
-    db_realloc(types, types_temp, types_len);
-    for (index = 0; (index < types_len); index = (1 + index)) {
-      (*(index + types)).id = 0;
-    };
-    (*env).types = types;
-    (*env).types_len = types_len;
+  if ((types_len > type_id)) {
+    goto exit;
   };
+  /* resize */
+  types = (*env).types;
+  types_len = (db_env_types_extra_count + type_id);
+  db_realloc(types, types_temp, types_len);
+  /* set new type struct ids to zero */
+  for (i = type_id; (i < types_len); i = (1 + i)) {
+    (*(i + types)).id = 0;
+  };
+  debug_log("set env to %lu", types_len);
+  (*env).types = types;
+  (*env).types_len = types_len;
 exit:
   return (status);
 };
 /** return a pointer to the type struct for the type with the given name. zero
  * if not found */
 db_type_t* db_type_get(db_env_t* env, b8* name) {
-  db_type_id_t index;
+  db_type_id_t i;
   db_type_id_t types_len;
   db_type_t* type;
   types_len = (*env).types_len;
-  for (index = 0; (index < types_len); index = (1 + index)) {
-    type = (index + (*env).types);
+  for (i = 0; (i < types_len); i = (1 + i)) {
+    type = (i + (*env).types);
     if (((*type).id && ((0 == strcmp(name, (*type).name))))) {
       return (type);
     };
@@ -55,6 +58,7 @@ status_t db_type_create(db_env_t* env,
   MDB_val val_key;
   db_txn_declare(env, txn);
   db_cursor_declare(system);
+  db_cursor_declare(nodes);
   /* check if type with name exists */
   if (db_type_get(txn.env, name)) {
     status_set_both_goto(db_status_group_db, db_status_id_duplicate);
@@ -73,7 +77,6 @@ status_t db_type_create(db_env_t* env,
   db_malloc(data, data_size);
   /* set insert data */
   data_start = data;
-  db_system_key_label(key) = db_system_label_type;
   (*((db_name_len_t*)(data))) = name_len;
   data = (sizeof(db_name_len_t) + data);
   memcpy(data, name, name_len);
@@ -90,51 +93,84 @@ status_t db_type_create(db_env_t* env,
     data = (field.name_len + data);
   };
   status_require_x(db_sequence_next_system(txn.env, &type_id));
+  db_system_key_label(key) = db_system_label_type;
   db_system_key_id(key) = type_id;
   val_key.mv_data = key;
-  val_key.mv_size = db_size_type_id;
+  val_key.mv_size = db_size_system_key;
   val_data.mv_data = data_start;
   val_data.mv_size = data_size;
   /* insert data */
   db_txn_write_begin(txn);
   db_cursor_open(txn, system);
   db_mdb_cursor_put(system, val_key, val_data);
-  db_txn_commit(txn);
+  db_cursor_close(system);
   /* update cache */
   status_require_x(db_env_types_extend(txn.env, type_id));
+  db_cursor_open(txn, nodes);
   status_require_x(
-    db_open_type(val_key.mv_data, val_data.mv_data, (*txn.env).types));
+    db_open_type(val_key.mv_data, val_data.mv_data, (*txn.env).types, nodes));
+  db_cursor_close(nodes);
+  db_txn_commit(txn);
   *result = type_id;
 exit:
-  mdb_cursor_close(system);
+  if (db_txn_active_p(txn)) {
+    db_cursor_close_if_active(system);
+    db_cursor_close_if_active(nodes);
+    db_txn_abort(txn);
+  };
   return (status);
 };
-/** delete system entry and all nodes */
-status_t db_type_delete(db_env_t* env, db_type_id_t id) {
+/** delete system entry and/or all nodes and cache entries */
+status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
   status_init;
-  db_mdb_declare_val(val_key, db_size_type_id);
-  db_txn_declare(env, txn);
+  db_id_t id;
+  b8 key[db_size_system_key];
+  db_mdb_declare_val_null;
   db_cursor_declare(system);
   db_cursor_declare(nodes);
+  db_mdb_declare_val(val_key, db_size_system_key);
+  db_txn_declare(env, txn);
+  db_system_key_label(key) = db_system_label_type;
+  db_system_key_id(key) = type_id;
+  val_key.mv_data = key;
   db_txn_write_begin(txn);
+  /* system. continue even if not found */
   db_cursor_open(txn, system);
-  /* schema */
   db_mdb_cursor_get_norequire(system, val_key, val_null, MDB_SET);
   if (db_mdb_status_success_p) {
-    status.id = mdb_cursor_del(system, 0);
-    if (status_success_p) {
-      db_txn_commit(txn);
-    } else {
-      db_txn_abort(txn);
-    };
+    db_mdb_status_require_x(mdb_cursor_del(system, 0));
   } else {
-    db_txn_abort(txn);
     db_mdb_status_require_notfound;
     status_set_id(status_id_success);
   };
-  /* data */
-  db_mdb_cursor_get_norequire(nodes, val_key, val_null, MDB_SET);
+  db_cursor_close(system);
+  /* nodes */
+  db_cursor_open(txn, nodes);
+  val_key.mv_size = db_size_id;
+  id = db_id_add_type(0, type_id);
+  val_key.mv_data = &id;
+  db_mdb_cursor_get_norequire(nodes, val_key, val_null, MDB_SET_RANGE);
+  while ((db_mdb_status_success_p &&
+    ((type_id == db_id_type(db_mdb_val_to_id(val_key)))))) {
+    db_mdb_status_require_x(mdb_cursor_del(nodes, 0));
+    db_mdb_cursor_get_norequire(nodes, val_key, val_null, MDB_NEXT_NODUP);
+  };
+  if (status_failure_p) {
+    if (db_mdb_status_notfound_p) {
+      status_set_id(status_id_success);
+    } else {
+      status_set_group_goto(db_status_group_lmdb);
+    };
+  };
+  /* cache */
+  db_free_env_type((type_id + (*env).types));
 exit:
-  mdb_cursor_close(system);
+  db_cursor_close_if_active(system);
+  db_cursor_close_if_active(nodes);
+  if (status_success_p) {
+    db_txn_commit(txn);
+  } else {
+    db_txn_abort(txn);
+  };
   return (status);
 };

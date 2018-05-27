@@ -94,6 +94,7 @@ status_t db_open_format(MDB_cursor* system, db_txn_t txn) {
     };
   } else {
     db_mdb_status_require_notfound;
+    /* no format entry exists yet */
     val_data.mv_data = format;
     db_mdb_cursor_put(system, val_key, val_data);
   };
@@ -106,10 +107,11 @@ status_t db_open_system_sequence(MDB_cursor* system, db_type_id_t* result) {
   status_init;
   db_type_id_t current;
   b8 key[db_size_system_key];
+  db_mdb_declare_val_null;
   db_mdb_declare_val(val_key, 1);
   current = 0;
   db_system_key_label(key) = db_system_label_type;
-  db_system_key_id(key) = db_type_id_max;
+  db_system_key_id(key) = db_type_id_limit;
   val_key.mv_data = key;
   /* search from the last possible type or the key after */
   db_mdb_cursor_get_norequire(system, val_key, val_null, MDB_SET_RANGE);
@@ -147,7 +149,104 @@ status_t db_open_system_sequence(MDB_cursor* system, db_type_id_t* result) {
   };
 exit:
   db_status_success_if_mdb_notfound;
-  (*result) = ((db_type_id_max == current) ? current : (1 + current));
+  (*result) = ((db_type_id_limit == current) ? current : (1 + current));
+  return (status);
+};
+/** get the first data id of type and save it in result. result is set to zero
+ * if none has been found */
+status_t
+db_type_first_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* result) {
+  status_init;
+  db_mdb_declare_val_null;
+  db_mdb_declare_val_id;
+  db_id_t id;
+  (*result) = 0;
+  id = db_id_add_type(0, type_id);
+  val_id.mv_data = &id;
+  db_mdb_cursor_get_norequire(nodes, val_id, val_null, MDB_SET_RANGE);
+  if (db_mdb_status_success_p) {
+    if ((type_id == db_id_type(db_mdb_val_to_id(val_id)))) {
+      (*result) = db_mdb_val_to_id(val_id);
+    };
+  } else {
+    if (db_mdb_status_notfound_p) {
+      status_set_id(status_id_success);
+    } else {
+      status_set_group_goto(db_status_group_lmdb);
+    };
+  };
+exit:
+  return (status);
+};
+/** sets result to the last key id if the last key is of type, otherwise sets
+  result to zero.
+  leaves cursor at last key. status is mdb-notfound if database is empty */
+status_t
+db_type_last_key_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* result) {
+  status_init;
+  db_mdb_declare_val_id;
+  db_mdb_declare_val_null;
+  (*result) = 0;
+  db_mdb_cursor_get_norequire(nodes, val_id, val_null, MDB_LAST);
+  if ((db_mdb_status_success_p &&
+        ((type_id == db_id_type(db_mdb_val_to_id(val_id)))))) {
+    (*result) = db_mdb_val_to_id(val_id);
+  };
+  return (status);
+};
+/** get the last existing node id for type or zero if none exist.
+   algorithm: check if data of type exists, if yes then check if last key is of
+   type or position next type and step back */
+status_t
+db_type_last_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* result) {
+  status_init;
+  db_id_t id;
+  db_mdb_declare_val_null;
+  db_mdb_declare_val_id;
+  /* if last key is of type then there are no greater type-ids and data of type
+     exists. if there is no last key, the database is empty */
+  status = db_type_last_key_id(nodes, type_id, &id);
+  if (db_mdb_status_success_p) {
+    if (id) {
+      *result = id;
+      goto exit;
+    };
+  } else {
+    if (db_mdb_status_notfound_p) {
+      *result = 0;
+      status_set_id_goto(status_id_success);
+    } else {
+      status_goto;
+    };
+  };
+  /* database is not empty and the last key is not of searched type.
+       type-id +1 is not greater than max possible type-id */
+  status_require_x(db_type_first_id(nodes, (1 + type_id), &id));
+  if (!id) {
+    /* no greater type-id found. since the searched type is not the last,
+             all existing type-ids are smaller */
+    (*result) = 0;
+    goto exit;
+  };
+  /* greater type found, step back */
+  db_mdb_cursor_get(nodes, val_id, val_null, MDB_PREV);
+  (*result) = ((type_id == db_id_type(db_mdb_val_to_id(val_id)))
+      ? db_mdb_val_to_id(val_id)
+      : 0);
+exit:
+  return (status);
+};
+/** initialise the sequence for a type by searching the max used id for the
+   type. lowest sequence value is 1. algorithm: check if any entry for type
+   exists, then position at max or first next type key, take or step back to
+   previous key */
+status_t db_open_sequence(MDB_cursor* nodes, db_type_t* type) {
+  status_init;
+  db_id_t id;
+  status_require_x(db_type_last_id(nodes, (*type).id, &id));
+  id = db_id_element(id);
+  (*type).sequence = ((id < db_element_id_limit) ? (1 + id) : id);
+exit:
   return (status);
 };
 /** read information for fields from system btree type data */
@@ -201,7 +300,10 @@ exit:
   };
   return (status);
 };
-status_t db_open_type(b8* system_key, b8* system_value, db_type_t* types) {
+status_t db_open_type(b8* system_key,
+  b8* system_value,
+  db_type_t* types,
+  MDB_cursor* nodes) {
   status_init;
   db_type_id_t id;
   db_type_t* type_pointer;
@@ -210,6 +312,7 @@ status_t db_open_type(b8* system_key, b8* system_value, db_type_t* types) {
   (*type_pointer).id = id;
   status_require_x(db_read_name(&system_value, &((*type_pointer).name)));
   status_require_x(db_open_type_read_fields(&system_value, type_pointer));
+  status_require_x(db_open_sequence(nodes, type_pointer));
 exit:
   return (status);
 };
@@ -218,7 +321,7 @@ exit:
    instead of a slower hash table which would be needed otherwise.
    the type array has free space at the end for possible new types.
    type id zero is the system btree */
-status_t db_open_types(MDB_cursor* system, db_txn_t txn) {
+status_t db_open_types(MDB_cursor* system, MDB_cursor* nodes, db_txn_t txn) {
   status_init;
   b8 key[db_size_system_key];
   db_type_t* types;
@@ -227,21 +330,26 @@ status_t db_open_types(MDB_cursor* system, db_txn_t txn) {
   db_mdb_declare_val(val_key, (1 + sizeof(db_id_t)));
   db_mdb_declare_val(val_data, 3);
   types = 0;
-  if ((16 < sizeof(db_type_id_t))) {
+  if ((db_size_type_id_max < sizeof(db_type_id_t))) {
     status_set_both_goto(db_status_group_db, db_status_id_max_type_id_size);
   };
+  /* initialise system sequence (type 0) */
   status_require_x(db_open_system_sequence(system, &system_sequence));
-  types_len = (db_type_id_max - system_sequence);
-  types_len = (system_sequence + ((20 < types_len) ? 20 : types_len));
+  types_len = (db_type_id_limit - system_sequence);
+  types_len = (system_sequence +
+    ((db_env_types_extra_count < types_len) ? db_env_types_extra_count
+                                            : types_len));
   db_system_key_label(key) = db_system_label_type;
   db_system_key_id(key) = 0;
   val_key.mv_data = key;
   db_calloc(types, types_len, sizeof(db_type_t));
   (*types).sequence = system_sequence;
+  /* node types */
   db_mdb_cursor_get_norequire(system, val_key, val_data, MDB_SET_RANGE);
   while ((db_mdb_status_success_p &&
     ((db_system_label_type == db_system_key_label(val_key.mv_data))))) {
-    status_require_x(db_open_type(val_key.mv_data, val_data.mv_data, types));
+    status_require_x(
+      db_open_type(val_key.mv_data, val_data.mv_data, types, nodes));
     db_mdb_cursor_get_norequire(system, val_key, val_data, MDB_NEXT);
   };
   if (db_mdb_status_notfound_p) {
@@ -261,6 +369,7 @@ exit:
  * type */
 status_t db_open_indices(MDB_cursor* system, db_txn_t txn) {
   status_init;
+  db_mdb_declare_val_null;
   db_mdb_declare_val(val_key, (1 + sizeof(db_id_t)));
   db_type_id_t current_type_id;
   db_field_t* fields;
@@ -329,130 +438,26 @@ exit:
   };
   return (status);
 };
-/** get the first data id of type and save it in result. result is set to zero
- * if none has been found */
-status_t
-db_type_first_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* result) {
-  status_init;
-  db_mdb_declare_val_id;
-  db_id_t id;
-  (*result) = 0;
-  id = db_id_add_type(0, type_id);
-  val_id.mv_data = &id;
-  db_mdb_cursor_get_norequire(nodes, val_id, val_null, MDB_SET_RANGE);
-  if (db_mdb_status_success_p) {
-    if ((type_id == db_id_type(db_mdb_val_to_id(val_id)))) {
-      (*result) = db_mdb_val_to_id(val_id);
-    };
-  } else {
-    if (db_mdb_status_notfound_p) {
-      status_set_id(status_id_success);
-    } else {
-      status_set_group_goto(db_status_group_lmdb);
-    };
-  };
-exit:
-  return (status);
-};
-/** sets result to the last key id if the last key is of type, otherwise sets
-  result to zero.
-  leaves cursor at last key. status is mdb-notfound if database is empty */
-status_t
-db_type_last_key_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* result) {
-  status_init;
-  db_mdb_declare_val_id;
-  (*result) = 0;
-  db_mdb_cursor_get_norequire(nodes, val_id, val_null, MDB_LAST);
-  if ((db_mdb_status_success_p &&
-        ((type_id == db_id_type(db_mdb_val_to_id(val_id)))))) {
-    (*result) = db_mdb_val_to_id(val_id);
-  };
-  return (status);
-};
-/** get the last existing node id for type or zero if none exist.
-   algorithm: check if data of type exists, if yes then check if last key is of
-   type or position next type and step back */
-status_t
-db_type_last_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* result) {
-  status_init;
-  db_id_t id;
-  db_mdb_declare_val_id;
-  /* if last key is of type then there are no greater type-ids and data of type
-     exists. if there is no last key, the database is empty */
-  status = db_type_last_key_id(nodes, type_id, &id);
-  if (db_mdb_status_success_p) {
-    if (id) {
-      *result = id;
-      goto exit;
-    };
-  } else {
-    if (db_mdb_status_notfound_p) {
-      *result = 0;
-      status_set_id_goto(status_id_success);
-    } else {
-      status_goto;
-    };
-  };
-  /* database is not empty and the last key is not of searched type.
-       type-id +1 is not greater than max possible type-id */
-  status_require_x(db_type_first_id(nodes, (1 + type_id), &id));
-  if (!id) {
-    /* no greater type-id found. since the searched type is not the last,
-             all existing type-ids are smaller */
-    (*result) = 0;
-    goto exit;
-  };
-  /* greater type found, step back */
-  db_mdb_cursor_get(nodes, val_id, val_null, MDB_PREV);
-  (*result) = ((type_id == db_id_type(db_mdb_val_to_id(val_id)))
-      ? db_mdb_val_to_id(val_id)
-      : 0);
-exit:
-  return (status);
-};
-/** initialise the sequence for each type by searching the max key for the type.
-   lowest sequence value is 1.
-   algorithm:
-     check if any entry for type exists, then position at max or first next type
-   key, take or step back to previous key */
-status_t db_open_sequences(db_txn_t txn) {
-  status_init;
-  db_id_t id;
-  db_type_t* types;
-  db_type_id_t types_len;
-  db_type_id_t i;
-  db_cursor_declare(nodes);
-  db_mdb_declare_val_id;
-  types = (*txn.env).types;
-  types_len = (*txn.env).types_len;
-  db_cursor_open(txn, nodes);
-  for (i = 0; (i < types_len); i = (1 + i)) {
-    id = 0;
-    status_require_x(db_type_last_id(nodes, (*(i + types)).id, &id));
-    id = db_id_element(id);
-    (*(i + types)).sequence = ((id < db_element_id_max) ? (1 + id) : id);
-  };
-exit:
-  return (status);
-};
 /** ensure that the system tree exists with default values.
   check format and load cached values */
 status_t db_open_system(db_txn_t txn) {
   status_init;
   db_mdb_cursor_declare(system);
+  db_mdb_cursor_declare(nodes);
   db_mdb_status_require_x(
     mdb_dbi_open(txn.mdb_txn, "system", MDB_CREATE, &((*txn.env).dbi_system)));
   db_cursor_open(txn, system);
-  debug_log("%s", "open format");
+  debug_log("%s", "open begin");
   status_require_x(db_open_format(system, txn));
   debug_log("%s", "open types");
-  status_require_x(db_open_types(system, txn));
+  db_cursor_open(txn, nodes);
+  status_require_x(db_open_types(system, nodes, txn));
   debug_log("%s", "open indices");
   status_require_x(db_open_indices(system, txn));
-  debug_log("%s", "open sequences");
-  status_require_x(db_open_sequences(txn));
+  debug_log("%s", "open system success");
 exit:
-  mdb_cursor_close(system);
+  db_cursor_close_if_active(system);
+  db_cursor_close_if_active(nodes);
   return (status);
 };
 /** ensure that the trees used for the graph exist, configure and open dbi */
@@ -508,6 +513,9 @@ exit:
 status_t db_open(b8* path, db_open_options_t* options_pointer, db_env_t* env) {
   status_init;
   db_open_options_t options;
+  if (!(db_size_id > db_size_type_id)) {
+    status_set_both_goto(db_status_group_db, db_status_id_max_type_id_size);
+  };
   db_txn_declare(env, txn);
   if ((*env).open) {
     return (status);
@@ -515,7 +523,6 @@ status_t db_open(b8* path, db_open_options_t* options_pointer, db_env_t* env) {
   if (!path) {
     db_status_set_id_goto(db_status_id_missing_argument_db_root);
   };
-  db_mdb_reset_val_null;
   if (options_pointer) {
     options = *options_pointer;
   } else {
@@ -526,12 +533,13 @@ status_t db_open(b8* path, db_open_options_t* options_pointer, db_env_t* env) {
   db_txn_write_begin(txn);
   status_require_x(db_open_nodes(txn));
   status_require_x(db_open_system(txn));
+  status_require_x(db_open_graph(txn));
   db_txn_commit(txn);
   pthread_mutex_init(&((*env).mutex), 0);
   (*env).open = 1;
 exit:
   if (status_failure_p) {
-    db_txn_abort(txn);
+    db_txn_abort_if_active(txn);
     db_close(env);
   };
   return (status);

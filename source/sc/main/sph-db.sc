@@ -5,21 +5,24 @@
 
 (pre-define-if-not-defined
   db-id-t b64
-  db-type-id-t b8
+  db-type-id-t b16
   db-ordinal-t b32
   db-index-count-t b8
   db-field-count-t b8
-  db-id-max UINT64_MAX
-  db-size-id (sizeof db-id-t)
-  db-size-ordinal (sizeof db-ordinal-t)
-  db-size-type-id (sizeof db-type-id-t)
+  db-name-len-t b8
+  db-name-len-max UINT8_MAX
+  db-field-type-t b8
+  db-id-mask UINT64_MAX
+  db-type-id-mask UINT16_MAX
   (db-id-equal? a b) (= a b)
   (db-id-compare a b)
   (if* (< a b) -1
-    (> a b))
-  (db-pointer->id a index) (pointer-get (+ index (convert-type a db-id-t*))))
+    (> a b)))
 
 (pre-define
+  db-size-id (sizeof db-id-t)
+  db-size-type-id (sizeof db-type-id-t)
+  db-size-ordinal (sizeof db-ordinal-t)
   db-ordinal-compare db-id-compare
   db-size-graph-data (+ db-size-ordinal db-size-id)
   db-size-graph-key (* 2 db-size-id)
@@ -28,9 +31,11 @@
   db-read-option-is-set-right 4
   db-read-option-initialised 8
   db-null 0
-  db-type-id-max db-type-id-mask
-  db-element-id-mask (bit-xor db-type-id-mask db-id-mask)
-  db-element-id-max db-element-id-mask
+  db-type-id-limit db-type-id-mask
+  db-size-element-id (- (sizeof db-id-t) (sizeof db-type-id-t))
+  db-id-type-mask (bit-shift-left (convert-type db-type-id-mask db-id-t) (* 8 db-size-element-id))
+  db-id-element-mask (bit-not db-id-type-mask)
+  db-element-id-limit db-id-element-mask
   db-type-flag-virtual 1
   db-system-label-format 0
   db-system-label-type 1
@@ -51,10 +56,24 @@
   db-field-type-char16 66
   db-field-type-char32 98
   db-field-type-char64 130
+  db-env-types-extra-count 20
+  db-size-type-id-max 16
+  db-size-system-label 1
+  (db-id-add-type id type-id)
+  (bit-or id (bit-shift-left (convert-type type-id db-id-t) (* 8 db-size-element-id)))
+  (db-id-type id)
+  (begin
+    "get the type id part from a node id. a node id without element id"
+    (bit-shift-right id (* 8 db-size-element-id)))
+  (db-id-element id)
+  (begin
+    "get the element id part from a node id. a node id without type id"
+    (bit-and db-id-element-mask id))
+  (db-pointer->id a index) (pointer-get (+ index (convert-type a db-id-t*)))
   (db-field-type-fixed? a) (not (bit-and 1 a))
   (db-system-key-label a) (pointer-get (convert-type a b8*))
-  (db-system-key-id a) (pointer-get (convert-type (+ 1 (convert-type a b8*)) db-type-id-t*))
-  (db-id-add-type id type-id) (bit-or id (bit-shift-left type-id (* 8 (sizeof db-type-id-t))))
+  (db-system-key-id a)
+  (pointer-get (convert-type (+ db-size-system-label (convert-type a b8*)) db-type-id-t*))
   (db-status-memory-error-if-null variable)
   (if (not variable) (status-set-both-goto db-status-group-db db-status-id-memory))
   (db-malloc variable size)
@@ -88,14 +107,6 @@
   (db-data-size-set a value)
   (struct-set data
     mv-size value)
-  (db-id-type id)
-  (begin
-    "get the type id part from a node id. a node id without element id"
-    (bit-and db-type-id-mask id))
-  (db-id-element id)
-  (begin
-    "get the element id part from a node id. a node id without type id"
-    (bit-and db-element-id-mask id))
   (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
   (db-txn-begin txn)
   (db-mdb-status-require! (mdb-txn-begin txn.env:mdb-env 0 MDB-RDONLY &txn.mdb-txn))
@@ -104,6 +115,10 @@
   (begin
     (mdb-txn-abort a.mdb-txn)
     (set a.mdb-txn 0))
+  (db-txn-abort-if-active a) (if a.mdb-txn (db-txn-abort a))
+  (db-txn-active? a)
+  (if* a.mdb-txn #t
+    #f)
   (db-txn-commit a)
   (begin
     (db-mdb-status-require! (mdb-txn-commit a.mdb-txn))
@@ -220,7 +235,9 @@
   (db-type-get env name) (db-type-t* db-env-t* b8*)
   (db-type-create env name field-count fields flags result)
   (status-t db-env-t* b8* db-field-count-t db-field-t* b8 db-type-id-t*) (db-type-delete env id)
-  (status-t db-env-t* db-type-id-t) (db-field-type-size a) (b8 b8))
+  (status-t db-env-t* db-type-id-t) (db-sequence-next-system env result)
+  (status-t db-env-t* db-type-id-t*) (db-sequence-next env type-id result)
+  (status-t db-env-t* db-type-id-t db-id-t*) (db-field-type-size a) (b8 b8))
 
 (pre-define imht-set-key-t db-id-t)
 (sc-include "foreign/sph/imht-set")

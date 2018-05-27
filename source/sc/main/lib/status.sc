@@ -7,7 +7,7 @@
     db-status-id-different-format
     db-status-id-duplicate
     db-status-id-input-type
-    db-status-id-max-id
+    db-status-id-max-element-id
     db-status-id-max-type-id
     db-status-id-max-type-id-size
     db-status-id-memory
@@ -27,7 +27,9 @@
   (if db-mdb-status-notfound? (status-set-both db-status-group-db db-status-id-no-more-data))
   db-status-success-if-mdb-notfound (if db-mdb-status-notfound? (status-set-id status-id-success))
   db-status-success-if-no-more-data
-  (if (status-id-is? db-status-id-no-more-data) (struct-set status id status-id-success))
+  (if (status-id-is? db-status-id-no-more-data)
+    (struct-set status
+      id status-id-success))
   db-mdb-status-success? (status-id-is? MDB-SUCCESS)
   db-mdb-status-failure? (not db-mdb-status-success?)
   db-mdb-status-notfound? (status-id-is? MDB-NOTFOUND)
@@ -69,11 +71,12 @@
         (db-status-id-missing-argument-db-root (set b "missing argument 'db-root'"))
         (db-status-id-path-not-accessible-db-root (set b "root not accessible"))
         (db-status-id-memory (set b "not enough memory or other memory allocation error"))
-        (db-status-id-max-id (set b "maximum identifier value for the type has been reached"))
+        (db-status-id-max-element-id
+          (set b "maximum element identifier value has been reached for the type"))
         (db-status-id-max-type-id (set b "maximum type identifier value has been reached"))
         (db-status-id-max-type-id-size
           (set b
-            "type identifier size is configured to be greater than 16 bit, which is currently not supported"))
+            "type identifier size is either configured to be greater than 16 bit, which is currently not supported, or is not smaller than node id size"))
         (db-status-id-condition-unfulfilled (set b "condition unfulfilled"))
         (db-status-id-no-more-data (set b "no more data to read"))
         (db-status-id-different-format
@@ -96,7 +99,7 @@
         (db-status-id-missing-argument-db-root (set b "missing-argument-db-root"))
         (db-status-id-path-not-accessible-db-root (set b "path-not-accessible-db-root"))
         (db-status-id-memory (set b "memory"))
-        (db-status-id-max-id (set b "max-id-reached"))
+        (db-status-id-max-element-id (set b "max-element-id-reached"))
         (db-status-id-max-type-id (set b "max-type-id-reached"))
         (db-status-id-max-type-id-size (set b "type-id-size-too-big"))
         (db-status-id-condition-unfulfilled (set b "condition-unfulfilled"))
