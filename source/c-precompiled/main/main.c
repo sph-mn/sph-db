@@ -197,3 +197,4 @@ b0 db_close(db_env_t* env) {
 };
 #include "./open.c"
 #include "./node.c"
+#include "./graph.c"

@@ -447,14 +447,10 @@ status_t db_open_system(db_txn_t txn) {
   db_mdb_status_require_x(
     mdb_dbi_open(txn.mdb_txn, "system", MDB_CREATE, &((*txn.env).dbi_system)));
   db_cursor_open(txn, system);
-  debug_log("%s", "open begin");
   status_require_x(db_open_format(system, txn));
-  debug_log("%s", "open types");
   db_cursor_open(txn, nodes);
   status_require_x(db_open_types(system, nodes, txn));
-  debug_log("%s", "open indices");
   status_require_x(db_open_indices(system, txn));
-  debug_log("%s", "open system success");
 exit:
   db_cursor_close_if_active(system);
   db_cursor_close_if_active(nodes);

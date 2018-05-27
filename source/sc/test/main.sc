@@ -24,7 +24,7 @@
     (db-txn-abort txn)
     (return status)))
 
-(define (test-type-create env) (status-t db-env-t*)
+(define (test-type-create-get-delete env) (status-t db-env-t*)
   status-init
   (declare
     fields (array db-field-t 3)
@@ -102,7 +102,7 @@
     prev-id db-id-t
     prev-type-id db-type-id-t
     type-id db-type-id-t)
-  (sc-comment "node sequence")
+  (sc-comment "node sequence. note that sequences only persist through data inserts")
   (status-require! (db-type-create env "test-type" 0 0 0 &type-id))
   (set (: (+ type-id env:types) sequence) (- db-element-id-limit 100))
   (set prev-id (db-id-add-type (- db-element-id-limit 100 1) type-id))
@@ -133,7 +133,7 @@
 
 (define (test-open-nonempty env) (status-t db-env-t*)
   status-init
-  (status-require! (test-type-create env))
+  (status-require! (test-type-create-get-delete env))
   (status-require! (test-helper-reset env #t))
   (label exit
     (return status)))
@@ -163,7 +163,7 @@
   (test-helper-test-one test-statistics env)
   (test-helper-test-one test-id-construction env)
   (test-helper-test-one test-sequence env)
-  (test-helper-test-one test-type-create env)
+  (test-helper-test-one test-type-create-get-delete env)
   (test-helper-test-one test-type-create-many env)
   (test-helper-test-one test-open-nonempty env)
   (label exit

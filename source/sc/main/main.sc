@@ -19,7 +19,7 @@
   (begin
     (mdb-cursor-close name)
     (set name 0))
-  (db-cursor-close-if-active name) (if name (db-cursor-close name))
+  (db-cursor-close-if-active name)(if name (db-cursor-close name))
   db-size-system-key (+ 1 (sizeof db-type-id-t))
   (db-select-ensure-offset state offset reader)
   (if offset
@@ -164,7 +164,6 @@
   (set env:open #f)
   (pthread-mutex-destroy &env:mutex))
 
-(pre-include "./open.c" "./node.c"
-  ;"main/graph"
+(pre-include "./open.c" "./node.c" "./graph.c"
   ;"index"
   )

@@ -12,5 +12,6 @@
     db_type_get;
     db_sequence_next;
     db_sequence_next_system;
+    db_graph_ensure;
   local: *;
 };

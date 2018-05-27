@@ -199,13 +199,6 @@
       (id db-id-t)
       (size size-t)
       (data b0*)))
-  db-graph-record-t
-  (type
-    (struct
-      (left db-id-t)
-      (right db-id-t)
-      (label db-id-t)
-      (ordinal db-ordinal-t)))
   db-txn-t
   (type
     (struct
@@ -229,6 +222,18 @@
       (filesystem-has-ordered-writes? b8)
       (env-open-flags b32)
       (file-permissions b16)))
+  db-graph-record-t
+  (type
+    (struct
+      (left db-id-t)
+      (right db-id-t)
+      (label db-id-t)
+      (ordinal db-ordinal-t)))
+  db-graph-ordinal-generator-t (type (function-pointer db-ordinal-t b0*)))
+
+(pre-include "./lib/data-structures.c")
+
+(declare
   (db-statistics txn result) (status-t db-txn-t db-statistics-t*)
   (db-close env) (b0 db-env-t*)
   (db-open root options env) (status-t b8* db-open-options-t* db-env-t*)
@@ -237,48 +242,12 @@
   (status-t db-env-t* b8* db-field-count-t db-field-t* b8 db-type-id-t*) (db-type-delete env id)
   (status-t db-env-t* db-type-id-t) (db-sequence-next-system env result)
   (status-t db-env-t* db-type-id-t*) (db-sequence-next env type-id result)
-  (status-t db-env-t* db-type-id-t db-id-t*) (db-field-type-size a) (b8 b8))
-
-(pre-define imht-set-key-t db-id-t)
-(sc-include "foreign/sph/imht-set")
-
-(pre-define
-  mi-list-name-prefix db-ids
-  mi-list-element-t db-id-t)
-
-(sc-include "foreign/sph/mi-list")
-
-(pre-define
-  mi-list-name-prefix db-data-list
-  mi-list-element-t db-data-t)
-
-(sc-include "foreign/sph/mi-list")
-
-(pre-define
-  mi-list-name-prefix db-data-records
-  mi-list-element-t db-data-record-t)
-
-(sc-include "foreign/sph/mi-list")
-
-(pre-define
-  mi-list-name-prefix db-graph-records
-  mi-list-element-t db-graph-record-t)
-
-(sc-include "foreign/sph/mi-list")
-
-(pre-define
-  db-ids-first mi-list-first
-  db-ids-first-address mi-list-first-address
-  db-ids-rest mi-list-rest
-  db-data-list-first mi-list-first
-  db-data-list-first-address mi-list-first-address
-  db-data-list-rest mi-list-rest
-  db-data-records-first mi-list-first
-  db-data-records-first-address mi-list-first-address
-  db-data-records-rest mi-list-rest
-  db-graph-records-first mi-list-first
-  db-graph-records-first-address mi-list-first-address
-  db-graph-records-rest mi-list-rest)
+  (status-t db-env-t* db-type-id-t db-id-t*) (db-field-type-size a)
+  (b8 b8) (db-graph-ensure txn left right label ordinal-generator ordinal-generator-state)
+  (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-graph-ordinal-generator-t b0*)
+  (db-status-description a) (b8* status-t)
+  (db-status-name a) (b8* status-t)
+  (db-status-group-id->name a) (b8* status-i-t))
 
 ;-- old --;
 
@@ -337,7 +306,7 @@
 (define-type db-graph-reader-t
   (function-pointer status-t db-graph-read-state-t* b32 db-graph-records-t**))
 
-(define-type db-graph-ordinal-generator-t (function-pointer db-ordinal-t b0*))
+
 (pre-define (db-type? db-type-name id) (= db-type-name (bit-and id db-type-mask)))
 (define (db-node-read state count result) (status-t db-node-read-state-t* b32 db-data-records-t**))
 (define (db-node-select txn types offset state) (status-t db-txn-t b8 b32 db-node-read-state-t*))
@@ -384,9 +353,6 @@
 (define (db-graph-delete txn left right label ordinal)
   (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t*))
 
-(define (db-status-description a) (b8* status-t))
-(define (db-status-name a) (b8* status-t))
-(define (db-status-group-id->name a) (b8* status-i-t))
 
 (define (db-graph-select txn left right label ordinal offset result)
   (status-t

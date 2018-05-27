@@ -55,8 +55,7 @@
   (begin
     (db-mdb-cursor-open-two txn dbi-a name-a dbi-b name-b)
     (db-mdb-cursor-open txn dbi-c name-c))
-  (db-mdb-val->id-at a index) (db-pointer->id (struct-get a mv-data) index)
-  (db-mdb-val->id a) (db-pointer->id (struct-get a mv-data) 0)
+  (db-mdb-val->id a) (db-pointer->id a.mv-data 0)
   (db-mdb-declare-val name size)
   (begin
     (declare name MDB-val)
@@ -69,9 +68,6 @@
   db-mdb-declare-val-graph-data (db-mdb-declare-val val-graph-data db-size-graph-data)
   db-mdb-declare-val-graph-key (db-mdb-declare-val val-graph-key db-size-graph-key)
   db-mdb-reset-val-null (set val-null.mv-size 0)
-  (db-mdb-val-graph-data->id a) (db-graph-data->id (struct-get a mv-data))
-  (db-mdb-val-graph-data->ordinal a) (db-graph-data->ordinal (struct-get a mv-data))
-  (db-mdb-compare-get-mv-data mdb-val) (struct-pointer-get mdb-val mv-data)
   (db-mdb-cursor-each-key cursor val-key val-value body)
   (begin
     (db-mdb-cursor-get! cursor val-key val-value MDB-FIRST)
@@ -81,50 +77,32 @@
     db-mdb-status-require-notfound)
   (db-mdb-cursor-set-first! cursor)
   (db-mdb-status-require! (mdb-cursor-get cursor &val-null &val-null MDB-FIRST))
-  (db-mdb-val->graph-key a) (convert-type (struct-get a mv-data) db-id-t*))
+  (db-mdb-val->graph-key a) (convert-type a.mv-data db-id-t*))
 
 (define (db-mdb-compare-id a b) ((static int) (const MDB-val*) (const MDB-val*))
   "mdb comparison routines are used by lmdb for search, insert and delete"
-  (return
-    (db-id-compare
-      (db-pointer->id (db-mdb-compare-get-mv-data a) 0)
-      (db-pointer->id (db-mdb-compare-get-mv-data b) 0))))
+  (return (db-id-compare (db-pointer->id a:mv-data 0) (db-pointer->id b:mv-data 0))))
 
 (define (db-mdb-compare-graph-key a b) ((static int) (const MDB-val*) (const MDB-val*))
   (return
-    (if* (< (db-mdb-val->id-at (pointer-get a) 0) (db-mdb-val->id-at (pointer-get b) 0)) -1
-      (if* (> (db-mdb-val->id-at (pointer-get a) 0) (db-mdb-val->id-at (pointer-get b) 0)) 1
-        (if* (< (db-mdb-val->id-at (pointer-get a) 1) (db-mdb-val->id-at (pointer-get b) 1)) -1
-          (> (db-mdb-val->id-at (pointer-get a) 1) (db-mdb-val->id-at (pointer-get b) 1)))))))
+    (if* (< (db-pointer->id a:mv-data 0) (db-pointer->id b:mv-data 0)) -1
+      (if* (> (db-pointer->id a:mv-data 0) (db-pointer->id b:mv-data 0)) 1
+        (if* (< (db-pointer->id a:mv-data 1) (db-pointer->id b:mv-data 1)) -1
+          (> (db-pointer->id a:mv-data 1) (db-pointer->id b:mv-data 1)))))))
 
 (define (db-mdb-compare-graph-data a b) ((static int) (const MDB-val*) (const MDB-val*))
   "memcmp does not work here, gives -1 for 256 vs 1"
   (return
-    (if*
-      (<
-        (db-mdb-val-graph-data->ordinal (pointer-get a))
-        (db-mdb-val-graph-data->ordinal (pointer-get b)))
-      -1
-      (if*
-        (>
-          (db-mdb-val-graph-data->ordinal (pointer-get a))
-          (db-mdb-val-graph-data->ordinal (pointer-get b)))
-        1
-        (if*
-          (<
-            (db-mdb-val-graph-data->id (pointer-get a)) (db-mdb-val-graph-data->id (pointer-get b)))
-          -1
-          (>
-            (db-mdb-val-graph-data->id (pointer-get a)) (db-mdb-val-graph-data->id (pointer-get b))))))))
+    (if* (< (db-graph-data->ordinal a:mv-data) (db-graph-data->ordinal b:mv-data)) -1
+      (if* (> (db-graph-data->ordinal a:mv-data) (db-graph-data->ordinal b:mv-data)) 1
+        (if* (< (db-graph-data->id a:mv-data) (db-graph-data->id b:mv-data)) -1
+          (> (db-graph-data->id a:mv-data) (db-graph-data->id b:mv-data)))))))
 
 (define (db-mdb-compare-data a b) ((static int) (const MDB-val*) (const MDB-val*))
   (define length-difference ssize-t
-    (-
-      (convert-type (struct-pointer-get a mv-size) ssize-t)
-      (convert-type (struct-pointer-get b mv-size) ssize-t)))
+    (- (convert-type a:mv-size ssize-t) (convert-type b:mv-size ssize-t)))
   (return
     (if* length-difference
       (if* (< length-difference 0) -1
         1)
-      (memcmp
-        (struct-pointer-get a mv-data) (struct-pointer-get b mv-data) (struct-pointer-get a mv-size)))))
+      (memcmp a:mv-data b:mv-data a:mv-size))))

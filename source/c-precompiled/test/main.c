@@ -23,7 +23,7 @@ exit:
   db_txn_abort(txn);
   return (status);
 };
-status_t test_type_create(db_env_t* env) {
+status_t test_type_create_get_delete(db_env_t* env) {
   status_init;
   db_field_t fields[3];
   db_field_count_t i;
@@ -102,7 +102,7 @@ status_t test_sequence(db_env_t* env) {
   db_id_t prev_id;
   db_type_id_t prev_type_id;
   db_type_id_t type_id;
-  /* node sequence */
+  /* node sequence. note that sequences only persist through data inserts */
   status_require_x(db_type_create(env, "test-type", 0, 0, 0, &type_id));
   (*(type_id + (*env).types)).sequence = (db_element_id_limit - 100);
   prev_id = db_id_add_type((db_element_id_limit - 100 - 1), type_id);
@@ -137,7 +137,7 @@ exit:
 };
 status_t test_open_nonempty(db_env_t* env) {
   status_init;
-  status_require_x(test_type_create(env));
+  status_require_x(test_type_create_get_delete(env));
   status_require_x(test_helper_reset(env, 1));
 exit:
   return (status);
@@ -167,7 +167,7 @@ int main() {
   test_helper_test_one(test_statistics, env);
   test_helper_test_one(test_id_construction, env);
   test_helper_test_one(test_sequence, env);
-  test_helper_test_one(test_type_create, env);
+  test_helper_test_one(test_type_create_get_delete, env);
   test_helper_test_one(test_type_create_many, env);
   test_helper_test_one(test_open_nonempty, env);
 exit:
