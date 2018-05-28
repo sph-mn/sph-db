@@ -8,7 +8,7 @@
 (define (db-debug-log-ids-set a) (b0 imht-set-t)
   (define index b32 0)
   (while (< index a.size)
-    (debug-log "%lu" (pointer-get a.content index))
+    (debug-log "%lu" (array-get a.content index))
     (set index (+ 1 index))))
 
 (define (db-debug-display-graph-records records) (b0 db-graph-records-t*)
@@ -23,7 +23,7 @@
   status-init
   (declare stat db-statistics-t)
   (status-require! (db-statistics txn &stat))
-  (set (pointer-get result)
+  (set *result
     (+
       stat.system.ms_entries
       stat.nodes.ms_entries
@@ -38,7 +38,6 @@
   (printf
     "btree entry count\n  nodes %d data-intern->id %d\n  data-extern->extern %d graph-lr %d\n  graph-rl %d graph-ll %d\n"
     stat.system.ms_entries
-    stat.nodes.ms_entries
-    stat.graph-lr.ms_entries stat.graph-rl.ms_entries stat.graph-ll.ms_entries)
+    stat.nodes.ms_entries stat.graph-lr.ms_entries stat.graph-rl.ms_entries stat.graph-ll.ms_entries)
   (label exit
     (return status)))

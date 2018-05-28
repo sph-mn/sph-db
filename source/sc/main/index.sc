@@ -52,8 +52,7 @@
         (db-mdb-cursor-next-dup! graph-lr val-graph-key val-graph-data))))
   db-txn-commit
   (label exit
-    (if db-txn
-      db-txn-abort)
+    (if db-txn db-txn-abort)
     (return status)))
 
 (define (db-index-recreate-intern) status-t
@@ -77,8 +76,7 @@
           (mdb-cursor-put data-intern->id (address-of val-data) (address-of val-id) 0)))))
   db-txn-commit
   (label exit
-    (if db-txn
-      db-txn-abort)
+    (if db-txn db-txn-abort)
     (return status)))
 
 (define (db-index-recreate-extern) status-t
@@ -104,8 +102,7 @@
           (mdb-cursor-put data-intern->id (address-of val-data) (address-of val-id) 0)))))
   db-txn-commit
   (label exit
-    (if db-txn
-      db-txn-abort)
+    (if db-txn db-txn-abort)
     (return status)))
 
 (define (db-index-errors-graph db-txn result) (status-t db-txn-t* db-index-errors-graph-t*)
@@ -148,8 +145,7 @@
             (begin
               (db-index-errors-graph-log
                 "entry from graph-lr not in graph-rl" id-left id-right id-label)
-              (struct-pointer-set result
-                errors? #t)
+              (set result:errors? #t)
               (struct-set record
                 left id-left
                 right id-right
@@ -166,8 +162,7 @@
             (begin
               (db-index-errors-graph-log
                 "entry from graph-lr not in graph-ll" id-left id-right id-label)
-              (struct-pointer-set result
-                errors? #t)
+              (set result:errors? #t)
               (struct-set record
                 left id-left
                 right id-right
@@ -191,15 +186,13 @@
         (struct-set val-graph-key
           mv-data graph-key)
         (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-KEY)
-        (if db-mdb-status-success?
-          (set status (db-mdb-graph-lr-seek-right graph-lr id-right)))
+        (if db-mdb-status-success? (set status (db-mdb-graph-lr-seek-right graph-lr id-right)))
         (if (not db-mdb-status-success?)
           (if (= MDB-NOTFOUND status.id)
             (begin
               (db-index-errors-graph-log
                 "entry from graph-rl not in graph-lr" id-left id-right id-label)
-              (struct-pointer-set result
-                errors? #t)
+              (set result:errors? #t)
               (struct-set record
                 left id-left
                 right id-right
@@ -226,8 +219,7 @@
             (begin
               (db-index-errors-graph-log
                 "entry from graph-ll not in graph-lr" id-left id-right id-label)
-              (struct-pointer-set result
-                errors? #t)
+              (set result:errors? #t)
               (struct-set record
                 left id-left
                 right 0
@@ -263,16 +255,14 @@
             (begin
               (db-index-errors-data-log
                 "intern" "data from data-intern->id differs in nodes" (db-mdb-val->id val-id))
-              (struct-pointer-set result
-                errors? #t)
+              (set result:errors? #t)
               (db-ids-add!
                 (struct-pointer-get result different-data-id) (db-mdb-val->id val-id) ids-temp))))
         (if (= MDB-NOTFOUND status.id)
           (begin
             (db-index-errors-data-log
               "intern" "data from data-intern->id not in nodes" (db-mdb-val->id val-id))
-            (struct-pointer-set result
-              errors? #t)
+            (set result:errors? #t)
             (db-ids-add!
               (struct-pointer-get result excess-data-id) (db-mdb-val->id val-id) ids-temp))
           status-goto))))
@@ -291,16 +281,14 @@
               (begin
                 (db-index-errors-data-log
                   "intern" "data from nodes differs in data-intern->id" (db-mdb-val->id val-id))
-                (struct-pointer-set result
-                  errors? #t)
+                (set result:errors? #t)
                 (db-ids-add!
                   (struct-pointer-get result different-id-data) (db-mdb-val->id val-id) ids-temp)))
             (if (= MDB-NOTFOUND status.id)
               (begin
                 (db-index-errors-data-log
                   "intern" "data from nodes not in data-intern->id" (db-mdb-val->id val-id-2))
-                (struct-pointer-set result
-                  errors? #t)
+                (set result:errors? #t)
                 (db-ids-add!
                   (struct-pointer-get result missing-id-data) (db-mdb-val->id val-id-2) ids-temp))
               status-goto))))))
@@ -333,10 +321,8 @@
               (if (db-mdb-compare-data (address-of val-data) (address-of val-data-2))
                 (begin
                   (db-index-errors-data-log
-                    "extern"
-                    "data from data-extern->extern differs in nodes" (db-mdb-val->id val-id))
-                  (struct-pointer-set result
-                    errors? #t)
+                    "extern" "data from data-extern->extern differs in nodes" (db-mdb-val->id val-id))
+                  (set result:errors? #t)
                   (db-ids-add!
                     (struct-pointer-get result different-data-extern)
                     (db-mdb-val->id val-id) ids-temp))))
@@ -344,8 +330,7 @@
               (begin
                 (db-index-errors-data-log
                   "extern" "data from data-extern->extern not in nodes" (db-mdb-val->id val-id))
-                (struct-pointer-set result
-                  errors? #t)
+                (set result:errors? #t)
                 (db-ids-add!
                   (struct-pointer-get result excess-data-extern) (db-mdb-val->id val-id) ids-temp))
               status-goto))))))
@@ -362,8 +347,7 @@
             (begin
               (db-index-errors-data-log
                 "extern" "data from nodes not in data-extern->extern" (db-mdb-val->id val-id))
-              (struct-pointer-set result
-                errors? #t)
+              (set result:errors? #t)
               (db-ids-add!
                 (struct-pointer-get result missing-id-data) (db-mdb-val->id val-id) ids-temp))
             status-goto)))))

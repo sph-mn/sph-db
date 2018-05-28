@@ -10,7 +10,7 @@ sph-db is a database as a shared library for storing records with relations like
 * fully acid compliant, memory-mapped database that can grow to any size that fits on the local filesystem, unrestricted by available ram
 * direct, high-speed interface using c data structures. no overhead from sql or similar query language parsing
 * nodes are records with identifiers for random access. they are of custom type, like tables in relational databases and indexable
-* relations are directed, labelled, ordered and small
+* relations are directed, labeled, ordered and small
 * read optimised design with full support for parallel database reads. database performance nearly matches the performance of lmdb. benchmarks for lmdb can be found [here](https://symas.com/lightning-memory-mapped-database/technical/).
 * written in c via [sc](https://github.com/sph-mn/sph-sc)
 

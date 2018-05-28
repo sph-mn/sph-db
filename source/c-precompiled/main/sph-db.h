@@ -252,7 +252,7 @@ b8* db_status_name(status_t a) {
 #define db_ordinal_t b32
 #define db_type_id_mask UINT16_MAX
 #define db_type_id_t b16
-#define db_pointer_to_id(a, index) (*(index + ((db_id_t*)(a))))
+#define db_pointer_to_id(a, index) (*((index + ((db_id_t*)(a)))))
 #ifndef db_id_t
 #define db_id_t b64
 #endif
@@ -335,11 +335,11 @@ b8* db_status_name(status_t a) {
 #define db_id_type(id) (id >> (8 * db_size_element_id))
 /** get the element id part from a node id. a node id without type id */
 #define db_id_element(id) (db_id_element_mask & id)
-#define db_pointer_to_id(a, index) (*(index + ((db_id_t*)(a))))
+#define db_pointer_to_id(a, index) (*((index + ((db_id_t*)(a)))))
 #define db_field_type_fixed_p(a) !(1 & a)
-#define db_system_key_label(a) (*((b8*)(a)))
+#define db_system_key_label(a) (*(((b8*)(a))))
 #define db_system_key_id(a) \
-  (*((db_type_id_t*)((db_size_system_label + ((b8*)(a))))))
+  (*(((db_type_id_t*)((db_size_system_label + ((b8*)(a)))))))
 #define db_status_memory_error_if_null(variable) \
   if (!variable) { \
     status_set_both_goto(db_status_group_db, db_status_id_memory); \
@@ -350,7 +350,7 @@ b8* db_status_name(status_t a) {
 /** allocate memory for a string with size and one extra last null element */
 #define db_malloc_string(variable, len) \
   db_malloc(variable, (1 + len)); \
-  (*(len + variable)) = 0
+  (*((len + variable))) = 0
 #define db_calloc(variable, count, size) \
   variable = calloc(count, size); \
   db_status_memory_error_if_null(variable)
@@ -369,10 +369,9 @@ b8* db_status_name(status_t a) {
 #define db_txn_declare(env, name) db_txn_t name = { 0, env }
 #define db_txn_begin(txn) \
   db_mdb_status_require_x( \
-    mdb_txn_begin((*txn.env).mdb_env, 0, MDB_RDONLY, &(txn.mdb_txn)))
+    mdb_txn_begin(txn.env->mdb_env, 0, MDB_RDONLY, &(txn.mdb_txn)))
 #define db_txn_write_begin(txn) \
-  db_mdb_status_require_x( \
-    mdb_txn_begin((*txn.env).mdb_env, 0, 0, &(txn.mdb_txn)))
+  db_mdb_status_require_x(mdb_txn_begin(txn.env->mdb_env, 0, 0, &(txn.mdb_txn)))
 #define db_txn_abort(a) \
   mdb_txn_abort(a.mdb_txn); \
   a.mdb_txn = 0
@@ -403,7 +402,7 @@ b8* db_status_name(status_t a) {
   db_define_ids_2(name_1, name_2); \
   db_define_ids(name_3)
 #define db_graph_data_to_id(a) db_pointer_to_id((1 + ((db_ordinal_t*)(a))), 0)
-#define db_graph_data_to_ordinal(a) (*((db_ordinal_t*)(a)))
+#define db_graph_data_to_ordinal(a) (*(((db_ordinal_t*)(a))))
 #define db_graph_data_set_id(a, value) db_graph_data_to_id(a) = value
 #define db_graph_data_set_ordinal(a, value) db_graph_data_to_ordinal(a) = value
 #define db_graph_data_set_both(a, ordinal, id) \

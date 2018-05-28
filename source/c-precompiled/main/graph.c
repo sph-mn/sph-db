@@ -1,10 +1,9 @@
 #define db_graph_key_equal_p(a, b) \
-  (db_id_equal_p((*(a + 0)), (*(b + 0))) && \
-    db_id_equal_p((*(a + 1)), (*(b + 1))))
+  (db_id_equal_p(a[0], b[0]) && db_id_equal_p(a[1], b[1]))
 #define db_graph_data_ordinal_set(graph_data, value) \
-  (*(((db_ordinal_t*)(graph_data)) + 0)) = value
+  (((db_ordinal_t*)(graph_data)))[0] = value
 #define db_graph_data_id_set(graph_data, value) \
-  (*(((db_id_t*)((1 + ((db_ordinal_t*)(graph_data))))) + 0)) = value
+  (((db_id_t*)((1 + ((db_ordinal_t*)(graph_data))))))[0] = value
 #define db_declare_graph_key(name) db_id_t name[2] = { 0, 0 }
 #define db_declare_graph_data(name) \
   b8 name[(db_size_ordinal + db_size_id)]; \
@@ -59,7 +58,7 @@ status_t db_graph_ensure(db_txn_t txn,
   db_cursor_open(txn, graph_rl);
   db_cursor_open(txn, graph_ll);
   ordinal = ((!ordinal_generator && ordinal_generator_state)
-      ? (ordinal = (*((db_ordinal_t*)(ordinal_generator_state))))
+      ? (ordinal = (*(((db_ordinal_t*)(ordinal_generator_state)))))
       : 0);
   while (left) {
     id_left = db_ids_first(left);
@@ -70,8 +69,8 @@ status_t db_graph_ensure(db_txn_t txn,
       val_id_2.mv_data = &id_label;
       while (right_pointer) {
         id_right = db_ids_first(right_pointer);
-        (*(graph_key + 0)) = id_right;
-        (*(graph_key + 1)) = id_label;
+        graph_key[0] = id_right;
+        graph_key[1] = id_label;
         val_graph_key.mv_data = graph_key;
         val_id.mv_data = &id_left;
         db_mdb_cursor_get_norequire(
@@ -81,8 +80,8 @@ status_t db_graph_ensure(db_txn_t txn,
             mdb_cursor_put(graph_rl, &val_graph_key, &val_id, 0));
           db_mdb_status_require_x(
             mdb_cursor_put(graph_ll, &val_id_2, &val_id, 0));
-          (*(graph_key + 0)) = id_left;
-          (*(graph_key + 1)) = id_label;
+          graph_key[0] = id_left;
+          graph_key[1] = id_label;
           if (ordinal_generator) {
             ordinal = (*ordinal_generator)(ordinal_generator_state);
           };

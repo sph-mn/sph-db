@@ -5,20 +5,20 @@ status_t db_env_types_extend(db_env_t* env, db_type_id_t type_id) {
   db_type_id_t types_len;
   db_type_t* types;
   db_type_id_t i;
-  types_len = (*env).types_len;
+  types_len = env->types_len;
   if ((types_len > type_id)) {
     goto exit;
   };
   /* resize */
-  types = (*env).types;
+  types = env->types;
   types_len = (db_env_types_extra_count + type_id);
   db_realloc(types, types_temp, (types_len * sizeof(db_type_t)));
   /* set new type struct ids to zero */
   for (i = type_id; (i < types_len); i = (1 + i)) {
-    (*(i + types)).id = 0;
+    (i + types)->id = 0;
   };
-  (*env).types = types;
-  (*env).types_len = types_len;
+  env->types = types;
+  env->types_len = types_len;
 exit:
   return (status);
 };
@@ -28,10 +28,10 @@ db_type_t* db_type_get(db_env_t* env, b8* name) {
   db_type_id_t i;
   db_type_id_t types_len;
   db_type_t* type;
-  types_len = (*env).types_len;
+  types_len = env->types_len;
   for (i = 0; (i < types_len); i = (1 + i)) {
-    type = (i + (*env).types);
-    if (((*type).id && ((0 == strcmp(name, (*type).name))))) {
+    type = (i + env->types);
+    if ((type->id && ((0 == strcmp(name, type->name))))) {
       return (type);
     };
   };
@@ -49,6 +49,7 @@ status_t db_type_create(db_env_t* env,
   b8* data_start;
   db_field_t field;
   db_field_count_t i;
+  db_type_t* type_pointer;
   b8 key[db_size_system_key];
   b8 name_len;
   size_t data_size;
@@ -71,22 +72,22 @@ status_t db_type_create(db_env_t* env,
   data_size = (sizeof(db_name_len_t) + name_len + sizeof(db_field_count_t));
   for (i = 0; (i < field_count); i = (1 + i)) {
     data_size = (data_size + sizeof(db_field_type_t) + sizeof(db_name_len_t) +
-      (*(i + fields)).name_len);
+      (i + fields)->name_len);
   };
   db_malloc(data, data_size);
   /* set insert data */
   data_start = data;
-  (*((db_name_len_t*)(data))) = name_len;
+  (*(((db_name_len_t*)(data)))) = name_len;
   data = (sizeof(db_name_len_t) + data);
   memcpy(data, name, name_len);
   data = (name_len + data);
-  (*((db_field_count_t*)(data))) = field_count;
+  (*(((db_field_count_t*)(data)))) = field_count;
   data = (sizeof(db_field_count_t) + data);
   for (i = 0; (i < field_count); i = (1 + i)) {
-    field = (*(fields + i));
-    (*((db_field_type_t*)(data))) = field.type;
+    field = fields[i];
+    (*(((db_field_type_t*)(data)))) = field.type;
     data = (1 + ((db_field_type_t*)(data)));
-    (*((db_name_len_t*)(data))) = field.name_len;
+    (*(((db_name_len_t*)(data)))) = field.name_len;
     data = (1 + ((db_name_len_t*)(data)));
     memcpy(data, field.name, field.name_len);
     data = (field.name_len + data);
@@ -106,8 +107,8 @@ status_t db_type_create(db_env_t* env,
   /* update cache */
   status_require_x(db_env_types_extend(txn.env, type_id));
   db_cursor_open(txn, nodes);
-  status_require_x(
-    db_open_type(val_key.mv_data, val_data.mv_data, (*txn.env).types, nodes));
+  status_require_x(db_open_type(
+    val_key.mv_data, val_data.mv_data, txn.env->types, nodes, &type_pointer));
   db_cursor_close(nodes);
   db_txn_commit(txn);
   *result = type_id;
@@ -162,7 +163,7 @@ status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
     };
   };
   /* cache */
-  db_free_env_type((type_id + (*env).types));
+  db_free_env_type((type_id + env->types));
 exit:
   db_cursor_close_if_active(system);
   db_cursor_close_if_active(nodes);

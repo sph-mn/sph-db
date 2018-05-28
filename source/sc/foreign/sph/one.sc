@@ -8,15 +8,16 @@
   (define a-len b32 (strlen a))
   (if (or (not a-len) (= #\/ (pointer-get (+ a (- a-len 1)))))
     (begin
-      (set (pointer-get result) a)
+      (set *result a)
       (return 0))
     (begin
       (define new-a char* (malloc (+ 2 a-len)))
       (if (not new-a) (return 1))
       (memcpy new-a a a-len)
       (memcpy (+ new-a a-len) "/" 1)
-      (set (pointer-get new-a (+ 1 a-len)) 0)
-      (set (pointer-get result) new-a)
+      (set
+        *new-a 0
+        *result new-a)
       (return 2))))
 
 (define (string-append a b) (b8* b8* b8*)
@@ -49,8 +50,7 @@
 
 (define (ensure-directory-structure path mkdir-mode) (boolean b8* mode-t)
   "return 1 if the path exists or has been successfully created"
-  (if (file-exists? path)
-    (return #t)
+  (if (file-exists? path) (return #t)
     (begin
       (define path-dirname b8* (dirname-2 path))
       (define status boolean (ensure-directory-structure path-dirname mkdir-mode))

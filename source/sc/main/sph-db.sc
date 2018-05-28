@@ -84,7 +84,7 @@
   (begin
     "allocate memory for a string with size and one extra last null element"
     (db-malloc variable (+ 1 len))
-    (pointer-set (+ len variable) 0))
+    (set (pointer-get (+ len variable)) 0))
   (db-calloc variable count size)
   (begin
     (set variable (calloc count size))

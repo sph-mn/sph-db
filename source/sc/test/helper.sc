@@ -43,10 +43,9 @@
   (declare
     i size-t
     result (array b8 65))
-  (pointer-set (+ 64 result) 0)
+  (set (pointer-get (+ 64 result)) 0)
   (for ((set i 0) (< i 64) (set i (+ 1 i)))
-    (pointer-set
-      (+ i result)
+    (set (pointer-get (+ i result))
       (if* (bit-and (bit-shift-left (convert-type 1 b64) i) a) #\1
         #\0)))
   (printf "%s\n" result))

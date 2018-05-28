@@ -120,13 +120,13 @@ uint8_t imht_set_create(size_t min_size, imht_set_t** result) {
     return (0);
   };
   min_size = imht_set_calculate_hash_table_size(min_size);
-  (*(*result)).content = calloc(min_size, sizeof(imht_set_key_t));
-  (*(*result)).size = min_size;
-  return (((*(*result)).content ? 1 : 0));
+  (*((*result))).content = calloc(min_size, sizeof(imht_set_key_t));
+  (*((*result))).size = min_size;
+  return (((*result)->content ? 1 : 0));
 };
 void imht_set_destroy(imht_set_t* a) {
   if (a) {
-    free((*a).content);
+    free(a->content);
     free(a);
   };
 };
@@ -141,7 +141,7 @@ void imht_set_destroy(imht_set_t* a) {
   pointer-geterencing a returned address for the found value 0 will return 1
   instead */
 imht_set_key_t* imht_set_find(imht_set_t* a, imht_set_key_t value) {
-  imht_set_key_t* h = ((*a).content + imht_set_hash(value, (*a)));
+  imht_set_key_t* h = (a->content + imht_set_hash(value, (*a)));
   if ((*h)) {
 #if imht_set_can_contain_zero_p
     if (((((*h) == value)) || ((0 == value)))) {
@@ -152,7 +152,7 @@ imht_set_key_t* imht_set_find(imht_set_t* a, imht_set_key_t value) {
       return (h);
     };
 #endif
-    imht_set_key_t* content_end = ((*a).content + ((*a).size - 1));
+    imht_set_key_t* content_end = (a->content + (a->size - 1));
     imht_set_key_t* h2 = (1 + h);
     while ((h2 < content_end)) {
       if (!(*h2)) {
@@ -171,7 +171,7 @@ imht_set_key_t* imht_set_find(imht_set_t* a, imht_set_key_t value) {
         return (h2);
       };
     };
-    h2 = (*a).content;
+    h2 = a->content;
     while ((h2 < h)) {
       if (!(*h2)) {
         return (0);
@@ -199,7 +199,7 @@ uint8_t imht_set_remove(imht_set_t* a, imht_set_key_t value) {
 /** returns the address of the added or already included element, 0 if there is
  * no space left in the set */
 imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
-  imht_set_key_t* h = ((*a).content + imht_set_hash(value, (*a)));
+  imht_set_key_t* h = (a->content + imht_set_hash(value, (*a)));
   if ((*h)) {
 #if imht_set_can_contain_zero_p
     if ((((value == (*h))) || ((0 == value)))) {
@@ -210,13 +210,13 @@ imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
       return (h);
     };
 #endif
-    imht_set_key_t* content_end = ((*a).content + ((*a).size - 1));
+    imht_set_key_t* content_end = (a->content + (a->size - 1));
     imht_set_key_t* h2 = (1 + h);
     while ((((h2 <= content_end)) && (*h2))) {
       h2 = (1 + h2);
     };
     if ((h2 > content_end)) {
-      h2 = (*a).content;
+      h2 = a->content;
       while (((h2 < h) && (*h2))) {
         h2 = (1 + h2);
       };

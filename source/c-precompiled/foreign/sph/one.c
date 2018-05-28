@@ -7,8 +7,8 @@
   allocated, 2 if result is a new string */
 b8 ensure_trailing_slash(b8* a, b8** result) {
   b32 a_len = strlen(a);
-  if ((!a_len || (('/' == (*(a + (a_len - 1))))))) {
-    (*result) = a;
+  if ((!a_len || (('/' == (*((a + (a_len - 1)))))))) {
+    *result = a;
     return (0);
   } else {
     char* new_a = malloc((2 + a_len));
@@ -17,8 +17,8 @@ b8 ensure_trailing_slash(b8* a, b8** result) {
     };
     memcpy(new_a, a, a_len);
     memcpy((new_a + a_len), "/", 1);
-    (*(new_a + (1 + a_len))) = 0;
-    (*result) = new_a;
+    *new_a = 0;
+    *result = new_a;
     return (2);
   };
 };

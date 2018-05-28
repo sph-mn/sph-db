@@ -30,7 +30,7 @@
   }
 status_t test_helper_reset(db_env_t* env, boolean re_use) {
   status_init;
-  if ((*env).open) {
+  if (env->open) {
     db_close(env);
   };
   if ((!re_use && file_exists_p(test_helper_path_data))) {
@@ -44,9 +44,9 @@ exit:
 b0 test_helper_print_binary_b64(b64 a) {
   size_t i;
   b8 result[65];
-  (*(64 + result)) = 0;
+  (*((64 + result))) = 0;
   for (i = 0; (i < 64); i = (1 + i)) {
-    (*(i + result)) = (((((b64)(1)) << i) & a) ? '1' : '0');
+    (*((i + result))) = (((((b64)(1)) << i) & a) ? '1' : '0');
   };
   printf("%s\n", result);
 };

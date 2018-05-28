@@ -11,9 +11,9 @@ b32 common_element_count = 40;
 b32 common_label_count = 40;
 status_t test_open_empty(db_env_t* env) {
   status_init;
-  test_helper_assert("env.open is true", (1 == (*env).open));
+  test_helper_assert("env.open is true", (1 == env->open));
   test_helper_assert(
-    "env.root is set", (0 == strcmp((*env).root, test_helper_db_root)));
+    "env.root is set", (0 == strcmp(env->root, test_helper_db_root)));
 exit:
   return (status);
 };
@@ -41,17 +41,17 @@ status_t test_type_create_get_delete(db_env_t* env) {
   db_type_t* type_2_pointer;
   /* type 1 */
   status_require_x(db_type_create(env, "test-type-1", 0, 0, 0, &type_id_1));
-  type_1 = (*((*env).types + type_id_1));
+  type_1 = (env->types)[type_id_1];
   test_helper_assert("type id", (1 == type_id_1) && (type_id_1 == type_1.id));
   test_helper_assert("type sequence", (1 == type_1.sequence));
   test_helper_assert("type field count", (0 == type_1.fields_count));
-  db_field_set((*(fields + 0)), db_field_type_int8, "test-field-1", 12);
-  db_field_set((*(fields + 1)), db_field_type_int8, "test-field-2", 12);
-  db_field_set((*(fields + 2)), db_field_type_string, "test-field-3", 12);
+  db_field_set(fields[0], db_field_type_int8, "test-field-1", 12);
+  db_field_set(fields[1], db_field_type_int8, "test-field-2", 12);
+  db_field_set(fields[2], db_field_type_string, "test-field-3", 12);
   /* type 2 */
   status_require_x(
     db_type_create(env, "test-type-2", 3, fields, 0, &type_id_2));
-  type_2 = (*((*env).types + type_id_2));
+  type_2 = (env->types)[type_id_2];
   test_helper_assert(
     "second type id", (2 == type_id_2) && (type_id_2 == type_2.id));
   test_helper_assert("second type sequence", (1 == type_2.sequence));
@@ -60,11 +60,11 @@ status_t test_type_create_get_delete(db_env_t* env) {
     "second type name", (0 == strcmp("test-type-2", type_2.name)));
   for (i = 0; (i < type_2.fields_count); i = (1 + i)) {
     test_helper_assert("second type field name len equality",
-      ((*(i + fields)).name_len == (*(i + type_2.fields)).name_len));
+      ((i + fields)->name_len == (i + type_2.fields)->name_len));
     test_helper_assert("second type field name equality",
-      (0 == strcmp((*(i + fields)).name, (*(i + type_2.fields)).name)));
+      (0 == strcmp((i + fields)->name, (i + type_2.fields)->name)));
     test_helper_assert("second type type equality",
-      ((*(i + fields)).type == (*(i + type_2.fields)).type));
+      ((i + fields)->type == (i + type_2.fields)->type));
   };
   /* type-get */
   test_helper_assert("non existent type", !db_type_get(env, "test-type-x"));
@@ -72,8 +72,8 @@ status_t test_type_create_get_delete(db_env_t* env) {
   type_2_pointer = db_type_get(env, "test-type-2");
   test_helper_assert("existent types", (type_1_pointer && type_2_pointer));
   test_helper_assert("existent type ids",
-    (((type_id_1 == (*type_1_pointer).id)) &&
-      ((type_id_2 == (*type_2_pointer).id))));
+    (((type_id_1 == type_1_pointer->id)) &&
+      ((type_id_2 == type_2_pointer->id))));
   test_helper_assert("existent types",
     (db_type_get(env, "test-type-1") && db_type_get(env, "test-type-2")));
   /* type-delete */
@@ -110,7 +110,7 @@ status_t test_sequence(db_env_t* env) {
   db_type_id_t type_id;
   /* node sequence. note that sequences only persist through data inserts */
   status_require_x(db_type_create(env, "test-type", 0, 0, 0, &type_id));
-  (*(type_id + (*env).types)).sequence = (db_element_id_limit - 100);
+  (type_id + env->types)->sequence = (db_element_id_limit - 100);
   prev_id = db_id_add_type((db_element_id_limit - 100 - 1), type_id);
   for (i = db_element_id_limit; (i <= db_element_id_limit); i = (i + 1)) {
     status = db_sequence_next(env, type_id, &id);

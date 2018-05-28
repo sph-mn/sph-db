@@ -16,9 +16,9 @@
   (sc-comment "set new type struct ids to zero")
   (for ((set i type-id) (< i types-len) (set i (+ 1 i)))
     (set (: (+ i types) id) 0))
-  (struct-pointer-set env
-    types types
-    types-len types-len)
+  (set
+    env:types types
+    env:types-len types-len)
   (label exit
     (return status)))
 
@@ -43,6 +43,7 @@
     data-start b8*
     field db-field-t
     i db-field-count-t
+    type-pointer db-type-t*
     key (array b8 (db-size-system-key))
     name-len b8
     data-size size-t
@@ -76,7 +77,7 @@
     data (+ (sizeof db-field-count-t) data))
   (for ((set i 0) (< i field-count) (set i (+ 1 i)))
     (set
-      field (pointer-get fields i)
+      field (array-get fields i)
       (pointer-get (convert-type data db-field-type-t*)) field.type
       data (+ 1 (convert-type data db-field-type-t*))
       (pointer-get (convert-type data db-name-len-t*)) field.name-len
@@ -99,7 +100,8 @@
   (sc-comment "update cache")
   (status-require! (db-env-types-extend txn.env type-id))
   (db-cursor-open txn nodes)
-  (status-require! (db-open-type val-key.mv-data val-data.mv-data txn.env:types nodes))
+  (status-require!
+    (db-open-type val-key.mv-data val-data.mv-data txn.env:types nodes &type-pointer))
   (db-cursor-close nodes)
   (db-txn-commit txn)
   (set *result type-id)
@@ -181,7 +183,7 @@
           (mdb-cursor-put nodes (address-of val-id) (address-of val-data) 0))
         (db-mdb-status-require!
           (mdb-cursor-put data-intern->id (address-of val-data) (address-of val-id) 0))
-        (set (pointer-get result) (db-ids-add (pointer-get result) id)))
+        (set *result (db-ids-add (pointer-get result) id)))
       (if db-mdb-status-success?
         (begin
           (set (pointer-get result) (db-ids-add (pointer-get result) (db-mdb-val->id val-id)))
@@ -383,7 +385,7 @@
   (db-mdb-cursor-define txn nodes)
   (db-mdb-status-require!
     (mdb-cursor-get nodes (address-of val-null) (address-of val-null) MDB-FIRST))
-  (struct-pointer-set result cursor nodes types type-bits status status options 0)
+  (set result:cursor result:nodes result:types result:type-bits result:status result:status result:options 0)
   (db-select-ensure-offset result offset db-node-read)
   (label exit
     (if (not db-mdb-status-success?)
@@ -392,8 +394,8 @@
         (if (status-id-is? MDB-NOTFOUND)
           (begin
             (status-set-id db-status-id-no-more-data)
-            (struct-pointer-set result cursor 0)))))
-    (struct-pointer-set result status status)
+            (set result:cursor 0)))))
+    (set result:status status)
     (return status)))
 
 (define (db-node-selection-destroy state) (b0 db-node-read-state-t*)

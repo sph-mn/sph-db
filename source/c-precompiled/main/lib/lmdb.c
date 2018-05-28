@@ -75,38 +75,36 @@
 /** mdb comparison routines are used by lmdb for search, insert and delete */
 static int db_mdb_compare_id(const MDB_val* a, const MDB_val* b) {
   return (db_id_compare(
-    db_pointer_to_id((*a).mv_data, 0), db_pointer_to_id((*b).mv_data, 0)));
+    db_pointer_to_id(a->mv_data, 0), db_pointer_to_id(b->mv_data, 0)));
 };
 static int db_mdb_compare_graph_key(const MDB_val* a, const MDB_val* b) {
-  return ((
-    (db_pointer_to_id((*a).mv_data, 0) < db_pointer_to_id((*b).mv_data, 0))
+  return (((db_pointer_to_id(a->mv_data, 0) < db_pointer_to_id(b->mv_data, 0))
       ? -1
-      : ((db_pointer_to_id((*a).mv_data, 0) > db_pointer_to_id((*b).mv_data, 0))
+      : ((db_pointer_to_id(a->mv_data, 0) > db_pointer_to_id(b->mv_data, 0))
             ? 1
-            : ((db_pointer_to_id((*a).mv_data, 1) <
-                 db_pointer_to_id((*b).mv_data, 1))
+            : ((db_pointer_to_id(a->mv_data, 1) <
+                 db_pointer_to_id(b->mv_data, 1))
                   ? -1
-                  : (db_pointer_to_id((*a).mv_data, 1) >
-                      db_pointer_to_id((*b).mv_data, 1))))));
+                  : (db_pointer_to_id(a->mv_data, 1) >
+                      db_pointer_to_id(b->mv_data, 1))))));
 };
 /** memcmp does not work here, gives -1 for 256 vs 1 */
 static int db_mdb_compare_graph_data(const MDB_val* a, const MDB_val* b) {
-  return (((db_graph_data_to_ordinal((*a).mv_data) <
-             db_graph_data_to_ordinal((*b).mv_data))
+  return (((db_graph_data_to_ordinal(a->mv_data) <
+             db_graph_data_to_ordinal(b->mv_data))
       ? -1
-      : ((db_graph_data_to_ordinal((*a).mv_data) >
-           db_graph_data_to_ordinal((*b).mv_data))
+      : ((db_graph_data_to_ordinal(a->mv_data) >
+           db_graph_data_to_ordinal(b->mv_data))
             ? 1
-            : ((db_graph_data_to_id((*a).mv_data) <
-                 db_graph_data_to_id((*b).mv_data))
+            : ((db_graph_data_to_id(a->mv_data) <
+                 db_graph_data_to_id(b->mv_data))
                   ? -1
-                  : (db_graph_data_to_id((*a).mv_data) >
-                      db_graph_data_to_id((*b).mv_data))))));
+                  : (db_graph_data_to_id(a->mv_data) >
+                      db_graph_data_to_id(b->mv_data))))));
 };
 static int db_mdb_compare_data(const MDB_val* a, const MDB_val* b) {
   ssize_t length_difference =
-    (((ssize_t)((*a).mv_size)) - ((ssize_t)((*b).mv_size)));
-  return (
-    (length_difference ? ((length_difference < 0) ? -1 : 1)
-                       : memcmp((*a).mv_data, (*b).mv_data, (*a).mv_size)));
+    (((ssize_t)(a->mv_size)) - ((ssize_t)(b->mv_size)));
+  return ((length_difference ? ((length_difference < 0) ? -1 : 1)
+                             : memcmp(a->mv_data, b->mv_data, a->mv_size)));
 };

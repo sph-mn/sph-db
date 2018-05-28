@@ -24,9 +24,9 @@ typedef struct mi_list_struct_name {
   mi_list_element_t data;
 } mi_list_t;
 #ifndef mi_list_first
-#define mi_list_first(a) (*a).data
-#define mi_list_first_address(a) &(*a).data
-#define mi_list_rest(a) (*a).link
+#define mi_list_first(a) a->data
+#define mi_list_first_address(a) &a->data
+#define mi_list_rest(a) a->link
 #endif
 mi_list_t* mi_list_name(drop)(mi_list_t* a) {
   mi_list_t* a_next = mi_list_rest(a);
@@ -38,7 +38,7 @@ mi_list_t* mi_list_name(drop)(mi_list_t* a) {
 void mi_list_name(destroy)(mi_list_t* a) {
   mi_list_t* a_next = 0;
   while (a) {
-    a_next = (*a).link;
+    a_next = a->link;
     free(a);
     a = a_next;
   };
@@ -48,8 +48,8 @@ mi_list_t* mi_list_name(add)(mi_list_t* a, mi_list_element_t value) {
   if (!element) {
     return (0);
   };
-  (*element).data = value;
-  (*element).link = a;
+  element->data = value;
+  element->link = a;
   return (element);
 };
 size_t mi_list_name(length)(mi_list_t* a) {
