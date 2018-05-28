@@ -22,7 +22,7 @@
   status-init
   db-mdb-declare-val-graph-key
   (db-define-graph-key graph-key)
-  (array-set-index graph-key 0 id-left 1 id-label)
+  (array-set graph-key 0 id-left 1 id-label)
   (struct-set val-graph-key
     mv-data graph-key)
   (db-mdb-cursor-get! graph-lr val-graph-key val-null MDB-SET)
@@ -38,7 +38,7 @@
   db-mdb-declare-val-graph-key
   db-mdb-declare-val-id
   (db-define-graph-key graph-key)
-  (array-set-index graph-key 0 id-right 1 id-label)
+  (array-set graph-key 0 id-right 1 id-label)
   (struct-set val-graph-key
     mv-data graph-key)
   (struct-set val-id
@@ -72,7 +72,7 @@
           (goto exit))))
     (label each-data-0010
       (set id-left (db-mdb-val->id val-id-2))
-      (array-set-index graph-key 0 id-left 1 id-label)
+      (array-set graph-key 0 id-left 1 id-label)
       (struct-set val-graph-key
         mv-data graph-key)
       (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-KEY)
@@ -108,7 +108,7 @@
       (set
         id-right (db-ids-first right-pointer)
         id-label (db-ids-first label))
-      (array-set-index graph-key 0 id-right 1 id-label)
+      (array-set graph-key 0 id-right 1 id-label)
       (struct-set val-graph-key
         mv-data graph-key)
       (db-mdb-cursor-get! graph-rl val-graph-key val-id MDB-SET-KEY)
@@ -128,7 +128,7 @@
               (goto exit))))))
     (label each-data-0110
       (set id-left (db-mdb-val->id val-id))
-      (array-set-index graph-key 0 id-left 1 id-label)
+      (array-set graph-key 0 id-left 1 id-label)
       (struct-set val-graph-key
         mv-data graph-key)
       (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-KEY)
@@ -163,7 +163,7 @@
         label-pointer label)
       (while label-pointer
         (set id-label (db-ids-first label-pointer))
-        (array-set-index graph-key 0 id-left 1 id-label)
+        (array-set graph-key 0 id-left 1 id-label)
         (struct-set val-graph-key
           mv-data graph-key)
         (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-KEY)
@@ -175,7 +175,7 @@
               (db-graph-internal-delete-graph-ll graph-ll id-label id-left)
               (db-mdb-cursor-next-dup! graph-lr val-graph-key val-graph-data))
             db-mdb-status-require-notfound
-            (array-set-index graph-key 0 id-left 1 id-label)
+            (array-set graph-key 0 id-left 1 id-label)
             (struct-set val-graph-key
               mv-data graph-key)
             (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-KEY)
@@ -194,7 +194,7 @@
       id-label db-id-t)
     (label set-range-0100
       (set id-right (db-ids-first right))
-      (array-set-index graph-key 0 id-right 1 0)
+      (array-set graph-key 0 id-right 1 0)
       (struct-set val-graph-key
         mv-data graph-key)
       (db-mdb-cursor-get! graph-rl val-graph-key val-id MDB-SET-RANGE)
@@ -212,7 +212,7 @@
         (goto exit)))
     (label each-data-0100
       (set id-left (db-mdb-val->id val-id))
-      (array-set-index graph-key 0 id-left 1 id-label)
+      (array-set graph-key 0 id-left 1 id-label)
       (struct-set val-graph-key
         mv-data graph-key)
       (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-KEY)
@@ -243,7 +243,7 @@
       id-right db-id-t)
     (label set-range-1000
       (set id-left (db-ids-first left))
-      (array-set-index graph-key 0 id-left 1 0)
+      (array-set graph-key 0 id-left 1 0)
       (struct-set val-graph-key
         mv-data graph-key)
       (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-RANGE)
@@ -266,7 +266,7 @@
       (if db-mdb-status-success?
         (goto each-data-1000)
         db-mdb-status-require-notfound))
-    (array-set-index graph-key 0 id-left 1 id-label)
+    (array-set graph-key 0 id-left 1 id-label)
     (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-KEY)
     db-mdb-status-require
     (db-mdb-cursor-del! graph-lr MDB-NODUPDATA)
@@ -282,10 +282,10 @@
       id-label db-id-t
       right-set imht-set-t*)
     (status-require! (db-ids->set right (address-of right-set)))
-    (array-set-index graph-key 1 0)
+    (array-set graph-key 1 0)
     (label set-range-1100
       (set id-left (db-ids-first left))
-      (array-set-index graph-key 0 id-left)
+      (array-set graph-key 0 id-left)
       (struct-set val-graph-key
         mv-data graph-key)
       (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-RANGE)
@@ -299,7 +299,7 @@
         (set left (db-ids-rest left))
         (if left
           (begin
-            (array-set-index graph-key 1 0)
+            (array-set graph-key 1 0)
             (goto set-range-1100))
           (goto exit))))
     (label each-data-1100
@@ -315,7 +315,7 @@
         db-mdb-status-require-notfound))
     (status-require!
       (db-graph-internal-delete-graph-ll-conditional graph-lr graph-ll id-label id-left))
-    (array-set-index graph-key 0 id-left 1 id-label)
+    (array-set graph-key 0 id-left 1 id-label)
     (struct-set val-graph-key
       mv-data graph-key)
     (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-KEY)
@@ -338,7 +338,7 @@
       (set id-left (db-ids-first left))
       (while label
         (set id-label (db-ids-first label))
-        (array-set-index graph-key 0 id-left 1 id-label)
+        (array-set graph-key 0 id-left 1 id-label)
         (struct-set val-graph-key
           mv-data graph-key)
         (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-KEY)
@@ -369,13 +369,13 @@
       id-label db-id-t
       right-set imht-set-t*)
     (db-graph-internal-delete-get-ordinal-data ordinal)
-    (array-set-index graph-data 0 ordinal-min)
-    (array-set-index graph-key 1 0)
+    (array-set graph-data 0 ordinal-min)
+    (array-set graph-key 1 0)
     (if right
       (status-require! (db-ids->set right (address-of right-set))))
     (label set-range-1001-1101
       (set id-left (db-ids-first left))
-      (array-set-index graph-key 0 id-left)
+      (array-set graph-key 0 id-left)
       (struct-set val-graph-key
         mv-data graph-key)
       (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-RANGE)
@@ -397,7 +397,7 @@
         (set left (db-ids-rest left))
         (if left
           (begin
-            (array-set-index graph-key 1 0)
+            (array-set graph-key 1 0)
             (goto set-range-1001-1101))
           (goto exit))))
     (label each-data-1001-1101
@@ -419,7 +419,7 @@
     (status-require!
       (db-graph-internal-delete-graph-ll-conditional graph-lr graph-ll id-label id-left))
     (label next-label-1001-1101
-      (array-set-index graph-key 0 id-left 1 id-label)
+      (array-set graph-key 0 id-left 1 id-label)
       (struct-set val-graph-key
         mv-data graph-key)
       (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-KEY)
@@ -441,11 +441,11 @@
     (if right
       (status-require! (db-ids->set right (address-of right-set))))
     (db-graph-internal-delete-get-ordinal-data ordinal)
-    (array-set-index graph-data 0 ordinal-min)
+    (array-set graph-data 0 ordinal-min)
     (set id-label (db-ids-first label))
     (label set-key-1011-1111
       (set id-left (db-ids-first left-pointer))
-      (array-set-index graph-key 0 id-left 1 id-label)
+      (array-set graph-key 0 id-left 1 id-label)
       (struct-set val-graph-key
         mv-data graph-key)
       (struct-set val-graph-data

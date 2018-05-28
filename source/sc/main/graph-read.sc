@@ -48,7 +48,7 @@
   (define left db-ids-t* state:left)
   (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
   db-mdb-status-require
-  (array-set-index graph-key 0 (db-ids-first left))
+  (array-set graph-key 0 (db-ids-first left))
   (if (db-id-equal? (db-pointer->id val-graph-key.mv-data 0) (array-get graph-key 0))
     (goto each-data)
     (label set-range
@@ -62,7 +62,7 @@
         (set left (db-ids-rest left))
         (if left
           (begin
-            (array-set-index graph-key 0 (db-ids-first left))
+            (array-set graph-key 0 (db-ids-first left))
             (goto set-range))
           no-more-data-exit))))
   (label each-data
@@ -97,7 +97,7 @@
   (define label db-ids-t* state:label)
   (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
   db-mdb-status-require
-  (array-set-index graph-key 0 (db-ids-first left) 1 (db-ids-first label))
+  (array-set graph-key 0 (db-ids-first left) 1 (db-ids-first label))
   (if (db-graph-key-equal? graph-key (db-mdb-val->graph-key val-graph-key)) (goto each-data)
     (label set-key
       (set val-graph-key.mv-data graph-key)
@@ -108,14 +108,14 @@
         (set left (db-ids-rest left))
         (if left
           (begin
-            (array-set-index graph-key 0 (db-ids-first left))
+            (array-set graph-key 0 (db-ids-first left))
             (goto set-key))
           (begin
             (set label (db-ids-rest label))
             (if label
               (begin
                 (set left left-first)
-                (array-set-index graph-key 0 (db-ids-first left) 1 (db-ids-first label))
+                (array-set graph-key 0 (db-ids-first left) 1 (db-ids-first label))
                 (goto set-key))
               no-more-data-exit))))))
   (label each-data
@@ -149,7 +149,7 @@
   (define right db-ids-t* state:right)
   (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-GET-CURRENT)
   db-mdb-status-require
-  (array-set-index graph-key 0 (db-ids-first right))
+  (array-set graph-key 0 (db-ids-first right))
   (if (db-id-equal? (db-pointer->id val-graph-key.mv-data 0) (array-get graph-key 0))
     (goto each-left)
     (label set-range
@@ -161,7 +161,7 @@
             (goto each-left))
           db-mdb-status-require-notfound)
         (set right (db-ids-rest right))
-        (if right (array-set-index graph-key 0 (db-ids-first right))
+        (if right (array-set graph-key 0 (db-ids-first right))
           no-more-data-exit)
         (goto set-range))))
   (label each-left
@@ -202,9 +202,9 @@
   (define right-first db-ids-t* state:right-first)
   (define label db-ids-t* state:label)
   (declare id-left db-id-t)
-  (array-set-index graph-key 1 (db-ids-first label))
+  (array-set graph-key 1 (db-ids-first label))
   (set id-left (db-ids-first left))
-  (array-set-index graph-key 0 (db-ids-first right))
+  (array-set graph-key 0 (db-ids-first right))
   (label set-cursor
     (set
       val-graph-key.mv-data graph-key
@@ -217,11 +217,11 @@
       (if right
         (begin
           stop-if-count-zero
-          (array-set-index graph-key 0 (db-ids-first right))
+          (array-set graph-key 0 (db-ids-first right))
           (goto set-cursor))
         (begin
           (set right right-first)
-          (array-set-index graph-key 0 (db-ids-first right))
+          (array-set graph-key 0 (db-ids-first right))
           (set left (db-ids-rest left))
           (if left
             (begin
@@ -235,7 +235,7 @@
               (if label
                 (begin
                   stop-if-count-zero
-                  (array-set-index graph-key 1 (db-ids-first label))
+                  (array-set graph-key 1 (db-ids-first label))
                   (goto set-cursor))
                 no-more-data-exit)))))))
   (label match
@@ -268,7 +268,7 @@
   (db-graph-data-set-ordinal graph-data ordinal-min)
   (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
   db-mdb-status-require
-  (if left (array-set-index graph-key 0 (db-ids-first left))
+  (if left (array-set graph-key 0 (db-ids-first left))
     no-more-data-exit)
   (if
     (and
@@ -291,7 +291,7 @@
               (goto each-key)))
           db-mdb-status-require-notfound)
         (set left (db-ids-rest left))
-        (if left (array-set-index graph-key 0 (db-ids-first left))
+        (if left (array-set graph-key 0 (db-ids-first left))
           no-more-data-exit)
         (goto each-left))))
   (label each-data
@@ -334,7 +334,7 @@
   (db-graph-data-set-ordinal graph-data ordinal-min)
   (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
   db-mdb-status-require
-  (array-set-index graph-key 0 (db-ids-first left) 1 (db-ids-first label))
+  (array-set graph-key 0 (db-ids-first left) 1 (db-ids-first label))
   (if (db-graph-key-equal? graph-key (db-mdb-val->graph-key val-graph-key)) (goto each-data)
     (label set-key
       (set
@@ -346,14 +346,14 @@
           db-mdb-status-require-notfound
           (label each-key
             (set left (db-ids-rest left))
-            (if left (array-set-index graph-key 0 (db-ids-first left))
+            (if left (array-set graph-key 0 (db-ids-first left))
               (begin
                 (set label (db-ids-rest label))
                 (if label
                   (begin
-                    (array-set-index graph-key 1 (db-ids-first label))
+                    (array-set graph-key 1 (db-ids-first label))
                     (set left left-first)
-                    (array-set-index graph-key 0 (db-ids-first left)))
+                    (array-set graph-key 0 (db-ids-first left)))
                   no-more-data-exit)))
             (goto set-key))))))
   (label each-data
@@ -402,14 +402,14 @@
     no-more-data-exit)
   (if (db-id-equal? id-label (db-mdb-val->id val-id))
     (begin
-      (array-set-index graph-key 1 id-label)
+      (array-set graph-key 1 id-label)
       (goto each-label-data))
     (label set-label-key
       (set val-id.mv-data &id-label)
       (db-mdb-cursor-get-norequire graph-ll val-id val-id-2 MDB-SET-KEY)
       (if db-mdb-status-success?
         (begin
-          (array-set-index graph-key 1 id-label)
+          (array-set graph-key 1 id-label)
           (goto each-label-data))
         (begin
           db-mdb-status-require-notfound
@@ -421,7 +421,7 @@
     (set id-left (db-mdb-val->id val-id-2))
     (if (db-id-equal? id-left (db-pointer->id val-graph-key.mv-data 0)) (goto each-left-data)
       (begin
-        (array-set-index graph-key 0 id-left)
+        (array-set graph-key 0 id-left)
         (set val-graph-key.mv-data graph-key)
         (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-KEY)
         (if db-mdb-status-success? (goto each-left-data)
@@ -462,8 +462,8 @@
   (define right-first db-ids-t* state:right-first)
   (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-GET-CURRENT)
   db-mdb-status-require
-  (array-set-index graph-key 1 (db-ids-first label))
-  (array-set-index graph-key 0 (db-ids-first right))
+  (array-set graph-key 1 (db-ids-first label))
+  (array-set graph-key 0 (db-ids-first right))
   (if (db-graph-key-equal? graph-key (db-mdb-val->graph-key val-graph-key)) (goto each-data)
     (label set-key
       (set val-graph-key.mv-data graph-key)
@@ -472,14 +472,14 @@
         (label each-key
           db-mdb-status-require-notfound
           (set right (db-ids-rest right))
-          (if right (array-set-index graph-key 0 (db-ids-first right))
+          (if right (array-set graph-key 0 (db-ids-first right))
             (begin
               (set label (db-ids-rest label))
               (if label
                 (begin
-                  (array-set-index graph-key 1 (db-ids-first label))
+                  (array-set graph-key 1 (db-ids-first label))
                   (set right right-first)
-                  (array-set-index graph-key 0 (db-ids-first right)))
+                  (array-set graph-key 0 (db-ids-first right)))
                 no-more-data-exit)))
           (goto set-key)))))
   (label each-data
@@ -510,7 +510,7 @@
   (define right db-ids-t* state:right)
   (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-GET-CURRENT)
   db-mdb-status-require
-  (array-set-index graph-key 0 (db-ids-first right))
+  (array-set graph-key 0 (db-ids-first right))
   (if (db-id-equal? (array-get graph-key 0) (db-pointer->id val-graph-key.mv-data 0))
     (goto each-key)
     (label set-range
@@ -521,7 +521,7 @@
           (goto each-key))
         db-mdb-status-require-notfound)
       (set right (db-ids-rest right))
-      (if right (array-set-index graph-key 0 (db-ids-first right))
+      (if right (array-set graph-key 0 (db-ids-first right))
         no-more-data-exit)
       (goto set-range)))
   (label each-key
@@ -544,7 +544,7 @@
         (goto each-key))
       db-mdb-status-require-notfound)
     (set right (db-ids-rest right))
-    (if right (array-set-index graph-key 0 (db-ids-first right))
+    (if right (array-set graph-key 0 (db-ids-first right))
       no-more-data-exit)
     (goto set-range))
   (label exit

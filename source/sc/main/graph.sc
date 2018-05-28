@@ -3,9 +3,8 @@
   (and
     (db-id-equal? (array-get a 0) (array-get b 0)) (db-id-equal? (array-get a 1) (array-get b 1)))
   (db-graph-data-ordinal-set graph-data value)
-  (array-set-index (convert-type graph-data db-ordinal-t*) 0 value)
-  (db-graph-data-id-set graph-data value)
-  (array-set-index (convert-type (+ 1 (convert-type graph-data db-ordinal-t*)) db-id-t*) 0 value)
+  (array-set (convert-type graph-data db-ordinal-t*) 0 value) (db-graph-data-id-set graph-data value)
+  (array-set (convert-type (+ 1 (convert-type graph-data db-ordinal-t*)) db-id-t*) 0 value)
   (db-declare-graph-key name) (declare name (array db-id-t 2 0 0))
   (db-declare-graph-data name)
   (begin
@@ -67,7 +66,7 @@
       (set val-id-2.mv-data &id-label)
       (while right-pointer
         (set id-right (db-ids-first right-pointer))
-        (array-set-index graph-key 0 id-right 1 id-label)
+        (array-set graph-key 0 id-right 1 id-label)
         (set
           val-graph-key.mv-data graph-key
           val-id.mv-data &id-left)
@@ -76,7 +75,7 @@
           (begin
             (db-mdb-status-require! (mdb-cursor-put graph-rl &val-graph-key &val-id 0))
             (db-mdb-status-require! (mdb-cursor-put graph-ll &val-id-2 &val-id 0))
-            (array-set-index graph-key 0 id-left 1 id-label)
+            (array-set graph-key 0 id-left 1 id-label)
             (if ordinal-generator
               (set ordinal ((pointer-get ordinal-generator) ordinal-generator-state)))
             (db-graph-data-ordinal-set graph-data ordinal)

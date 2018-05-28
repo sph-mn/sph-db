@@ -37,7 +37,7 @@
       (do-while db-mdb-status-success?
         (set id-right (db-mdb-val-graph-data->id val-graph-data))
         ;create graph-rl
-        (array-set-index graph-key 0 id-right 1 id-label)
+        (array-set graph-key 0 id-right 1 id-label)
         (struct-set val-graph-key
           mv-data graph-key)
         (struct-set val-id
@@ -133,7 +133,7 @@
       (do-while db-mdb-status-success?
         (set id-right (db-mdb-val-graph-data->id val-graph-data))
         ;-> graph-rl
-        (array-set-index graph-key 0 id-right 1 id-label)
+        (array-set graph-key 0 id-right 1 id-label)
         (struct-set val-graph-key
           mv-data graph-key)
         (struct-set val-id
@@ -182,7 +182,7 @@
         id-label (db-mdb-val->id-at val-graph-key 1))
       (do-while db-mdb-status-success?
         (set id-left (db-mdb-val->id val-id))
-        (array-set-index graph-key 0 id-left 1 id-label)
+        (array-set graph-key 0 id-left 1 id-label)
         (struct-set val-graph-key
           mv-data graph-key)
         (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET-KEY)
@@ -210,7 +210,7 @@
       (set id-label (db-mdb-val->id val-id))
       (do-while db-mdb-status-success?
         (set id-left (db-mdb-val->id val-id-2))
-        (array-set-index graph-key 0 id-left 1 id-label)
+        (array-set graph-key 0 id-left 1 id-label)
         (struct-set val-graph-key
           mv-data graph-key)
         (db-mdb-cursor-get! graph-lr val-graph-key val-graph-data MDB-SET)

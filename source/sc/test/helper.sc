@@ -253,7 +253,7 @@
 
 (define (test-helper-reader-suffix-integer->string a) (b8* b8)
   (define result b8* (malloc 40))
-  (array-set-index
+  (array-set
     result
     0
     (if* (bit-and 8 a) #\1 #\0)
