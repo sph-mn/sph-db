@@ -1,9 +1,9 @@
 #include <string.h>
 #define db_mdb_txn_declare(name) MDB_txn* name = 0
 #define db_mdb_txn_begin(env, mdb_txn) \
-  db_mdb_status_require_x(mdb_txn_begin(env, 0, MDB_RDONLY, &mdb_txn))
+  db_mdb_status_require_x(mdb_txn_begin(env, 0, MDB_RDONLY, (&mdb_txn)))
 #define db_mdb_txn_write_begin(env, mdb_txn) \
-  db_mdb_status_require_x(mdb_txn_begin(env, 0, 0, &mdb_txn))
+  db_mdb_status_require_x(mdb_txn_begin(env, 0, 0, (&mdb_txn)))
 #define db_mdb_txn_abort(a) \
   mdb_txn_abort(a); \
   a = 0
@@ -25,7 +25,7 @@
   mdb_cursor_close(c)
 /** only updates status, no goto on error */
 #define db_mdb_cursor_get_norequire(cursor, val_a, val_b, cursor_operation) \
-  status_set_id(mdb_cursor_get(cursor, &val_a, &val_b, cursor_operation))
+  status_set_id(mdb_cursor_get(cursor, (&val_a), (&val_b), cursor_operation))
 #define db_mdb_cursor_next_dup_norequire(cursor, val_a, val_b) \
   db_mdb_cursor_get_norequire(cursor, val_a, val_b, MDB_NEXT_DUP)
 #define db_mdb_cursor_next_nodup_norequire(cursor, val_a, val_b) \
@@ -34,13 +34,13 @@
   status_set_id(mdb_cursor_del(cursor, flags))
 #define db_mdb_cursor_get(cursor, val_a, val_b, cursor_operation) \
   db_mdb_status_require_x( \
-    mdb_cursor_get(cursor, &val_a, &val_b, cursor_operation))
+    mdb_cursor_get(cursor, (&val_a), (&val_b), cursor_operation))
 #define db_mdb_cursor_put(cursor, val_a, val_b) \
-  db_mdb_status_require_x(mdb_cursor_put(cursor, &val_a, &val_b, 0))
+  db_mdb_status_require_x(mdb_cursor_put(cursor, (&val_a), (&val_b), 0))
 #define db_mdb_put(txn, dbi, val_a, val_b) \
-  db_mdb_status_require_x(mdb_put(dbi, &val_a, &val_b, 0))
+  db_mdb_status_require_x(mdb_put(dbi, (&val_a), (&val_b), 0))
 #define db_mdb_cursor_open(txn, dbi, name) \
-  db_mdb_status_require_x(mdb_cursor_open(txn, dbi, &name))
+  db_mdb_status_require_x(mdb_cursor_open(txn, dbi, (&name)))
 #define db_mdb_cursor_open_two(txn, dbi_a, name_a, dbi_b, name_b) \
   db_mdb_cursor_open(txn, dbi_a, name_a); \
   db_mdb_cursor_open(txn, dbi_b, name_b)
@@ -48,7 +48,7 @@
   txn, dbi_a, name_a, dbi_b, name_b, dbi_c, name_c) \
   db_mdb_cursor_open_two(txn, dbi_a, name_a, dbi_b, name_b); \
   db_mdb_cursor_open(txn, dbi_c, name_c)
-#define db_mdb_val_to_id(a) db_pointer_to_id(a.mv_data, 0)
+#define db_mdb_val_to_id(a) db_pointer_to_id((a.mv_data), 0)
 #define db_mdb_declare_val(name, size) \
   MDB_val name; \
   name.mv_size = size
@@ -70,41 +70,43 @@
   db_mdb_status_require_notfound
 #define db_mdb_cursor_set_first_x(cursor) \
   db_mdb_status_require_x( \
-    mdb_cursor_get(cursor, &val_null, &val_null, MDB_FIRST))
+    mdb_cursor_get(cursor, (&val_null), (&val_null), MDB_FIRST))
 #define db_mdb_val_to_graph_key(a) ((db_id_t*)(a.mv_data))
 /** mdb comparison routines are used by lmdb for search, insert and delete */
 static int db_mdb_compare_id(const MDB_val* a, const MDB_val* b) {
-  return (db_id_compare(
-    db_pointer_to_id(a->mv_data, 0), db_pointer_to_id(b->mv_data, 0)));
+  return ((db_id_compare(
+    (db_pointer_to_id((a->mv_data), 0)), (db_pointer_to_id((b->mv_data), 0)))));
 };
 static int db_mdb_compare_graph_key(const MDB_val* a, const MDB_val* b) {
-  return (((db_pointer_to_id(a->mv_data, 0) < db_pointer_to_id(b->mv_data, 0))
+  return ((
+    (db_pointer_to_id((a->mv_data), 0) < db_pointer_to_id((b->mv_data), 0))
       ? -1
-      : ((db_pointer_to_id(a->mv_data, 0) > db_pointer_to_id(b->mv_data, 0))
+      : ((db_pointer_to_id((a->mv_data), 0) > db_pointer_to_id((b->mv_data), 0))
             ? 1
-            : ((db_pointer_to_id(a->mv_data, 1) <
-                 db_pointer_to_id(b->mv_data, 1))
+            : ((db_pointer_to_id((a->mv_data), 1) <
+                 db_pointer_to_id((b->mv_data), 1))
                   ? -1
-                  : (db_pointer_to_id(a->mv_data, 1) >
-                      db_pointer_to_id(b->mv_data, 1))))));
+                  : (db_pointer_to_id((a->mv_data), 1) >
+                      db_pointer_to_id((b->mv_data), 1))))));
 };
 /** memcmp does not work here, gives -1 for 256 vs 1 */
 static int db_mdb_compare_graph_data(const MDB_val* a, const MDB_val* b) {
-  return (((db_graph_data_to_ordinal(a->mv_data) <
-             db_graph_data_to_ordinal(b->mv_data))
+  return (((db_graph_data_to_ordinal((a->mv_data)) <
+             db_graph_data_to_ordinal((b->mv_data)))
       ? -1
-      : ((db_graph_data_to_ordinal(a->mv_data) >
-           db_graph_data_to_ordinal(b->mv_data))
+      : ((db_graph_data_to_ordinal((a->mv_data)) >
+           db_graph_data_to_ordinal((b->mv_data)))
             ? 1
-            : ((db_graph_data_to_id(a->mv_data) <
-                 db_graph_data_to_id(b->mv_data))
+            : ((db_graph_data_to_id((a->mv_data)) <
+                 db_graph_data_to_id((b->mv_data)))
                   ? -1
-                  : (db_graph_data_to_id(a->mv_data) >
-                      db_graph_data_to_id(b->mv_data))))));
+                  : (db_graph_data_to_id((a->mv_data)) >
+                      db_graph_data_to_id((b->mv_data)))))));
 };
 static int db_mdb_compare_data(const MDB_val* a, const MDB_val* b) {
   ssize_t length_difference =
     (((ssize_t)(a->mv_size)) - ((ssize_t)(b->mv_size)));
-  return ((length_difference ? ((length_difference < 0) ? -1 : 1)
-                             : memcmp(a->mv_data, b->mv_data, a->mv_size)));
+  return (
+    (length_difference ? ((length_difference < 0) ? -1 : 1)
+                       : memcmp((a->mv_data), (b->mv_data), (a->mv_size))));
 };

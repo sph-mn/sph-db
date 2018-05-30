@@ -7,7 +7,7 @@
   allocated, 2 if result is a new string */
 b8 ensure_trailing_slash(b8* a, b8** result) {
   b32 a_len = strlen(a);
-  if ((!a_len || (('/' == (*((a + (a_len - 1)))))))) {
+  if (!a_len || ('/' == *(a + (a_len - 1)))) {
     *result = a;
     return (0);
   } else {
@@ -62,7 +62,6 @@ boolean ensure_directory_structure(b8* path, mode_t mkdir_mode) {
     b8* path_dirname = dirname_2(path);
     boolean status = ensure_directory_structure(path_dirname, mkdir_mode);
     free(path_dirname);
-    return (
-      (status && ((((EEXIST == errno)) || ((0 == mkdir(path, mkdir_mode)))))));
+    return ((status && ((EEXIST == errno) || (0 == mkdir(path, mkdir_mode)))));
   };
 };

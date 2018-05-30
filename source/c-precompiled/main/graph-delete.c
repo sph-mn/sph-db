@@ -218,7 +218,7 @@ exit:
   val_graph_key.mv_data = graph_key; \
   db_mdb_cursor_get_x(graph_rl, val_graph_key, val_id, MDB_SET_RANGE); \
   if (db_mdb_status_success_p) { \
-    if ((id_right == db_mdb_val_to_id_at(val_graph_key, 0))) { \
+    if (id_right == db_mdb_val_to_id_at(val_graph_key, 0)) { \
       if (db_mdb_status_success_p) { \
       }; \
       id_label = db_mdb_val_to_id_at(val_graph_key, 1); \
@@ -273,7 +273,7 @@ exit:
   db_mdb_cursor_get_x(graph_lr, val_graph_key, val_graph_data, MDB_SET_RANGE); \
   each_key_1000: \
   if (db_mdb_status_success_p) { \
-    if ((id_left == db_mdb_val_to_id_at(val_graph_key, 0))) { \
+    if (id_left == db_mdb_val_to_id_at(val_graph_key, 0)) { \
       id_label = db_mdb_val_to_id_at(val_graph_key, 1); \
       goto each_data_1000; \
     }; \
@@ -309,7 +309,7 @@ exit:
   db_id_t id_right; \
   db_id_t id_label; \
   imht_set_t* right_set; \
-  status_require_x(db_ids_to_set(right, &right_set)); \
+  status_require_x(db_ids_to_set(right, (&right_set))); \
   graph_key[1] = 0; \
   set_range_1100: \
   id_left = db_ids_first(left); \
@@ -318,7 +318,7 @@ exit:
   db_mdb_cursor_get_x(graph_lr, val_graph_key, val_graph_data, MDB_SET_RANGE); \
   each_key_1100: \
   if (db_mdb_status_success_p) { \
-    if ((id_left == db_mdb_val_to_id_at(val_graph_key, 0))) { \
+    if (id_left == db_mdb_val_to_id_at(val_graph_key, 0)) { \
       id_label = db_mdb_val_to_id_at(val_graph_key, 1); \
       goto each_data_1100; \
     }; \
@@ -365,7 +365,7 @@ exit:
   imht_set_t* right_set; \
   db_id_t id_right; \
   db_ids_t* label_first = label; \
-  status_require_x(db_ids_to_set(right, &right_set)); \
+  status_require_x(db_ids_to_set(right, (&right_set))); \
   while (left) { \
     id_left = db_ids_first(left); \
     while (label) { \
@@ -405,7 +405,7 @@ exit:
   graph_data[0] = ordinal_min; \
   graph_key[1] = 0; \
   if (right) { \
-    status_require_x(db_ids_to_set(right, &right_set)); \
+    status_require_x(db_ids_to_set(right, (&right_set))); \
   }; \
   set_range_1001_1101: \
   id_left = db_ids_first(left); \
@@ -414,7 +414,7 @@ exit:
   db_mdb_cursor_get_x(graph_lr, val_graph_key, val_graph_data, MDB_SET_RANGE); \
   each_key_1001_1101: \
   if (db_mdb_status_success_p) { \
-    if ((id_left == db_mdb_val_to_id_at(val_graph_key, 0))) { \
+    if (id_left == db_mdb_val_to_id_at(val_graph_key, 0)) { \
       val_graph_data.mv_data = graph_data; \
       db_mdb_cursor_get_x( \
         graph_lr, val_graph_key, val_graph_data, MDB_GET_BOTH_RANGE); \
@@ -438,11 +438,10 @@ exit:
     goto exit; \
   }; \
   each_data_1001_1101: \
-  if ((!ordinal_max || \
-        ((db_mdb_val_graph_data_to_ordinal(val_graph_data) <= \
-          ordinal_max)))) { \
+  if (!ordinal_max || \
+    (db_mdb_val_graph_data_to_ordinal(val_graph_data) <= ordinal_max)) { \
     id_right = db_mdb_val_graph_data_to_id(val_graph_data); \
-    if ((!right || imht_set_contains_p(right_set, id_right))) { \
+    if (!right || imht_set_contains_p(right_set, id_right)) { \
       status = db_graph_internal_delete_graph_rl( \
         graph_rl, id_left, id_right, id_label); \
       db_mdb_status_require_read; \
@@ -480,7 +479,7 @@ exit:
   db_id_t id_right; \
   db_ids_t* left_pointer = left; \
   if (right) { \
-    status_require_x(db_ids_to_set(right, &right_set)); \
+    status_require_x(db_ids_to_set(right, (&right_set))); \
   }; \
   db_graph_internal_delete_get_ordinal_data(ordinal); \
   graph_data[0] = ordinal_min; \
@@ -512,12 +511,11 @@ exit:
     }; \
   }; \
   each_data_1011_1111: \
-  if ((!ordinal_max || \
-        ((db_mdb_val_graph_data_to_ordinal(val_graph_data) <= \
-          ordinal_max)))) { \
-    if ((!right || \
-          imht_set_contains_p( \
-            right_set, db_mdb_val_graph_data_to_id(val_graph_data)))) { \
+  if (!ordinal_max || \
+    (db_mdb_val_graph_data_to_ordinal(val_graph_data) <= ordinal_max)) { \
+    if (!right || \
+      imht_set_contains_p( \
+        right_set, db_mdb_val_graph_data_to_id(val_graph_data))) { \
       id_right = db_mdb_val_graph_data_to_id(val_graph_data); \
       status = db_graph_internal_delete_graph_rl( \
         graph_rl, id_left, id_right, id_label); \
@@ -602,12 +600,12 @@ status_t db_graph_delete(db_txn_t txn,
   db_ids_t* label,
   db_ordinal_condition_t* ordinal) {
   status_init;
-  db_mdb_cursor_define_3(txn.mdb_txn,
-    txn.s->dbi_graph_lr,
+  db_mdb_cursor_define_3((txn.mdb_txn),
+    ((txn.s)->dbi_graph_lr),
     graph_lr,
-    txn.s->dbi_graph_rl,
+    ((txn.s)->dbi_graph_rl),
     graph_rl,
-    txn.s->dbi_graph_ll,
+    ((txn.s)->dbi_graph_ll),
     graph_ll);
   status = db_graph_internal_delete(
     left, right, label, ordinal, graph_lr, graph_rl, graph_ll);

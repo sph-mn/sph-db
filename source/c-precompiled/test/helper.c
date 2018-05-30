@@ -14,10 +14,11 @@
   db_env_define(env_name)
 #define test_helper_report_status \
   if (status_success_p) { \
-    printf("--\ntests finished successfully.\n"); \
+    printf(("--\ntests finished successfully.\n")); \
   } else { \
-    printf( \
-      "\ntests failed. %d %s\n", status.id, db_status_description(status)); \
+    printf(("\ntests failed. %d %s\n"), \
+      (status.id), \
+      db_status_description(status)); \
   }
 #define test_helper_test_one(func, env) \
   printf("%s\n", #func); \
@@ -33,7 +34,7 @@ status_t test_helper_reset(db_env_t* env, boolean re_use) {
   if (env->open) {
     db_close(env);
   };
-  if ((!re_use && file_exists_p(test_helper_path_data))) {
+  if (!re_use && file_exists_p(test_helper_path_data)) {
     status_set_id(system("rm " test_helper_path_data));
     status_require;
   };
@@ -44,9 +45,9 @@ exit:
 b0 test_helper_print_binary_b64(b64 a) {
   size_t i;
   b8 result[65];
-  (*((64 + result))) = 0;
+  *(64 + result) = 0;
   for (i = 0; (i < 64); i = (1 + i)) {
-    (*((i + result))) = (((((b64)(1)) << i) & a) ? '1' : '0');
+    *(i + result) = (((((b64)(1)) << i) & a) ? '1' : '0');
   };
   printf("%s\n", result);
 };

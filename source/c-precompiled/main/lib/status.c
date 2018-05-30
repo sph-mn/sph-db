@@ -121,11 +121,11 @@ enum {
   }
 b8* db_status_group_id_to_name(status_i_t a) {
   char* b;
-  if ((db_status_group_db == a)) {
+  if (db_status_group_db == a) {
     b = "sph-db";
-  } else if ((db_status_group_lmdb == a)) {
+  } else if (db_status_group_lmdb == a) {
     b = "lmdb";
-  } else if ((db_status_group_libc == a)) {
+  } else if (db_status_group_libc == a) {
     b = "libc";
   } else {
     b = "";
@@ -135,41 +135,41 @@ b8* db_status_group_id_to_name(status_i_t a) {
 /** get the description if available for a status */
 b8* db_status_description(status_t a) {
   char* b;
-  if ((db_status_group_db == a.group)) {
-    if ((db_status_id_input_type == a.id)) {
+  if (db_status_group_db == a.group) {
+    if (db_status_id_input_type == a.id) {
       b = "input argument is of wrong type";
-    } else if ((db_status_id_data_length == a.id)) {
+    } else if (db_status_id_data_length == a.id) {
       b = "data too large";
-    } else if ((db_status_id_duplicate == a.id)) {
+    } else if (db_status_id_duplicate == a.id) {
       b = "element already exists";
-    } else if ((db_status_id_not_implemented == a.id)) {
+    } else if (db_status_id_not_implemented == a.id) {
       b = "not implemented";
-    } else if ((db_status_id_missing_argument_db_root == a.id)) {
+    } else if (db_status_id_missing_argument_db_root == a.id) {
       b = "missing argument 'db-root'";
-    } else if ((db_status_id_path_not_accessible_db_root == a.id)) {
+    } else if (db_status_id_path_not_accessible_db_root == a.id) {
       b = "root not accessible";
-    } else if ((db_status_id_memory == a.id)) {
+    } else if (db_status_id_memory == a.id) {
       b = "not enough memory or other memory allocation error";
-    } else if ((db_status_id_max_element_id == a.id)) {
+    } else if (db_status_id_max_element_id == a.id) {
       b = "maximum element identifier value has been reached for the type";
-    } else if ((db_status_id_max_type_id == a.id)) {
+    } else if (db_status_id_max_type_id == a.id) {
       b = "maximum type identifier value has been reached";
-    } else if ((db_status_id_max_type_id_size == a.id)) {
+    } else if (db_status_id_max_type_id_size == a.id) {
       b =
         "type identifier size is either configured to be greater than 16 bit, "
         "which is currently not supported, or is not smaller than node id size";
-    } else if ((db_status_id_condition_unfulfilled == a.id)) {
+    } else if (db_status_id_condition_unfulfilled == a.id) {
       b = "condition unfulfilled";
-    } else if ((db_status_id_no_more_data == a.id)) {
+    } else if (db_status_id_no_more_data == a.id) {
       b = "no more data to read";
-    } else if ((db_status_id_different_format == a.id)) {
+    } else if (db_status_id_different_format == a.id) {
       b = "configured format differs from the format the database was created "
           "with";
     } else {
       b = "";
     };
-  } else if ((db_status_group_lmdb == a.group)) {
-    b = mdb_strerror(a.id);
+  } else if (db_status_group_lmdb == a.group) {
+    b = mdb_strerror((a.id));
   } else {
     b = "";
   };
@@ -178,38 +178,38 @@ b8* db_status_description(status_t a) {
 /** get the name if available for a status */
 b8* db_status_name(status_t a) {
   char* b;
-  if ((db_status_group_db == a.group)) {
-    if ((db_status_id_input_type == a.id)) {
+  if (db_status_group_db == a.group) {
+    if (db_status_id_input_type == a.id) {
       b = "input-type";
-    } else if ((db_status_id_data_length == a.id)) {
+    } else if (db_status_id_data_length == a.id) {
       b = "data-length";
-    } else if ((db_status_id_duplicate == a.id)) {
+    } else if (db_status_id_duplicate == a.id) {
       b = "duplicate";
-    } else if ((db_status_id_not_implemented == a.id)) {
+    } else if (db_status_id_not_implemented == a.id) {
       b = "not-implemented";
-    } else if ((db_status_id_missing_argument_db_root == a.id)) {
+    } else if (db_status_id_missing_argument_db_root == a.id) {
       b = "missing-argument-db-root";
-    } else if ((db_status_id_path_not_accessible_db_root == a.id)) {
+    } else if (db_status_id_path_not_accessible_db_root == a.id) {
       b = "path-not-accessible-db-root";
-    } else if ((db_status_id_memory == a.id)) {
+    } else if (db_status_id_memory == a.id) {
       b = "memory";
-    } else if ((db_status_id_max_element_id == a.id)) {
+    } else if (db_status_id_max_element_id == a.id) {
       b = "max-element-id-reached";
-    } else if ((db_status_id_max_type_id == a.id)) {
+    } else if (db_status_id_max_type_id == a.id) {
       b = "max-type-id-reached";
-    } else if ((db_status_id_max_type_id_size == a.id)) {
+    } else if (db_status_id_max_type_id_size == a.id) {
       b = "type-id-size-too-big";
-    } else if ((db_status_id_condition_unfulfilled == a.id)) {
+    } else if (db_status_id_condition_unfulfilled == a.id) {
       b = "condition-unfulfilled";
-    } else if ((db_status_id_no_more_data == a.id)) {
+    } else if (db_status_id_no_more_data == a.id) {
       b = "no-more-data";
-    } else if ((db_status_id_different_format == a.id)) {
+    } else if (db_status_id_different_format == a.id) {
       b = "different-format";
     } else {
       b = "unknown";
     };
-  } else if ((db_status_group_lmdb == a.group)) {
-    b = mdb_strerror(a.id);
+  } else if (db_status_group_lmdb == a.group) {
+    b = mdb_strerror((a.id));
   } else {
     b = "unknown";
   };

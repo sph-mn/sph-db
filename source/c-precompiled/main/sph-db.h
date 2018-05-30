@@ -148,11 +148,11 @@ enum {
   }
 b8* db_status_group_id_to_name(status_i_t a) {
   char* b;
-  if ((db_status_group_db == a)) {
+  if (db_status_group_db == a) {
     b = "sph-db";
-  } else if ((db_status_group_lmdb == a)) {
+  } else if (db_status_group_lmdb == a) {
     b = "lmdb";
-  } else if ((db_status_group_libc == a)) {
+  } else if (db_status_group_libc == a) {
     b = "libc";
   } else {
     b = "";
@@ -162,41 +162,41 @@ b8* db_status_group_id_to_name(status_i_t a) {
 /** get the description if available for a status */
 b8* db_status_description(status_t a) {
   char* b;
-  if ((db_status_group_db == a.group)) {
-    if ((db_status_id_input_type == a.id)) {
+  if (db_status_group_db == a.group) {
+    if (db_status_id_input_type == a.id) {
       b = "input argument is of wrong type";
-    } else if ((db_status_id_data_length == a.id)) {
+    } else if (db_status_id_data_length == a.id) {
       b = "data too large";
-    } else if ((db_status_id_duplicate == a.id)) {
+    } else if (db_status_id_duplicate == a.id) {
       b = "element already exists";
-    } else if ((db_status_id_not_implemented == a.id)) {
+    } else if (db_status_id_not_implemented == a.id) {
       b = "not implemented";
-    } else if ((db_status_id_missing_argument_db_root == a.id)) {
+    } else if (db_status_id_missing_argument_db_root == a.id) {
       b = "missing argument 'db-root'";
-    } else if ((db_status_id_path_not_accessible_db_root == a.id)) {
+    } else if (db_status_id_path_not_accessible_db_root == a.id) {
       b = "root not accessible";
-    } else if ((db_status_id_memory == a.id)) {
+    } else if (db_status_id_memory == a.id) {
       b = "not enough memory or other memory allocation error";
-    } else if ((db_status_id_max_element_id == a.id)) {
+    } else if (db_status_id_max_element_id == a.id) {
       b = "maximum element identifier value has been reached for the type";
-    } else if ((db_status_id_max_type_id == a.id)) {
+    } else if (db_status_id_max_type_id == a.id) {
       b = "maximum type identifier value has been reached";
-    } else if ((db_status_id_max_type_id_size == a.id)) {
+    } else if (db_status_id_max_type_id_size == a.id) {
       b =
         "type identifier size is either configured to be greater than 16 bit, "
         "which is currently not supported, or is not smaller than node id size";
-    } else if ((db_status_id_condition_unfulfilled == a.id)) {
+    } else if (db_status_id_condition_unfulfilled == a.id) {
       b = "condition unfulfilled";
-    } else if ((db_status_id_no_more_data == a.id)) {
+    } else if (db_status_id_no_more_data == a.id) {
       b = "no more data to read";
-    } else if ((db_status_id_different_format == a.id)) {
+    } else if (db_status_id_different_format == a.id) {
       b = "configured format differs from the format the database was created "
           "with";
     } else {
       b = "";
     };
-  } else if ((db_status_group_lmdb == a.group)) {
-    b = mdb_strerror(a.id);
+  } else if (db_status_group_lmdb == a.group) {
+    b = mdb_strerror((a.id));
   } else {
     b = "";
   };
@@ -205,38 +205,38 @@ b8* db_status_description(status_t a) {
 /** get the name if available for a status */
 b8* db_status_name(status_t a) {
   char* b;
-  if ((db_status_group_db == a.group)) {
-    if ((db_status_id_input_type == a.id)) {
+  if (db_status_group_db == a.group) {
+    if (db_status_id_input_type == a.id) {
       b = "input-type";
-    } else if ((db_status_id_data_length == a.id)) {
+    } else if (db_status_id_data_length == a.id) {
       b = "data-length";
-    } else if ((db_status_id_duplicate == a.id)) {
+    } else if (db_status_id_duplicate == a.id) {
       b = "duplicate";
-    } else if ((db_status_id_not_implemented == a.id)) {
+    } else if (db_status_id_not_implemented == a.id) {
       b = "not-implemented";
-    } else if ((db_status_id_missing_argument_db_root == a.id)) {
+    } else if (db_status_id_missing_argument_db_root == a.id) {
       b = "missing-argument-db-root";
-    } else if ((db_status_id_path_not_accessible_db_root == a.id)) {
+    } else if (db_status_id_path_not_accessible_db_root == a.id) {
       b = "path-not-accessible-db-root";
-    } else if ((db_status_id_memory == a.id)) {
+    } else if (db_status_id_memory == a.id) {
       b = "memory";
-    } else if ((db_status_id_max_element_id == a.id)) {
+    } else if (db_status_id_max_element_id == a.id) {
       b = "max-element-id-reached";
-    } else if ((db_status_id_max_type_id == a.id)) {
+    } else if (db_status_id_max_type_id == a.id) {
       b = "max-type-id-reached";
-    } else if ((db_status_id_max_type_id_size == a.id)) {
+    } else if (db_status_id_max_type_id_size == a.id) {
       b = "type-id-size-too-big";
-    } else if ((db_status_id_condition_unfulfilled == a.id)) {
+    } else if (db_status_id_condition_unfulfilled == a.id) {
       b = "condition-unfulfilled";
-    } else if ((db_status_id_no_more_data == a.id)) {
+    } else if (db_status_id_no_more_data == a.id) {
       b = "no-more-data";
-    } else if ((db_status_id_different_format == a.id)) {
+    } else if (db_status_id_different_format == a.id) {
       b = "different-format";
     } else {
       b = "unknown";
     };
-  } else if ((db_status_group_lmdb == a.group)) {
-    b = mdb_strerror(a.id);
+  } else if (db_status_group_lmdb == a.group) {
+    b = mdb_strerror((a.id));
   } else {
     b = "unknown";
   };
@@ -252,7 +252,7 @@ b8* db_status_name(status_t a) {
 #define db_ordinal_t b32
 #define db_type_id_mask UINT16_MAX
 #define db_type_id_t b16
-#define db_pointer_to_id(a, index) (*((index + ((db_id_t*)(a)))))
+#define db_pointer_to_id(a, index) *(index + ((db_id_t*)(a)))
 #ifndef db_id_t
 #define db_id_t b64
 #endif
@@ -335,11 +335,11 @@ b8* db_status_name(status_t a) {
 #define db_id_type(id) (id >> (8 * db_size_element_id))
 /** get the element id part from a node id. a node id without type id */
 #define db_id_element(id) (db_id_element_mask & id)
-#define db_pointer_to_id(a, index) (*((index + ((db_id_t*)(a)))))
+#define db_pointer_to_id(a, index) *(index + ((db_id_t*)(a)))
 #define db_field_type_fixed_p(a) !(1 & a)
-#define db_system_key_label(a) (*(((b8*)(a))))
+#define db_system_key_label(a) *((b8*)(a))
 #define db_system_key_id(a) \
-  (*(((db_type_id_t*)((db_size_system_label + ((b8*)(a)))))))
+  *((db_type_id_t*)((db_size_system_label + ((b8*)(a)))))
 #define db_status_memory_error_if_null(variable) \
   if (!variable) { \
     status_set_both_goto(db_status_group_db, db_status_id_memory); \
@@ -350,7 +350,7 @@ b8* db_status_name(status_t a) {
 /** allocate memory for a string with size and one extra last null element */
 #define db_malloc_string(variable, len) \
   db_malloc(variable, (1 + len)); \
-  (*((len + variable))) = 0
+  *(len + variable) = 0
 #define db_calloc(variable, count, size) \
   variable = calloc(count, size); \
   db_status_memory_error_if_null(variable)
@@ -369,11 +369,12 @@ b8* db_status_name(status_t a) {
 #define db_txn_declare(env, name) db_txn_t name = { 0, env }
 #define db_txn_begin(txn) \
   db_mdb_status_require_x( \
-    mdb_txn_begin(txn.env->mdb_env, 0, MDB_RDONLY, &(txn.mdb_txn)))
+    (mdb_txn_begin(((txn.env)->mdb_env), 0, MDB_RDONLY, (&(txn.mdb_txn)))))
 #define db_txn_write_begin(txn) \
-  db_mdb_status_require_x(mdb_txn_begin(txn.env->mdb_env, 0, 0, &(txn.mdb_txn)))
+  db_mdb_status_require_x( \
+    (mdb_txn_begin(((txn.env)->mdb_env), 0, 0, (&(txn.mdb_txn)))))
 #define db_txn_abort(a) \
-  mdb_txn_abort(a.mdb_txn); \
+  mdb_txn_abort((a.mdb_txn)); \
   a.mdb_txn = 0
 #define db_txn_abort_if_active(a) \
   if (a.mdb_txn) { \
@@ -381,7 +382,7 @@ b8* db_status_name(status_t a) {
   }
 #define db_txn_active_p(a) (a.mdb_txn ? 1 : 0)
 #define db_txn_commit(a) \
-  db_mdb_status_require_x(mdb_txn_commit(a.mdb_txn)); \
+  db_mdb_status_require_x((mdb_txn_commit((a.mdb_txn)))); \
   a.mdb_txn = 0
 /** db-id-t -> db-id-t */
 #define db_node_virtual_to_data(id) (id >> 2)
@@ -402,7 +403,7 @@ b8* db_status_name(status_t a) {
   db_define_ids_2(name_1, name_2); \
   db_define_ids(name_3)
 #define db_graph_data_to_id(a) db_pointer_to_id((1 + ((db_ordinal_t*)(a))), 0)
-#define db_graph_data_to_ordinal(a) (*(((db_ordinal_t*)(a))))
+#define db_graph_data_to_ordinal(a) *((db_ordinal_t*)(a))
 #define db_graph_data_set_id(a, value) db_graph_data_to_id(a) = value
 #define db_graph_data_set_ordinal(a, value) db_graph_data_to_ordinal(a) = value
 #define db_graph_data_set_both(a, ordinal, id) \

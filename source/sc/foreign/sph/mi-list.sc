@@ -1,5 +1,5 @@
 (sc-comment
-  "a minimal linked list with custom element types.
+  "a linked list with custom element types.
    this file can be included multiple times to create differently typed versions,
    depending the value of the preprocessor variables mi-list-name-infix and mi-list-element-t before inclusion")
 
@@ -21,8 +21,7 @@
   mi-list-struct-name (mi-list-name struct)
   mi-list-t (mi-list-name t))
 
-(declare
-  mi-list-t
+(declare mi-list-t
   (type
     (struct
       mi-list-struct-name
@@ -34,9 +33,9 @@
 (pre-if-not-defined
   mi-list-first
   (begin
-    (pre-define (mi-list-first a) (struct-pointer-get a data))
-    (pre-define (mi-list-first-address a) (address-of (struct-pointer-get a data)))
-    (pre-define (mi-list-rest a) (struct-pointer-get a link))))
+    (pre-define (mi-list-first a) a:data)
+    (pre-define (mi-list-first-address a) &a:data)
+    (pre-define (mi-list-rest a) a:link)))
 
 (define ((mi-list-name drop) a) (mi-list-t* mi-list-t*)
   (define a-next mi-list-t* (mi-list-rest a))
@@ -47,7 +46,7 @@
   "it would be nice to set the pointer to zero, but that would require more indirection with a pointer-pointer"
   (define a-next mi-list-t* 0)
   (while a
-    (set a-next (struct-pointer-get a link))
+    (set a-next a:link)
     (free a)
     (set a a-next)))
 
@@ -55,15 +54,16 @@
   (define element mi-list-t* (calloc 1 (sizeof mi-list-t)))
   (if (not element) (return 0))
   (set
-    (struct-pointer-get element data) value
-    (struct-pointer-get element link) a)
+    element:data value
+    element:link a)
   (return element))
 
 (define ((mi-list-name length) a) (size-t mi-list-t*)
   (define result size-t 0)
   (while a
-    (set result (+ 1 result))
-    (set a (mi-list-rest a)))
+    (set
+      result (+ 1 result)
+      a (mi-list-rest a)))
   (return result))
 
 (pre-undefine mi-list-name-prefix mi-list-element-t mi-list-struct-name mi-list-t)

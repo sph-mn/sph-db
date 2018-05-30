@@ -1,4 +1,4 @@
-/* a minimal linked list with custom element types.
+/* a linked list with custom element types.
    this file can be included multiple times to create differently typed
    versions, depending the value of the preprocessor variables
    mi-list-name-infix and mi-list-element-t before inclusion */
@@ -25,7 +25,7 @@ typedef struct mi_list_struct_name {
 } mi_list_t;
 #ifndef mi_list_first
 #define mi_list_first(a) a->data
-#define mi_list_first_address(a) &a->data
+#define mi_list_first_address(a) &(a->data)
 #define mi_list_rest(a) a->link
 #endif
 mi_list_t* mi_list_name(drop)(mi_list_t* a) {

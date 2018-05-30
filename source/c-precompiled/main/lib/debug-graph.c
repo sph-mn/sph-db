@@ -1,6 +1,6 @@
 status_t db_debug_display_content_graph_lr(db_txn_t txn) {
   status_init;
-  db_mdb_cursor_define(txn.mdb_txn, txn.env->dbi_graph_lr, graph_lr);
+  db_mdb_cursor_define((txn.mdb_txn), ((txn.env)->dbi_graph_lr), graph_lr);
   db_id_t id_left;
   db_id_t id_right;
   db_id_t id_label;
@@ -30,7 +30,7 @@ status_t db_debug_display_content_graph_rl(db_txn_t txn) {
   db_id_t id_label;
   db_mdb_declare_val_graph_key;
   db_mdb_declare_val_id;
-  db_mdb_cursor_define(txn.mdb_txn, txn.env->dbi_graph_rl, graph_rl);
+  db_mdb_cursor_define((txn.mdb_txn), ((txn.env)->dbi_graph_rl), graph_rl);
   printf("graph-rl\n");
   db_mdb_cursor_each_key(graph_rl, val_graph_key, val_id, {
     id_right = db_mdb_val_to_id_at(val_graph_key, 0);

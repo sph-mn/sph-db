@@ -98,39 +98,34 @@
   (set min-size (* imht-set-size-factor min-size))
   (define primes uint16_t* imht-set-primes)
   (while (< primes imht-set-primes-end)
-    (if (<= min-size (pointer-get primes))
-      (return (pointer-get primes))
+    (if (<= min-size *primes) (return *primes)
       (set primes (+ 1 primes))))
-  (if (<= min-size (pointer-get primes))
-    (return (pointer-get primes)))
-  ;if no prime has been found, use size-factor times size made odd as a best guess
+  (if (<= min-size *primes) (return *primes))
+  ; if no prime has been found, use size-factor times size made odd as a best guess
   (return (bit-or 1 min-size)))
 
 (define (imht-set-create min-size result) (uint8_t size-t imht-set-t**)
-  ;returns 1 on success or 0 if the memory allocation failed
-  (set (pointer-get result) (malloc (sizeof imht-set-t)))
-  (if (not (pointer-get result))
-    (return #f))
+  ; returns 1 on success or 0 if the memory allocation failed
+  (set *result (malloc (sizeof imht-set-t)))
+  (if (not *result) (return #f))
   (set min-size (imht-set-calculate-hash-table-size min-size))
-  (struct-set (pointer-get (pointer-get result))
+  (struct-set **result
     content (calloc min-size (sizeof imht-set-key-t))
     size min-size)
   (return
-    (if* (struct-pointer-get (pointer-get result) content)
-      #t
+    (if* (: *result content) #t
       #f)))
 
 (define (imht-set-destroy a) (void imht-set-t*)
   (if a
     (begin
-      (free (struct-pointer-get a content))
+      (free a:content)
       (free a))))
 
 (pre-if
   imht-set-can-contain-zero?
   (pre-define (imht-set-hash value hash-table)
-    (if* value
-      (+ 1 (modulo value (- hash-table.size 1)))
+    (if* value (+ 1 (modulo value (- hash-table.size 1)))
       0))
   (pre-define (imht-set-hash value hash-table) (modulo value hash-table.size)))
 
@@ -138,43 +133,31 @@
   "returns the address of the element in the set, 0 if it was not found.
   caveat: if imht-set-can-contain-zero? is defined, which is the default,
   pointer-geterencing a returned address for the found value 0 will return 1 instead"
-  (define h imht-set-key-t*
-    (+ (struct-pointer-get a content) (imht-set-hash value (pointer-get a))))
-  (if (pointer-get h)
+  (define h imht-set-key-t* (+ a:content (imht-set-hash value *a)))
+  (if *h
     (begin
       (pre-if
         imht-set-can-contain-zero?
-        ;the value zero is stored at a special index and is the only value that can be stored there
-        (if (or (= (pointer-get h) value) (= 0 value))
-          (return h))
-        (if (= (pointer-get h) value)
-          (return h)))
-      (define content-end imht-set-key-t*
-        (+ (struct-pointer-get a content) (- (struct-pointer-get a size) 1)))
+        ; the value zero is stored at a special index and is the only value that can be stored there
+        (if (or (= *h value) (= 0 value)) (return h)) (if (= *h value) (return h)))
+      (define content-end imht-set-key-t* (+ a:content (- a:size 1)))
       (define h2 imht-set-key-t* (+ 1 h))
       (while (< h2 content-end)
-        ;prefer the test for non-existance because the number of possible keys is typically much bigger than the size of the set
-        (if (not (pointer-get h2))
-          (return 0)
-          (if (= value (pointer-get h2))
-            (return h2)))
+        ; prefer the test for non-existance because the number of possible keys is typically much bigger than the size of the set
+        (if (not *h2) (return 0)
+          (if (= value *h2) (return h2)))
         (set h2 (+ 1 h2)))
-      (if (not (pointer-get h2))
-        (return 0)
-        (if (= value (pointer-get h2))
-          (return h2)))
-      (set h2 (struct-pointer-get a content))
+      (if (not *h2) (return 0)
+        (if (= value *h2) (return h2)))
+      (set h2 a:content)
       (while (< h2 h)
-        (if (not (pointer-get h2))
-          (return 0)
-          (if (= value (pointer-get h2))
-            (return h2)))
+        (if (not *h2) (return 0)
+          (if (= value *h2) (return h2)))
         (set h2 (+ 1 h2)))))
   (return 0))
 
 (pre-define (imht-set-contains? a value)
-  (if* (= 0 (imht-set-find a value))
-    #f
+  (if* (= 0 (imht-set-find a value)) #f
     #t))
 
 (define (imht-set-remove a value) (uint8-t imht-set-t* imht-set-key-t)
@@ -182,56 +165,47 @@
   (define value-address imht-set-key-t* (imht-set-find a value))
   (if value-address
     (begin
-      (set (pointer-get value-address) 0)
+      (set *value-address 0)
       (return #t))
     (return #f)))
 
 (define (imht-set-add a value) (imht-set-key-t* imht-set-t* imht-set-key-t)
   "returns the address of the added or already included element, 0 if there is no space left in the set"
-  (define h imht-set-key-t*
-    (+ (struct-pointer-get a content) (imht-set-hash value (pointer-get a))))
-  (if (pointer-get h)
+  (define h imht-set-key-t* (+ a:content (imht-set-hash value *a)))
+  (if *h
     (begin
-      ;the first element is special for storing 0
+      ; the first element is special for storing 0
       (pre-if
         imht-set-can-contain-zero?
-        (if (or (= value (pointer-get h)) (= 0 value))
-          (return h))
-        (if (= value (pointer-get h))
-          (return h)))
-      (define content-end imht-set-key-t*
-        (+ (struct-pointer-get a content) (- (struct-pointer-get a size) 1)))
+        (if (or (= value *h) (= 0 value)) (return h)) (if (= value *h) (return h)))
+      (define content-end imht-set-key-t* (+ a:content (- a:size 1)))
       (define h2 imht-set-key-t* (+ 1 h))
-      (while (and (<= h2 content-end) (pointer-get h2))
+      (while (and (<= h2 content-end) *h2)
         (set h2 (+ 1 h2)))
-      ;has been moved to the next entry without data or past the last entry
+      ; has been moved to the next entry without data or past the last entry
       (if (> h2 content-end)
         (begin
-          (set h2 (struct-pointer-get a content))
-          (while (and (< h2 h) (pointer-get h2))
+          (set h2 a:content)
+          (while (and (< h2 h) *h2)
             (set h2 (+ 1 h2)))
-          (if (= h2 h)
-            (return 0)
+          (if (= h2 h) (return 0)
             (pre-if
               imht-set-can-contain-zero?
-              (set (pointer-get h2)
-                (if* (= 0 value)
-                  1
+              (set *h2
+                (if* (= 0 value) 1
                   value))
-              (set (pointer-get h2) value))))
+              (set *h2 value))))
         (pre-if
           imht-set-can-contain-zero?
-          (set (pointer-get h2)
-            (if* (= 0 value)
-              1
+          (set *h2
+            (if* (= 0 value) 1
               value))
-          (set (pointer-get h2) value))))
+          (set *h2 value))))
     (begin
       (pre-if
         imht-set-can-contain-zero?
-        (set (pointer-get h)
-          (if* (= 0 value)
-            1
+        (set *h
+          (if* (= 0 value) 1
             value))
-        (set (pointer-get h) value))
+        (set *h value))
       (return h))))
