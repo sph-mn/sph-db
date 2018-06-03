@@ -62,10 +62,10 @@
   db_mdb_declare_val(val_graph_key, db_size_graph_key)
 #define db_mdb_reset_val_null val_null.mv_size = 0
 #define db_mdb_cursor_each_key(cursor, val_key, val_value, body) \
-  db_mdb_cursor_get_x(cursor, val_key, val_value, MDB_FIRST); \
+  db_mdb_cursor_get_norequire(cursor, val_key, val_value, MDB_FIRST); \
   while (db_mdb_status_success_p) { \
     body; \
-    db_mdb_cursor_next_nodup_x(cursor, val_key, val_value); \
+    db_mdb_cursor_next_nodup_norequire(cursor, val_key, val_value); \
   }; \
   db_mdb_status_require_notfound
 #define db_mdb_cursor_set_first_x(cursor) \

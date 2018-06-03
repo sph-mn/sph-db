@@ -26,7 +26,7 @@ status_t test_statistics(db_env_t* env) {
   test_helper_assert(
     "dbi-system contanis only one entry", (1 == stat.system.ms_entries));
 exit:
-  db_txn_abort(txn);
+  db_txn_abort_if_active(txn);
   return (status);
 };
 status_t test_type_create_get_delete(db_env_t* env) {
@@ -165,6 +165,11 @@ status_t test_id_construction(db_env_t* env) {
     "id element", (254 == db_id_element(db_id_add_type(254, type_id))));
 exit:
   return (status);
+};
+status_t test_graph_read(db_env_t* env) {
+  test_helper_graph_read_header(env);
+  test_helper_graph_read_one(txn, left, 0, 0, 0, 0);
+  test_helper_graph_read_footer;
 };
 int main() {
   test_helper_init(env);

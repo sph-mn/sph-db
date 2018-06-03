@@ -62,12 +62,13 @@
     (while label-pointer
       (set
         id-label (db-ids-first label-pointer)
-        right-pointer right)
-      (set val-id-2.mv-data &id-label)
+        right-pointer right
+        val-id-2.mv-data &id-label)
       (while right-pointer
-        (set id-right (db-ids-first right-pointer))
-        (array-set graph-key 0 id-right 1 id-label)
         (set
+          id-right (db-ids-first right-pointer)
+          (array-get graph-key 0) id-right
+          (array-get graph-key 1) id-label
           val-graph-key.mv-data graph-key
           val-id.mv-data &id-left)
         (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-GET-BOTH)
@@ -92,6 +93,65 @@
     (db-cursor-close-if-active graph-ll)
     (return status)))
 
+(define (db-debug-display-content-graph-lr txn) (status-t db-txn-t)
+  status-init
+  (db-cursor-declare graph-lr)
+  db-mdb-declare-val-graph-key
+  db-mdb-declare-val-graph-data
+  (declare
+    id-left db-id-t
+    id-right db-id-t
+    id-label db-id-t
+    ordinal db-ordinal-t)
+  (db-cursor-open txn graph-lr)
+  (printf "graph-lr\n")
+  (db-mdb-cursor-each-key
+    graph-lr
+    val-graph-key
+    val-graph-data
+    (compound-statement
+      (set
+        id-left (db-pointer->id val-graph-key.mv-data 0)
+        id-label (db-pointer->id val-graph-key.mv-data 1))
+      (do-while db-mdb-status-success?
+        (set
+          id-right (db-graph-data->id val-graph-data.mv-data)
+          ordinal (db-graph-data->ordinal val-graph-data.mv-data))
+        (printf "  (%lu %lu) (%lu %lu)\n" id-left id-label ordinal id-right)
+        (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data))))
+  (label exit
+    (mdb-cursor-close graph-lr)
+    db-status-success-if-mdb-notfound
+    (return status)))
+
+(define (db-debug-display-content-graph-rl txn) (status-t db-txn-t)
+  status-init
+  (declare
+    id-left db-id-t
+    id-right db-id-t
+    id-label db-id-t)
+  db-mdb-declare-val-graph-key
+  db-mdb-declare-val-id
+  (db-cursor-declare graph-rl)
+  (db-cursor-open txn graph-rl)
+  (printf "graph-rl\n")
+  (db-mdb-cursor-each-key
+    graph-rl
+    val-graph-key
+    val-id
+    (compound-statement
+      (set
+        id-right (db-pointer->id val-graph-key.mv-data 0)
+        id-label (db-pointer->id val-graph-key.mv-data 1))
+      (do-while db-mdb-status-success?
+        (set id-left (db-mdb-val->id val-id))
+        (printf "  (%lu %lu) %lu\n" id-right id-label id-left)
+        (db-mdb-cursor-next-dup-norequire graph-rl val-graph-key val-id))))
+  (label exit
+    (mdb-cursor-close graph-rl)
+    db-status-success-if-mdb-notfound
+    (return status)))
+
 (pre-include "./graph-read.c"
-  ;"graph-delete" "lib/debug-graph"
+  ;"graph-delete"
   )

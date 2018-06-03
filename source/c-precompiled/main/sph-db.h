@@ -395,13 +395,13 @@ b8* db_status_name(status_t a) {
   }
 #define db_ids_add_x(target, source, ids_temp) \
   db_pointer_allocation_set(target, db_ids_add(target, source), ids_temp)
-#define db_define_ids(name) db_ids_t* name = 0
-#define db_define_ids_2(name_1, name_2) \
-  db_define_ids(name_1); \
-  db_define_ids(name_2)
-#define db_define_ids_3(name_1, name_2, name_3) \
-  db_define_ids_2(name_1, name_2); \
-  db_define_ids(name_3)
+#define db_declare_ids(name) db_ids_t* name = 0
+#define db_declare_ids_two(name_1, name_2) \
+  db_declare_ids(name_1); \
+  db_declare_ids(name_2)
+#define db_declare_ids_three(name_1, name_2, name_3) \
+  db_declare_ids_two(name_1, name_2); \
+  db_declare_ids(name_3)
 #define db_graph_data_to_id(a) db_pointer_to_id((1 + ((db_ordinal_t*)(a))), 0)
 #define db_graph_data_to_ordinal(a) *((db_ordinal_t*)(a))
 #define db_graph_data_set_id(a, value) db_graph_data_to_id(a) = value
@@ -521,12 +521,23 @@ status_t db_graph_ensure(db_txn_t txn,
 b8* db_status_description(status_t a);
 b8* db_status_name(status_t a);
 b8* db_status_group_id_to_name(status_i_t a);
+status_t db_graph_select(db_txn_t txn,
+  db_ids_t* left,
+  db_ids_t* right,
+  db_ids_t* label,
+  db_ordinal_condition_t* ordinal,
+  b32 offset,
+  db_graph_read_state_t* result);
+status_t db_graph_read(db_graph_read_state_t* state,
+  b32 count,
+  db_graph_records_t** result);
 status_t db_graph_ensure(db_txn_t txn,
   db_ids_t* left,
   db_ids_t* right,
   db_ids_t* label,
   db_graph_ordinal_generator_t ordinal_generator,
   b0* ordinal_generator_state);
+b0 db_graph_selection_destroy(db_graph_read_state_t* state);
 status_t db_graph_delete(db_txn_t txn,
   db_ids_t* left,
   db_ids_t* right,
@@ -542,3 +553,10 @@ status_t db_graph_select(db_txn_t txn,
 status_t db_graph_read(db_graph_read_state_t* state,
   b32 count,
   db_graph_records_t** result);
+b0 db_debug_log_ids(db_ids_t* a);
+b0 db_debug_log_ids_set(imht_set_t a);
+b0 db_debug_display_graph_records(db_graph_records_t* records);
+status_t db_debug_count_all_btree_entries(db_txn_t txn, b32* result);
+status_t db_debug_display_btree_counts(db_txn_t txn);
+status_t db_debug_display_content_graph_lr(db_txn_t txn);
+status_t db_debug_display_content_graph_rl(db_txn_t txn);

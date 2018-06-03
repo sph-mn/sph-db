@@ -50,109 +50,82 @@
         #\0)))
   (printf "%s\n" result))
 
-#;(
+(define (db-ids-contains? ids id) (boolean db-ids-t* db-id-t)
+  (while ids
+    (if (= id (db-ids-first ids)) (return #t))
+    (set ids (db-ids-rest ids)))
+  (return #f))
+
 (define (db-ids-reverse source result) (status-t db-ids-t* db-ids-t**)
   status-init
-  (define ids-temp db-ids-t*)
+  (declare ids-temp db-ids-t*)
   (while source
     (db-ids-add! (pointer-get result) (db-ids-first source) ids-temp)
     (set source (db-ids-rest source)))
   (label exit
     (return status)))
 
-(define (db-ids-contains? ids id) (boolean db-ids-t* db-id-t)
-  (while ids
-    (if (equal? id (db-ids-first ids)) (return #t))
-    (set ids (db-ids-rest ids)))
-  (return #f))
-
-(define (db-debug-display-all-relations txn) (status-t MDB-txn*)
-  status-init
-  (define
-    records db-relation-records-t*
-    state db-relation-read-state-t)
-  (set records 0)
-  (db-status-require-read! (db-relation-select txn 0 0 0 0 0 (address-of state)))
-  (db-status-require-read! (db-relation-read (address-of state) 0 (address-of records)))
-  (printf "all ")
-  (db-relation-selection-destroy (address-of state))
-  (db-debug-display-relation-records records)
-  (db-relation-records-destroy records)
-  (label exit
-    (return status)))
-
-(pre-define (db-debug-define-relation-records-contains-at? field)
-  (define ((pre-concat db-debug-relation-records-contains-at_ field _p) records id)
-    (boolean db-relation-records-t* db-id-t)
+(pre-define (db-debug-define-graph-records-contains-at? field)
+  (define ((pre-concat db-debug-graph-records-contains-at_ field _p) records id)
+    (boolean db-graph-records-t* db-id-t)
     (while records
-      (if (equal? id (struct-get (db-relation-records-first records) field)) (return #t))
-      (set records (db-relation-records-rest records)))
+      (if (= id (struct-get (db-graph-records-first records) field)) (return #t))
+      (set records (db-graph-records-rest records)))
     (return #f)))
 
-(db-debug-define-relation-records-contains-at? left)
-(db-debug-define-relation-records-contains-at? right)
-(db-debug-define-relation-records-contains-at? label)
+(db-debug-define-graph-records-contains-at? left)
+(db-debug-define-graph-records-contains-at? right)
+(db-debug-define-graph-records-contains-at? label)
 
-
-
-(pre-define (test-helper-filter-ids->reader-suffix-integer left right label ordinal)
-  (bit-or (if* left 8 0) (if* right 4 0) (if* label 2 0) (if* ordinal 1 0)))
-
-
-
-(define (test-helper-create-ids count result) (status-t b32 db-ids-t**)
+(define (test-helper-create-ids env count result) (status-t db-env-t* b32 db-ids-t**)
+  "create only ids without nodes. doesnt depend on node creation"
   status-init
-  (db-define-ids ids-temp)
-  db-txn-introduce
-  db-txn-write-begin
-  (db-id-create db-txn count (address-of ids-temp))
-  db-txn-commit
-  ; reverse for sorting that aids debugging. some tests depend on it
-  (status-require (db-ids-reverse ids-temp result))
+  (db-declare-ids ids-temp)
+  (declare id db-id-t)
+  (for ((set id 1) (<= id count) (set id (+ 1 id)))
+    (set ids-temp (db-ids-add ids-temp id))
+    (if (not ids-temp) (status-set-id-goto db-status-id-memory)))
   (label exit
     (return status)))
 
-(define (test-helper-create-interns count result) (status-t b32 db-ids-t**)
+(define (test-helper-ids-add-new-ids env ids-old result) (status-t db-env-t* db-ids-t* db-ids-t**)
+  "add newly created ids to the list.
+   create as many elements as there are in ids-old. add them with interleaved overlap at half of ids-old
+   approximately like this: 1 1 1 1 + 2 2 2 2 -> 1 1 2 1 2 1 2 2"
   status-init
-  (define data-element db-data-t (struct-literal (size db-size-id) (data 0)))
-  (define data-list db-data-list-t* 0)
-  (while count
-    (struct-set data-element data (calloc 1 (sizeof db-ids-t)))
-    (set (pointer-get (convert-type (struct-get data-element data) db-id-t*)) (+ 123 count))
-    (set data-list (db-data-list-add data-list data-element))
-    (set count (- count 1)))
-  db-txn-introduce
-  db-txn-write-begin
-  (status-require! (db-intern-ensure db-txn data-list result))
-  db-txn-commit
+  (db-declare-ids ids-new)
+  (declare
+    target-count b32
+    start-mixed b32
+    start-new b32
+    count b32)
+  (set *result 0)
+  (status-require! (test-helper-create-ids env (db-ids-length ids-old) (address-of ids-new)))
+  (set
+    target-count (* 2 (db-ids-length ids-old))
+    start-mixed (/ target-count 4)
+    start-new (- target-count start-mixed))
+  (for ((set count 0) (< count target-count) (set count (+ 1 count)))
+    (if (< count start-mixed)
+      (begin
+        (set
+          *result (db-ids-add *result (db-ids-first ids-old))
+          ids-old (db-ids-rest ids-old)))
+      (if (< count start-new)
+        (if (bit-and 1 count)
+          (begin
+            (set
+              *result (db-ids-add *result (db-ids-first ids-old))
+              ids-old (db-ids-rest ids-old)))
+          (begin
+            (set
+              *result (db-ids-add *result (db-ids-first ids-new))
+              ids-new (db-ids-rest ids-new))))
+        (begin
+          (set
+            *result (db-ids-add *result (db-ids-first ids-new))
+            ids-new (db-ids-rest ids-new))))))
   (label exit
-    (if db-txn db-txn-abort)
-    (return status)))
-
-(define (test-helper-default-ordinal-generator state) (db-ordinal-t b0*)
-  (define ordinal-pointer db-ordinal-t* state)
-  (define result db-ordinal-t (+ 1 (pointer-get ordinal-pointer)))
-  (set (pointer-get ordinal-pointer) result)
-  (return result))
-
-(define (test-helper-create-relations count-left count-right count-label left right label)
-  (status-t b32 b32 b32 db-ids-t** db-ids-t** db-ids-t**)
-  status-init
-  (status-require! (test-helper-create-ids count-left left))
-  (status-require! (test-helper-create-ids count-right right))
-  (status-require! (test-helper-create-ids count-label label))
-  (define ordinal-state-value db-ordinal-t 0)
-  db-txn-introduce
-  db-txn-write-begin
-  (status-require!
-    (db-relation-ensure
-      db-txn
-      (pointer-get left)
-      (pointer-get right)
-      (pointer-get label) test-helper-default-ordinal-generator (address-of ordinal-state-value)))
-  db-txn-commit
-  (label exit
-    (if db-txn db-txn-abort)
     (return status)))
 
 (define (test-helper-calculate-relation-count left-count right-count label-count) (b32 b32 b32 b32)
@@ -164,17 +137,199 @@
     (test-helper-calculate-relation-count
       (db-ids-length left) (db-ids-length right) (db-ids-length label))))
 
+(pre-define (test-helper-graph-read-records-validate-one name)
+  (begin
+    "test that the result records contain all filter-ids, and the filter-ids contain all result record values for field \"name\"."
+    (set records-temp records)
+    (while records-temp
+      (if
+        (not
+          (db-ids-contains?
+            (pre-concat existing_ name) (struct-get (db-graph-records-first records-temp) name)))
+        (begin
+          (printf "\n  result records contain inexistant %s ids\n" (pre-stringify name))
+          (db-debug-display-graph-records records)
+          (status-set-id-goto 1)))
+      (set records-temp (db-graph-records-rest records-temp)))
+    (set ids-temp (pre-concat existing_ name))
+    (while ids-temp
+      (if
+        (not
+          ((pre-concat db-debug-graph-records-contains-at_ name _p) records (db-ids-first ids-temp)))
+        (begin
+          (printf "\n  %s result records do not contain all existing-ids\n" (pre-stringify name))
+          (db-debug-display-graph-records records)
+          (status-set-id-goto 2)))
+      (set ids-temp (db-ids-rest ids-temp)))))
+
 (define
-  (test-helper-estimate-relation-read-result-count left-count right-count label-count ordinal)
-  (b32 b32 b32 b32 db-ordinal-match-data-t*)
-  ;assumes linearly set-plus-oneed ordinal integers starting at 1 and queries for all or no ids
+  (test-helper-graph-read-records-validate
+    records left existing-left right existing-right label existing-label ordinal)
+  (status-t
+    db-graph-records-t*
+    db-ids-t* db-ids-t* db-ids-t* db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t*)
+  status-init
+  (declare
+    records-temp db-graph-records-t*
+    ids-temp db-ids-t*)
+  (test-helper-graph-read-records-validate-one left)
+  (test-helper-graph-read-records-validate-one right)
+  (test-helper-graph-read-records-validate-one label)
+  (label exit
+    (return status)))
+
+(define (test-helper-default-ordinal-generator state) (db-ordinal-t b0*)
+  (define ordinal-pointer db-ordinal-t* state)
+  (define result db-ordinal-t (+ 1 (pointer-get ordinal-pointer)))
+  (set (pointer-get ordinal-pointer) result)
+  (return result))
+
+(define (test-helper-create-relations env count-left count-right count-label left right label)
+  (status-t db-env-t* b32 b32 b32 db-ids-t** db-ids-t** db-ids-t**)
+  status-init
+  (db-txn-declare env txn)
+  (declare ordinal-state-value db-ordinal-t)
+  (status-require! (test-helper-create-ids env count-left left))
+  (status-require! (test-helper-create-ids env count-right right))
+  (status-require! (test-helper-create-ids env count-label label))
+  (set ordinal-state-value 0)
+  (db-txn-write-begin txn)
+  (status-require!
+    (db-graph-ensure
+      txn *left *right *label test-helper-default-ordinal-generator (address-of ordinal-state-value)))
+  (db-txn-commit txn)
+  (label exit
+    (db-txn-abort-if-active txn)
+    (return status)))
+
+(pre-define (test-helper-graph-read-one txn left right label ordinal offset)
+  (begin
+    (set
+      reader-suffix (test-helper-filter-ids->reader-suffix-integer left right label ordinal)
+      reader-suffix-string (test-helper-reader-suffix-integer->string reader-suffix))
+    (printf " %s" reader-suffix-string)
+    (free reader-suffix-string)
+    (set records 0)
+    (status-require! (db-graph-select txn left right label ordinal offset (address-of state)))
+    (db-status-require-read! (db-graph-read (address-of state) 2 (address-of records)))
+    (db-status-require-read! (db-graph-read (address-of state) 0 (address-of records)))
+    (if (status-id-is? db-status-id-no-more-data) (status-set-id status-id-success)
+      (begin
+        (printf "\n  final read result does not indicate that there is no more data")
+        (status-set-id-goto 1)))
+    (set expected-count
+      (test-helper-estimate-graph-read-result-count
+        existing-left-count existing-right-count existing-label-count ordinal))
+    (if (not (= (db-graph-records-length records) expected-count))
+      (begin
+        (printf
+          "\n  expected %lu read %lu. ordinal min %d max %d\n"
+          expected-count
+          (db-graph-records-length records)
+          (if* ordinal ordinal-min
+            0)
+          (if* ordinal ordinal-max
+            0))
+        (printf "the read ")
+        (db-debug-display-graph-records records)
+        (db-debug-display-all-relations txn)
+        (status-set-id-goto 1)))
+    (if (not ordinal)
+      (status-require!
+        (test-helper-graph-read-records-validate
+          records left existing-left right existing-right label existing-label ordinal)))
+    db-status-success-if-no-more-data
+    (db-graph-selection-destroy (address-of state))
+    (db-graph-records-destroy records)))
+
+(pre-define (test-helper-graph-read-header env)
+  (begin
+    status-init
+    (db-txn-declare env txn)
+    (db-declare-ids-three existing-left existing-right existing-label)
+    (db-declare-ids-three left right label)
+    (declare
+      state db-graph-read-state-t
+      ordinal-min b32
+      ordinal-max b32
+      ordinal-condition db-ordinal-condition-t
+      ordinal db-ordinal-condition-t*
+      existing-left-count b32
+      existing-right-count b32
+      existing-label-count b32
+      records db-graph-records-t*
+      expected-count b32
+      reader-suffix b8
+      reader-suffix-string b8*)
+    (set
+      ordinal-min 2
+      ordinal-max 5
+      ordinal-condition.min ordinal-min
+      ordinal-condition.max ordinal-max
+      ordinal &ordinal-condition
+      records 0
+      existing-left-count common-label-count
+      existing-right-count common-element-count
+      existing-label-count common-label-count)
+    (db-txn-begin txn)
+    (status-require!
+      (test-helper-create-relations
+        env
+        existing-left-count
+        existing-right-count existing-label-count &existing-left &existing-right &existing-label))
+    (sc-comment "add ids that do not exist anywhere in the graph")
+    (status-require! (test-helper-ids-add-new-ids env existing-left &left))
+    (status-require! (test-helper-ids-add-new-ids env existing-right &right))
+    (status-require! (test-helper-ids-add-new-ids env existing-label &label))
+    (printf " ")))
+
+(pre-define test-helper-graph-read-footer
+  (begin
+    db-status-success-if-no-more-data
+    (label exit
+      (printf "\n")
+      (db-txn-abort-if-active txn)
+      (return status))))
+
+(define (db-debug-display-all-relations txn) (status-t db-txn-t)
+  status-init
+  (declare
+    records db-graph-records-t*
+    state db-graph-read-state-t)
+  (set records 0)
+  (db-status-require-read! (db-graph-select txn 0 0 0 0 0 (address-of state)))
+  (db-status-require-read! (db-graph-read (address-of state) 0 (address-of records)))
+  (printf "all ")
+  (db-graph-selection-destroy (address-of state))
+  (db-debug-display-graph-records records)
+  (db-graph-records-destroy records)
+  (label exit
+    (return status)))
+
+(pre-define (test-helper-filter-ids->reader-suffix-integer left right label ordinal)
+  (bit-or
+    (if* left 8
+      0)
+    (if* right 4
+      0)
+    (if* label 2
+      0)
+    (if* ordinal 1
+      0)))
+
+(define (test-helper-estimate-graph-read-result-count left-count right-count label-count ordinal)
+  (b32 b32 b32 b32 db-ordinal-condition-t*)
+  "assumes linearly set-plus-oneed ordinal integers starting at 1 and queries for all or no ids"
   (define count b32 (* left-count right-count label-count))
-  (define max b32)
-  (define min b32)
+  (declare
+    max b32
+    min b32)
   (if ordinal
     (begin
       (set
-        min (if* (struct-pointer-get ordinal min) (- (struct-pointer-get ordinal min) 1) 0)
+        min
+        (if* (struct-pointer-get ordinal min) (- (struct-pointer-get ordinal min) 1)
+          0)
         max (struct-pointer-get ordinal max))
       (if* (> max count) (set max count)))
     (set
@@ -183,11 +338,11 @@
   (return (- count min (- count max))))
 
 (define
-  (test-helper-estimate-relation-read-btree-entry-count
+  (test-helper-estimate-graph-read-btree-entry-count
     existing-left-count existing-right-count existing-label-count ordinal)
-  (b32 b32 b32 b32 db-ordinal-match-data-t*)
-  ;calculates the number of btree entries affected by a relation read or delete.
-  ;assumes linearly set-plus-oneed ordinal integers starting at 1 and queries for all or no ids
+  (b32 b32 b32 b32 db-ordinal-condition-t*)
+  "calculates the number of btree entries affected by a relation read or delete.
+   assumes linearly set-plus-oneed ordinal integers starting at 1 and queries for all or no ids"
   (define ordinal-min b32 0)
   (define ordinal-max b32 0)
   (if ordinal
@@ -202,8 +357,9 @@
   (define left-count b32 0)
   (define right-count b32 0)
   (define label-count b32 0)
-  ;the number of relations is not proportional to the number of entries in graph-ll.
-  ;use a process similar to relation creation to correctly calculate graph-ll and ordinal dependent entries
+  (sc-comment
+    "the number of relations is not proportional to the number of entries in graph-ll.
+    use a process similar to relation creation to correctly calculate graph-ll and ordinal dependent entries")
   (while (< label-count existing-label-count)
     (while (< left-count existing-left-count)
       (if (and (<= ordinal-value ordinal-max) (>= ordinal-value ordinal-min))
@@ -219,46 +375,44 @@
     (set-plus-one label-count))
   (return (+ left-right-count right-left-count label-left-count)))
 
-(define (test-helper-ids-add-new-ids ids-old result) (status-t db-ids-t* db-ids-t**)
-  ;interleave new ids starting from half the given ids, and add another half of only new ids to the end
-  ;approximately like this: 1 1 1 1 -> 1 1 2 1 2 1 2 2
-  ;this is to ensure that we have a subsequent existing ids/new-ids and alternating existing/new ids
-  status-init
-  (db-define-ids ids-new)
-  (set (pointer-get result) 0)
-  (status-require! (test-helper-create-ids (db-ids-length ids-old) (address-of ids-new)))
-  (define target-count b32 (* 2 (db-ids-length ids-old)))
-  (define start-mixed b32 (/ target-count 4))
-  (define start-new b32 (- target-count start-mixed))
-  (define count b32 0)
-  (while (< count target-count)
-    (if (< count start-mixed)
-      (begin
-        (set (pointer-get result) (db-ids-add (pointer-get result) (db-ids-first ids-old)))
-        (set ids-old (db-ids-rest ids-old)))
-      (if (< count start-new)
-        (if (bit-and 1 count)
-          (begin
-            (set (pointer-get result) (db-ids-add (pointer-get result) (db-ids-first ids-old)))
-            (set ids-old (db-ids-rest ids-old)))
-          (begin
-            (set (pointer-get result) (db-ids-add (pointer-get result) (db-ids-first ids-new)))
-            (set ids-new (db-ids-rest ids-new))))
-        (begin
-          (set (pointer-get result) (db-ids-add (pointer-get result) (db-ids-first ids-new)))
-          (set ids-new (db-ids-rest ids-new)))))
-    (set count (+ 1 count)))
-  (label exit
-    (return status)))
-
 (define (test-helper-reader-suffix-integer->string a) (b8* b8)
+  "1101 -> \"1101\""
   (define result b8* (malloc 40))
   (array-set
     result
     0
-    (if* (bit-and 8 a) #\1 #\0)
-    1 (if* (bit-and 4 a) #\1 #\0) 2 (if* (bit-and 2 a) #\1 #\0) 3 (if* (bit-and 1 a) #\1 #\0) 4 0)
+    (if* (bit-and 8 a) #\1
+      #\0)
+    1
+    (if* (bit-and 4 a) #\1
+      #\0)
+    2
+    (if* (bit-and 2 a) #\1
+      #\0)
+    3
+    (if* (bit-and 1 a) #\1
+      #\0)
+    4 0)
   (return result))
 
-
-)
+#;(define (test-helper-create-interns count result) (status-t b32 db-ids-t**)
+  status-init
+  (db-txn-declare env txn)
+  (declare
+    data-element db-data-t
+    data-list db-data-list-t*)
+  (set
+    data-element (struct-literal (size db-size-id) (data 0))
+    data-list 0)
+  (while count
+    (struct-set data-element
+      data (calloc 1 (sizeof db-ids-t)))
+    (set (pointer-get (convert-type (struct-get data-element data) db-id-t*)) (+ 123 count))
+    (set data-list (db-data-list-add data-list data-element))
+    (set count (- count 1)))
+  (db-txn-write-begin txn)
+  ;(status-require! (db-intern-ensure db-txn data-list result))
+  (db-txn-commit txn)
+  (label exit
+    (db-txn-abort-if-active txn)
+    (return status)))

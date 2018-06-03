@@ -107,4 +107,54 @@ exit:
   db_cursor_close_if_active(graph_ll);
   return (status);
 };
+status_t db_debug_display_content_graph_lr(db_txn_t txn) {
+  status_init;
+  db_cursor_declare(graph_lr);
+  db_mdb_declare_val_graph_key;
+  db_mdb_declare_val_graph_data;
+  db_id_t id_left;
+  db_id_t id_right;
+  db_id_t id_label;
+  db_ordinal_t ordinal;
+  db_cursor_open(txn, graph_lr);
+  printf("graph-lr\n");
+  db_mdb_cursor_each_key(graph_lr, val_graph_key, val_graph_data, ({
+    id_left = db_pointer_to_id((val_graph_key.mv_data), 0);
+    id_label = db_pointer_to_id((val_graph_key.mv_data), 1);
+    do {
+      id_right = db_graph_data_to_id((val_graph_data.mv_data));
+      ordinal = db_graph_data_to_ordinal((val_graph_data.mv_data));
+      printf("  (%lu %lu) (%lu %lu)\n", id_left, id_label, ordinal, id_right);
+      db_mdb_cursor_next_dup_norequire(graph_lr, val_graph_key, val_graph_data);
+    } while (db_mdb_status_success_p);
+  }));
+exit:
+  mdb_cursor_close(graph_lr);
+  db_status_success_if_mdb_notfound;
+  return (status);
+};
+status_t db_debug_display_content_graph_rl(db_txn_t txn) {
+  status_init;
+  db_id_t id_left;
+  db_id_t id_right;
+  db_id_t id_label;
+  db_mdb_declare_val_graph_key;
+  db_mdb_declare_val_id;
+  db_cursor_declare(graph_rl);
+  db_cursor_open(txn, graph_rl);
+  printf("graph-rl\n");
+  db_mdb_cursor_each_key(graph_rl, val_graph_key, val_id, ({
+    id_right = db_pointer_to_id((val_graph_key.mv_data), 0);
+    id_label = db_pointer_to_id((val_graph_key.mv_data), 1);
+    do {
+      id_left = db_mdb_val_to_id(val_id);
+      printf("  (%lu %lu) %lu\n", id_right, id_label, id_left);
+      db_mdb_cursor_next_dup_norequire(graph_rl, val_graph_key, val_id);
+    } while (db_mdb_status_success_p);
+  }));
+exit:
+  mdb_cursor_close(graph_rl);
+  db_status_success_if_mdb_notfound;
+  return (status);
+};
 #include "./graph-read.c"

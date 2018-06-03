@@ -1,4 +1,4 @@
-(pre-include "./sph-db.h" "../foreign/sph/one.c" "./lib/lmdb.c" "./lib/debug.c")
+(pre-include "./sph-db.h" "../foreign/sph/one.c" "./lib/lmdb.c")
 
 (pre-define
   (free-and-set-null a)
@@ -19,7 +19,7 @@
   (begin
     (mdb-cursor-close name)
     (set name 0))
-  (db-cursor-close-if-active name)(if name (db-cursor-close name))
+  (db-cursor-close-if-active name) (if name (db-cursor-close name))
   db-size-system-key (+ 1 (sizeof db-type-id-t))
   (db-select-ensure-offset state offset reader)
   (if offset
@@ -28,6 +28,48 @@
       (set status (reader state offset 0))
       (if (not db-mdb-status-success?) db-mdb-status-require-notfound)
       (set state:options (bit-xor db-read-option-skip state:options)))))
+
+(define (db-debug-log-ids a) (b0 db-ids-t*)
+  (while a
+    (debug-log "%lu" (db-ids-first a))
+    (set a (db-ids-rest a))))
+
+(define (db-debug-log-ids-set a) (b0 imht-set-t)
+  (define index b32 0)
+  (while (< index a.size)
+    (debug-log "%lu" (array-get a.content index))
+    (set index (+ 1 index))))
+
+(define (db-debug-display-graph-records records) (b0 db-graph-records-t*)
+  (declare record db-graph-record-t)
+  (printf "graph records\n")
+  (while records
+    (set record (db-graph-records-first records))
+    (printf "  lcor %lu %lu %lu %lu\n" record.left record.label record.ordinal record.right)
+    (set records (db-graph-records-rest records))))
+
+(define (db-debug-count-all-btree-entries txn result) (status-t db-txn-t b32*)
+  status-init
+  (declare stat db-statistics-t)
+  (status-require! (db-statistics txn &stat))
+  (set *result
+    (+
+      stat.system.ms_entries
+      stat.nodes.ms_entries
+      stat.graph-lr.ms_entries stat.graph-rl.ms_entries stat.graph-ll.ms_entries))
+  (label exit
+    (return status)))
+
+(define (db-debug-display-btree-counts txn) (status-t db-txn-t)
+  status-init
+  (declare stat db-statistics-t)
+  (status-require! (db-statistics txn &stat))
+  (printf
+    "btree entry count\n  nodes %d data-intern->id %d\n  data-extern->extern %d graph-lr %d\n  graph-rl %d graph-ll %d\n"
+    stat.system.ms_entries
+    stat.nodes.ms_entries stat.graph-lr.ms_entries stat.graph-rl.ms_entries stat.graph-ll.ms_entries)
+  (label exit
+    (return status)))
 
 (define (db-field-type-size a) (b8 b8)
   "size in octets. only for fixed size types"
@@ -165,5 +207,5 @@
   (pthread-mutex-destroy &env:mutex))
 
 (pre-include "./open.c" "./node.c" "./graph.c"
-  ;"index"
+  ;"./index.c"
   )

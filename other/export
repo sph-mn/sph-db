@@ -1,8 +1,25 @@
 {
   global:
     db_close;
-    db_open_options_set_defaults;
+    db_debug_count_all_btree_entries;
+    db_debug_display_all_relations;
+    db_debug_display_btree_counts;
+    db_debug_display_content_graph_lr;
+    db_debug_display_content_graph_rl;
+    db_debug_display_graph_records;
+    db_debug_log_ids;
+    db_debug_log_ids_set;
+    db_graph_ensure;
+    db_graph_read;
+    db_graph_select;
+    db_graph_selection_destroy;
     db_open;
+    db_open_options_set_defaults;
+    db_read;
+    db_select;
+    db_selection_destroy;
+    db_sequence_next;
+    db_sequence_next_system;
     db_statistics;
     db_status_description;
     db_status_group_id_to_name;
@@ -10,8 +27,5 @@
     db_type_create;
     db_type_delete;
     db_type_get;
-    db_sequence_next;
-    db_sequence_next_system;
-    db_graph_ensure;
   local: *;
 };

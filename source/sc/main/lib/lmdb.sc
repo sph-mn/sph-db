@@ -70,10 +70,10 @@
   db-mdb-reset-val-null (set val-null.mv-size 0)
   (db-mdb-cursor-each-key cursor val-key val-value body)
   (begin
-    (db-mdb-cursor-get! cursor val-key val-value MDB-FIRST)
+    (db-mdb-cursor-get-norequire cursor val-key val-value MDB-FIRST)
     (while db-mdb-status-success?
       body
-      (db-mdb-cursor-next-nodup! cursor val-key val-value))
+      (db-mdb-cursor-next-nodup-norequire cursor val-key val-value))
     db-mdb-status-require-notfound)
   (db-mdb-cursor-set-first! cursor)
   (db-mdb-status-require! (mdb-cursor-get cursor &val-null &val-null MDB-FIRST))
