@@ -11,8 +11,8 @@
    the values should also not be so high that the linearly created ordinals exceed the size of the ordinal type.
    tip: reduce when debugging to make tests run faster")
 
-(define common-element-count b32 40)
-(define common-label-count b32 40)
+(define common-element-count b32 3)
+(define common-label-count b32 3)
 
 (define (test-open-empty env) (status-t db-env-t*)
   status-init
@@ -168,28 +168,29 @@
 (define (test-graph-read env) (status-t db-env-t*)
   (test-helper-graph-read-header env)
   (test-helper-graph-read-one txn left 0 0 0 0)
-  ;(test-helper-graph-read-one txn left 0 label 0 0)
-  ;(test-helper-graph-read-one txn left right 0 0 0)
-  ;(test-helper-graph-read-one txn left right label 0 0)
-  ;(test-helper-graph-read-one txn 0 0 0 0 0)
-  ;(test-helper-graph-read-one txn 0 0 label 0 0)
-  ;(test-helper-graph-read-one txn 0 right 0 0 0)
-  ;(test-helper-graph-read-one txn 0 right label 0 0)
-  ;(test-helper-graph-read-one txn left 0 0 ordinal 0)
-  ;(test-helper-graph-read-one txn left 0 label ordinal 0)
-  ;(test-helper-graph-read-one txn left right 0 ordinal 0)
-  ;(test-helper-graph-read-one txn left right label ordinal 0)
+  (test-helper-graph-read-one txn left 0 label 0 0)
+  (test-helper-graph-read-one txn left right 0 0 0)
+  (test-helper-graph-read-one txn left right label 0 0)
+  (test-helper-graph-read-one txn 0 0 0 0 0)
+  (test-helper-graph-read-one txn 0 0 label 0 0)
+  (test-helper-graph-read-one txn 0 right 0 0 0)
+  (test-helper-graph-read-one txn 0 right label 0 0)
+  (test-helper-graph-read-one txn left 0 0 ordinal 0)
+  (test-helper-graph-read-one txn left 0 label ordinal 0)
+  (test-helper-graph-read-one txn left right 0 ordinal 0)
+  (test-helper-graph-read-one txn left right label ordinal 0)
   test-helper-graph-read-footer)
 
 (define (main) int
   (test-helper-init env)
-  (test-helper-test-one test-open-empty env)
-  (test-helper-test-one test-statistics env)
-  (test-helper-test-one test-id-construction env)
-  (test-helper-test-one test-sequence env)
-  (test-helper-test-one test-type-create-get-delete env)
-  (test-helper-test-one test-type-create-many env)
-  (test-helper-test-one test-open-nonempty env)
+  ;(test-helper-test-one test-open-empty env)
+  ;(test-helper-test-one test-statistics env)
+  ;(test-helper-test-one test-id-construction env)
+  ;(test-helper-test-one test-sequence env)
+  ;(test-helper-test-one test-type-create-get-delete env)
+  ;(test-helper-test-one test-type-create-many env)
+  ;(test-helper-test-one test-open-nonempty env)
+  (test-helper-test-one test-graph-read env)
   (label exit
     test-helper-report-status
     (return status.id)))
@@ -230,7 +231,7 @@
   db-txn-abort
   ; add non-graph elements
   (status-require!
-    (test-helper-create-relations
+    (test-helper-create-relations txn
       common-label-count
       common-element-count common-label-count &left &right &label))
   db-txn-write-begin
@@ -257,7 +258,7 @@
         "\n    failed deletion. %lu relations not deleted\n" (db-graph-records-length records))
       (db-debug-display-graph-records records)
       db-txn-begin
-      ;(db-debug-display-all-relations txn)
+      ;(test-helper-display-all-relations txn)
       db-txn-abort
       (status-set-id-goto 1)))
   (db-graph-records-destroy records)
@@ -390,7 +391,7 @@
   (define ids db-ids-t*)
   (db-define-ids-3 left right label)
   (status-require!
-    (test-helper-create-relations
+    (test-helper-create-relations txn
       common-label-count
       common-element-count common-label-count &left &right &label))
   (status-require! (test-helper-create-interns common-element-count &ids))
@@ -417,7 +418,7 @@
   (define ids-intern db-ids-t* 0)
   (define ids-id db-ids-t* 0)
   (status-require! (test-helper-create-interns common-element-count &ids-intern))
-  (status-require! (test-helper-create-ids common-element-count &ids-id))
+  (status-require! (test-helper-create-ids txn common-element-count &ids-id))
   db-txn-introduce
   db-txn-begin
   (define state db-node-read-state-t)
@@ -485,7 +486,7 @@
   (status-require! (test-helper-db-reset #f))
   (db-define-ids-3 left right label)
   (status-require!
-    (test-helper-create-relations
+    (test-helper-create-relations txn
       common-element-count
       common-element-count common-label-count &left &right &label))
   (define thread-two-result status-t (struct-literal 0 0))

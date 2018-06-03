@@ -77,18 +77,21 @@
 (db-debug-define-graph-records-contains-at? right)
 (db-debug-define-graph-records-contains-at? label)
 
-(define (test-helper-create-ids env count result) (status-t db-env-t* b32 db-ids-t**)
-  "create only ids without nodes. doesnt depend on node creation"
+(define (test-helper-create-ids txn count result) (status-t db-txn-t b32 db-ids-t**)
+  "create only ids, without nodes. doesnt depend on node creation"
   status-init
   (db-declare-ids ids-temp)
   (declare id db-id-t)
-  (for ((set id 1) (<= id count) (set id (+ 1 id)))
+  (while count
+    (status-require! (db-sequence-next txn.env 1 &id))
     (set ids-temp (db-ids-add ids-temp id))
-    (if (not ids-temp) (status-set-id-goto db-status-id-memory)))
+    (if (not ids-temp) (status-set-id-goto db-status-id-memory))
+    (set count (- count 1)))
+  (set *result ids-temp)
   (label exit
     (return status)))
 
-(define (test-helper-ids-add-new-ids env ids-old result) (status-t db-env-t* db-ids-t* db-ids-t**)
+(define (test-helper-ids-add-new-ids txn ids-old result) (status-t db-txn-t db-ids-t* db-ids-t**)
   "add newly created ids to the list.
    create as many elements as there are in ids-old. add them with interleaved overlap at half of ids-old
    approximately like this: 1 1 1 1 + 2 2 2 2 -> 1 1 2 1 2 1 2 2"
@@ -100,7 +103,7 @@
     start-new b32
     count b32)
   (set *result 0)
-  (status-require! (test-helper-create-ids env (db-ids-length ids-old) (address-of ids-new)))
+  (status-require! (test-helper-create-ids txn (db-ids-length ids-old) (address-of ids-new)))
   (set
     target-count (* 2 (db-ids-length ids-old))
     start-mixed (/ target-count 4)
@@ -184,22 +187,18 @@
   (set (pointer-get ordinal-pointer) result)
   (return result))
 
-(define (test-helper-create-relations env count-left count-right count-label left right label)
-  (status-t db-env-t* b32 b32 b32 db-ids-t** db-ids-t** db-ids-t**)
+(define (test-helper-create-relations txn count-left count-right count-label left right label)
+  (status-t db-txn-t b32 b32 b32 db-ids-t** db-ids-t** db-ids-t**)
   status-init
-  (db-txn-declare env txn)
   (declare ordinal-state-value db-ordinal-t)
-  (status-require! (test-helper-create-ids env count-left left))
-  (status-require! (test-helper-create-ids env count-right right))
-  (status-require! (test-helper-create-ids env count-label label))
+  (status-require! (test-helper-create-ids txn count-left left))
+  (status-require! (test-helper-create-ids txn count-right right))
+  (status-require! (test-helper-create-ids txn count-label label))
   (set ordinal-state-value 0)
-  (db-txn-write-begin txn)
   (status-require!
     (db-graph-ensure
       txn *left *right *label test-helper-default-ordinal-generator (address-of ordinal-state-value)))
-  (db-txn-commit txn)
   (label exit
-    (db-txn-abort-if-active txn)
     (return status)))
 
 (pre-define (test-helper-graph-read-one txn left right label ordinal offset)
@@ -232,7 +231,7 @@
             0))
         (printf "the read ")
         (db-debug-display-graph-records records)
-        (db-debug-display-all-relations txn)
+        (test-helper-display-all-relations txn)
         (status-set-id-goto 1)))
     (if (not ordinal)
       (status-require!
@@ -271,16 +270,16 @@
       existing-left-count common-label-count
       existing-right-count common-element-count
       existing-label-count common-label-count)
-    (db-txn-begin txn)
+    (db-txn-write-begin txn)
     (status-require!
       (test-helper-create-relations
-        env
+        txn
         existing-left-count
         existing-right-count existing-label-count &existing-left &existing-right &existing-label))
     (sc-comment "add ids that do not exist anywhere in the graph")
-    (status-require! (test-helper-ids-add-new-ids env existing-left &left))
-    (status-require! (test-helper-ids-add-new-ids env existing-right &right))
-    (status-require! (test-helper-ids-add-new-ids env existing-label &label))
+    (status-require! (test-helper-ids-add-new-ids txn existing-left &left))
+    (status-require! (test-helper-ids-add-new-ids txn existing-right &right))
+    (status-require! (test-helper-ids-add-new-ids txn existing-label &label))
     (printf " ")))
 
 (pre-define test-helper-graph-read-footer
@@ -291,7 +290,18 @@
       (db-txn-abort-if-active txn)
       (return status))))
 
-(define (db-debug-display-all-relations txn) (status-t db-txn-t)
+(pre-define (test-helper-filter-ids->reader-suffix-integer left right label ordinal)
+  (bit-or
+    (if* left 8
+      0)
+    (if* right 4
+      0)
+    (if* label 2
+      0)
+    (if* ordinal 1
+      0)))
+
+(define (test-helper-display-all-relations txn) (status-t db-txn-t)
   status-init
   (declare
     records db-graph-records-t*
@@ -305,17 +315,6 @@
   (db-graph-records-destroy records)
   (label exit
     (return status)))
-
-(pre-define (test-helper-filter-ids->reader-suffix-integer left right label ordinal)
-  (bit-or
-    (if* left 8
-      0)
-    (if* right 4
-      0)
-    (if* label 2
-      0)
-    (if* ordinal 1
-      0)))
 
 (define (test-helper-estimate-graph-read-result-count left-count right-count label-count ordinal)
   (b32 b32 b32 b32 db-ordinal-condition-t*)

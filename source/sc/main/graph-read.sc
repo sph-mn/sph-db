@@ -618,7 +618,8 @@
             (set result:reader db-graph-read-1100)))
         (begin
           (db-graph-select-cursor-initialise graph-lr result cursor)
-          (if label (set result:reader db-graph-read-1010)
+          (if label
+            (set result:reader db-graph-read-1010)
             (set result:reader db-graph-read-1000)))))
     (if right
       (begin

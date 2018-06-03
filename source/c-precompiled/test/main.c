@@ -7,8 +7,8 @@
    the values should also not be so high that the linearly created ordinals
    exceed the size of the ordinal type.
    tip: reduce when debugging to make tests run faster */
-b32 common_element_count = 40;
-b32 common_label_count = 40;
+b32 common_element_count = 3;
+b32 common_label_count = 3;
 status_t test_open_empty(db_env_t* env) {
   status_init;
   test_helper_assert(("env.open is true"), (1 == env->open));
@@ -169,6 +169,17 @@ exit:
 status_t test_graph_read(db_env_t* env) {
   test_helper_graph_read_header(env);
   test_helper_graph_read_one(txn, left, 0, 0, 0, 0);
+  test_helper_graph_read_one(txn, left, 0, label, 0, 0);
+  test_helper_graph_read_one(txn, left, right, 0, 0, 0);
+  test_helper_graph_read_one(txn, left, right, label, 0, 0);
+  test_helper_graph_read_one(txn, 0, 0, 0, 0, 0);
+  test_helper_graph_read_one(txn, 0, 0, label, 0, 0);
+  test_helper_graph_read_one(txn, 0, right, 0, 0, 0);
+  test_helper_graph_read_one(txn, 0, right, label, 0, 0);
+  test_helper_graph_read_one(txn, left, 0, 0, ordinal, 0);
+  test_helper_graph_read_one(txn, left, 0, label, ordinal, 0);
+  test_helper_graph_read_one(txn, left, right, 0, ordinal, 0);
+  test_helper_graph_read_one(txn, left, right, label, ordinal, 0);
   test_helper_graph_read_footer;
 };
 int main() {
@@ -180,6 +191,7 @@ int main() {
   test_helper_test_one(test_type_create_get_delete, env);
   test_helper_test_one(test_type_create_many, env);
   test_helper_test_one(test_open_nonempty, env);
+  test_helper_test_one(test_graph_read, env);
 exit:
   test_helper_report_status;
   return ((status.id));

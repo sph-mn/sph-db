@@ -33,12 +33,15 @@
     }; \
     state->options = (db_read_option_skip ^ state->options); \
   }
+/** display an ids list */
 b0 db_debug_log_ids(db_ids_t* a) {
+  debug_log("length: %lu", db_ids_length(a));
   while (a) {
     debug_log("%lu", db_ids_first(a));
     a = db_ids_rest(a);
   };
 };
+/** display an ids set */
 b0 db_debug_log_ids_set(imht_set_t a) {
   b32 index = 0;
   while ((index < a.size)) {
@@ -59,6 +62,20 @@ b0 db_debug_display_graph_records(db_graph_records_t* records) {
     records = db_graph_records_rest(records);
   };
 };
+status_t db_debug_display_btree_counts(db_txn_t txn) {
+  status_init;
+  db_statistics_t stat;
+  status_require_x(db_statistics(txn, (&stat)));
+  printf("btree entry count: system %zu, nodes %zu, graph-lr %zu, graph-rl "
+         "%zu, graph-ll %zu\n",
+    (stat.system.ms_entries),
+    (stat.nodes.ms_entries),
+    (stat.graph_lr.ms_entries),
+    (stat.graph_rl.ms_entries),
+    (stat.graph_ll.ms_entries));
+exit:
+  return (status);
+};
 status_t db_debug_count_all_btree_entries(db_txn_t txn, b32* result) {
   status_init;
   db_statistics_t stat;
@@ -66,20 +83,6 @@ status_t db_debug_count_all_btree_entries(db_txn_t txn, b32* result) {
   *result =
     (stat.system.ms_entries + stat.nodes.ms_entries + stat.graph_lr.ms_entries +
       stat.graph_rl.ms_entries + stat.graph_ll.ms_entries);
-exit:
-  return (status);
-};
-status_t db_debug_display_btree_counts(db_txn_t txn) {
-  status_init;
-  db_statistics_t stat;
-  status_require_x(db_statistics(txn, (&stat)));
-  printf(("btree entry count\n  nodes %d data-intern->id %d\n  "
-          "data-extern->extern %d graph-lr %d\n  graph-rl %d graph-ll %d\n"),
-    (stat.system.ms_entries),
-    (stat.nodes.ms_entries),
-    (stat.graph_lr.ms_entries),
-    (stat.graph_rl.ms_entries),
-    (stat.graph_ll.ms_entries));
 exit:
   return (status);
 };
@@ -134,15 +137,16 @@ exit:
 /** expects an allocated db-statistics-t */
 status_t db_statistics(db_txn_t txn, db_statistics_t* result) {
   status_init;
-#define result_set(dbi_name) \
-  db_mdb_status_require_x((mdb_stat( \
-    (txn.mdb_txn), ((txn.env)->dbi_##dbi_name), (&(result->dbi_name)))))
-  result_set(system);
-  result_set(nodes);
-  result_set(graph_lr);
-  result_set(graph_rl);
-  result_set(graph_ll);
-#undef result_set
+  db_mdb_status_require_x(
+    (mdb_stat((txn.mdb_txn), ((txn.env)->dbi_system), (&(result->system)))));
+  db_mdb_status_require_x(
+    (mdb_stat((txn.mdb_txn), ((txn.env)->dbi_nodes), (&(result->nodes)))));
+  db_mdb_status_require_x((
+    mdb_stat((txn.mdb_txn), ((txn.env)->dbi_graph_lr), (&(result->graph_lr)))));
+  db_mdb_status_require_x((
+    mdb_stat((txn.mdb_txn), ((txn.env)->dbi_graph_ll), (&(result->graph_ll)))));
+  db_mdb_status_require_x((
+    mdb_stat((txn.mdb_txn), ((txn.env)->dbi_graph_rl), (&(result->graph_rl)))));
 exit:
   return (status);
 };

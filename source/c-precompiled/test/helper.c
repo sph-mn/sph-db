@@ -84,17 +84,20 @@ exit:
 db_debug_define_graph_records_contains_at_p(left);
 db_debug_define_graph_records_contains_at_p(right);
 db_debug_define_graph_records_contains_at_p(label);
-/** create only ids without nodes. doesnt depend on node creation */
-status_t test_helper_create_ids(db_env_t* env, b32 count, db_ids_t** result) {
+/** create only ids, without nodes. doesnt depend on node creation */
+status_t test_helper_create_ids(db_txn_t txn, b32 count, db_ids_t** result) {
   status_init;
   db_declare_ids(ids_temp);
   db_id_t id;
-  for (id = 1; (id <= count); id = (1 + id)) {
+  while (count) {
+    status_require_x((db_sequence_next((txn.env), 1, (&id))));
     ids_temp = db_ids_add(ids_temp, id);
     if (!ids_temp) {
       status_set_id_goto(db_status_id_memory);
     };
+    count = (count - 1);
   };
+  *result = ids_temp;
 exit:
   return (status);
 };
@@ -102,7 +105,7 @@ exit:
    create as many elements as there are in ids-old. add them with interleaved
    overlap at half of ids-old
    approximately like this: 1 1 1 1 + 2 2 2 2 -> 1 1 2 1 2 1 2 2 */
-status_t test_helper_ids_add_new_ids(db_env_t* env,
+status_t test_helper_ids_add_new_ids(db_txn_t txn,
   db_ids_t* ids_old,
   db_ids_t** result) {
   status_init;
@@ -113,7 +116,7 @@ status_t test_helper_ids_add_new_ids(db_env_t* env,
   b32 count;
   *result = 0;
   status_require_x(
-    test_helper_create_ids(env, db_ids_length(ids_old), (&ids_new)));
+    test_helper_create_ids(txn, db_ids_length(ids_old), (&ids_new)));
   target_count = (2 * db_ids_length(ids_old));
   start_mixed = (target_count / 4);
   start_new = (target_count - start_mixed);
@@ -198,7 +201,7 @@ db_ordinal_t test_helper_default_ordinal_generator(b0* state) {
   *ordinal_pointer = result;
   return (result);
 };
-status_t test_helper_create_relations(db_env_t* env,
+status_t test_helper_create_relations(db_txn_t txn,
   b32 count_left,
   b32 count_right,
   b32 count_label,
@@ -206,22 +209,18 @@ status_t test_helper_create_relations(db_env_t* env,
   db_ids_t** right,
   db_ids_t** label) {
   status_init;
-  db_txn_declare(env, txn);
   db_ordinal_t ordinal_state_value;
-  status_require_x(test_helper_create_ids(env, count_left, left));
-  status_require_x(test_helper_create_ids(env, count_right, right));
-  status_require_x(test_helper_create_ids(env, count_label, label));
+  status_require_x(test_helper_create_ids(txn, count_left, left));
+  status_require_x(test_helper_create_ids(txn, count_right, right));
+  status_require_x(test_helper_create_ids(txn, count_label, label));
   ordinal_state_value = 0;
-  db_txn_write_begin(txn);
   status_require_x(db_graph_ensure(txn,
     (*left),
     (*right),
     (*label),
     test_helper_default_ordinal_generator,
     (&ordinal_state_value)));
-  db_txn_commit(txn);
 exit:
-  db_txn_abort_if_active(txn);
   return (status);
 };
 #define test_helper_graph_read_one(txn, left, right, label, ordinal, offset) \
@@ -253,7 +252,7 @@ exit:
       (ordinal ? ordinal_max : 0)); \
     printf("the read "); \
     db_debug_display_graph_records(records); \
-    db_debug_display_all_relations(txn); \
+    test_helper_display_all_relations(txn); \
     status_set_id_goto(1); \
   }; \
   if (!ordinal) { \
@@ -295,8 +294,8 @@ exit:
   existing_left_count = common_label_count; \
   existing_right_count = common_element_count; \
   existing_label_count = common_label_count; \
-  db_txn_begin(txn); \
-  status_require_x(test_helper_create_relations(env, \
+  db_txn_write_begin(txn); \
+  status_require_x(test_helper_create_relations(txn, \
     existing_left_count, \
     existing_right_count, \
     existing_label_count, \
@@ -304,11 +303,11 @@ exit:
     (&existing_right), \
     (&existing_label))); \
   /* add ids that do not exist anywhere in the graph */ \
-  status_require_x(test_helper_ids_add_new_ids(env, existing_left, (&left))); \
+  status_require_x(test_helper_ids_add_new_ids(txn, existing_left, (&left))); \
   status_require_x( \
-    test_helper_ids_add_new_ids(env, existing_right, (&right))); \
+    test_helper_ids_add_new_ids(txn, existing_right, (&right))); \
   status_require_x( \
-    test_helper_ids_add_new_ids(env, existing_label, (&label))); \
+    test_helper_ids_add_new_ids(txn, existing_label, (&label))); \
   printf(" ")
 #define test_helper_graph_read_footer \
   db_status_success_if_no_more_data; \
@@ -316,7 +315,10 @@ exit:
   printf("\n"); \
   db_txn_abort_if_active(txn); \
   return (status);
-status_t db_debug_display_all_relations(db_txn_t txn) {
+#define test_helper_filter_ids_to_reader_suffix_integer( \
+  left, right, label, ordinal) \
+  ((left ? 8 : 0) | (right ? 4 : 0) | (label ? 2 : 0) | (ordinal ? 1 : 0))
+status_t test_helper_display_all_relations(db_txn_t txn) {
   status_init;
   db_graph_records_t* records;
   db_graph_read_state_t state;
@@ -330,9 +332,6 @@ status_t db_debug_display_all_relations(db_txn_t txn) {
 exit:
   return (status);
 };
-#define test_helper_filter_ids_to_reader_suffix_integer( \
-  left, right, label, ordinal) \
-  ((left ? 8 : 0) | (right ? 4 : 0) | (label ? 2 : 0) | (ordinal ? 1 : 0))
 /** assumes linearly set-plus-oneed ordinal integers starting at 1 and queries
  * for all or no ids */
 b32 test_helper_estimate_graph_read_result_count(b32 left_count,
