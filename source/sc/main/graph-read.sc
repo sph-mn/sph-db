@@ -44,11 +44,15 @@
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-graph-reader-header state)
   db-mdb-declare-val-graph-data
-  (define graph-lr MDB-cursor* state:cursor)
-  (define left db-ids-t* state:left)
+  (declare
+    graph-lr MDB-cursor*
+    left db-ids-t*)
+  (set
+    graph-lr state:cursor
+    left state:left)
   (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
   db-mdb-status-require
-  (array-set graph-key 0 (db-ids-first left))
+  (set (array-get graph-key 0) (db-ids-first left))
   (if (db-id-equal? (db-pointer->id val-graph-key.mv-data 0) (array-get graph-key 0))
     (goto each-data)
     (label set-range
@@ -588,7 +592,7 @@
   "prepare the state and select the reader.
   readers are specialised for filter combinations.
   the 1/0 pattern at the end of reader names corresponds to the filter combination the reader is supposed to handle.
-  1 stands for filter given, 0 stands for not given. the order is left-right-label-ordinal.
+  1 stands for filter given, 0 stands for not given. order is left, right, label, ordinal.
   readers always leave cursors at a valid entry, usually the next entry unless the results have been exhausted"
   status-init
   db-mdb-declare-val-null
@@ -618,8 +622,7 @@
             (set result:reader db-graph-read-1100)))
         (begin
           (db-graph-select-cursor-initialise graph-lr result cursor)
-          (if label
-            (set result:reader db-graph-read-1010)
+          (if label (set result:reader db-graph-read-1010)
             (set result:reader db-graph-read-1000)))))
     (if right
       (begin

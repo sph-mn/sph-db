@@ -83,7 +83,10 @@
   (db-declare-ids ids-temp)
   (declare id db-id-t)
   (while count
-    (status-require! (db-sequence-next txn.env 1 &id))
+    (sc-comment
+      "use type id zero - normally not valid for nodes but it works"
+      " and for tests it keeps the ids small numbers")
+    (status-require! (db-sequence-next txn.env 0 &id))
     (set ids-temp (db-ids-add ids-temp id))
     (if (not ids-temp) (status-set-id-goto db-status-id-memory))
     (set count (- count 1)))
@@ -229,7 +232,7 @@
             0)
           (if* ordinal ordinal-max
             0))
-        (printf "the read ")
+        (printf "read ")
         (db-debug-display-graph-records records)
         (test-helper-display-all-relations txn)
         (status-set-id-goto 1)))

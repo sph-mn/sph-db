@@ -78,30 +78,28 @@ static int db_mdb_compare_id(const MDB_val* a, const MDB_val* b) {
     (db_pointer_to_id((a->mv_data), 0)), (db_pointer_to_id((b->mv_data), 0)))));
 };
 static int db_mdb_compare_graph_key(const MDB_val* a, const MDB_val* b) {
-  return ((
-    (db_pointer_to_id((a->mv_data), 0) < db_pointer_to_id((b->mv_data), 0))
-      ? -1
-      : ((db_pointer_to_id((a->mv_data), 0) > db_pointer_to_id((b->mv_data), 0))
-            ? 1
-            : ((db_pointer_to_id((a->mv_data), 1) <
-                 db_pointer_to_id((b->mv_data), 1))
-                  ? -1
-                  : (db_pointer_to_id((a->mv_data), 1) >
-                      db_pointer_to_id((b->mv_data), 1))))));
+  if (db_pointer_to_id((a->mv_data), 0) < db_pointer_to_id((b->mv_data), 0)) {
+    return (-1);
+  } else if (db_pointer_to_id((a->mv_data), 0) >
+    db_pointer_to_id((b->mv_data), 0)) {
+    return (1);
+  } else {
+    return ((db_id_compare((db_pointer_to_id((a->mv_data), 1)),
+      (db_pointer_to_id((b->mv_data), 1)))));
+  };
 };
 /** memcmp does not work here, gives -1 for 256 vs 1 */
 static int db_mdb_compare_graph_data(const MDB_val* a, const MDB_val* b) {
-  return (((db_graph_data_to_ordinal((a->mv_data)) <
-             db_graph_data_to_ordinal((b->mv_data)))
-      ? -1
-      : ((db_graph_data_to_ordinal((a->mv_data)) >
-           db_graph_data_to_ordinal((b->mv_data)))
-            ? 1
-            : ((db_graph_data_to_id((a->mv_data)) <
-                 db_graph_data_to_id((b->mv_data)))
-                  ? -1
-                  : (db_graph_data_to_id((a->mv_data)) >
-                      db_graph_data_to_id((b->mv_data)))))));
+  if (db_graph_data_to_ordinal((a->mv_data)) <
+    db_graph_data_to_ordinal((b->mv_data))) {
+    return (-1);
+  } else if (db_graph_data_to_ordinal((a->mv_data)) >
+    db_graph_data_to_ordinal((b->mv_data))) {
+    return (1);
+  } else {
+    return ((db_id_compare((db_pointer_to_id((a->mv_data), 1)),
+      (db_pointer_to_id((b->mv_data), 1)))));
+  };
 };
 static int db_mdb_compare_data(const MDB_val* a, const MDB_val* b) {
   ssize_t length_difference =

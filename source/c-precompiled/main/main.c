@@ -51,10 +51,10 @@ b0 db_debug_log_ids_set(imht_set_t a) {
 };
 b0 db_debug_display_graph_records(db_graph_records_t* records) {
   db_graph_record_t record;
-  printf("graph records\n");
+  printf(("graph records (ll -> or)\n"));
   while (records) {
     record = db_graph_records_first(records);
-    printf("  lcor %lu %lu %lu %lu\n",
+    printf(("  %lu %lu -> %lu %lu\n"),
       (record.left),
       (record.label),
       (record.ordinal),

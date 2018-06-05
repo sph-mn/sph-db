@@ -45,10 +45,10 @@
 
 (define (db-debug-display-graph-records records) (b0 db-graph-records-t*)
   (declare record db-graph-record-t)
-  (printf "graph records\n")
+  (printf "graph records (ll -> or)\n")
   (while records
     (set record (db-graph-records-first records))
-    (printf "  lcor %lu %lu %lu %lu\n" record.left record.label record.ordinal record.right)
+    (printf "  %lu %lu -> %lu %lu\n" record.left record.label record.ordinal record.right)
     (set records (db-graph-records-rest records))))
 
 (define (db-debug-display-btree-counts txn) (status-t db-txn-t)

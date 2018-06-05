@@ -34,8 +34,10 @@ status_t db_graph_read_1000(db_graph_read_state_t* state,
   db_graph_records_t** result) {
   db_graph_reader_header(state);
   db_mdb_declare_val_graph_data;
-  MDB_cursor* graph_lr = state->cursor;
-  db_ids_t* left = state->left;
+  MDB_cursor* graph_lr;
+  db_ids_t* left;
+  graph_lr = state->cursor;
+  left = state->left;
   db_mdb_cursor_get_norequire(
     graph_lr, val_graph_key, val_graph_data, MDB_GET_CURRENT);
   db_mdb_status_require;
@@ -712,7 +714,7 @@ exit:
   readers are specialised for filter combinations.
   the 1/0 pattern at the end of reader names corresponds to the filter
   combination the reader is supposed to handle. 1 stands for filter given, 0
-  stands for not given. the order is left-right-label-ordinal. readers always
+  stands for not given. order is left, right, label, ordinal. readers always
   leave cursors at a valid entry, usually the next entry unless the results have
   been exhausted */
 status_t db_graph_select(db_txn_t txn,

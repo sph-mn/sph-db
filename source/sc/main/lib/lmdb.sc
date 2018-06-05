@@ -84,19 +84,17 @@
   (return (db-id-compare (db-pointer->id a:mv-data 0) (db-pointer->id b:mv-data 0))))
 
 (define (db-mdb-compare-graph-key a b) ((static int) (const MDB-val*) (const MDB-val*))
-  (return
-    (if* (< (db-pointer->id a:mv-data 0) (db-pointer->id b:mv-data 0)) -1
-      (if* (> (db-pointer->id a:mv-data 0) (db-pointer->id b:mv-data 0)) 1
-        (if* (< (db-pointer->id a:mv-data 1) (db-pointer->id b:mv-data 1)) -1
-          (> (db-pointer->id a:mv-data 1) (db-pointer->id b:mv-data 1)))))))
+  (cond
+    ((< (db-pointer->id a:mv-data 0) (db-pointer->id b:mv-data 0)) (return -1))
+    ((> (db-pointer->id a:mv-data 0) (db-pointer->id b:mv-data 0)) (return 1))
+    (else (return (db-id-compare (db-pointer->id a:mv-data 1) (db-pointer->id b:mv-data 1))))))
 
 (define (db-mdb-compare-graph-data a b) ((static int) (const MDB-val*) (const MDB-val*))
   "memcmp does not work here, gives -1 for 256 vs 1"
-  (return
-    (if* (< (db-graph-data->ordinal a:mv-data) (db-graph-data->ordinal b:mv-data)) -1
-      (if* (> (db-graph-data->ordinal a:mv-data) (db-graph-data->ordinal b:mv-data)) 1
-        (if* (< (db-graph-data->id a:mv-data) (db-graph-data->id b:mv-data)) -1
-          (> (db-graph-data->id a:mv-data) (db-graph-data->id b:mv-data)))))))
+  (cond
+    ((< (db-graph-data->ordinal a:mv-data) (db-graph-data->ordinal b:mv-data)) (return -1))
+    ((> (db-graph-data->ordinal a:mv-data) (db-graph-data->ordinal b:mv-data)) (return 1))
+    (else (return (db-id-compare (db-pointer->id a:mv-data 1) (db-pointer->id b:mv-data 1))))))
 
 (define (db-mdb-compare-data a b) ((static int) (const MDB-val*) (const MDB-val*))
   (define length-difference ssize-t

@@ -90,7 +90,9 @@ status_t test_helper_create_ids(db_txn_t txn, b32 count, db_ids_t** result) {
   db_declare_ids(ids_temp);
   db_id_t id;
   while (count) {
-    status_require_x((db_sequence_next((txn.env), 1, (&id))));
+    /* use type id zero - normally not valid for nodes but it works  and for
+     * tests it keeps the ids small numbers */
+    status_require_x((db_sequence_next((txn.env), 0, (&id))));
     ids_temp = db_ids_add(ids_temp, id);
     if (!ids_temp) {
       status_set_id_goto(db_status_id_memory);
@@ -250,7 +252,7 @@ exit:
       db_graph_records_length(records), \
       (ordinal ? ordinal_min : 0), \
       (ordinal ? ordinal_max : 0)); \
-    printf("the read "); \
+    printf("read "); \
     db_debug_display_graph_records(records); \
     test_helper_display_all_relations(txn); \
     status_set_id_goto(1); \
