@@ -274,33 +274,32 @@
   db-mdb-status-require
   (if left (array-set graph-key 0 (db-ids-first left))
     no-more-data-exit)
-  (if
-    (and
-      (db-id-equal? (db-pointer->id val-graph-key.mv-data 0) (array-get graph-key 0))
-      (or (not ordinal-min) (>= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-min))
-      (or (not ordinal-max) (<= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-max)))
-    (goto each-data)
-    (label each-left
-      (set val-graph-key.mv-data graph-key)
-      (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-RANGE)
-      (label each-key
-        (if db-mdb-status-success?
-          (if (db-id-equal? (db-pointer->id val-graph-key.mv-data 0) (array-get graph-key 0))
-            (begin
-              (set val-graph-data.mv-data graph-data)
-              (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-BOTH-RANGE)
-              (if db-mdb-status-success? (goto each-data)
-                db-mdb-status-require-notfound)
-              (db-mdb-cursor-next-nodup-norequire graph-lr val-graph-key val-graph-data)
-              (goto each-key)))
-          db-mdb-status-require-notfound)
-        (set left (db-ids-rest left))
-        (if left (array-set graph-key 0 (db-ids-first left))
-          no-more-data-exit)
-        (goto each-left))))
+  (if (db-id-equal? (db-pointer->id val-graph-key.mv-data 0) (array-get graph-key 0))
+    (goto each-data))
+  (label each-left
+    (set val-graph-key.mv-data graph-key)
+    (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-RANGE)
+    (label each-key
+      (if db-mdb-status-success?
+        (if (db-id-equal? (db-pointer->id val-graph-key.mv-data 0) (array-get graph-key 0))
+          (begin
+            (set val-graph-data.mv-data graph-data)
+            (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-BOTH-RANGE)
+            (if db-mdb-status-success? (goto each-data)
+              db-mdb-status-require-notfound)
+            (db-mdb-cursor-next-nodup-norequire graph-lr val-graph-key val-graph-data)
+            (goto each-key)))
+        db-mdb-status-require-notfound)
+      (set left (db-ids-rest left))
+      (if left (set (array-get graph-key 0) (db-ids-first left))
+        no-more-data-exit)
+      (goto each-left)))
   (label each-data
     stop-if-count-zero
-    (if (or (not ordinal-max) (<= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-max))
+    (if
+      (and
+        (or (not ordinal-min) (>= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-min))
+        (or (not ordinal-max) (<= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-max)))
       (begin
         (if (or (not right) (imht-set-contains? right (db-graph-data->id val-graph-data.mv-data)))
           (begin

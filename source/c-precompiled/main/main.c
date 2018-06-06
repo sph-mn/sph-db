@@ -35,19 +35,22 @@
   }
 /** display an ids list */
 b0 db_debug_log_ids(db_ids_t* a) {
-  debug_log("length: %lu", db_ids_length(a));
+  printf("ids (%lu):", db_ids_length(a));
   while (a) {
-    debug_log("%lu", db_ids_first(a));
+    printf(" %lu", db_ids_first(a));
     a = db_ids_rest(a);
   };
+  printf("\n");
 };
 /** display an ids set */
 b0 db_debug_log_ids_set(imht_set_t a) {
   b32 index = 0;
+  printf("id set (%lu):", (a.size));
   while ((index < a.size)) {
-    debug_log("%lu", ((a.content)[index]));
+    printf(" %lu", ((a.content)[index]));
     index = (1 + index);
   };
+  printf("\n");
 };
 b0 db_debug_display_graph_records(db_graph_records_t* records) {
   db_graph_record_t record;

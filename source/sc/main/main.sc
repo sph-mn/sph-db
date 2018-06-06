@@ -31,17 +31,20 @@
 
 (define (db-debug-log-ids a) (b0 db-ids-t*)
   "display an ids list"
-  (debug-log "length: %lu" (db-ids-length a))
+  (printf "ids (%lu):" (db-ids-length a))
   (while a
-    (debug-log "%lu" (db-ids-first a))
-    (set a (db-ids-rest a))))
+    (printf " %lu" (db-ids-first a))
+    (set a (db-ids-rest a)))
+  (printf "\n"))
 
 (define (db-debug-log-ids-set a) (b0 imht-set-t)
   "display an ids set"
   (define index b32 0)
+  (printf "id set (%lu):" a.size)
   (while (< index a.size)
-    (debug-log "%lu" (array-get a.content index))
-    (set index (+ 1 index))))
+    (printf " %lu" (array-get a.content index))
+    (set index (+ 1 index)))
+  (printf "\n"))
 
 (define (db-debug-display-graph-records records) (b0 db-graph-records-t*)
   (declare record db-graph-record-t)

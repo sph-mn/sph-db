@@ -56,12 +56,15 @@
     (set ids (db-ids-rest ids)))
   (return #f))
 
-(define (db-ids-reverse source result) (status-t db-ids-t* db-ids-t**)
+(define (db-ids-reverse a result) (status-t db-ids-t* db-ids-t**)
   status-init
   (declare ids-temp db-ids-t*)
-  (while source
-    (db-ids-add! (pointer-get result) (db-ids-first source) ids-temp)
-    (set source (db-ids-rest source)))
+  (set ids-temp 0)
+  (while a
+    (set ids-temp (db-ids-add ids-temp (db-ids-first a)))
+    (if (not ids-temp) (db-status-set-id-goto db-status-id-memory))
+    (set a (db-ids-rest a)))
+  (set *result ids-temp)
   (label exit
     (return status)))
 
@@ -78,7 +81,9 @@
 (db-debug-define-graph-records-contains-at? label)
 
 (define (test-helper-create-ids txn count result) (status-t db-txn-t b32 db-ids-t**)
-  "create only ids, without nodes. doesnt depend on node creation"
+  "create only ids, without nodes. doesnt depend on node creation.
+  dont reverse id list because it leads to more unorderly data which can expose bugs
+  especially with relation reading where order lead to lucky success results"
   status-init
   (db-declare-ids ids-temp)
   (declare id db-id-t)
@@ -90,6 +95,7 @@
     (set ids-temp (db-ids-add ids-temp id))
     (if (not ids-temp) (status-set-id-goto db-status-id-memory))
     (set count (- count 1)))
+  ;(status-require! (db-ids-reverse ids-temp result))
   (set *result ids-temp)
   (label exit
     (return status)))

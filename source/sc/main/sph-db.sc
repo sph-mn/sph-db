@@ -132,7 +132,7 @@
     (set result-temp expression)
     (if result-temp (set result result-temp)
       (db-status-set-id-goto db-status-id-memory)))
-  (db-ids-add! target source ids-temp)
+  (db-ids-add-require target source ids-temp)
   (db-pointer-allocation-set target (db-ids-add target source) ids-temp) (db-declare-ids name)
   (define name db-ids-t* 0) (db-declare-ids-two name-1 name-2)
   (begin

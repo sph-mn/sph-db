@@ -94,7 +94,7 @@
   (cond
     ((< (db-graph-data->ordinal a:mv-data) (db-graph-data->ordinal b:mv-data)) (return -1))
     ((> (db-graph-data->ordinal a:mv-data) (db-graph-data->ordinal b:mv-data)) (return 1))
-    (else (return (db-id-compare (db-pointer->id a:mv-data 1) (db-pointer->id b:mv-data 1))))))
+    (else (return (db-id-compare (db-graph-data->id a:mv-data) (db-graph-data->id b:mv-data))))))
 
 (define (db-mdb-compare-data a b) ((static int) (const MDB-val*) (const MDB-val*))
   (define length-difference ssize-t

@@ -97,8 +97,8 @@ static int db_mdb_compare_graph_data(const MDB_val* a, const MDB_val* b) {
     db_graph_data_to_ordinal((b->mv_data))) {
     return (1);
   } else {
-    return ((db_id_compare((db_pointer_to_id((a->mv_data), 1)),
-      (db_pointer_to_id((b->mv_data), 1)))));
+    return ((db_id_compare((db_graph_data_to_id((a->mv_data))),
+      (db_graph_data_to_id((b->mv_data))))));
   };
 };
 static int db_mdb_compare_data(const MDB_val* a, const MDB_val* b) {

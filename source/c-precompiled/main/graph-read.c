@@ -307,48 +307,45 @@ status_t db_graph_read_1001_1101(db_graph_read_state_t* state,
     no_more_data_exit;
   };
   if (db_id_equal_p(
-        (db_pointer_to_id((val_graph_key.mv_data), 0)), (graph_key[0])) &&
-    (!ordinal_min ||
-      (db_graph_data_to_ordinal((val_graph_data.mv_data)) >= ordinal_min)) &&
-    (!ordinal_max ||
-      (db_graph_data_to_ordinal((val_graph_data.mv_data)) <= ordinal_max))) {
+        (db_pointer_to_id((val_graph_key.mv_data), 0)), (graph_key[0]))) {
     goto each_data;
-  } else {
-  each_left:
-    val_graph_key.mv_data = graph_key;
-    db_mdb_cursor_get_norequire(
-      graph_lr, val_graph_key, val_graph_data, MDB_SET_RANGE);
-  each_key:
-    if (db_mdb_status_success_p) {
-      if (db_id_equal_p(
-            (db_pointer_to_id((val_graph_key.mv_data), 0)), (graph_key[0]))) {
-        val_graph_data.mv_data = graph_data;
-        db_mdb_cursor_get_norequire(
-          graph_lr, val_graph_key, val_graph_data, MDB_GET_BOTH_RANGE);
-        if (db_mdb_status_success_p) {
-          goto each_data;
-        } else {
-          db_mdb_status_require_notfound;
-        };
-        db_mdb_cursor_next_nodup_norequire(
-          graph_lr, val_graph_key, val_graph_data);
-        goto each_key;
-      };
-    } else {
-      db_mdb_status_require_notfound;
-    };
-    left = db_ids_rest(left);
-    if (left) {
-      graph_key[0] = db_ids_first(left);
-    } else {
-      no_more_data_exit;
-    };
-    goto each_left;
   };
+each_left:
+  val_graph_key.mv_data = graph_key;
+  db_mdb_cursor_get_norequire(
+    graph_lr, val_graph_key, val_graph_data, MDB_SET_RANGE);
+each_key:
+  if (db_mdb_status_success_p) {
+    if (db_id_equal_p(
+          (db_pointer_to_id((val_graph_key.mv_data), 0)), (graph_key[0]))) {
+      val_graph_data.mv_data = graph_data;
+      db_mdb_cursor_get_norequire(
+        graph_lr, val_graph_key, val_graph_data, MDB_GET_BOTH_RANGE);
+      if (db_mdb_status_success_p) {
+        goto each_data;
+      } else {
+        db_mdb_status_require_notfound;
+      };
+      db_mdb_cursor_next_nodup_norequire(
+        graph_lr, val_graph_key, val_graph_data);
+      goto each_key;
+    };
+  } else {
+    db_mdb_status_require_notfound;
+  };
+  left = db_ids_rest(left);
+  if (left) {
+    graph_key[0] = db_ids_first(left);
+  } else {
+    no_more_data_exit;
+  };
+  goto each_left;
 each_data:
   stop_if_count_zero;
-  if (!ordinal_max ||
-    (db_graph_data_to_ordinal((val_graph_data.mv_data)) <= ordinal_max)) {
+  if ((!ordinal_min ||
+        (db_graph_data_to_ordinal((val_graph_data.mv_data)) >= ordinal_min)) &&
+    (!ordinal_max ||
+      (db_graph_data_to_ordinal((val_graph_data.mv_data)) <= ordinal_max))) {
     if (!right ||
       imht_set_contains_p(
         right, (db_graph_data_to_id((val_graph_data.mv_data))))) {

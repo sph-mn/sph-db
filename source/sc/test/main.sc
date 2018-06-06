@@ -168,40 +168,34 @@
 (define (test-graph-read env) (status-t db-env-t*)
   (test-helper-graph-read-header env)
   (test-helper-graph-read-one txn left 0 0 0 0)
-  ;(test-helper-graph-read-one txn left 0 label 0 0)
-  ;(test-helper-graph-read-one txn left right 0 0 0)
-  ;(test-helper-graph-read-one txn left right label 0 0)
-  ;(test-helper-graph-read-one txn 0 0 0 0 0)
-  ;(test-helper-graph-read-one txn 0 0 label 0 0)
-  ;(test-helper-graph-read-one txn 0 right 0 0 0)
-  ;(test-helper-graph-read-one txn 0 right label 0 0)
-  ;(test-helper-graph-read-one txn left 0 0 ordinal 0)
-  ;(test-helper-graph-read-one txn left 0 label ordinal 0)
-  ;(test-helper-graph-read-one txn left right 0 ordinal 0)
-  ;(test-helper-graph-read-one txn left right label ordinal 0)
+  (test-helper-graph-read-one txn left 0 label 0 0)
+  (test-helper-graph-read-one txn left right 0 0 0)
+  (test-helper-graph-read-one txn left right label 0 0)
+  (test-helper-graph-read-one txn 0 0 0 0 0)
+  (test-helper-graph-read-one txn 0 0 label 0 0)
+  (test-helper-graph-read-one txn 0 right 0 0 0)
+  (test-helper-graph-read-one txn 0 right label 0 0)
+  (test-helper-graph-read-one txn left 0 0 ordinal 0)
+  (test-helper-graph-read-one txn left 0 label ordinal 0)
+  (test-helper-graph-read-one txn left right 0 ordinal 0)
+  (test-helper-graph-read-one txn left right label ordinal 0)
   test-helper-graph-read-footer)
 
 (define (main) int
   (test-helper-init env)
-  ;(test-helper-test-one test-open-empty env)
-  ;(test-helper-test-one test-statistics env)
-  ;(test-helper-test-one test-id-construction env)
-  ;(test-helper-test-one test-sequence env)
-  ;(test-helper-test-one test-type-create-get-delete env)
-  ;(test-helper-test-one test-type-create-many env)
-  ;(test-helper-test-one test-open-nonempty env)
+  (test-helper-test-one test-open-empty env)
+  (test-helper-test-one test-statistics env)
+  (test-helper-test-one test-id-construction env)
+  (test-helper-test-one test-sequence env)
+  (test-helper-test-one test-type-create-get-delete env)
+  (test-helper-test-one test-type-create-many env)
+  (test-helper-test-one test-open-nonempty env)
   (test-helper-test-one test-graph-read env)
   (label exit
     test-helper-report-status
     (return status.id)))
 
 #;(
-
-
-
-
-
-
 (pre-define test-graph-delete-header
   (begin
     status-init

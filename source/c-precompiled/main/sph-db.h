@@ -393,7 +393,7 @@ b8* db_status_name(status_t a) {
   } else { \
     db_status_set_id_goto(db_status_id_memory); \
   }
-#define db_ids_add_x(target, source, ids_temp) \
+#define db_ids_add_require(target, source, ids_temp) \
   db_pointer_allocation_set(target, db_ids_add(target, source), ids_temp)
 #define db_declare_ids(name) db_ids_t* name = 0
 #define db_declare_ids_two(name_1, name_2) \

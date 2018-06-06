@@ -60,13 +60,18 @@ boolean db_ids_contains_p(db_ids_t* ids, db_id_t id) {
   };
   return (0);
 };
-status_t db_ids_reverse(db_ids_t* source, db_ids_t** result) {
+status_t db_ids_reverse(db_ids_t* a, db_ids_t** result) {
   status_init;
   db_ids_t* ids_temp;
-  while (source) {
-    db_ids_add_x((*result), db_ids_first(source), ids_temp);
-    source = db_ids_rest(source);
+  ids_temp = 0;
+  while (a) {
+    ids_temp = db_ids_add(ids_temp, db_ids_first(a));
+    if (!ids_temp) {
+      db_status_set_id_goto(db_status_id_memory);
+    };
+    a = db_ids_rest(a);
   };
+  *result = ids_temp;
 exit:
   return (status);
 };
@@ -84,7 +89,10 @@ exit:
 db_debug_define_graph_records_contains_at_p(left);
 db_debug_define_graph_records_contains_at_p(right);
 db_debug_define_graph_records_contains_at_p(label);
-/** create only ids, without nodes. doesnt depend on node creation */
+/** create only ids, without nodes. doesnt depend on node creation.
+  dont reverse id list because it leads to more unorderly data which can expose
+  bugs especially with relation reading where order lead to lucky success
+  results */
 status_t test_helper_create_ids(db_txn_t txn, b32 count, db_ids_t** result) {
   status_init;
   db_declare_ids(ids_temp);
