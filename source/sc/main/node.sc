@@ -144,7 +144,7 @@
     id (db-id-add-type 0 type-id)
     val-key.mv-data &id)
   (db-mdb-cursor-get-norequire nodes val-key val-null MDB-SET-RANGE)
-  (while (and db-mdb-status-success? (= type-id (db-id-type (db-mdb-val->id val-key))))
+  (while (and db-mdb-status-success? (= type-id (db-id-type (db-pointer->id val-key.mv-data))))
     (db-mdb-status-require! (mdb-cursor-del nodes 0))
     (db-mdb-cursor-get-norequire nodes val-key val-null MDB-NEXT-NODUP))
   (if status-failure?

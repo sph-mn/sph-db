@@ -3,8 +3,9 @@
   (and
     (db-id-equal? (array-get a 0) (array-get b 0)) (db-id-equal? (array-get a 1) (array-get b 1)))
   (db-graph-data-ordinal-set graph-data value)
-  (array-set (convert-type graph-data db-ordinal-t*) 0 value) (db-graph-data-id-set graph-data value)
-  (array-set (convert-type (+ 1 (convert-type graph-data db-ordinal-t*)) db-id-t*) 0 value)
+  (set (array-get (convert-type graph-data db-ordinal-t*) 0) value)
+  (db-graph-data-id-set graph-data value)
+  (set (array-get (convert-type (+ 1 (convert-type graph-data db-ordinal-t*)) db-id-t*) 0) value)
   (db-declare-graph-key name) (declare name (array db-id-t 2 0 0))
   (db-declare-graph-data name)
   (begin
@@ -76,7 +77,9 @@
           (begin
             (db-mdb-status-require! (mdb-cursor-put graph-rl &val-graph-key &val-id 0))
             (db-mdb-status-require! (mdb-cursor-put graph-ll &val-id-2 &val-id 0))
-            (array-set graph-key 0 id-left 1 id-label)
+            (set
+              (array-get graph-key 0) id-left
+              (array-get graph-key 1) id-label)
             (if ordinal-generator
               (set ordinal ((pointer-get ordinal-generator) ordinal-generator-state)))
             (db-graph-data-ordinal-set graph-data ordinal)
@@ -111,8 +114,8 @@
     val-graph-data
     (compound-statement
       (set
-        id-left (db-pointer->id val-graph-key.mv-data 0)
-        id-label (db-pointer->id val-graph-key.mv-data 1))
+        id-left (db-pointer->id val-graph-key.mv-data)
+        id-label (db-pointer->id-at val-graph-key.mv-data 1))
       (do-while db-mdb-status-success?
         (set
           id-right (db-graph-data->id val-graph-data.mv-data)
@@ -141,10 +144,10 @@
     val-id
     (compound-statement
       (set
-        id-right (db-pointer->id val-graph-key.mv-data 0)
-        id-label (db-pointer->id val-graph-key.mv-data 1))
+        id-right (db-pointer->id val-graph-key.mv-data)
+        id-label (db-pointer->id-at val-graph-key.mv-data 1))
       (do-while db-mdb-status-success?
-        (set id-left (db-mdb-val->id val-id))
+        (set id-left (db-pointer->id val-id.mv-data))
         (printf "  (%lu %lu) %lu\n" id-right id-label id-left)
         (db-mdb-cursor-next-dup-norequire graph-rl val-graph-key val-id))))
   (label exit
@@ -152,6 +155,4 @@
     db-status-success-if-mdb-notfound
     (return status)))
 
-(pre-include "./graph-read.c"
-  ;"graph-delete"
-  )
+(pre-include "./graph-read.c" "./graph-delete.c")

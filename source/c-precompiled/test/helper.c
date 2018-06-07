@@ -404,6 +404,112 @@ b32 test_helper_estimate_graph_read_btree_entry_count(b32 existing_left_count,
   };
   return ((left_right_count + right_left_count + label_left_count));
 };
+#define test_helper_graph_delete_header \
+  status_init; \
+  db_declare_ids_three(left, right, label); \
+  db_txn_declare(env, txn); \
+  db_graph_read_state_t state; \
+  b32 read_count_before_expected; \
+  b32 btree_count_after_delete; \
+  b32 btree_count_before_delete; \
+  b32 btree_count_deleted_expected; \
+  b32 btree_count_after_expected; \
+  db_graph_records_t* records; \
+  db_ordinal_condition_t* ordinal; \
+  b32 existing_left_count; \
+  b32 existing_right_count; \
+  b32 existing_label_count; \
+  db_ordinal_condition_t ordinal_condition = { 2, 5 }; \
+  records = 0; \
+  ordinal = &ordinal_condition; \
+  existing_left_count = common_label_count; \
+  existing_right_count = common_element_count; \
+  existing_label_count = common_label_count; \
+  printf(" ");
+/** for any given argument permutation:
+ * checks btree entry count difference
+ * checks read result count after deletion, using the same search query */
+#define test_helper_graph_delete_one(left_p, right_p, label_p, ordinal_p) \
+  printf(" %d%d%d%d", left_p, right_p, label_p, ordinal_p); \
+  read_count_before_expected = test_helper_estimate_graph_read_result_count( \
+    existing_left_count, existing_right_count, existing_label_count, ordinal); \
+  db_txn_write_begin(txn); \
+  db_debug_count_all_btree_entries(txn, (&btree_count_before_delete)); \
+  /* add non-graph elements */ \
+  status_require_x(test_helper_create_relations(txn, \
+    common_label_count, \
+    common_element_count, \
+    common_label_count, \
+    (&left), \
+    (&right), \
+    (&label))); \
+  status_require_x(db_graph_delete(txn, \
+    (left_p ? left : 0), \
+    (right_p ? right : 0), \
+    (label_p ? label : 0), \
+    (ordinal_p ? ordinal : 0))); \
+  db_debug_count_all_btree_entries(txn, (&btree_count_after_delete)); \
+  db_status_require_read_x(db_graph_select(txn, \
+    (left_p ? left : 0), \
+    (right_p ? right : 0), \
+    (label_p ? label : 0), \
+    (ordinal_p ? ordinal : 0), \
+    0, \
+    (&state))); \
+  /* checks that readers can handle selections with no elements */ \
+  db_status_require_read_x(db_graph_read((&state), 0, (&records))); \
+  db_graph_selection_destroy((&state)); \
+  db_txn_commit(txn); \
+  /* relations are assumed to have linearly incremented ordinals starting with \
+   * 1 */ \
+  if (!(0 == db_graph_records_length(records))) { \
+    printf(("\n    failed deletion. %lu relations not deleted\n"), \
+      db_graph_records_length(records)); \
+    db_debug_display_graph_records(records); \
+    status_set_id_goto(1); \
+  }; \
+  db_graph_records_destroy(records); \
+  records = 0; \
+  btree_count_before_delete = (btree_count_before_delete + \
+    existing_left_count + existing_right_count + existing_label_count); \
+  btree_count_deleted_expected = \
+    test_helper_estimate_graph_read_btree_entry_count(existing_left_count, \
+      existing_right_count, \
+      existing_label_count, \
+      ordinal); \
+  btree_count_after_expected = \
+    (btree_count_after_delete - btree_count_deleted_expected); \
+  if (!((btree_count_after_expected == btree_count_after_delete) && \
+        (ordinal_p \
+            ? 1 \
+            : (btree_count_after_delete == btree_count_before_delete)))) { \
+    printf( \
+      ("\n    failed deletion. %lu btree entries remaining, expected %lu\n"), \
+      btree_count_after_delete, \
+      btree_count_after_expected); \
+    db_txn_begin(txn); \
+    db_debug_display_btree_counts(txn); \
+    db_status_require_read_x(db_graph_select(txn, 0, 0, 0, 0, 0, (&state))); \
+    db_status_require_read_x(db_graph_read((&state), 0, (&records))); \
+    printf("all remaining "); \
+    db_debug_display_graph_records(records); \
+    db_graph_selection_destroy((&state)); \
+    db_txn_abort(txn); \
+    status_set_id_goto(1); \
+  }; \
+  db_ids_destroy(left); \
+  db_ids_destroy(right); \
+  db_ids_destroy(label); \
+  records = 0; \
+  left = 0; \
+  right = 0; \
+  label = 0
+;
+#define test_helper_graph_delete_footer \
+  exit: \
+  db_txn_abort_if_active(txn); \
+  printf("\n"); \
+  return (status);
 /** 1101 -> "1101" */
 b8* test_helper_reader_suffix_integer_to_string(b8 a) {
   b8* result = malloc(40);

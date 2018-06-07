@@ -28,8 +28,7 @@
   db-status-success-if-mdb-notfound (if db-mdb-status-notfound? (status-set-id status-id-success))
   db-status-success-if-no-more-data
   (if (status-id-is? db-status-id-no-more-data)
-    (struct-set status
-      id status-id-success))
+    (set status.id status-id-success))
   db-mdb-status-success? (status-id-is? MDB-SUCCESS)
   db-mdb-status-failure? (not db-mdb-status-success?)
   db-mdb-status-notfound? (status-id-is? MDB-NOTFOUND)

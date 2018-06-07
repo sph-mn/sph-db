@@ -383,6 +383,127 @@
     (set-plus-one label-count))
   (return (+ left-right-count right-left-count label-left-count)))
 
+(pre-define test-helper-graph-delete-header
+  (begin
+    status-init
+    (db-declare-ids-three left right label)
+    (db-txn-declare env txn)
+    (declare
+      state db-graph-read-state-t
+      read-count-before-expected b32
+      btree-count-after-delete b32
+      btree-count-before-delete b32
+      btree-count-deleted-expected b32
+      btree-count-after-expected b32
+      records db-graph-records-t*
+      ordinal db-ordinal-condition-t*
+      existing-left-count b32
+      existing-right-count b32
+      existing-label-count b32)
+    (define ordinal-condition db-ordinal-condition-t (struct-literal 2 5))
+    (set
+      records 0
+      ordinal &ordinal-condition
+      existing-left-count common-label-count
+      existing-right-count common-element-count
+      existing-label-count common-label-count)
+    (printf " ")))
+
+(pre-define (test-helper-graph-delete-one left? right? label? ordinal?)
+  (begin
+    "for any given argument permutation:
+     * checks btree entry count difference
+     * checks read result count after deletion, using the same search query"
+    (printf " %d%d%d%d" left? right? label? ordinal?)
+    (set read-count-before-expected
+      (test-helper-estimate-graph-read-result-count
+        existing-left-count existing-right-count existing-label-count ordinal))
+    (db-txn-write-begin txn)
+    (db-debug-count-all-btree-entries txn &btree-count-before-delete)
+    (sc-comment "add non-graph elements")
+    (status-require!
+      (test-helper-create-relations
+        txn common-label-count common-element-count common-label-count &left &right &label))
+    (status-require!
+      (db-graph-delete
+        txn
+        (if* left? left
+          0)
+        (if* right? right
+          0)
+        (if* label? label
+          0)
+        (if* ordinal? ordinal
+          0)))
+    (db-debug-count-all-btree-entries txn &btree-count-after-delete)
+    (db-status-require-read!
+      (db-graph-select
+        txn
+        (if* left? left
+          0)
+        (if* right? right
+          0)
+        (if* label? label
+          0)
+        (if* ordinal? ordinal
+          0)
+        0 &state))
+    (sc-comment "checks that readers can handle selections with no elements")
+    (db-status-require-read! (db-graph-read &state 0 &records))
+    (db-graph-selection-destroy &state)
+    (db-txn-commit txn)
+    (sc-comment "relations are assumed to have linearly incremented ordinals starting with 1")
+    (if (not (= 0 (db-graph-records-length records)))
+      (begin
+        (printf
+          "\n    failed deletion. %lu relations not deleted\n" (db-graph-records-length records))
+        (db-debug-display-graph-records records)
+        ;(db-txn-begin txn)
+        ;(test-helper-display-all-relations txn)
+        ;(db-txn-abort txn)
+        (status-set-id-goto 1)))
+    (db-graph-records-destroy records)
+    (set records 0)
+    (set btree-count-before-delete
+      (+ btree-count-before-delete existing-left-count existing-right-count existing-label-count))
+    (set btree-count-deleted-expected
+      (test-helper-estimate-graph-read-btree-entry-count
+        existing-left-count existing-right-count existing-label-count ordinal))
+    (set btree-count-after-expected (- btree-count-after-delete btree-count-deleted-expected))
+    (if
+      (not
+        (and
+          (= btree-count-after-expected btree-count-after-delete)
+          (if* ordinal? #t
+            (= btree-count-after-delete btree-count-before-delete))))
+      (begin
+        (printf
+          "\n    failed deletion. %lu btree entries remaining, expected %lu\n"
+          btree-count-after-delete btree-count-after-expected)
+        (db-txn-begin txn)
+        (db-debug-display-btree-counts txn)
+        (db-status-require-read! (db-graph-select txn 0 0 0 0 0 &state))
+        (db-status-require-read! (db-graph-read &state 0 &records))
+        (printf "all remaining ")
+        (db-debug-display-graph-records records)
+        (db-graph-selection-destroy &state)
+        (db-txn-abort txn)
+        (status-set-id-goto 1)))
+    (db-ids-destroy left)
+    (db-ids-destroy right)
+    (db-ids-destroy label)
+    (set
+      records 0
+      left 0
+      right 0
+      label 0)))
+
+(pre-define test-helper-graph-delete-footer
+  (label exit
+    (db-txn-abort-if-active txn)
+    (printf "\n")
+    (return status)))
+
 (define (test-helper-reader-suffix-integer->string a) (b8* b8)
   "1101 -> \"1101\""
   (define result b8* (malloc 40))

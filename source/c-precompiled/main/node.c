@@ -154,7 +154,7 @@ status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
   val_key.mv_data = &id;
   db_mdb_cursor_get_norequire(nodes, val_key, val_null, MDB_SET_RANGE);
   while ((db_mdb_status_success_p &&
-    (type_id == db_id_type(db_mdb_val_to_id(val_key))))) {
+    (type_id == db_id_type((db_pointer_to_id((val_key.mv_data))))))) {
     db_mdb_status_require_x(mdb_cursor_del(nodes, 0));
     db_mdb_cursor_get_norequire(nodes, val_key, val_null, MDB_NEXT_NODUP);
   };

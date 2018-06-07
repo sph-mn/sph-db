@@ -160,7 +160,8 @@
     val-id.mv-data &id)
   (db-mdb-cursor-get-norequire nodes val-id val-null MDB-SET-RANGE)
   (if db-mdb-status-success?
-    (if (= type-id (db-id-type (db-mdb-val->id val-id))) (set *result (db-mdb-val->id val-id)))
+    (if (= type-id (db-id-type (db-pointer->id val-id.mv-data)))
+      (set *result (db-pointer->id val-id.mv-data)))
     (if db-mdb-status-notfound? (status-set-id status-id-success)
       (status-set-group-goto db-status-group-lmdb)))
   (label exit
@@ -174,8 +175,8 @@
   db-mdb-declare-val-null
   (set *result 0)
   (db-mdb-cursor-get-norequire nodes val-id val-null MDB-LAST)
-  (if (and db-mdb-status-success? (= type-id (db-id-type (db-mdb-val->id val-id))))
-    (set *result (db-mdb-val->id val-id)))
+  (if (and db-mdb-status-success? (= type-id (db-id-type (db-pointer->id val-id.mv-data))))
+    (set *result (db-pointer->id val-id.mv-data)))
   (return status))
 
 (define (db-type-last-id nodes type-id result) (status-t MDB-cursor* db-type-id-t db-id-t*)
@@ -215,7 +216,7 @@
   (sc-comment "greater type found, step back")
   (db-mdb-cursor-get nodes val-id val-null MDB-PREV)
   (set *result
-    (if* (= type-id (db-id-type (db-mdb-val->id val-id))) (db-mdb-val->id val-id)
+    (if* (= type-id (db-id-type (db-pointer->id val-id.mv-data))) (db-pointer->id val-id.mv-data)
       0))
   (label exit
     (return status)))

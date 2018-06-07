@@ -119,8 +119,8 @@ status_t db_debug_display_content_graph_lr(db_txn_t txn) {
   db_cursor_open(txn, graph_lr);
   printf("graph-lr\n");
   db_mdb_cursor_each_key(graph_lr, val_graph_key, val_graph_data, ({
-    id_left = db_pointer_to_id((val_graph_key.mv_data), 0);
-    id_label = db_pointer_to_id((val_graph_key.mv_data), 1);
+    id_left = db_pointer_to_id((val_graph_key.mv_data));
+    id_label = db_pointer_to_id_at((val_graph_key.mv_data), 1);
     do {
       id_right = db_graph_data_to_id((val_graph_data.mv_data));
       ordinal = db_graph_data_to_ordinal((val_graph_data.mv_data));
@@ -144,10 +144,10 @@ status_t db_debug_display_content_graph_rl(db_txn_t txn) {
   db_cursor_open(txn, graph_rl);
   printf("graph-rl\n");
   db_mdb_cursor_each_key(graph_rl, val_graph_key, val_id, ({
-    id_right = db_pointer_to_id((val_graph_key.mv_data), 0);
-    id_label = db_pointer_to_id((val_graph_key.mv_data), 1);
+    id_right = db_pointer_to_id((val_graph_key.mv_data));
+    id_label = db_pointer_to_id_at((val_graph_key.mv_data), 1);
     do {
-      id_left = db_mdb_val_to_id(val_id);
+      id_left = db_pointer_to_id((val_id.mv_data));
       printf("  (%lu %lu) %lu\n", id_right, id_label, id_left);
       db_mdb_cursor_next_dup_norequire(graph_rl, val_graph_key, val_id);
     } while (db_mdb_status_success_p);
@@ -158,3 +158,4 @@ exit:
   return (status);
 };
 #include "./graph-read.c"
+#include "./graph-delete.c"

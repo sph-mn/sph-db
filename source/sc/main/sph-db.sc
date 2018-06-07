@@ -1,7 +1,6 @@
 (sc-comment "this file is for declarations and macros needed to use sph-db as a shared library")
 (pre-include "math.h" "pthread.h" "lmdb.h")
 (sc-include "foreign/sph" "main/lib/status" "main/config")
-(pre-define (db-pointer->id a index) (pointer-get (+ index (convert-type a db-id-t*))))
 
 (pre-define-if-not-defined
   db-id-t b64
@@ -69,7 +68,8 @@
   (begin
     "get the element id part from a node id. a node id without type id"
     (bit-and db-id-element-mask id))
-  (db-pointer->id a index) (pointer-get (+ index (convert-type a db-id-t*)))
+  (db-pointer->id-at a index) (pointer-get (+ index (convert-type a db-id-t*)))
+  (db-pointer->id a) (pointer-get (convert-type a db-id-t*))
   (db-field-type-fixed? a) (not (bit-and 1 a))
   (db-system-key-label a) (pointer-get (convert-type a b8*))
   (db-system-key-id a)
@@ -100,13 +100,9 @@
     (db-calloc name 1 (sizeof db-env-t)))
   db-data-t MDB-val
   (db-data-data a) data.mv-data
-  (db-data-data-set a value)
-  (struct-set data
-    mv-data value)
+  (db-data-data-set a value) (set data.mv-data value)
   (db-data-size a) data.mv-size
-  (db-data-size-set a value)
-  (struct-set data
-    mv-size value)
+  (db-data-size-set a value) (set data.mv-size value)
   (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
   (db-txn-begin txn)
   (db-mdb-status-require! (mdb-txn-begin txn.env:mdb-env 0 MDB-RDONLY &txn.mdb-txn))
@@ -142,7 +138,7 @@
   (begin
     (db-declare-ids-two name-1 name-2)
     (db-declare-ids name-3))
-  (db-graph-data->id a) (db-pointer->id (+ 1 (convert-type a db-ordinal-t*)) 0)
+  (db-graph-data->id a) (db-pointer->id (+ 1 (convert-type a db-ordinal-t*)))
   (db-graph-data->ordinal a) (pointer-get (convert-type a db-ordinal-t*))
   (db-graph-data-set-id a value) (set (db-graph-data->id a) value)
   (db-graph-data-set-ordinal a value) (set (db-graph-data->ordinal a) value)
@@ -254,7 +250,9 @@
       (options b8)
       (reader b0*)))
   db-graph-reader-t
-  (type (function-pointer status-t db-graph-read-state-t* b32 db-graph-records-t**))
+  (type (function-pointer status-t db-graph-read-state-t* b32 db-graph-records-t**)))
+
+(declare
   ; routines
   (db-graph-selection-destroy state) (b0 db-graph-read-state-t*)
   (db-statistics txn result) (status-t db-txn-t db-statistics-t*)
@@ -283,7 +281,6 @@
   (db-graph-select txn left right label ordinal offset result)
   (status-t
     db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* b32 db-graph-read-state-t*)
-  (db-graph-read state count result) (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-debug-log-ids a) (b0 db-ids-t*)
   (db-debug-log-ids-set a) (b0 imht-set-t)
   (db-debug-display-graph-records records) (b0 db-graph-records-t*)

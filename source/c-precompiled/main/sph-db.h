@@ -252,7 +252,6 @@ b8* db_status_name(status_t a) {
 #define db_ordinal_t b32
 #define db_type_id_mask UINT16_MAX
 #define db_type_id_t b16
-#define db_pointer_to_id(a, index) *(index + ((db_id_t*)(a)))
 #ifndef db_id_t
 #define db_id_t b64
 #endif
@@ -335,7 +334,8 @@ b8* db_status_name(status_t a) {
 #define db_id_type(id) (id >> (8 * db_size_element_id))
 /** get the element id part from a node id. a node id without type id */
 #define db_id_element(id) (db_id_element_mask & id)
-#define db_pointer_to_id(a, index) *(index + ((db_id_t*)(a)))
+#define db_pointer_to_id_at(a, index) *(index + ((db_id_t*)(a)))
+#define db_pointer_to_id(a) *((db_id_t*)(a))
 #define db_field_type_fixed_p(a) !(1 & a)
 #define db_system_key_label(a) *((b8*)(a))
 #define db_system_key_id(a) \
@@ -402,7 +402,7 @@ b8* db_status_name(status_t a) {
 #define db_declare_ids_three(name_1, name_2, name_3) \
   db_declare_ids_two(name_1, name_2); \
   db_declare_ids(name_3)
-#define db_graph_data_to_id(a) db_pointer_to_id((1 + ((db_ordinal_t*)(a))), 0)
+#define db_graph_data_to_id(a) db_pointer_to_id((1 + ((db_ordinal_t*)(a))))
 #define db_graph_data_to_ordinal(a) *((db_ordinal_t*)(a))
 #define db_graph_data_set_id(a, value) db_graph_data_to_id(a) = value
 #define db_graph_data_set_ordinal(a, value) db_graph_data_to_ordinal(a) = value
@@ -550,9 +550,6 @@ status_t db_graph_select(db_txn_t txn,
   db_ordinal_condition_t* ordinal,
   b32 offset,
   db_graph_read_state_t* result);
-status_t db_graph_read(db_graph_read_state_t* state,
-  b32 count,
-  db_graph_records_t** result);
 b0 db_debug_log_ids(db_ids_t* a);
 b0 db_debug_log_ids_set(imht_set_t a);
 b0 db_debug_display_graph_records(db_graph_records_t* records);

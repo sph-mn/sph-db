@@ -55,12 +55,10 @@
   (begin
     (db-mdb-cursor-open-two txn dbi-a name-a dbi-b name-b)
     (db-mdb-cursor-open txn dbi-c name-c))
-  (db-mdb-val->id a) (db-pointer->id a.mv-data 0)
   (db-mdb-declare-val name size)
   (begin
     (declare name MDB-val)
-    (struct-set name
-      mv-size size))
+    (set name.mv-size size))
   db-mdb-declare-val-id (db-mdb-declare-val val-id db-size-id)
   db-mdb-declare-val-id-2 (db-mdb-declare-val val-id-2 db-size-id)
   db-mdb-declare-val-id-3 (db-mdb-declare-val val-id-3 db-size-id)
@@ -81,13 +79,13 @@
 
 (define (db-mdb-compare-id a b) ((static int) (const MDB-val*) (const MDB-val*))
   "mdb comparison routines are used by lmdb for search, insert and delete"
-  (return (db-id-compare (db-pointer->id a:mv-data 0) (db-pointer->id b:mv-data 0))))
+  (return (db-id-compare (db-pointer->id a:mv-data) (db-pointer->id b:mv-data))))
 
 (define (db-mdb-compare-graph-key a b) ((static int) (const MDB-val*) (const MDB-val*))
   (cond
-    ((< (db-pointer->id a:mv-data 0) (db-pointer->id b:mv-data 0)) (return -1))
-    ((> (db-pointer->id a:mv-data 0) (db-pointer->id b:mv-data 0)) (return 1))
-    (else (return (db-id-compare (db-pointer->id a:mv-data 1) (db-pointer->id b:mv-data 1))))))
+    ((< (db-pointer->id a:mv-data) (db-pointer->id b:mv-data)) (return -1))
+    ((> (db-pointer->id a:mv-data) (db-pointer->id b:mv-data)) (return 1))
+    (else (return (db-id-compare (db-pointer->id-at a:mv-data 1) (db-pointer->id-at b:mv-data 1))))))
 
 (define (db-mdb-compare-graph-data a b) ((static int) (const MDB-val*) (const MDB-val*))
   "memcmp does not work here, gives -1 for 256 vs 1"

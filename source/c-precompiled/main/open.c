@@ -163,8 +163,8 @@ db_type_first_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* result) {
   val_id.mv_data = &id;
   db_mdb_cursor_get_norequire(nodes, val_id, val_null, MDB_SET_RANGE);
   if (db_mdb_status_success_p) {
-    if (type_id == db_id_type(db_mdb_val_to_id(val_id))) {
-      *result = db_mdb_val_to_id(val_id);
+    if (type_id == db_id_type((db_pointer_to_id((val_id.mv_data))))) {
+      *result = db_pointer_to_id((val_id.mv_data));
     };
   } else {
     if (db_mdb_status_notfound_p) {
@@ -187,8 +187,8 @@ db_type_last_key_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* result) {
   *result = 0;
   db_mdb_cursor_get_norequire(nodes, val_id, val_null, MDB_LAST);
   if (db_mdb_status_success_p &&
-    (type_id == db_id_type(db_mdb_val_to_id(val_id)))) {
-    *result = db_mdb_val_to_id(val_id);
+    (type_id == db_id_type((db_pointer_to_id((val_id.mv_data)))))) {
+    *result = db_pointer_to_id((val_id.mv_data));
   };
   return (status);
 };
@@ -228,8 +228,8 @@ db_type_last_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* result) {
   };
   /* greater type found, step back */
   db_mdb_cursor_get(nodes, val_id, val_null, MDB_PREV);
-  *result = ((type_id == db_id_type(db_mdb_val_to_id(val_id)))
-      ? db_mdb_val_to_id(val_id)
+  *result = ((type_id == db_id_type((db_pointer_to_id((val_id.mv_data)))))
+      ? db_pointer_to_id((val_id.mv_data))
       : 0);
 exit:
   return (status);

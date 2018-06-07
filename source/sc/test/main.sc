@@ -181,6 +181,22 @@
   (test-helper-graph-read-one txn left right label ordinal 0)
   test-helper-graph-read-footer)
 
+(define (test-graph-delete env) (status-t db-env-t*)
+  "some assertions depend on the correctness of graph-read"
+  test-helper-graph-delete-header
+  (test-helper-graph-delete-one 1 0 0 0)
+  (test-helper-graph-delete-one 1 0 1 0)
+  (test-helper-graph-delete-one 1 1 0 0)
+  (test-helper-graph-delete-one 1 1 1 0)
+  (test-helper-graph-delete-one 0 0 1 0)
+  (test-helper-graph-delete-one 0 1 0 0)
+  (test-helper-graph-delete-one 0 1 1 0)
+  (test-helper-graph-delete-one 1 0 0 1)
+  (test-helper-graph-delete-one 1 0 1 1)
+  (test-helper-graph-delete-one 1 1 0 1)
+  (test-helper-graph-delete-one 1 1 1 1)
+  test-helper-graph-delete-footer)
+
 (define (main) int
   (test-helper-init env)
   (test-helper-test-one test-open-empty env)
@@ -196,99 +212,7 @@
     (return status.id)))
 
 #;(
-(pre-define test-graph-delete-header
-  (begin
-    status-init
-    (define state db-graph-read-state-t)
-    (define records db-graph-records-t* 0)
-    (db-define-ids-3 left right label)
-    (define ordinal-condition db-ordinal-condition-t (struct-literal 2 5))
-    (define ordinal db-ordinal-condition-t* &ordinal-condition)
-    (define read-count-before-expected b32)
-    (define btree-count-after-delete b32)
-    (define existing-left-count b32 common-label-count)
-    (define btree-count-before-delete b32)
-    (define btree-count-deleted-expected b32)
-    (define btree-count-after-expected b32)
-    (define existing-right-count b32 common-element-count)
-    (define existing-label-count b32 common-label-count)
-    db-txn-introduce
-    (printf " ")))
 
-(pre-define (test-graph-delete-one left? right? label? ordinal?)
-  ; for any given argument permutation:
-  ; * checks btree entry count difference
-  ; * checks read result count after deletion, using the same search query
-  (printf " %d%d%d%d" left? right? label? ordinal?)
-  db-txn-begin
-  (db-debug-count-all-btree-entries db-txn &btree-count-before-delete)
-  db-txn-abort
-  ; add non-graph elements
-  (status-require!
-    (test-helper-create-relations txn
-      common-label-count
-      common-element-count common-label-count &left &right &label))
-  db-txn-write-begin
-  (status-require!
-    (db-graph-delete
-      db-txn (if* left? left 0) (if* right? right 0) (if* label? label 0) (if* ordinal? ordinal 0)))
-  (db-debug-count-all-btree-entries db-txn &btree-count-after-delete)
-  (db-status-require-read!
-    (db-graph-select
-      db-txn
-      (if* left? left 0)
-      (if* right? right 0) (if* label? label 0) (if* ordinal? ordinal 0) 0 &state))
-  ;checks that readers can handle selections with no elements
-  (db-status-require-read! (db-graph-read &state 0 &records))
-  (db-graph-selection-destroy &state)
-  db-txn-commit
-  (set read-count-before-expected
-    (test-helper-estimate-graph-read-result-count
-      existing-left-count existing-right-count existing-label-count ordinal))
-  ;relations are assumed to have linearly incremented ordinals starting with 1
-  (if (not (= 0 (db-graph-records-length records)))
-    (begin
-      (printf
-        "\n    failed deletion. %lu relations not deleted\n" (db-graph-records-length records))
-      (db-debug-display-graph-records records)
-      db-txn-begin
-      ;(test-helper-display-all-relations txn)
-      db-txn-abort
-      (status-set-id-goto 1)))
-  (db-graph-records-destroy records)
-  (set records 0)
-  (set btree-count-before-delete
-    (+ btree-count-before-delete existing-left-count existing-right-count existing-label-count))
-  (set btree-count-deleted-expected
-    (test-helper-estimate-graph-read-btree-entry-count
-      existing-left-count existing-right-count existing-label-count ordinal))
-  (set btree-count-after-expected (- btree-count-after-delete btree-count-deleted-expected))
-  (if
-    (not
-      (and
-        (= btree-count-after-expected btree-count-after-delete)
-        (if* ordinal? #t (= btree-count-after-delete btree-count-before-delete))))
-    (begin
-      (printf
-        "\n    failed deletion. %lu btree entries remaining, expected %lu\n"
-        btree-count-after-delete btree-count-after-expected)
-      db-txn-begin
-      (db-debug-display-btree-counts db-txn)
-      (db-status-require-read! (db-graph-select db-txn 0 0 0 0 0 &state))
-      (db-status-require-read! (db-graph-read &state 0 &records))
-      (printf "all remaining ")
-      (db-debug-display-graph-records records)
-      (db-graph-selection-destroy &state)
-      db-txn-abort
-      (status-set-id-goto 1)))
-  (db-ids-destroy left)
-  (db-ids-destroy right)
-  (db-ids-destroy label)
-  (set
-    records 0
-    left 0
-    right 0
-    label 0))
 
 (define (test-id-create-identify-exists) status-t
   status-init
@@ -437,24 +361,6 @@
     (return status)))
 
 
-
-(define (test-graph-delete) status-t
-  ;the tests depend partly on the correctness of graph-read
-  test-graph-delete-header
-  (test-graph-delete-one 1 0 0 0)
-  (test-graph-delete-one 1 0 1 0)
-  (test-graph-delete-one 1 1 0 0)
-  (test-graph-delete-one 1 1 1 0)
-  (test-graph-delete-one 0 0 1 0)
-  (test-graph-delete-one 0 1 0 0)
-  (test-graph-delete-one 0 1 1 0)
-  (test-graph-delete-one 1 0 0 1)
-  (test-graph-delete-one 1 0 1 1)
-  (test-graph-delete-one 1 1 0 1)
-  (test-graph-delete-one 1 1 1 1)
-  (label exit
-    (printf "\n")
-    (return status)))
 
 (define (test-concurrent-write/read-thread status-pointer) (b0* b0*)
   status-init

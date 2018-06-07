@@ -9,6 +9,7 @@
     db_debug_display_graph_records;
     db_debug_log_ids;
     db_debug_log_ids_set;
+    db_graph_delete;
     db_graph_ensure;
     db_graph_read;
     db_graph_select;

@@ -48,7 +48,6 @@
   txn, dbi_a, name_a, dbi_b, name_b, dbi_c, name_c) \
   db_mdb_cursor_open_two(txn, dbi_a, name_a, dbi_b, name_b); \
   db_mdb_cursor_open(txn, dbi_c, name_c)
-#define db_mdb_val_to_id(a) db_pointer_to_id((a.mv_data), 0)
 #define db_mdb_declare_val(name, size) \
   MDB_val name; \
   name.mv_size = size
@@ -75,17 +74,16 @@
 /** mdb comparison routines are used by lmdb for search, insert and delete */
 static int db_mdb_compare_id(const MDB_val* a, const MDB_val* b) {
   return ((db_id_compare(
-    (db_pointer_to_id((a->mv_data), 0)), (db_pointer_to_id((b->mv_data), 0)))));
+    (db_pointer_to_id((a->mv_data))), (db_pointer_to_id((b->mv_data))))));
 };
 static int db_mdb_compare_graph_key(const MDB_val* a, const MDB_val* b) {
-  if (db_pointer_to_id((a->mv_data), 0) < db_pointer_to_id((b->mv_data), 0)) {
+  if (db_pointer_to_id((a->mv_data)) < db_pointer_to_id((b->mv_data))) {
     return (-1);
-  } else if (db_pointer_to_id((a->mv_data), 0) >
-    db_pointer_to_id((b->mv_data), 0)) {
+  } else if (db_pointer_to_id((a->mv_data)) > db_pointer_to_id((b->mv_data))) {
     return (1);
   } else {
-    return ((db_id_compare((db_pointer_to_id((a->mv_data), 1)),
-      (db_pointer_to_id((b->mv_data), 1)))));
+    return ((db_id_compare((db_pointer_to_id_at((a->mv_data), 1)),
+      (db_pointer_to_id_at((b->mv_data), 1)))));
   };
 };
 /** memcmp does not work here, gives -1 for 256 vs 1 */

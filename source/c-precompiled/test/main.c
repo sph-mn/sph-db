@@ -182,6 +182,22 @@ status_t test_graph_read(db_env_t* env) {
   test_helper_graph_read_one(txn, left, right, label, ordinal, 0);
   test_helper_graph_read_footer;
 };
+/** some assertions depend on the correctness of graph-read */
+status_t test_graph_delete(db_env_t* env) {
+  test_helper_graph_delete_header;
+  test_helper_graph_delete_one(1, 0, 0, 0);
+  test_helper_graph_delete_one(1, 0, 1, 0);
+  test_helper_graph_delete_one(1, 1, 0, 0);
+  test_helper_graph_delete_one(1, 1, 1, 0);
+  test_helper_graph_delete_one(0, 0, 1, 0);
+  test_helper_graph_delete_one(0, 1, 0, 0);
+  test_helper_graph_delete_one(0, 1, 1, 0);
+  test_helper_graph_delete_one(1, 0, 0, 1);
+  test_helper_graph_delete_one(1, 0, 1, 1);
+  test_helper_graph_delete_one(1, 1, 0, 1);
+  test_helper_graph_delete_one(1, 1, 1, 1);
+  test_helper_graph_delete_footer;
+};
 int main() {
   test_helper_init(env);
   test_helper_test_one(test_open_empty, env);

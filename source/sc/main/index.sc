@@ -6,7 +6,7 @@
 (pre-define (db-index-errors-data-log message type id)
   (db-error-log "(groups index %s) (description %s) (id %lu)" type message id))
 
-(define (db-index-recreate-graph) status-t
+#;(define (db-index-recreate-graph) status-t
   status-init
   db-mdb-declare-val-graph-key
   db-mdb-declare-val-graph-data
@@ -37,11 +37,10 @@
       (do-while db-mdb-status-success?
         (set id-right (db-mdb-val-graph-data->id val-graph-data))
         ;create graph-rl
-        (array-set graph-key 0 id-right 1 id-label)
-        (struct-set val-graph-key
-          mv-data graph-key)
-        (struct-set val-id
-          mv-data (address-of id-left))
+        (set (array-get graph-key 0) id-right
+          (array-get graph-key 1) id-label)
+        (set val-graph-key.mv-data graph-key)
+        (struct-set val-id.mv-data (address-of id-left))
         (db-mdb-status-require!
           (mdb-cursor-put graph-rl (address-of val-graph-key) (address-of val-id) 0))
         ;create graph-ll
@@ -55,7 +54,7 @@
     (if db-txn db-txn-abort)
     (return status)))
 
-(define (db-index-recreate-intern) status-t
+#;(define (db-index-recreate-intern) status-t
   status-init
   db-mdb-declare-val-id
   db-mdb-declare-val-data
@@ -105,7 +104,7 @@
     (if db-txn db-txn-abort)
     (return status)))
 
-(define (db-index-errors-graph db-txn result) (status-t db-txn-t* db-index-errors-graph-t*)
+#;(define (db-index-errors-graph db-txn result) (status-t db-txn-t* db-index-errors-graph-t*)
   status-init
   (set (pointer-get result) db-index-errors-graph-null)
   db-mdb-declare-val-id
@@ -233,7 +232,7 @@
     (db-mdb-cursor-close-3 graph-lr graph-rl graph-ll)
     (return status)))
 
-(define (db-index-errors-intern txn result) (status-t db-txn-t* db-index-errors-intern-t*)
+#;(define (db-index-errors-intern txn result) (status-t db-txn-t* db-index-errors-intern-t*)
   status-init
   (set (pointer-get result) db-index-errors-intern-null)
   db-mdb-declare-val-id
@@ -297,7 +296,7 @@
     (db-mdb-cursor-close-2 nodes data-intern->id)
     (return status)))
 
-(define (db-index-errors-extern txn result) (status-t db-txn-t* db-index-errors-extern-t*)
+#;(define (db-index-errors-extern txn result) (status-t db-txn-t* db-index-errors-extern-t*)
   status-init
   (set (pointer-get result) db-index-errors-extern-null)
   db-mdb-declare-val-id
