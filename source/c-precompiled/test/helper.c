@@ -211,23 +211,18 @@ db_ordinal_t test_helper_default_ordinal_generator(b0* state) {
   *ordinal_pointer = result;
   return (result);
 };
+/** create relations with linearly increasing ordinal starting from zero */
 status_t test_helper_create_relations(db_txn_t txn,
-  b32 count_left,
-  b32 count_right,
-  b32 count_label,
-  db_ids_t** left,
-  db_ids_t** right,
-  db_ids_t** label) {
+  db_ids_t* left,
+  db_ids_t* right,
+  db_ids_t* label) {
   status_init;
   db_ordinal_t ordinal_state_value;
-  status_require_x(test_helper_create_ids(txn, count_left, left));
-  status_require_x(test_helper_create_ids(txn, count_right, right));
-  status_require_x(test_helper_create_ids(txn, count_label, label));
   ordinal_state_value = 0;
   status_require_x(db_graph_ensure(txn,
-    (*left),
-    (*right),
-    (*label),
+    left,
+    right,
+    label,
     test_helper_default_ordinal_generator,
     (&ordinal_state_value)));
 exit:
@@ -305,13 +300,11 @@ exit:
   existing_right_count = common_element_count; \
   existing_label_count = common_label_count; \
   db_txn_write_begin(txn); \
-  status_require_x(test_helper_create_relations(txn, \
-    existing_left_count, \
-    existing_right_count, \
-    existing_label_count, \
-    (&existing_left), \
-    (&existing_right), \
-    (&existing_label))); \
+  test_helper_create_ids(txn, existing_left_count, (&existing_left)); \
+  test_helper_create_ids(txn, existing_right_count, (&existing_right)); \
+  test_helper_create_ids(txn, existing_label_count, (&existing_label)); \
+  status_require_x(test_helper_create_relations( \
+    txn, existing_left, existing_right, existing_label)); \
   /* add ids that do not exist anywhere in the graph */ \
   status_require_x(test_helper_ids_add_new_ids(txn, existing_left, (&left))); \
   status_require_x( \
@@ -411,9 +404,8 @@ b32 test_helper_estimate_graph_read_btree_entry_count(b32 existing_left_count,
   db_graph_read_state_t state; \
   b32 read_count_before_expected; \
   b32 btree_count_after_delete; \
-  b32 btree_count_before_delete; \
+  b32 btree_count_before_create; \
   b32 btree_count_deleted_expected; \
-  b32 btree_count_after_expected; \
   db_graph_records_t* records; \
   db_ordinal_condition_t* ordinal; \
   b32 existing_left_count; \
@@ -427,27 +419,35 @@ b32 test_helper_estimate_graph_read_btree_entry_count(b32 existing_left_count,
   existing_label_count = common_label_count; \
   printf(" ");
 /** for any given argument permutation:
- * checks btree entry count difference
- * checks read result count after deletion, using the same search query */
+     * checks btree entry count difference
+     * checks read result count after deletion, using the same search query
+    relations are assumed to be created with linearly incremented ordinals
+   starting with 1 */
 #define test_helper_graph_delete_one(left_p, right_p, label_p, ordinal_p) \
   printf(" %d%d%d%d", left_p, right_p, label_p, ordinal_p); \
   read_count_before_expected = test_helper_estimate_graph_read_result_count( \
     existing_left_count, existing_right_count, existing_label_count, ordinal); \
+  btree_count_deleted_expected = \
+    test_helper_estimate_graph_read_btree_entry_count(existing_left_count, \
+      existing_right_count, \
+      existing_label_count, \
+      ordinal); \
   db_txn_write_begin(txn); \
-  db_debug_count_all_btree_entries(txn, (&btree_count_before_delete)); \
-  /* add non-graph elements */ \
-  status_require_x(test_helper_create_relations(txn, \
-    common_label_count, \
-    common_element_count, \
-    common_label_count, \
-    (&left), \
-    (&right), \
-    (&label))); \
+  test_helper_create_ids(txn, existing_left_count, (&left)); \
+  test_helper_create_ids(txn, existing_right_count, (&right)); \
+  test_helper_create_ids(txn, existing_label_count, (&label)); \
+  db_debug_count_all_btree_entries(txn, (&btree_count_before_create)); \
+  status_require_x(test_helper_create_relations(txn, left, right, label)); \
+  db_txn_commit(txn); \
+  db_txn_write_begin(txn); \
+  /* delete */ \
   status_require_x(db_graph_delete(txn, \
     (left_p ? left : 0), \
     (right_p ? right : 0), \
     (label_p ? label : 0), \
     (ordinal_p ? ordinal : 0))); \
+  db_txn_commit(txn); \
+  db_txn_begin(txn); \
   db_debug_count_all_btree_entries(txn, (&btree_count_after_delete)); \
   db_status_require_read_x(db_graph_select(txn, \
     (left_p ? left : 0), \
@@ -456,12 +456,10 @@ b32 test_helper_estimate_graph_read_btree_entry_count(b32 existing_left_count,
     (ordinal_p ? ordinal : 0), \
     0, \
     (&state))); \
-  /* checks that readers can handle selections with no elements */ \
+  /* check that readers can handle empty selections */ \
   db_status_require_read_x(db_graph_read((&state), 0, (&records))); \
   db_graph_selection_destroy((&state)); \
-  db_txn_commit(txn); \
-  /* relations are assumed to have linearly incremented ordinals starting with \
-   * 1 */ \
+  db_txn_abort(txn); \
   if (!(0 == db_graph_records_length(records))) { \
     printf(("\n    failed deletion. %lu relations not deleted\n"), \
       db_graph_records_length(records)); \
@@ -470,23 +468,12 @@ b32 test_helper_estimate_graph_read_btree_entry_count(b32 existing_left_count,
   }; \
   db_graph_records_destroy(records); \
   records = 0; \
-  btree_count_before_delete = (btree_count_before_delete + \
-    existing_left_count + existing_right_count + existing_label_count); \
-  btree_count_deleted_expected = \
-    test_helper_estimate_graph_read_btree_entry_count(existing_left_count, \
-      existing_right_count, \
-      existing_label_count, \
-      ordinal); \
-  btree_count_after_expected = \
-    (btree_count_after_delete - btree_count_deleted_expected); \
-  if (!((btree_count_after_expected == btree_count_after_delete) && \
-        (ordinal_p \
-            ? 1 \
-            : (btree_count_after_delete == btree_count_before_delete)))) { \
-    printf( \
-      ("\n    failed deletion. %lu btree entries remaining, expected %lu\n"), \
-      btree_count_after_delete, \
-      btree_count_after_expected); \
+  /* test only if not using ordinal condition because the expected counts \
+   * arent estimated */ \
+  if (!(ordinal_p || \
+        (btree_count_after_delete == btree_count_before_create))) { \
+    printf(("\n failed deletion. %lu btree entries not deleted\n"), \
+      (btree_count_after_delete - btree_count_before_create)); \
     db_txn_begin(txn); \
     db_debug_display_btree_counts(txn); \
     db_status_require_read_x(db_graph_select(txn, 0, 0, 0, 0, 0, (&state))); \
@@ -500,6 +487,7 @@ b32 test_helper_estimate_graph_read_btree_entry_count(b32 existing_left_count,
   db_ids_destroy(left); \
   db_ids_destroy(right); \
   db_ids_destroy(label); \
+  db_status_success_if_no_more_data; \
   records = 0; \
   left = 0; \
   right = 0; \

@@ -66,6 +66,7 @@
     (return status)))
 
 (define (db-debug-count-all-btree-entries txn result) (status-t db-txn-t b32*)
+  "sum the count of all entries in all btrees used by the database"
   status-init
   (declare stat db-statistics-t)
   (status-require! (db-statistics txn &stat))

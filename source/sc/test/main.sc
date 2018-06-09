@@ -112,8 +112,9 @@
     type-id db-type-id-t)
   (sc-comment "node sequence. note that sequences only persist through data inserts")
   (status-require! (db-type-create env "test-type" 0 0 0 &type-id))
-  (set (: (+ type-id env:types) sequence) (- db-element-id-limit 100))
-  (set prev-id (db-id-add-type (- db-element-id-limit 100 1) type-id))
+  (set
+    (: (+ type-id env:types) sequence) (- db-element-id-limit 100)
+    prev-id (db-id-add-type (- db-element-id-limit 100 1) type-id))
   (for ((set i db-element-id-limit) (<= i db-element-id-limit) (set i (+ i 1)))
     (set status (db-sequence-next env type-id &id))
     (if (<= db-element-id-limit (db-id-element (+ 1 prev-id)))
@@ -199,14 +200,15 @@
 
 (define (main) int
   (test-helper-init env)
-  (test-helper-test-one test-open-empty env)
-  (test-helper-test-one test-statistics env)
-  (test-helper-test-one test-id-construction env)
-  (test-helper-test-one test-sequence env)
-  (test-helper-test-one test-type-create-get-delete env)
-  (test-helper-test-one test-type-create-many env)
-  (test-helper-test-one test-open-nonempty env)
-  (test-helper-test-one test-graph-read env)
+  ;(test-helper-test-one test-open-empty env)
+  ;(test-helper-test-one test-statistics env)
+  ;(test-helper-test-one test-id-construction env)
+  ;(test-helper-test-one test-sequence env)
+  ;(test-helper-test-one test-type-create-get-delete env)
+  ;(test-helper-test-one test-type-create-many env)
+  ;(test-helper-test-one test-open-nonempty env)
+  ;(test-helper-test-one test-graph-read env)
+  (test-helper-test-one test-graph-delete env)
   (label exit
     test-helper-report-status
     (return status.id)))

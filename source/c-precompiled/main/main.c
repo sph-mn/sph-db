@@ -79,6 +79,7 @@ status_t db_debug_display_btree_counts(db_txn_t txn) {
 exit:
   return (status);
 };
+/** sum the count of all entries in all btrees used by the database */
 status_t db_debug_count_all_btree_entries(db_txn_t txn, b32* result) {
   status_init;
   db_statistics_t stat;

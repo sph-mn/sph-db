@@ -470,7 +470,7 @@
             (or
               (not right) (imht-set-contains? right-set (db-graph-data->id val-graph-data.mv-data)))
             (begin
-              ;delete graph-rl
+              (sc-comment "delete graph-rl")
               (set
                 id-right (db-graph-data->id val-graph-data.mv-data)
                 status (db-graph-internal-delete-graph-rl graph-rl id-left id-right id-label))
@@ -488,10 +488,10 @@
   (status-t
     db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* MDB-cursor* MDB-cursor* MDB-cursor*)
   "db-graph-internal-delete does not open/close cursors.
-  1111 / left-right-label-ordinal.
-  tip: the code is nice to debug if variable state is displayed near the
-    beginning of goto labels, before cursor operations.
-    example display on stdout: (debug-log \"each-key-1100 %lu %lu\" id-left id-right)"
+   1111 / left-right-label-ordinal.
+   tip: the code is nice to debug if variable state is displayed near the
+     beginning of goto labels, before cursor operations.
+     example display on stdout: (debug-log \"each-key-1100 %lu %lu\" id-left id-right)"
   status-init
   db-mdb-declare-val-graph-key
   db-mdb-declare-val-graph-data
@@ -499,7 +499,7 @@
   db-mdb-declare-val-id-2
   (db-declare-graph-key graph-key)
   (db-declare-graph-data graph-data)
-  ; db-graph-internal-delete-* macros are allowed to leave status on MDB-NOTFOUND
+  (sc-comment "db-graph-internal-delete-* macros are allowed to leave status on MDB-NOTFOUND")
   (if left
     (if ordinal
       (if label (db-graph-internal-delete-1011-1111)
@@ -520,6 +520,10 @@
 
 (define (db-graph-delete txn left right label ordinal)
   (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t*)
+  "db-relation-delete differs from db-relation-read in that it does not
+   need a state because it does not support partial processing.
+   it also differs in that it always needs to use all three relation dbi
+   to complete the deletion instead of just any dbi necessary to find relations"
   status-init
   (db-cursor-declare graph-lr)
   (db-cursor-declare graph-rl)

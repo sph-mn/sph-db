@@ -196,17 +196,15 @@
   (set (pointer-get ordinal-pointer) result)
   (return result))
 
-(define (test-helper-create-relations txn count-left count-right count-label left right label)
-  (status-t db-txn-t b32 b32 b32 db-ids-t** db-ids-t** db-ids-t**)
+(define (test-helper-create-relations txn left right label)
+  (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t*)
+  "create relations with linearly increasing ordinal starting from zero"
   status-init
   (declare ordinal-state-value db-ordinal-t)
-  (status-require! (test-helper-create-ids txn count-left left))
-  (status-require! (test-helper-create-ids txn count-right right))
-  (status-require! (test-helper-create-ids txn count-label label))
   (set ordinal-state-value 0)
   (status-require!
     (db-graph-ensure
-      txn *left *right *label test-helper-default-ordinal-generator (address-of ordinal-state-value)))
+      txn left right label test-helper-default-ordinal-generator (address-of ordinal-state-value)))
   (label exit
     (return status)))
 
@@ -280,11 +278,10 @@
       existing-right-count common-element-count
       existing-label-count common-label-count)
     (db-txn-write-begin txn)
-    (status-require!
-      (test-helper-create-relations
-        txn
-        existing-left-count
-        existing-right-count existing-label-count &existing-left &existing-right &existing-label))
+    (test-helper-create-ids txn existing-left-count &existing-left)
+    (test-helper-create-ids txn existing-right-count &existing-right)
+    (test-helper-create-ids txn existing-label-count &existing-label)
+    (status-require! (test-helper-create-relations txn existing-left existing-right existing-label))
     (sc-comment "add ids that do not exist anywhere in the graph")
     (status-require! (test-helper-ids-add-new-ids txn existing-left &left))
     (status-require! (test-helper-ids-add-new-ids txn existing-right &right))
@@ -392,9 +389,8 @@
       state db-graph-read-state-t
       read-count-before-expected b32
       btree-count-after-delete b32
-      btree-count-before-delete b32
+      btree-count-before-create b32
       btree-count-deleted-expected b32
-      btree-count-after-expected b32
       records db-graph-records-t*
       ordinal db-ordinal-condition-t*
       existing-left-count b32
@@ -413,17 +409,25 @@
   (begin
     "for any given argument permutation:
      * checks btree entry count difference
-     * checks read result count after deletion, using the same search query"
+     * checks read result count after deletion, using the same search query
+    relations are assumed to be created with linearly incremented ordinals starting with 1"
     (printf " %d%d%d%d" left? right? label? ordinal?)
-    (set read-count-before-expected
+    (set
+      read-count-before-expected
       (test-helper-estimate-graph-read-result-count
+        existing-left-count existing-right-count existing-label-count ordinal)
+      btree-count-deleted-expected
+      (test-helper-estimate-graph-read-btree-entry-count
         existing-left-count existing-right-count existing-label-count ordinal))
     (db-txn-write-begin txn)
-    (db-debug-count-all-btree-entries txn &btree-count-before-delete)
-    (sc-comment "add non-graph elements")
-    (status-require!
-      (test-helper-create-relations
-        txn common-label-count common-element-count common-label-count &left &right &label))
+    (test-helper-create-ids txn existing-left-count &left)
+    (test-helper-create-ids txn existing-right-count &right)
+    (test-helper-create-ids txn existing-label-count &label)
+    (db-debug-count-all-btree-entries txn &btree-count-before-create)
+    (status-require! (test-helper-create-relations txn left right label))
+    (db-txn-commit txn)
+    (db-txn-write-begin txn)
+    (sc-comment "delete")
     (status-require!
       (db-graph-delete
         txn
@@ -435,6 +439,8 @@
           0)
         (if* ordinal? ordinal
           0)))
+    (db-txn-commit txn)
+    (db-txn-begin txn)
     (db-debug-count-all-btree-entries txn &btree-count-after-delete)
     (db-status-require-read!
       (db-graph-select
@@ -448,11 +454,10 @@
         (if* ordinal? ordinal
           0)
         0 &state))
-    (sc-comment "checks that readers can handle selections with no elements")
+    (sc-comment "check that readers can handle empty selections")
     (db-status-require-read! (db-graph-read &state 0 &records))
     (db-graph-selection-destroy &state)
-    (db-txn-commit txn)
-    (sc-comment "relations are assumed to have linearly incremented ordinals starting with 1")
+    (db-txn-abort txn)
     (if (not (= 0 (db-graph-records-length records)))
       (begin
         (printf
@@ -464,22 +469,13 @@
         (status-set-id-goto 1)))
     (db-graph-records-destroy records)
     (set records 0)
-    (set btree-count-before-delete
-      (+ btree-count-before-delete existing-left-count existing-right-count existing-label-count))
-    (set btree-count-deleted-expected
-      (test-helper-estimate-graph-read-btree-entry-count
-        existing-left-count existing-right-count existing-label-count ordinal))
-    (set btree-count-after-expected (- btree-count-after-delete btree-count-deleted-expected))
-    (if
-      (not
-        (and
-          (= btree-count-after-expected btree-count-after-delete)
-          (if* ordinal? #t
-            (= btree-count-after-delete btree-count-before-delete))))
+    (sc-comment
+      "test only if not using ordinal condition because the expected counts arent estimated")
+    (if (not (or ordinal? (= btree-count-after-delete btree-count-before-create)))
       (begin
         (printf
-          "\n    failed deletion. %lu btree entries remaining, expected %lu\n"
-          btree-count-after-delete btree-count-after-expected)
+          "\n failed deletion. %lu btree entries not deleted\n"
+          (- btree-count-after-delete btree-count-before-create))
         (db-txn-begin txn)
         (db-debug-display-btree-counts txn)
         (db-status-require-read! (db-graph-select txn 0 0 0 0 0 &state))
@@ -492,6 +488,7 @@
     (db-ids-destroy left)
     (db-ids-destroy right)
     (db-ids-destroy label)
+    db-status-success-if-no-more-data
     (set
       records 0
       left 0

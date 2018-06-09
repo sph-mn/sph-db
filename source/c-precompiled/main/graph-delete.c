@@ -530,6 +530,7 @@ exit:
     if (!right || \
       imht_set_contains_p( \
         right_set, (db_graph_data_to_id((val_graph_data.mv_data))))) { \
+      /* delete graph-rl */ \
       id_right = db_graph_data_to_id((val_graph_data.mv_data)); \
       status = db_graph_internal_delete_graph_rl( \
         graph_rl, id_left, id_right, id_label); \
@@ -548,11 +549,11 @@ exit:
     graph_lr, graph_ll, id_label, id_left)); \
   goto each_key_1011_1111
 /** db-graph-internal-delete does not open/close cursors.
-  1111 / left-right-label-ordinal.
-  tip: the code is nice to debug if variable state is displayed near the
-    beginning of goto labels, before cursor operations.
-    example display on stdout: (debug-log "each-key-1100 %lu %lu" id-left
-  id-right) */
+   1111 / left-right-label-ordinal.
+   tip: the code is nice to debug if variable state is displayed near the
+     beginning of goto labels, before cursor operations.
+     example display on stdout: (debug-log "each-key-1100 %lu %lu" id-left
+   id-right) */
 status_t db_graph_internal_delete(db_ids_t* left,
   db_ids_t* right,
   db_ids_t* label,
@@ -567,6 +568,8 @@ status_t db_graph_internal_delete(db_ids_t* left,
   db_mdb_declare_val_id_2;
   db_declare_graph_key(graph_key);
   db_declare_graph_data(graph_data);
+  /* db-graph-internal-delete-* macros are allowed to leave status on
+   * MDB-NOTFOUND */
   if (left) {
     if (ordinal) {
       if (label) {
@@ -608,6 +611,11 @@ exit:
   db_status_success_if_mdb_notfound;
   return (status);
 };
+/** db-relation-delete differs from db-relation-read in that it does not
+   need a state because it does not support partial processing.
+   it also differs in that it always needs to use all three relation dbi
+   to complete the deletion instead of just any dbi necessary to find relations
+ */
 status_t db_graph_delete(db_txn_t txn,
   db_ids_t* left,
   db_ids_t* right,
