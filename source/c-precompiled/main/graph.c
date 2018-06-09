@@ -54,9 +54,9 @@ status_t db_graph_ensure(db_txn_t txn,
   db_declare_graph_key(graph_key);
   db_declare_graph_data(graph_data);
   db_mdb_cursor_declare_three(graph_lr, graph_rl, graph_ll);
-  db_cursor_open(txn, graph_lr);
-  db_cursor_open(txn, graph_rl);
-  db_cursor_open(txn, graph_ll);
+  db_mdb_cursor_open(txn, graph_lr);
+  db_mdb_cursor_open(txn, graph_rl);
+  db_mdb_cursor_open(txn, graph_ll);
   ordinal = ((!ordinal_generator && ordinal_generator_state)
       ? (ordinal = *((db_ordinal_t*)(ordinal_generator_state)))
       : 0);
@@ -102,21 +102,21 @@ status_t db_graph_ensure(db_txn_t txn,
     left = db_ids_rest(left);
   };
 exit:
-  db_cursor_close_if_active(graph_lr);
-  db_cursor_close_if_active(graph_rl);
-  db_cursor_close_if_active(graph_ll);
+  db_mdb_cursor_close_if_active(graph_lr);
+  db_mdb_cursor_close_if_active(graph_rl);
+  db_mdb_cursor_close_if_active(graph_ll);
   return (status);
 };
 status_t db_debug_display_content_graph_lr(db_txn_t txn) {
   status_init;
-  db_cursor_declare(graph_lr);
+  db_mdb_cursor_declare(graph_lr);
   db_mdb_declare_val_graph_key;
   db_mdb_declare_val_graph_data;
   db_id_t id_left;
   db_id_t id_right;
   db_id_t id_label;
   db_ordinal_t ordinal;
-  db_cursor_open(txn, graph_lr);
+  db_mdb_cursor_open(txn, graph_lr);
   printf("graph-lr\n");
   db_mdb_cursor_each_key(graph_lr, val_graph_key, val_graph_data, ({
     id_left = db_pointer_to_id((val_graph_key.mv_data));
@@ -140,8 +140,8 @@ status_t db_debug_display_content_graph_rl(db_txn_t txn) {
   db_id_t id_label;
   db_mdb_declare_val_graph_key;
   db_mdb_declare_val_id;
-  db_cursor_declare(graph_rl);
-  db_cursor_open(txn, graph_rl);
+  db_mdb_cursor_declare(graph_rl);
+  db_mdb_cursor_open(txn, graph_rl);
   printf("graph-rl\n");
   db_mdb_cursor_each_key(graph_rl, val_graph_key, val_id, ({
     id_right = db_pointer_to_id((val_graph_key.mv_data));

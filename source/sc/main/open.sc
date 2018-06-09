@@ -426,14 +426,14 @@
   (db-mdb-cursor-declare system)
   (db-mdb-cursor-declare nodes)
   (db-mdb-status-require! (mdb-dbi-open txn.mdb-txn "system" MDB-CREATE &txn.env:dbi-system))
-  (db-cursor-open txn system)
+  (db-mdb-cursor-open txn system)
   (status-require! (db-open-format system txn))
-  (db-cursor-open txn nodes)
+  (db-mdb-cursor-open txn nodes)
   (status-require! (db-open-types system nodes txn))
   (status-require! (db-open-indices system txn))
   (label exit
-    (db-cursor-close-if-active system)
-    (db-cursor-close-if-active nodes)
+    (db-mdb-cursor-close-if-active system)
+    (db-mdb-cursor-close-if-active nodes)
     (return status)))
 
 (define (db-open-graph txn) (status-t db-txn-t)

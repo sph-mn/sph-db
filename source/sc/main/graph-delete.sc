@@ -53,7 +53,7 @@
   (label exit
     (return status)))
 
-(pre-define (db-graph-internal-delete-0010)
+(pre-define db-graph-internal-delete-0010
   (begin
     (declare
       id-label db-id-t
@@ -95,7 +95,7 @@
         db-mdb-status-require-notfound)
       (goto each-key-0010))))
 
-(pre-define (db-graph-internal-delete-0110)
+(pre-define db-graph-internal-delete-0110
   (begin
     (declare
       id-right db-id-t
@@ -147,7 +147,7 @@
         db-mdb-status-require-notfound))
     (goto each-key-0110)))
 
-(pre-define (db-graph-internal-delete-1010)
+(pre-define db-graph-internal-delete-1010
   (begin
     (declare
       id-label db-id-t
@@ -184,7 +184,7 @@
         (set label-pointer (db-ids-rest label-pointer)))
       (set left (db-ids-rest left)))))
 
-(pre-define (db-graph-internal-delete-0100)
+(pre-define db-graph-internal-delete-0100
   (begin
     (declare
       id-left db-id-t
@@ -231,7 +231,7 @@
         db-mdb-status-require-notfound))
     (goto set-range-0100)))
 
-(pre-define (db-graph-internal-delete-1000)
+(pre-define db-graph-internal-delete-1000
   (begin
     (declare
       id-left db-id-t
@@ -261,9 +261,7 @@
       (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data)
       (if db-mdb-status-success? (goto each-data-1000)
         db-mdb-status-require-notfound))
-    (set
-      (array-get graph-key 0) id-left
-      (array-get graph-key 1) id-label)
+    (array-set graph-key 0 id-left 1 id-label)
     (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-KEY)
     db-mdb-status-require
     (db-mdb-cursor-del-norequire graph-lr MDB-NODUPDATA)
@@ -271,7 +269,7 @@
     (db-mdb-cursor-next-nodup-norequire graph-lr val-graph-key val-graph-data)
     (goto each-key-1000)))
 
-(pre-define (db-graph-internal-delete-1100)
+(pre-define db-graph-internal-delete-1100
   (begin
     (declare
       id-left db-id-t
@@ -323,7 +321,7 @@
       ((status-id-is? MDB-NOTFOUND) (goto set-range-1100))
       (else (status-set-group-goto db-status-group-lmdb)))))
 
-(pre-define (db-graph-internal-delete-1110)
+(pre-define db-graph-internal-delete-1110
   (begin
     (declare
       id-left db-id-t
@@ -361,7 +359,7 @@
     (define ordinal-min db-ordinal-t ordinal:min)
     (define ordinal-max db-ordinal-t ordinal:max)))
 
-(pre-define (db-graph-internal-delete-1001-1101)
+(pre-define db-graph-internal-delete-1001-1101
   (begin
     (declare
       id-left db-id-t
@@ -428,7 +426,7 @@
         ((status-id-is? MDB-NOTFOUND) (goto set-range-1001-1101))
         (else (status-set-group-goto db-status-group-lmdb))))))
 
-(pre-define (db-graph-internal-delete-1011-1111)
+(pre-define db-graph-internal-delete-1011-1111
   (begin
     (declare
       id-left db-id-t
@@ -489,9 +487,10 @@
     db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* MDB-cursor* MDB-cursor* MDB-cursor*)
   "db-graph-internal-delete does not open/close cursors.
    1111 / left-right-label-ordinal.
-   tip: the code is nice to debug if variable state is displayed near the
-     beginning of goto labels, before cursor operations.
-     example display on stdout: (debug-log \"each-key-1100 %lu %lu\" id-left id-right)"
+   tip: the code is nice to debug if current state information is displayed near the
+     beginning of goto labels before cursor operations.
+     example: (debug-log \"each-key-1100 %lu %lu\" id-left id-right)
+   db-graph-internal-delete-* macros are allowed to leave status on MDB-NOTFOUND"
   status-init
   db-mdb-declare-val-graph-key
   db-mdb-declare-val-graph-data
@@ -499,20 +498,19 @@
   db-mdb-declare-val-id-2
   (db-declare-graph-key graph-key)
   (db-declare-graph-data graph-data)
-  (sc-comment "db-graph-internal-delete-* macros are allowed to leave status on MDB-NOTFOUND")
   (if left
     (if ordinal
-      (if label (db-graph-internal-delete-1011-1111)
-        (db-graph-internal-delete-1001-1101))
+      (if label db-graph-internal-delete-1011-1111
+        db-graph-internal-delete-1001-1101)
       (if label
-        (if right (db-graph-internal-delete-1110)
-          (db-graph-internal-delete-1010))
-        (if right (db-graph-internal-delete-1100)
-          (db-graph-internal-delete-1000))))
+        (if right db-graph-internal-delete-1110
+          db-graph-internal-delete-1010)
+        (if right db-graph-internal-delete-1100
+          db-graph-internal-delete-1000)))
     (if right
-      (if label (db-graph-internal-delete-0110)
-        (db-graph-internal-delete-0100))
-      (if label (db-graph-internal-delete-0010)
+      (if label db-graph-internal-delete-0110
+        db-graph-internal-delete-0100)
+      (if label db-graph-internal-delete-0010
         (db-status-set-id-goto db-status-id-not-implemented))))
   (label exit
     db-status-success-if-mdb-notfound
@@ -520,20 +518,21 @@
 
 (define (db-graph-delete txn left right label ordinal)
   (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t*)
-  "db-relation-delete differs from db-relation-read in that it does not
-   need a state because it does not support partial processing.
-   it also differs in that it always needs to use all three relation dbi
-   to complete the deletion instead of just any dbi necessary to find relations"
+  "db-relation-delete differs from db-relation-read in that it does not support
+  partial processing and therefore does not need a state for repeated calls.
+   it also differs in that it always needs all relation dbi
+   to complete the deletion instead of just any dbi necessary to find relations.
+  algorithm: delete all relations with any of the given ids at the corresponding position"
   status-init
-  (db-cursor-declare graph-lr)
-  (db-cursor-declare graph-rl)
-  (db-cursor-declare graph-ll)
-  (db-cursor-open txn graph-lr)
-  (db-cursor-open txn graph-rl)
-  (db-cursor-open txn graph-ll)
+  (db-mdb-cursor-declare graph-lr)
+  (db-mdb-cursor-declare graph-rl)
+  (db-mdb-cursor-declare graph-ll)
+  (db-mdb-cursor-open txn graph-lr)
+  (db-mdb-cursor-open txn graph-rl)
+  (db-mdb-cursor-open txn graph-ll)
   (set status (db-graph-internal-delete left right label ordinal graph-lr graph-rl graph-ll))
   (label exit
-    (db-cursor-close graph-lr)
-    (db-cursor-close graph-rl)
-    (db-cursor-close graph-ll)
+    (db-mdb-cursor-close graph-lr)
+    (db-mdb-cursor-close graph-rl)
+    (db-mdb-cursor-close graph-ll)
     (return status)))

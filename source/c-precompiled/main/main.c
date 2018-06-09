@@ -12,17 +12,6 @@
     goto exit; \
   }
 #define optional_count(count) ((0 == count) ? UINT32_MAX : count)
-#define db_cursor_declare(name) MDB_cursor* name = 0
-#define db_cursor_open(txn, name) \
-  db_mdb_status_require_x( \
-    (mdb_cursor_open((txn.mdb_txn), ((txn.env)->dbi_##name), (&name))))
-#define db_cursor_close(name) \
-  mdb_cursor_close(name); \
-  name = 0
-#define db_cursor_close_if_active(name) \
-  if (name) { \
-    db_cursor_close(name); \
-  }
 #define db_size_system_key (1 + sizeof(db_type_id_t))
 #define db_select_ensure_offset(state, offset, reader) \
   if (offset) { \

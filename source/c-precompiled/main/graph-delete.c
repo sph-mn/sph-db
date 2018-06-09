@@ -59,7 +59,7 @@ status_t db_graph_internal_delete_graph_rl(MDB_cursor* graph_rl,
 exit:
   return (status);
 };
-#define db_graph_internal_delete_0010() \
+#define db_graph_internal_delete_0010 \
   db_id_t id_label; \
   db_id_t id_left; \
   set_key_0010: \
@@ -111,8 +111,8 @@ exit:
   } else { \
     db_mdb_status_require_notfound; \
   }; \
-  goto each_key_0010
-#define db_graph_internal_delete_0110() \
+  goto each_key_0010;
+#define db_graph_internal_delete_0110 \
   db_id_t id_right; \
   db_id_t id_left; \
   db_id_t id_label; \
@@ -170,8 +170,8 @@ exit:
   } else { \
     db_mdb_status_require_notfound; \
   }; \
-  goto each_key_0110
-#define db_graph_internal_delete_1010() \
+  goto each_key_0110;
+#define db_graph_internal_delete_1010 \
   db_id_t id_label; \
   db_id_t id_left; \
   db_ids_t* label_pointer; \
@@ -210,8 +210,8 @@ exit:
       label_pointer = db_ids_rest(label_pointer); \
     }; \
     left = db_ids_rest(left); \
-  }
-#define db_graph_internal_delete_0100() \
+  };
+#define db_graph_internal_delete_0100 \
   db_id_t id_left; \
   db_id_t id_right; \
   db_id_t id_label; \
@@ -263,8 +263,8 @@ exit:
   } else { \
     db_mdb_status_require_notfound; \
   }; \
-  goto set_range_0100
-#define db_graph_internal_delete_1000() \
+  goto set_range_0100;
+#define db_graph_internal_delete_1000 \
   db_id_t id_left; \
   db_id_t id_label; \
   db_id_t id_right; \
@@ -308,8 +308,8 @@ exit:
   db_mdb_cursor_del_norequire(graph_lr, MDB_NODUPDATA); \
   db_mdb_status_require; \
   db_mdb_cursor_next_nodup_norequire(graph_lr, val_graph_key, val_graph_data); \
-  goto each_key_1000
-#define db_graph_internal_delete_1100() \
+  goto each_key_1000;
+#define db_graph_internal_delete_1100 \
   db_id_t id_left; \
   db_id_t id_right; \
   db_id_t id_label; \
@@ -366,8 +366,8 @@ exit:
     goto set_range_1100; \
   } else { \
     status_set_group_goto(db_status_group_lmdb); \
-  }
-#define db_graph_internal_delete_1110() \
+  };
+#define db_graph_internal_delete_1110 \
   db_id_t id_left; \
   db_id_t id_label; \
   imht_set_t* right_set; \
@@ -401,11 +401,11 @@ exit:
     }; \
     label = label_first; \
     left = db_ids_rest(left); \
-  }
+  };
 #define db_graph_internal_delete_get_ordinal_data(ordinal) \
   db_ordinal_t ordinal_min = ordinal->min; \
   db_ordinal_t ordinal_max = ordinal->max
-#define db_graph_internal_delete_1001_1101() \
+#define db_graph_internal_delete_1001_1101 \
   db_id_t id_left; \
   db_id_t id_right; \
   db_id_t id_label; \
@@ -484,8 +484,8 @@ exit:
     goto set_range_1001_1101; \
   } else { \
     status_set_group_goto(db_status_group_lmdb); \
-  }
-#define db_graph_internal_delete_1011_1111() \
+  };
+#define db_graph_internal_delete_1011_1111 \
   db_id_t id_left; \
   db_id_t id_label; \
   imht_set_t* right_set; \
@@ -547,13 +547,13 @@ exit:
   }; \
   status_require_x(db_graph_internal_delete_graph_ll_conditional( \
     graph_lr, graph_ll, id_label, id_left)); \
-  goto each_key_1011_1111
+  goto each_key_1011_1111;
 /** db-graph-internal-delete does not open/close cursors.
    1111 / left-right-label-ordinal.
-   tip: the code is nice to debug if variable state is displayed near the
-     beginning of goto labels, before cursor operations.
-     example display on stdout: (debug-log "each-key-1100 %lu %lu" id-left
-   id-right) */
+   tip: the code is nice to debug if current state information is displayed near
+   the beginning of goto labels before cursor operations. example: (debug-log
+   "each-key-1100 %lu %lu" id-left id-right) db-graph-internal-delete-* macros
+   are allowed to leave status on MDB-NOTFOUND */
 status_t db_graph_internal_delete(db_ids_t* left,
   db_ids_t* right,
   db_ids_t* label,
@@ -568,40 +568,38 @@ status_t db_graph_internal_delete(db_ids_t* left,
   db_mdb_declare_val_id_2;
   db_declare_graph_key(graph_key);
   db_declare_graph_data(graph_data);
-  /* db-graph-internal-delete-* macros are allowed to leave status on
-   * MDB-NOTFOUND */
   if (left) {
     if (ordinal) {
       if (label) {
-        db_graph_internal_delete_1011_1111();
+        db_graph_internal_delete_1011_1111;
       } else {
-        db_graph_internal_delete_1001_1101();
+        db_graph_internal_delete_1001_1101;
       };
     } else {
       if (label) {
         if (right) {
-          db_graph_internal_delete_1110();
+          db_graph_internal_delete_1110;
         } else {
-          db_graph_internal_delete_1010();
+          db_graph_internal_delete_1010;
         };
       } else {
         if (right) {
-          db_graph_internal_delete_1100();
+          db_graph_internal_delete_1100;
         } else {
-          db_graph_internal_delete_1000();
+          db_graph_internal_delete_1000;
         };
       };
     };
   } else {
     if (right) {
       if (label) {
-        db_graph_internal_delete_0110();
+        db_graph_internal_delete_0110;
       } else {
-        db_graph_internal_delete_0100();
+        db_graph_internal_delete_0100;
       };
     } else {
       if (label) {
-        db_graph_internal_delete_0010();
+        db_graph_internal_delete_0010;
       } else {
         db_status_set_id_goto(db_status_id_not_implemented);
       };
@@ -611,28 +609,29 @@ exit:
   db_status_success_if_mdb_notfound;
   return (status);
 };
-/** db-relation-delete differs from db-relation-read in that it does not
-   need a state because it does not support partial processing.
-   it also differs in that it always needs to use all three relation dbi
-   to complete the deletion instead of just any dbi necessary to find relations
- */
+/** db-relation-delete differs from db-relation-read in that it does not support
+  partial processing and therefore does not need a state for repeated calls.
+   it also differs in that it always needs all relation dbi
+   to complete the deletion instead of just any dbi necessary to find relations.
+  algorithm: delete all relations with any of the given ids at the corresponding
+  position */
 status_t db_graph_delete(db_txn_t txn,
   db_ids_t* left,
   db_ids_t* right,
   db_ids_t* label,
   db_ordinal_condition_t* ordinal) {
   status_init;
-  db_cursor_declare(graph_lr);
-  db_cursor_declare(graph_rl);
-  db_cursor_declare(graph_ll);
-  db_cursor_open(txn, graph_lr);
-  db_cursor_open(txn, graph_rl);
-  db_cursor_open(txn, graph_ll);
+  db_mdb_cursor_declare(graph_lr);
+  db_mdb_cursor_declare(graph_rl);
+  db_mdb_cursor_declare(graph_ll);
+  db_mdb_cursor_open(txn, graph_lr);
+  db_mdb_cursor_open(txn, graph_rl);
+  db_mdb_cursor_open(txn, graph_ll);
   status = db_graph_internal_delete(
     left, right, label, ordinal, graph_lr, graph_rl, graph_ll);
 exit:
-  db_cursor_close(graph_lr);
-  db_cursor_close(graph_rl);
-  db_cursor_close(graph_ll);
+  db_mdb_cursor_close(graph_lr);
+  db_mdb_cursor_close(graph_rl);
+  db_mdb_cursor_close(graph_ll);
   return (status);
 };

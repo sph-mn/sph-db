@@ -1,7 +1,7 @@
 #define no_more_data_exit \
   status_set_both_goto(db_status_group_db, db_status_id_no_more_data)
 #define db_graph_select_cursor_initialise(name, state, state_field_name) \
-  db_cursor_open(txn, name); \
+  db_mdb_cursor_open(txn, name); \
   db_mdb_cursor_get_norequire(name, val_null, val_null, MDB_FIRST); \
   if (!db_mdb_status_success_p) { \
     db_mdb_status_require_notfound; \
@@ -795,7 +795,8 @@ exit:
   return (status);
 };
 b0 db_graph_selection_destroy(db_graph_read_state_t* state) {
-  db_mdb_cursor_close_two((state->cursor), (state->cursor_2));
+  db_mdb_cursor_close((state->cursor));
+  db_mdb_cursor_close((state->cursor_2));
   if (db_read_option_is_set_right & state->options) {
     imht_set_destroy(((imht_set_t*)(state->right)));
     state->right = 0;

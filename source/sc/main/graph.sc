@@ -49,9 +49,9 @@
   (db-declare-graph-key graph-key)
   (db-declare-graph-data graph-data)
   (db-mdb-cursor-declare-three graph-lr graph-rl graph-ll)
-  (db-cursor-open txn graph-lr)
-  (db-cursor-open txn graph-rl)
-  (db-cursor-open txn graph-ll)
+  (db-mdb-cursor-open txn graph-lr)
+  (db-mdb-cursor-open txn graph-rl)
+  (db-mdb-cursor-open txn graph-ll)
   (set ordinal
     (if* (and (not ordinal-generator) ordinal-generator-state)
       (set ordinal (pointer-get (convert-type ordinal-generator-state db-ordinal-t*)))
@@ -91,14 +91,14 @@
       (set label-pointer (db-ids-rest label-pointer)))
     (set left (db-ids-rest left)))
   (label exit
-    (db-cursor-close-if-active graph-lr)
-    (db-cursor-close-if-active graph-rl)
-    (db-cursor-close-if-active graph-ll)
+    (db-mdb-cursor-close-if-active graph-lr)
+    (db-mdb-cursor-close-if-active graph-rl)
+    (db-mdb-cursor-close-if-active graph-ll)
     (return status)))
 
 (define (db-debug-display-content-graph-lr txn) (status-t db-txn-t)
   status-init
-  (db-cursor-declare graph-lr)
+  (db-mdb-cursor-declare graph-lr)
   db-mdb-declare-val-graph-key
   db-mdb-declare-val-graph-data
   (declare
@@ -106,7 +106,7 @@
     id-right db-id-t
     id-label db-id-t
     ordinal db-ordinal-t)
-  (db-cursor-open txn graph-lr)
+  (db-mdb-cursor-open txn graph-lr)
   (printf "graph-lr\n")
   (db-mdb-cursor-each-key
     graph-lr
@@ -135,8 +135,8 @@
     id-label db-id-t)
   db-mdb-declare-val-graph-key
   db-mdb-declare-val-id
-  (db-cursor-declare graph-rl)
-  (db-cursor-open txn graph-rl)
+  (db-mdb-cursor-declare graph-rl)
+  (db-mdb-cursor-open txn graph-rl)
   (printf "graph-rl\n")
   (db-mdb-cursor-each-key
     graph-rl

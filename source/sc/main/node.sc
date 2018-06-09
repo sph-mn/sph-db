@@ -51,8 +51,8 @@
     val-data MDB-val
     val-key MDB-val)
   (db-txn-declare env txn)
-  (db-cursor-declare system)
-  (db-cursor-declare nodes)
+  (db-mdb-cursor-declare system)
+  (db-mdb-cursor-declare nodes)
   (sc-comment "check if type with name exists")
   (if (db-type-get txn.env name) (status-set-both-goto db-status-group-db db-status-id-duplicate))
   (sc-comment "check name length")
@@ -94,22 +94,22 @@
     val-data.mv-size data-size)
   (sc-comment "insert data")
   (db-txn-write-begin txn)
-  (db-cursor-open txn system)
+  (db-mdb-cursor-open txn system)
   (db-mdb-cursor-put system val-key val-data)
-  (db-cursor-close system)
+  (db-mdb-cursor-close system)
   (sc-comment "update cache")
   (status-require! (db-env-types-extend txn.env type-id))
-  (db-cursor-open txn nodes)
+  (db-mdb-cursor-open txn nodes)
   (status-require!
     (db-open-type val-key.mv-data val-data.mv-data txn.env:types nodes &type-pointer))
-  (db-cursor-close nodes)
+  (db-mdb-cursor-close nodes)
   (db-txn-commit txn)
   (set *result type-id)
   (label exit
     (if (db-txn-active? txn)
       (begin
-        (db-cursor-close-if-active system)
-        (db-cursor-close-if-active nodes)
+        (db-mdb-cursor-close-if-active system)
+        (db-mdb-cursor-close-if-active nodes)
         (db-txn-abort txn)))
     (return status)))
 
@@ -120,8 +120,8 @@
     id db-id-t
     key (array b8 (db-size-system-key)))
   db-mdb-declare-val-null
-  (db-cursor-declare system)
-  (db-cursor-declare nodes)
+  (db-mdb-cursor-declare system)
+  (db-mdb-cursor-declare nodes)
   (db-mdb-declare-val val-key db-size-system-key)
   (db-txn-declare env txn)
   (set
@@ -130,15 +130,15 @@
     val-key.mv-data key)
   (db-txn-write-begin txn)
   (sc-comment "system. continue even if not found")
-  (db-cursor-open txn system)
+  (db-mdb-cursor-open txn system)
   (db-mdb-cursor-get-norequire system val-key val-null MDB-SET)
   (if db-mdb-status-success? (db-mdb-status-require! (mdb-cursor-del system 0))
     (begin
       db-mdb-status-require-notfound
       (status-set-id status-id-success)))
-  (db-cursor-close system)
+  (db-mdb-cursor-close system)
   (sc-comment "nodes")
-  (db-cursor-open txn nodes)
+  (db-mdb-cursor-open txn nodes)
   (set
     val-key.mv-size db-size-id
     id (db-id-add-type 0 type-id)
@@ -153,10 +153,68 @@
   (sc-comment "cache")
   (db-free-env-type (+ type-id env:types))
   (label exit
-    (db-cursor-close-if-active system)
-    (db-cursor-close-if-active nodes)
+    (db-mdb-cursor-close-if-active system)
+    (db-mdb-cursor-close-if-active nodes)
     (if status-success? (db-txn-commit txn)
       (db-txn-abort txn))
+    (return status)))
+
+#;(define (db-graph-internal-delete txn left right label ordinal graph-lr graph-rl graph-ll)
+  (status-t
+    db-txn-t*
+    db-ids-t* db-ids-t* db-ids-t* db-ordinal-match-data-t* MDB-cursor* MDB-cursor* MDB-cursor*))
+
+#;(define (db-delete-one txn id nodes data-intern->id data-extern->extern graph-lr graph-rl graph-ll)
+  (status-t
+    db-txn-t* db-id-t MDB-cursor* MDB-cursor* MDB-cursor* MDB-cursor* MDB-cursor* MDB-cursor*)
+  status-init
+  db-mdb-declare-val-graph-data
+  db-mdb-declare-val-id
+  db-mdb-declare-val-id-2
+  db-mdb-declare-val-data
+  (struct-set val-id
+    mv-data (address-of id))
+  (db-mdb-cursor-get! nodes val-id val-data MDB-SET-KEY)
+  (if db-mdb-status-success?
+    ;delete index references
+    (cond
+      ( (db-intern? id)
+        (begin
+          (set status.id
+            (mdb-cursor-get data-intern->id (address-of val-data) (address-of val-null) MDB-SET))
+          (if db-mdb-status-success? (db-mdb-cursor-del! data-intern->id 0)
+            db-mdb-status-require-notfound)))
+      ( (and (db-extern? id) (struct-get val-data mv-size))
+        (set status.id
+          (mdb-cursor-get data-extern->extern (address-of val-data) (address-of val-null) MDB-SET))
+        (if db-mdb-status-success? (db-mdb-cursor-del! data-extern->extern 0)
+          db-mdb-status-require-notfound)))
+    db-mdb-status-require-notfound)
+  (db-mdb-cursor-del! nodes 0)
+  (label exit
+    (return status)))
+
+#;(define (db-delete txn ids) (status-t db-txn-t* db-ids-t*)
+  "check for unset ids because in db-graph-internal-delete it would be an non-filter and match all"
+  status-init
+  (if (not ids) (return status))
+  (db-mdb-cursor-declare-3 nodes data-intern->id data-extern->extern)
+  (db-mdb-cursor-declare-3 graph-lr graph-rl graph-ll)
+  (db-mdb-cursor-open-3 txn graph-lr graph-rl graph-ll)
+  (status-require! (db-graph-internal-delete txn 0 0 ids 0 graph-lr graph-rl graph-ll))
+  (status-require! (db-graph-internal-delete txn ids 0 0 0 graph-lr graph-rl graph-ll))
+  (status-require! (db-graph-internal-delete txn 0 ids 0 0 graph-lr graph-rl graph-ll))
+  (db-mdb-cursor-open-3 txn nodes data-intern->id data-extern->extern)
+  (while (and ids status-success?)
+    (set status
+      (db-delete-one
+        txn (db-ids-first ids) nodes data-intern->id data-extern->extern graph-lr graph-rl graph-ll))
+    (set ids (db-ids-rest ids)))
+  (label exit
+    (db-mdb-cursor-close nodes)
+    (db-mdb-cursor-close graph-lr)
+    (db-mdb-cursor-close graph-rl)
+    (db-mdb-cursor-close graph-ll)
     (return status)))
 
 #;(
@@ -278,64 +336,7 @@
   (label exit
     (return status)))
 
-(define (db-graph-internal-delete txn left right label ordinal graph-lr graph-rl graph-ll)
-  (status-t
-    db-txn-t*
-    db-ids-t* db-ids-t* db-ids-t* db-ordinal-match-data-t* MDB-cursor* MDB-cursor* MDB-cursor*))
 
-(define
-  (db-delete-one
-    txn id nodes data-intern->id data-extern->extern graph-lr graph-rl graph-ll)
-  (status-t
-    db-txn-t* db-id-t MDB-cursor* MDB-cursor* MDB-cursor* MDB-cursor* MDB-cursor* MDB-cursor*)
-  status-init
-  db-mdb-declare-val-graph-data
-  db-mdb-declare-val-id
-  db-mdb-declare-val-id-2
-  db-mdb-declare-val-data
-  (struct-set val-id mv-data (address-of id))
-  (db-mdb-cursor-get! nodes val-id val-data MDB-SET-KEY)
-  (if db-mdb-status-success?
-    ;delete index references
-    (cond
-      ( (db-intern? id)
-        (begin
-          (set status.id
-            (mdb-cursor-get data-intern->id (address-of val-data) (address-of val-null) MDB-SET))
-          (if db-mdb-status-success?
-            (db-mdb-cursor-del! data-intern->id 0) db-mdb-status-require-notfound)))
-      ( (and (db-extern? id) (struct-get val-data mv-size))
-        (set status.id
-          (mdb-cursor-get data-extern->extern (address-of val-data) (address-of val-null) MDB-SET))
-        (if db-mdb-status-success?
-          (db-mdb-cursor-del! data-extern->extern 0) db-mdb-status-require-notfound)))
-    db-mdb-status-require-notfound)
-  (db-mdb-cursor-del! nodes 0)
-  (label exit
-    (return status)))
-
-(define (db-delete txn ids) (status-t db-txn-t* db-ids-t*)
-  status-init
-  ;checking for empty ids because it would be an non-filter in db-graph-internal-delete
-  (if (not ids) (return status))
-  (db-mdb-cursor-declare-3 nodes data-intern->id data-extern->extern)
-  (db-mdb-cursor-declare-3 graph-lr graph-rl graph-ll)
-  (db-mdb-cursor-open-3 txn graph-lr graph-rl graph-ll)
-  (status-require! (db-graph-internal-delete txn 0 0 ids 0 graph-lr graph-rl graph-ll))
-  (status-require! (db-graph-internal-delete txn ids 0 0 0 graph-lr graph-rl graph-ll))
-  (status-require! (db-graph-internal-delete txn 0 ids 0 0 graph-lr graph-rl graph-ll))
-  (db-mdb-cursor-open-3 txn nodes data-intern->id data-extern->extern)
-  (while (and ids status-success?)
-    (set status
-      (db-delete-one
-        txn
-        (db-ids-first ids)
-        nodes data-intern->id data-extern->extern graph-lr graph-rl graph-ll))
-    (set ids (db-ids-rest ids)))
-  (label exit
-    (db-mdb-cursor-close-3 nodes data-intern->id data-extern->extern)
-    (db-mdb-cursor-close-3 graph-lr graph-rl graph-ll)
-    (return status)))
 
 (define (db-node-read state count result) (status-t db-node-read-state-t* b32 db-data-records-t**)
   status-init

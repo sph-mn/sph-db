@@ -1,15 +1,4 @@
 #include <string.h>
-#define db_mdb_txn_declare(name) MDB_txn* name = 0
-#define db_mdb_txn_begin(env, mdb_txn) \
-  db_mdb_status_require_x(mdb_txn_begin(env, 0, MDB_RDONLY, (&mdb_txn)))
-#define db_mdb_txn_write_begin(env, mdb_txn) \
-  db_mdb_status_require_x(mdb_txn_begin(env, 0, 0, (&mdb_txn)))
-#define db_mdb_txn_abort(a) \
-  mdb_txn_abort(a); \
-  a = 0
-#define db_mdb_txn_commit(a) \
-  db_mdb_status_require_x(mdb_txn_commit(a)); \
-  a = 0
 #define db_mdb_cursor_declare(name) MDB_cursor* name = 0
 #define db_mdb_cursor_declare_two(name_a, name_b) \
   db_mdb_cursor_declare(name_a); \
@@ -17,12 +6,16 @@
 #define db_mdb_cursor_declare_three(name_a, name_b, name_c) \
   db_mdb_cursor_declare_two(name_a, name_b); \
   db_mdb_cursor_declare(name_c)
-#define db_mdb_cursor_close_two(a, b) \
-  mdb_cursor_close(a); \
-  mdb_cursor_close(b)
-#define db_mdb_cursor_close_three(a, b, c) \
-  db_mdb_cursor_close_two(a, b); \
-  mdb_cursor_close(c)
+#define db_mdb_cursor_open(txn, name) \
+  db_mdb_status_require_x( \
+    (mdb_cursor_open((txn.mdb_txn), ((txn.env)->dbi_##name), (&name))))
+#define db_mdb_cursor_close(name) \
+  mdb_cursor_close(name); \
+  name = 0
+#define db_mdb_cursor_close_if_active(name) \
+  if (name) { \
+    db_mdb_cursor_close(name); \
+  }
 /** only updates status, no goto on error */
 #define db_mdb_cursor_get_norequire(cursor, val_a, val_b, cursor_operation) \
   status_set_id(mdb_cursor_get(cursor, (&val_a), (&val_b), cursor_operation))
@@ -37,17 +30,18 @@
     mdb_cursor_get(cursor, (&val_a), (&val_b), cursor_operation))
 #define db_mdb_cursor_put(cursor, val_a, val_b) \
   db_mdb_status_require_x(mdb_cursor_put(cursor, (&val_a), (&val_b), 0))
+#define db_mdb_cursor_each_key(cursor, val_key, val_value, body) \
+  db_mdb_cursor_get_norequire(cursor, val_key, val_value, MDB_FIRST); \
+  while (db_mdb_status_success_p) { \
+    body; \
+    db_mdb_cursor_next_nodup_norequire(cursor, val_key, val_value); \
+  }; \
+  db_mdb_status_require_notfound
+#define db_mdb_cursor_set_first(cursor) \
+  db_mdb_status_require_x( \
+    mdb_cursor_get(cursor, (&val_null), (&val_null), MDB_FIRST))
 #define db_mdb_put(txn, dbi, val_a, val_b) \
   db_mdb_status_require_x(mdb_put(dbi, (&val_a), (&val_b), 0))
-#define db_mdb_cursor_open(txn, dbi, name) \
-  db_mdb_status_require_x(mdb_cursor_open(txn, dbi, (&name)))
-#define db_mdb_cursor_open_two(txn, dbi_a, name_a, dbi_b, name_b) \
-  db_mdb_cursor_open(txn, dbi_a, name_a); \
-  db_mdb_cursor_open(txn, dbi_b, name_b)
-#define db_mdb_cursor_open_three( \
-  txn, dbi_a, name_a, dbi_b, name_b, dbi_c, name_c) \
-  db_mdb_cursor_open_two(txn, dbi_a, name_a, dbi_b, name_b); \
-  db_mdb_cursor_open(txn, dbi_c, name_c)
 #define db_mdb_declare_val(name, size) \
   MDB_val name; \
   name.mv_size = size
@@ -60,16 +54,6 @@
 #define db_mdb_declare_val_graph_key \
   db_mdb_declare_val(val_graph_key, db_size_graph_key)
 #define db_mdb_reset_val_null val_null.mv_size = 0
-#define db_mdb_cursor_each_key(cursor, val_key, val_value, body) \
-  db_mdb_cursor_get_norequire(cursor, val_key, val_value, MDB_FIRST); \
-  while (db_mdb_status_success_p) { \
-    body; \
-    db_mdb_cursor_next_nodup_norequire(cursor, val_key, val_value); \
-  }; \
-  db_mdb_status_require_notfound
-#define db_mdb_cursor_set_first_x(cursor) \
-  db_mdb_status_require_x( \
-    mdb_cursor_get(cursor, (&val_null), (&val_null), MDB_FIRST))
 #define db_mdb_val_to_graph_key(a) ((db_id_t*)(a.mv_data))
 /** mdb comparison routines are used by lmdb for search, insert and delete */
 static int db_mdb_compare_id(const MDB_val* a, const MDB_val* b) {

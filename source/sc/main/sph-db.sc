@@ -103,22 +103,6 @@
   (db-data-data-set a value) (set data.mv-data value)
   (db-data-size a) data.mv-size
   (db-data-size-set a value) (set data.mv-size value)
-  (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
-  (db-txn-begin txn)
-  (db-mdb-status-require! (mdb-txn-begin txn.env:mdb-env 0 MDB-RDONLY &txn.mdb-txn))
-  (db-txn-write-begin txn) (db-mdb-status-require! (mdb-txn-begin txn.env:mdb-env 0 0 &txn.mdb-txn))
-  (db-txn-abort a)
-  (begin
-    (mdb-txn-abort a.mdb-txn)
-    (set a.mdb-txn 0))
-  (db-txn-abort-if-active a) (if a.mdb-txn (db-txn-abort a))
-  (db-txn-active? a)
-  (if* a.mdb-txn #t
-    #f)
-  (db-txn-commit a)
-  (begin
-    (db-mdb-status-require! (mdb-txn-commit a.mdb-txn))
-    (set a.mdb-txn 0))
   (db-node-virtual->data id)
   (begin
     "db-id-t -> db-id-t"
@@ -146,6 +130,25 @@
   (begin
     (db-graph-data-set-ordinal ordinal)
     (db-graph-data-set-id id)))
+
+(pre-define
+  ; db-txn
+  (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
+  (db-txn-begin txn)
+  (db-mdb-status-require! (mdb-txn-begin txn.env:mdb-env 0 MDB-RDONLY &txn.mdb-txn))
+  (db-txn-write-begin txn) (db-mdb-status-require! (mdb-txn-begin txn.env:mdb-env 0 0 &txn.mdb-txn))
+  (db-txn-abort a)
+  (begin
+    (mdb-txn-abort a.mdb-txn)
+    (set a.mdb-txn 0))
+  (db-txn-abort-if-active a) (if a.mdb-txn (db-txn-abort a))
+  (db-txn-active? a)
+  (if* a.mdb-txn #t
+    #f)
+  (db-txn-commit a)
+  (begin
+    (db-mdb-status-require! (mdb-txn-commit a.mdb-txn))
+    (set a.mdb-txn 0)))
 
 (declare
   db-field-t

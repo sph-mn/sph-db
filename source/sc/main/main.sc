@@ -12,14 +12,6 @@
   (optional-count count)
   (if* (= 0 count) UINT32_MAX
     count)
-  (db-cursor-declare name) (define name MDB-cursor* 0)
-  (db-cursor-open txn name)
-  (db-mdb-status-require! (mdb-cursor-open txn.mdb-txn (: txn.env (pre-concat dbi- name)) &name))
-  (db-cursor-close name)
-  (begin
-    (mdb-cursor-close name)
-    (set name 0))
-  (db-cursor-close-if-active name) (if name (db-cursor-close name))
   db-size-system-key (+ 1 (sizeof db-type-id-t))
   (db-select-ensure-offset state offset reader)
   (if offset

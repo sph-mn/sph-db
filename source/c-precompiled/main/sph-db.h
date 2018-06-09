@@ -366,24 +366,6 @@ b8* db_status_name(status_t a) {
 #define db_data_data_set(a, value) data.mv_data = value
 #define db_data_size(a) data.mv_size
 #define db_data_size_set(a, value) data.mv_size = value
-#define db_txn_declare(env, name) db_txn_t name = { 0, env }
-#define db_txn_begin(txn) \
-  db_mdb_status_require_x( \
-    (mdb_txn_begin(((txn.env)->mdb_env), 0, MDB_RDONLY, (&(txn.mdb_txn)))))
-#define db_txn_write_begin(txn) \
-  db_mdb_status_require_x( \
-    (mdb_txn_begin(((txn.env)->mdb_env), 0, 0, (&(txn.mdb_txn)))))
-#define db_txn_abort(a) \
-  mdb_txn_abort((a.mdb_txn)); \
-  a.mdb_txn = 0
-#define db_txn_abort_if_active(a) \
-  if (a.mdb_txn) { \
-    db_txn_abort(a); \
-  }
-#define db_txn_active_p(a) (a.mdb_txn ? 1 : 0)
-#define db_txn_commit(a) \
-  db_mdb_status_require_x((mdb_txn_commit((a.mdb_txn)))); \
-  a.mdb_txn = 0
 /** db-id-t -> db-id-t */
 #define db_node_virtual_to_data(id) (id >> 2)
 #define db_pointer_allocation_set(result, expression, result_temp) \
@@ -409,6 +391,24 @@ b8* db_status_name(status_t a) {
 #define db_graph_data_set_both(a, ordinal, id) \
   db_graph_data_set_ordinal(ordinal); \
   db_graph_data_set_id(id)
+#define db_txn_declare(env, name) db_txn_t name = { 0, env }
+#define db_txn_begin(txn) \
+  db_mdb_status_require_x( \
+    (mdb_txn_begin(((txn.env)->mdb_env), 0, MDB_RDONLY, (&(txn.mdb_txn)))))
+#define db_txn_write_begin(txn) \
+  db_mdb_status_require_x( \
+    (mdb_txn_begin(((txn.env)->mdb_env), 0, 0, (&(txn.mdb_txn)))))
+#define db_txn_abort(a) \
+  mdb_txn_abort((a.mdb_txn)); \
+  a.mdb_txn = 0
+#define db_txn_abort_if_active(a) \
+  if (a.mdb_txn) { \
+    db_txn_abort(a); \
+  }
+#define db_txn_active_p(a) (a.mdb_txn ? 1 : 0)
+#define db_txn_commit(a) \
+  db_mdb_status_require_x((mdb_txn_commit((a.mdb_txn)))); \
+  a.mdb_txn = 0
 typedef struct {
   b8* name;
   db_name_len_t name_len;

@@ -448,14 +448,14 @@ status_t db_open_system(db_txn_t txn) {
   db_mdb_cursor_declare(nodes);
   db_mdb_status_require_x((mdb_dbi_open(
     (txn.mdb_txn), "system", MDB_CREATE, (&((txn.env)->dbi_system)))));
-  db_cursor_open(txn, system);
+  db_mdb_cursor_open(txn, system);
   status_require_x(db_open_format(system, txn));
-  db_cursor_open(txn, nodes);
+  db_mdb_cursor_open(txn, nodes);
   status_require_x(db_open_types(system, nodes, txn));
   status_require_x(db_open_indices(system, txn));
 exit:
-  db_cursor_close_if_active(system);
-  db_cursor_close_if_active(nodes);
+  db_mdb_cursor_close_if_active(system);
+  db_mdb_cursor_close_if_active(nodes);
   return (status);
 };
 /** ensure that the trees used for the graph exist, configure and open dbi */

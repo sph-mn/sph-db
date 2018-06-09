@@ -2,7 +2,7 @@
 
 (pre-define (db-graph-select-cursor-initialise name state state-field-name)
   (begin
-    (db-cursor-open txn name)
+    (db-mdb-cursor-open txn name)
     (db-mdb-cursor-get-norequire name val-null val-null MDB-FIRST)
     (if (not db-mdb-status-success?)
       (begin
@@ -663,7 +663,8 @@
     (return status)))
 
 (define (db-graph-selection-destroy state) (b0 db-graph-read-state-t*)
-  (db-mdb-cursor-close-two state:cursor state:cursor-2)
+  (db-mdb-cursor-close state:cursor)
+  (db-mdb-cursor-close state:cursor-2)
   (if (bit-and db-read-option-is-set-right state:options)
     (begin
       (imht-set-destroy (convert-type state:right imht-set-t*))
