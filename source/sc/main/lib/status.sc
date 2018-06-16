@@ -15,7 +15,8 @@
     db-status-id-no-more-data
     db-status-id-not-implemented
     db-status-id-path-not-accessible-db-root
-    db-status-id-undefined db-status-group-db db-status-group-lmdb db-status-group-libc))
+    db-status-id-undefined
+    db-status-group-db db-status-group-lmdb db-status-group-libc db-status-id-max-keysize))
 
 (pre-define
   (db-status-set-id-goto status-id) (status-set-both-goto db-status-group-db status-id)
@@ -27,8 +28,7 @@
   (if db-mdb-status-notfound? (status-set-both db-status-group-db db-status-id-no-more-data))
   db-status-success-if-mdb-notfound (if db-mdb-status-notfound? (status-set-id status-id-success))
   db-status-success-if-no-more-data
-  (if (status-id-is? db-status-id-no-more-data)
-    (set status.id status-id-success))
+  (if (status-id-is? db-status-id-no-more-data) (set status.id status-id-success))
   db-mdb-status-success? (status-id-is? MDB-SUCCESS)
   db-mdb-status-failure? (not db-mdb-status-success?)
   db-mdb-status-notfound? (status-id-is? MDB-NOTFOUND)
@@ -80,6 +80,7 @@
         (db-status-id-no-more-data (set b "no more data to read"))
         (db-status-id-different-format
           (set b "configured format differs from the format the database was created with"))
+        (db-status-id-index-keysize (set b "index key to be inserted exceeds mdb maxkeysize"))
         (else (set b ""))))
     (db-status-group-lmdb (set b (mdb-strerror a.id)))
     (else (set b "")))
@@ -103,7 +104,8 @@
         (db-status-id-max-type-id-size (set b "type-id-size-too-big"))
         (db-status-id-condition-unfulfilled (set b "condition-unfulfilled"))
         (db-status-id-no-more-data (set b "no-more-data"))
-        (db-status-id-different-format (set b "different-format"))
+        (db-status-id-different-format (set b "differing-db-format"))
+        (db-status-id-index-keysize (set b "index-key-mdb-keysize"))
         (else (set b "unknown"))))
     (db-status-group-lmdb (set b (mdb-strerror a.id)))
     (else (set b "unknown")))

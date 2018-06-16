@@ -98,11 +98,11 @@
   (begin
     (declare name db-env-t*)
     (db-calloc name 1 (sizeof db-env-t)))
-  db-data-t MDB-val
-  (db-data-data a) data.mv-data
-  (db-data-data-set a value) (set data.mv-data value)
-  (db-data-size a) data.mv-size
-  (db-data-size-set a value) (set data.mv-size value)
+  ;db-data-t MDB-val
+  ;(db-data-data a) data.mv-data
+  ;(db-data-data-set a value) (set data.mv-data value)
+  ;(db-data-size a) data.mv-size
+  ;(db-data-size-set a value) (set data.mv-size value)
   (db-node-virtual->data id)
   (begin
     "db-id-t -> db-id-t"
@@ -161,7 +161,7 @@
   (type
     (struct
       (dbi MDB-dbi)
-      (fields db-field-t*)
+      (fields db-field-count-t*)
       (fields-count db-field-count-t)
       (type db-type-id-t)))
   db-type-t
@@ -190,6 +190,7 @@
       (open boolean)
       (root b8*)
       (mutex pthread-mutex-t)
+      (maxkeysize int)
       (types db-type-t*)
       (types-len db-type-id-t)))
   db-data-record-t

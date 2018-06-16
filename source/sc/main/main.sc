@@ -71,7 +71,7 @@
     (return status)))
 
 (define (db-field-type-size a) (b8 b8)
-  "size in octets. only for fixed size types"
+  "size in octets. zero for variable size types"
   (case = a
     ( (db-field-type-int64 db-field-type-uint64 db-field-type-char64 db-field-type-float64)
       (return 64))

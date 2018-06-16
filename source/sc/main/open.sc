@@ -45,7 +45,9 @@
   (db-mdb-status-require! (mdb-env-set-maxreaders mdb-env options:maximum-reader-count))
   (db-mdb-status-require!
     (mdb-env-open mdb-env data-path (db-open-mdb-env-flags options) options:file-permissions))
-  (set env:mdb-env mdb-env)
+  (set
+    env:maxkeysize (mdb-env-get-maxkeysize mdb-env)
+    env:mdb-env mdb-env)
   (label exit
     (free data-path)
     (if status-failure? (if mdb-env (mdb-env-close mdb-env)))
