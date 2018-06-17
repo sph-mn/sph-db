@@ -1,180 +1,22 @@
-(define (db-env-types-extend env type-id) (status-t db-env-t* db-type-id-t)
-  "extend the types array if type-id is an index out of bounds"
-  status-init
-  (declare
-    types-temp db-type-t*
-    types-len db-type-id-t
-    types db-type-t*
-    i db-type-id-t)
-  (set types-len env:types-len)
-  (if (> types-len type-id) (goto exit))
-  (sc-comment "resize")
-  (set
-    types env:types
-    types-len (+ db-env-types-extra-count type-id))
-  (db-realloc types types-temp (* types-len (sizeof db-type-t)))
-  (sc-comment "set new type struct ids to zero")
-  (for ((set i type-id) (< i types-len) (set i (+ 1 i)))
-    (set (: (+ i types) id) 0))
-  (set
-    env:types types
-    env:types-len types-len)
-  (label exit
-    (return status)))
-
-(define (db-type-get env name) (db-type-t* db-env-t* b8*)
-  "return a pointer to the type struct for the type with the given name. zero if not found"
-  (declare
-    i db-type-id-t
-    types-len db-type-id-t
-    type db-type-t*)
-  (set types-len env:types-len)
-  (for ((set i 0) (< i types-len) (set i (+ 1 i)))
-    (set type (+ i env:types))
-    (if (and type:id (= 0 (strcmp name type:name))) (return type)))
-  (return 0))
-
-(define (db-type-create env name field-count fields flags result)
-  (status-t db-env-t* b8* db-field-count-t db-field-t* b8 db-type-id-t*)
-  "the data format is documented in main/open.c"
-  status-init
-  (declare
-    data b8*
-    data-start b8*
-    field db-field-t
-    i db-field-count-t
-    type-pointer db-type-t*
-    key (array b8 (db-size-system-key))
-    name-len b8
-    data-size size-t
-    type-id db-type-id-t
-    val-data MDB-val
-    val-key MDB-val)
-  (db-txn-declare env txn)
-  (db-mdb-cursor-declare system)
-  (db-mdb-cursor-declare nodes)
-  (sc-comment "check if type with name exists")
-  (if (db-type-get txn.env name) (status-set-both-goto db-status-group-db db-status-id-duplicate))
-  (sc-comment "check name length")
-  (set name-len (strlen name))
-  (if (< db-name-len-max name-len)
-    (status-set-both-goto db-status-group-db db-status-id-data-length))
-  (sc-comment "allocate insert data")
-  (set data-size (+ (sizeof db-name-len-t) name-len (sizeof db-field-count-t)))
-  (for ((set i 0) (< i field-count) (set i (+ 1 i)))
-    (set data-size
-      (+ data-size (sizeof db-field-type-t) (sizeof db-name-len-t) (: (+ i fields) name-len))))
-  (db-malloc data data-size)
-  (sc-comment "set insert data")
-  (set
-    data-start data
-    (pointer-get (convert-type data db-name-len-t*)) name-len
-    data (+ (sizeof db-name-len-t) data))
-  (memcpy data name name-len)
-  (set
-    data (+ name-len data)
-    (pointer-get (convert-type data db-field-count-t*)) field-count
-    data (+ (sizeof db-field-count-t) data))
-  (for ((set i 0) (< i field-count) (set i (+ 1 i)))
-    (set
-      field (array-get fields i)
-      (pointer-get (convert-type data db-field-type-t*)) field.type
-      data (+ 1 (convert-type data db-field-type-t*))
-      (pointer-get (convert-type data db-name-len-t*)) field.name-len
-      data (+ 1 (convert-type data db-name-len-t*)))
-    (memcpy data field.name field.name-len)
-    (set data (+ field.name-len data)))
-  (status-require! (db-sequence-next-system txn.env &type-id))
-  (set
-    (db-system-key-label key) db-system-label-type
-    (db-system-key-id key) type-id
-    val-key.mv-data key
-    val-key.mv-size db-size-system-key
-    val-data.mv-data data-start
-    val-data.mv-size data-size)
-  (sc-comment "insert data")
-  (db-txn-write-begin txn)
-  (db-mdb-cursor-open txn system)
-  (db-mdb-cursor-put system val-key val-data)
-  (db-mdb-cursor-close system)
-  (sc-comment "update cache")
-  (status-require! (db-env-types-extend txn.env type-id))
-  (db-mdb-cursor-open txn nodes)
-  (status-require!
-    (db-open-type val-key.mv-data val-data.mv-data txn.env:types nodes &type-pointer))
-  (db-mdb-cursor-close nodes)
-  (db-txn-commit txn)
-  (set *result type-id)
-  (label exit
-    (if (db-txn-active? txn)
-      (begin
-        (db-mdb-cursor-close-if-active system)
-        (db-mdb-cursor-close-if-active nodes)
-        (db-txn-abort txn)))
-    (return status)))
-
-(define (db-type-delete env type-id) (status-t db-env-t* db-type-id-t)
-  "delete system entry and/or all nodes and cache entries"
-  status-init
-  (declare
-    id db-id-t
-    key (array b8 (db-size-system-key)))
-  db-mdb-declare-val-null
-  (db-mdb-cursor-declare system)
-  (db-mdb-cursor-declare nodes)
-  (db-mdb-declare-val val-key db-size-system-key)
-  (db-txn-declare env txn)
-  (set
-    (db-system-key-label key) db-system-label-type
-    (db-system-key-id key) type-id
-    val-key.mv-data key)
-  (db-txn-write-begin txn)
-  (sc-comment "system. continue even if not found")
-  (db-mdb-cursor-open txn system)
-  (db-mdb-cursor-get-norequire system val-key val-null MDB-SET)
-  (if db-mdb-status-success? (db-mdb-status-require! (mdb-cursor-del system 0))
-    (begin
-      db-mdb-status-require-notfound
-      (status-set-id status-id-success)))
-  (db-mdb-cursor-close system)
-  (sc-comment "nodes")
-  (db-mdb-cursor-open txn nodes)
-  (set
-    val-key.mv-size db-size-id
-    id (db-id-add-type 0 type-id)
-    val-key.mv-data &id)
-  (db-mdb-cursor-get-norequire nodes val-key val-null MDB-SET-RANGE)
-  (while (and db-mdb-status-success? (= type-id (db-id-type (db-pointer->id val-key.mv-data))))
-    (db-mdb-status-require! (mdb-cursor-del nodes 0))
-    (db-mdb-cursor-get-norequire nodes val-key val-null MDB-NEXT-NODUP))
-  (if status-failure?
-    (if db-mdb-status-notfound? (status-set-id status-id-success)
-      (status-set-group-goto db-status-group-lmdb)))
-  (sc-comment "cache")
-  (db-free-env-type (+ type-id env:types))
-  (label exit
-    (db-mdb-cursor-close-if-active system)
-    (db-mdb-cursor-close-if-active nodes)
-    (if status-success? (db-txn-commit txn)
-      (db-txn-abort txn))
-    (return status)))
-
 (declare db-node-value-t
   (type
     (struct
       (size db-data-len-t)
       (data b0*))))
 
-(define (db-node-values-new type result) (status-t db-type-t* db-node-values-t**)
+(define (db-node-values-prepare type result) (status-t db-type-t* db-node-value-t**)
+  "allocate memory for a new node values array"
   status-init
   (declare a db-node-value-t*)
-  (db-malloc a (* type:fields-count (sizeof db-node-value-t)))
+  (db-malloc a (* type:fields-len (sizeof db-node-value-t)))
   (set *result a)
   (label exit
     (return status)))
 
 (define (db-node-values-set values field-index data size)
-  (b0 db-node-values-t* db-field-count-t b0* size-t)
+  (b0 db-node-value-t* db-field-count-t b0* size-t)
+  "set a value for a field in node values.
+  size can be set to zero and is ignored for fixed length types"
   (struct-set (array-get values field-index)
     data data
     size size))
@@ -189,25 +31,30 @@
     size size-t
     data b8*
     field-type db-field-type-t)
-  (set field-count type:fields-count)
+  (set
+    field-count type:fields-len
+    size 0)
+  (sc-comment "prepare size information")
   (for ((set index 0) (< index field-count) (set index (+ 1 index)))
-    (set size (+ size (struct-get (array-get values index) size))))
-  (db-malloc data size)
-  (for ((set index 0) (< index field-count) (set index (+ 1 index)))
-    (set
-      field-type (struct-get (array-get type:fields index) type)
-      size (db-field-type-size field-type))
-    (if (not size)
+    (if (>= index type:fields-fixed-count)
+      (set field-size (struct-get (array-get values index) size))
       (begin
         (set
-          size (struct-get (array-get values index) size)
-          (convert-type data db-data-len-t*) size
-          data (+ (sizeof db-data-len-t) data))
-        (if (> size db-data-len-max)
-          (status-set-both-goto db-status-group-db db-status-id-data-length))
-        (memcpy data (struct-get (array-get values index) data) size)
-        (set data (+ size data))))
-    (memcpy data (struct-get (array-get values index) data) size)
+          field-type (struct-get (array-get type:fields index) type)
+          field-size (db-field-type-size field-type)
+          (struct-get (array-get values index) size) field-size)))
+    (if (> field-size db-data-len-max)
+      (status-set-both-goto db-status-group-db db-status-id-data-length))
+    (set size (+ field-size size)))
+  (db-malloc data size)
+  (sc-comment "copy data")
+  (for ((set index 0) (< index field-count) (set index (+ 1 index)))
+    (set field-size (struct-get (array-get values index) size))
+    (if (>= index type:fields-fixed-count)
+      (set
+        (convert-type data db-data-len-t*) field-size
+        data (+ (sizeof db-data-len-t) data)))
+    (memcpy data (struct-get (array-get values index) data) field-size)
     (set data (+ size data)))
   (set
     *result data
@@ -215,7 +62,55 @@
   (label exit
     (return status)))
 
-(define (db-node-create txn type values result)
+(define (db-type-indices-put-values txn type values id)
+  (status-t db-txn-t db-type-t* db-node-value-t* db-id-t)
+  db-mdb-declare-val-id
+  (db-mdb-cursor-declare node-index-cursor)
+  (declare
+    data b8*
+    val-data MDB-val
+    size size-t
+    index db-index-count-t
+    node-index db-index-t
+    node-indices db-index-t*
+    node-indices-count db-index-count-t
+    value-size size-t
+    fields db-field-count-t*
+    fields-len db-field-count-t)
+  (set
+    val-id.mv-data &id
+    data 0
+    node-indices-count type:indices-count
+    node-indices type:indices)
+  (for ((set index 0) (< index node-indices-count) (set index (+ 1 index)))
+    (set node-index (array-get node-indices index))
+    (sc-comment "calculate size")
+    (for
+      ( (set fields-index 0)
+        (< field-index node-index.fields-len) (set fields-index (+ 1 fields-index)))
+      (set size
+        (+ size (struct-get (array-get values (array-get node-index.fields fields-index)) size))))
+    (if (< txn.env:maxkeysize size)
+      (status-set-both-goto db-status-group-db db-status-id-index-keysize))
+    (sc-comment "prepare insert data")
+    (db-malloc data size)
+    (set val-data.mv-data data)
+    (for ((set fields-index 0) (< field-index fields-len) (set fields-index (+ 1 fields-index)))
+      (set value-size
+        (struct-get (array-get values (array-get node-index.fields fields-index)) size))
+      (memcpy data (struct-get (array-get values field-index) data) value-size)
+      (set data (+ value-size data)))
+    (db-mdb-status-require! (mdb-cursor-open txn.mdb-txn node-index.dbi &node-index-cursor))
+    (db-mdb-cursor-put node-index-cursor val-data val-id)
+    (db-mdb-status-require! (mdb-cursor-put node-index-cursor &val-data &val-id 0))
+    (db-mdb-cursor-close node-index-cursor)
+    (free-and-set-null data))
+  (label exit
+    (db-mdb-cursor-close-if-active node-index-cursor)
+    (if data (free data))
+    (return status)))
+
+(define (db-node-put txn type values result)
   (status-t db-txn-t db-type-t* db-node-value-t* db-id-t*)
   status-init
   db-mdb-declare-val-id
@@ -230,43 +125,12 @@
   (db-mdb-cursor-open txn nodes)
   (status-require! (db-sequence-next env type:id &id))
   (db-mdb-status-require! (mdb-cursor-put nodes (address-of val-id) (address-of val-data) 0))
-  (sc-comment "update indices")
-  (declare
-    index db-index-count-t
-    node-indices db-index-t*
-    node-indices-count db-index-count-t
-    fields db-field-count-t*
-    fields-count db-field-count-t)
-  (db-mdb-cursor-declare node-index-cursor)
-  (set
-    node-indices-count type:indices-count
-    node-indices type:indices
-    node-index db-index-t)
-  (for ((set index 0) (< index node-indices-count) (set index (+ 1 index)))
-    (set
-      node-index (array-get node-indices index)
-      fields-count node-index.fields-count
-      fields node-index.fields)
-    (for ((set fields-index 0) (< field-index fields-count) (set fields-index (+ 1 fields-index)))
-      (set size (+ size (struct-get (array-get values field-index) size))))
-    (if (< txn.env:maxkeysize size)
-      (status-set-both-goto db-status-group-db db-status-id-index-keysize))
-    (db-malloc data size)
-    (for ((set fields-index 0) (< field-index fields-count) (set fields-index (+ 1 fields-index)))
-      (memcpy
-        data
-        (struct-get (array-get values field-index) data)
-        (struct-get (array-get values field-index) size))
-      (set data (+ (struct-get (array-get values field-index) size) data)))
-    (db-mdb-cursor-open node-index-cursor)
-    (db-mdb-cursor-put node-index-cursor val-data val-id)
-    (status-set-id (mdb-cursor-put node-index-cursor &val-data &val-id 0))
-    (free data)
-    status-require)
+  (db-mdb-cursor-close nodes)
+  (status-require! (db-type-indices-put-values txn type values))
   (set *result id)
   (label exit
+    (db-mdb-cursor-close-if-active nodes)
     (free val-data.mv-data)
-    (db-mdb-cursor-close nodes)
     (return status)))
 
 (define (db-graph-internal-delete left right label ordinal graph-lr graph-rl graph-ll)
@@ -287,9 +151,9 @@
   (db-mdb-cursor-open txn graph-lr)
   (db-mdb-cursor-open txn graph-rl)
   (db-mdb-cursor-open txn graph-ll)
-  (status-require! (db-graph-internal-delete 0 0 ids 0 graph-lr graph-rl graph-ll))
   (status-require! (db-graph-internal-delete ids 0 0 0 graph-lr graph-rl graph-ll))
   (status-require! (db-graph-internal-delete 0 ids 0 0 graph-lr graph-rl graph-ll))
+  (status-require! (db-graph-internal-delete 0 0 ids 0 graph-lr graph-rl graph-ll))
   (db-mdb-cursor-open txn nodes)
   (while ids
     (set val-id.mv-data (db-ids-first-address ids))

@@ -156,18 +156,19 @@
     (struct
       (name b8*)
       (name-len db-name-len-t)
-      (type db-field-type-t)))
+      (type db-field-type-t)
+      (index db-field-count-t)))
   db-index-t
   (type
     (struct
       (dbi MDB-dbi)
       (fields db-field-count-t*)
-      (fields-count db-field-count-t)
+      (fields-len db-field-count-t)
       (type db-type-id-t)))
   db-type-t
   (type
     (struct
-      (fields-count db-field-count-t)
+      (fields-len db-field-count-t)
       (fields-fixed-count db-field-count-t)
       ; example: field-sizes-in-bits: 8 32 16, fields-fixed-offsets: 8 40 56
       (fields-fixed-offsets db-field-count-t*)

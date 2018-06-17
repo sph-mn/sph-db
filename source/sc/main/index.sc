@@ -1,3 +1,118 @@
+(define (db-index-get type fields fields-len) (db-index-t* db-type-t* db-field-count-t*)
+  (declare
+    indices-count db-index-count-t
+    index db-index-count-t
+    indices db-index-t*)
+  (set
+    indices type:indices
+    indices-count type:indices-count)
+  (for ((set index 0) (< index indices-count) (set index (+ 1 index)))
+    (if
+      (=
+        0
+        (memcmp
+          (struct-get (array-get indices index) fields) fields (* (sizeof db-field-t) fields-len)))
+      (return (+ index indices))))
+  (return 0))
+
+(define (string-join strings strings-len delimiter) (b8* b8** size-t b8*)
+  "join strings into one string with each input string separated by delimiter.
+  zero if strings-len is zero or memory could not be allocated"
+  (declare
+    result b8*
+    result-temp b8*
+    result-size size-t
+    index size-t
+    delimiter-len size-t
+    strings-len size-t)
+  (if (not strings-len) (return 0))
+  (set
+    delimiter-len (strlen delimiter)
+    result-size (+ 1 (* delimiter-len (- strings-len 1))))
+  (for ((set index 0) (< index strings-len) (set index (+ 1 index)))
+    (set result-size (+ result-size (strlen (array-get strings index)))))
+  (set result (malloc result-size))
+  (if (not result) (return 0))
+  (set
+    result-temp result
+    (array-get result (- result-size 1)) 0)
+  (memcpy result-temp (array-get strings 0) (strlen (array-get strings 0)))
+  (for ((set index 1) (< index strings-len) (set index (+ 1 index)))
+    (memcpy result-temp delimiter delimiter-len)
+    (memcpy result-temp (array-get strings index) (strlen (array-get strings index))))
+  (return result))
+
+(define (db-index-name type-id fields fields-len) (b8* db-type-id-t db-field-count-t*)
+  (declare result-len int index db-field-count-t fields-strings b8**)
+  (set fields-strings (malloc fields-len))
+  (if (not fields-strings) (return 0))
+  (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
+    (set
+      len (snprintf 0 0 "%lu" (array-get fields i))
+      str (malloc (+ 1 len))
+      )
+    ; todo: free fields
+    (if (not str) (return 0))
+    (set (array-get str len) 0
+)
+    (snprintf str "%lu" (array-get fields i))
+    (set (array-get fields-strings i) str)
+
+    )
+  (string-join fields "-")
+  (set result-len (snprintf 0, 0, ""));
+  (sprintf index-name)
+  (sprintf "%zu-%s" type:id )
+)
+
+(define (db-index-create type fields fields-len)
+  (status-t db-type-t* db-field-count-t* db-field-count-t)
+  db-mdb-declare-val-null
+  (db-txn-declare env txn)
+  (db-mdb-cursor-declare system)
+  (declare
+    data b8*
+    val-data MDB-val
+    indices db-index-t*
+    node-index db-index-t)
+  (sc-comment "check if already exists")
+  (set indices (db-index-get type fields fields-len))
+  (if indices (status-set-both-goto db-status-group-db db-status-id-duplicate))
+  (sc-comment "update schema")
+  (set val-data.mv-size (+ db-size-type-id (* (sizeof db-field-count-t) fields-len)))
+  (db-malloc data val-data.mv-size)
+  (set
+    val-data.mv-data data
+    (convert-type data b8*) db-system-label-index
+    data (+ 1 data)
+    (convert-type data db-type-id-t*) type:id
+    data (+ (sizeof db-type-id-t) data))
+  (memcpy data fields fields-len)
+  (db-txn-write-begin txn)
+  (db-mdb-cursor-open txn system)
+  (db-mdb-put system val-data val-null)
+  (sc-comment "add btree")
+  (db-index-name type:id fields)
+  (db-mdb-status-require! (mdb-dbi-open txn.mdb-txn "i-" MDB-CREATE &node-index.dbi))
+  (sc-comment "update cache")
+  (db-realloc type:indices indices (+ 1 type:indices-count))
+  (set index (array-get type:indices type:indices-count))
+  (db-mdb-status-require! (mdb-dbi-open ""))
+  (struct-set node-index
+    dbi fields
+    fields-len type)
+  (set type:indices-count (+ 1 type:indices-count))
+  (type
+    (struct
+      (dbi MDB-dbi)
+      (fields db-field-count-t*)
+      (fields-len db-field-count-t)
+      (type db-type-id-t)))
+  (label exit
+    (return status)))
+
+(define (db-index-rebuild index) (status-t db-index-t))
+
 (pre-define (db-index-errors-graph-log message left right label)
   (db-error-log
     "(groups index graph) (description \"%s\") (left %lu) (right %lu) (label %lu)"
