@@ -1,3 +1,50 @@
+(define (uint->string a) (uint8-t* intmax-t)
+  (declare
+    status int
+    len size-t
+    result uint8-t*)
+  (set
+    len
+    (if* (= 0 a) 1
+      (+ 1 (log10 a)))
+    result (malloc (+ 1 len)))
+  (if (not result) (return 0))
+  (if (< (snprintf result len "%j" a) 0)
+    (begin
+      (free result)
+      (return 0))
+    (begin
+      (set (array-get result len) 0)
+      (return result))))
+
+(define (string-join strings strings-len delimiter result-size) (b8* b8** size-t b8* size-t*)
+  "join strings into one string with each input string separated by delimiter.
+  zero if strings-len is zero or memory could not be allocated"
+  (declare
+    result b8*
+    temp b8*
+    size size-t
+    index size-t
+    delimiter-len size-t
+    strings-len size-t)
+  (if (not strings-len) (return 0))
+  (set
+    delimiter-len (strlen delimiter)
+    size (+ 1 (* delimiter-len (- strings-len 1))))
+  (for ((set index 0) (< index strings-len) (set index (+ 1 index)))
+    (set size (+ size (strlen (array-get strings index)))))
+  (set result (malloc size))
+  (if (not result) (return 0))
+  (set
+    temp result
+    (array-get result (- size 1)) 0)
+  (memcpy temp (array-get strings 0) (strlen (array-get strings 0)))
+  (for ((set index 1) (< index strings-len) (set index (+ 1 index)))
+    (memcpy temp delimiter delimiter-len)
+    (memcpy temp (array-get strings index) (strlen (array-get strings index))))
+  (if result-size (set *result-size size))
+  (return result))
+
 (define (db-index-get type fields fields-len) (db-index-t* db-type-t* db-field-count-t*)
   (declare
     indices-count db-index-count-t
@@ -15,55 +62,40 @@
       (return (+ index indices))))
   (return 0))
 
-(define (string-join strings strings-len delimiter) (b8* b8** size-t b8*)
-  "join strings into one string with each input string separated by delimiter.
-  zero if strings-len is zero or memory could not be allocated"
+(define (db-index-name type-id fields fields-len result-len)
+  (b8* db-type-id-t db-field-count-t* size-t*)
+  "create a string name from type-id and field offsets"
   (declare
-    result b8*
-    result-temp b8*
-    result-size size-t
-    index size-t
-    delimiter-len size-t
-    strings-len size-t)
-  (if (not strings-len) (return 0))
+    result-len int
+    i db-field-count-t
+    strings b8**
+    strings-len int
+    result b8*)
   (set
-    delimiter-len (strlen delimiter)
-    result-size (+ 1 (* delimiter-len (- strings-len 1))))
-  (for ((set index 0) (< index strings-len) (set index (+ 1 index)))
-    (set result-size (+ result-size (strlen (array-get strings index)))))
-  (set result (malloc result-size))
-  (if (not result) (return 0))
-  (set
-    result-temp result
-    (array-get result (- result-size 1)) 0)
-  (memcpy result-temp (array-get strings 0) (strlen (array-get strings 0)))
-  (for ((set index 1) (< index strings-len) (set index (+ 1 index)))
-    (memcpy result-temp delimiter delimiter-len)
-    (memcpy result-temp (array-get strings index) (strlen (array-get strings index))))
-  (return result))
-
-(define (db-index-name type-id fields fields-len) (b8* db-type-id-t db-field-count-t*)
-  (declare result-len int index db-field-count-t fields-strings b8**)
-  (set fields-strings (malloc fields-len))
-  (if (not fields-strings) (return 0))
+    result 0
+    strings-len (+ 1 fields-len)
+    strings (calloc strings-len (sizeof b8*)))
+  (if (not strings) (return 0))
+  (sc-comment "type id")
+  (set str (uint->string type-id))
+  (if (not str)
+    (begin
+      (free strings)
+      (return 0)))
+  (set *strings str)
+  (sc-comment "field ids")
   (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
-    (set
-      len (snprintf 0 0 "%lu" (array-get fields i))
-      str (malloc (+ 1 len))
-      )
-    ; todo: free fields
-    (if (not str) (return 0))
-    (set (array-get str len) 0
-)
-    (snprintf str "%lu" (array-get fields i))
-    (set (array-get fields-strings i) str)
-
-    )
-  (string-join fields "-")
-  (set result-len (snprintf 0, 0, ""));
-  (sprintf index-name)
-  (sprintf "%zu-%s" type:id )
-)
+    (set str (uint->string (array-get fields i)))
+    (if (not str) (goto exit))
+    (set (array-get strings (+ 1 i)) str))
+  (set result (string-join strings strings-len "-" &result-len))
+  (label exit
+    (while i
+      (free (array-get strings i))
+      (set i (- i 1)))
+    (free (array-get strings 0))
+    (free strings)
+    (return result)))
 
 (define (db-index-create type fields fields-len)
   (status-t db-type-t* db-field-count-t* db-field-count-t)
@@ -73,12 +105,16 @@
   (declare
     data b8*
     val-data MDB-val
+    name b8*
     indices db-index-t*
     node-index db-index-t)
+  (set
+    name 0
+    data 0)
   (sc-comment "check if already exists")
   (set indices (db-index-get type fields fields-len))
   (if indices (status-set-both-goto db-status-group-db db-status-id-duplicate))
-  (sc-comment "update schema")
+  (sc-comment "add to system btree")
   (set val-data.mv-size (+ db-size-type-id (* (sizeof db-field-count-t) fields-len)))
   (db-malloc data val-data.mv-size)
   (set
@@ -91,34 +127,46 @@
   (db-txn-write-begin txn)
   (db-mdb-cursor-open txn system)
   (db-mdb-put system val-data val-null)
-  (sc-comment "add btree")
-  (db-index-name type:id fields)
-  (db-mdb-status-require! (mdb-dbi-open txn.mdb-txn "i-" MDB-CREATE &node-index.dbi))
+  (sc-comment "add data btree")
+  (set name (db-index-name type:id fields))
+  (db-mdb-status-require! (mdb-dbi-open txn.mdb-txn name MDB-CREATE &node-index.dbi))
   (sc-comment "update cache")
-  (db-realloc type:indices indices (+ 1 type:indices-count))
-  (set index (array-get type:indices type:indices-count))
-  (db-mdb-status-require! (mdb-dbi-open ""))
+  (db-realloc type:indices indices (+ (sizeof db-index-t) type:indices-count))
+  (set node-index (array-get type:indices type:indices-count))
   (struct-set node-index
-    dbi fields
-    fields-len type)
+    fields fields
+    fields-len fields-len
+    type type:id)
   (set type:indices-count (+ 1 type:indices-count))
-  (type
-    (struct
-      (dbi MDB-dbi)
-      (fields db-field-count-t*)
-      (fields-len db-field-count-t)
-      (type db-type-id-t)))
   (label exit
+    (free name)
+    (free data)
     (return status)))
 
-(define (db-index-rebuild index) (status-t db-index-t))
+(define (db-index-delete index) (status-t db-index-t*)
+  status-init
+  (sc-comment "remove from system btree")
+  (sc-comment "remove data btree")
+  (sc-comment "update cache")
+  (label exit
+    (return status))
+  )
 
-(pre-define (db-index-errors-graph-log message left right label)
+(define (db-index-rebuild type index) (status-t db-type-t* db-index-t*)
+  ; get index btree name
+  ; clear data btree
+  ; select every node of type, access it, get the field values from data (variable or fix, anything else except size and type doesnt matter)
+  ; use db-node-select? no state needed because it happens all at once
+  ; support partial indices by allowing to add a data filter function to index definition. but then how to select it for speeding up queries?
+  ; maybe add partial-info to store a range or similar, as indices are manually used anyway
+  status-init (return status))
+
+#;(pre-define (db-index-errors-graph-log message left right label)
   (db-error-log
     "(groups index graph) (description \"%s\") (left %lu) (right %lu) (label %lu)"
     message left right label))
 
-(pre-define (db-index-errors-data-log message type id)
+#;(pre-define (db-index-errors-data-log message type id)
   (db-error-log "(groups index %s) (description %s) (id %lu)" type message id))
 
 #;(define (db-index-recreate-graph) status-t
