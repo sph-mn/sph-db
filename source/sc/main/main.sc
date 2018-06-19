@@ -21,6 +21,53 @@
       (if (not db-mdb-status-success?) db-mdb-status-require-notfound)
       (set state:options (bit-xor db-read-option-skip state:options)))))
 
+(define (uint->string a) (uint8-t* intmax-t)
+  (declare
+    status int
+    len size-t
+    result uint8-t*)
+  (set
+    len
+    (if* (= 0 a) 1
+      (+ 1 (log10 a)))
+    result (malloc (+ 1 len)))
+  (if (not result) (return 0))
+  (if (< (snprintf result len "%j" a) 0)
+    (begin
+      (free result)
+      (return 0))
+    (begin
+      (set (array-get result len) 0)
+      (return result))))
+
+(define (string-join strings strings-len delimiter result-size) (b8* b8** size-t b8* size-t*)
+  "join strings into one string with each input string separated by delimiter.
+  zero if strings-len is zero or memory could not be allocated"
+  (declare
+    result b8*
+    temp b8*
+    size size-t
+    index size-t
+    delimiter-len size-t
+    strings-len size-t)
+  (if (not strings-len) (return 0))
+  (set
+    delimiter-len (strlen delimiter)
+    size (+ 1 (* delimiter-len (- strings-len 1))))
+  (for ((set index 0) (< index strings-len) (set index (+ 1 index)))
+    (set size (+ size (strlen (array-get strings index)))))
+  (set result (malloc size))
+  (if (not result) (return 0))
+  (set
+    temp result
+    (array-get result (- size 1)) 0)
+  (memcpy temp (array-get strings 0) (strlen (array-get strings 0)))
+  (for ((set index 1) (< index strings-len) (set index (+ 1 index)))
+    (memcpy temp delimiter delimiter-len)
+    (memcpy temp (array-get strings index) (strlen (array-get strings index))))
+  (if result-size (set *result-size size))
+  (return result))
+
 (define (db-debug-log-ids a) (b0 db-ids-t*)
   "display an ids list"
   (printf "ids (%lu):" (db-ids-length a))

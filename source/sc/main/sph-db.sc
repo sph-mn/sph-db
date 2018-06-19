@@ -164,7 +164,7 @@
       (dbi MDB-dbi)
       (fields db-field-count-t*)
       (fields-len db-field-count-t)
-      (type db-type-id-t)))
+      (type db-type-t*)))
   db-type-t
   (type
     (struct
