@@ -5,6 +5,8 @@
 #define db_index_count_t b8
 #define db_name_len_max UINT8_MAX
 #define db_name_len_t b8
+#define db_data_len_t b32
+#define db_data_len_max UINT32_MAX
 #define db_ordinal_t b32
 #define db_type_id_mask UINT16_MAX
 #define db_type_id_t b16

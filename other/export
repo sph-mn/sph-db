@@ -14,6 +14,10 @@
     db_graph_read;
     db_graph_select;
     db_graph_selection_destroy;
+    db_node_values_prepare;
+    db_node_values_set;
+    db_node_create;
+    db_node_delete;
     db_open;
     db_open_options_set_defaults;
     db_read;
@@ -28,5 +32,6 @@
     db_type_create;
     db_type_delete;
     db_type_get;
+    db_type_field_get;
   local: *;
 };

@@ -1,4 +1,4 @@
-(pre-include "./sph-db.h" "../foreign/sph/one.c" "./lib/lmdb.c")
+(pre-include "./sph-db.h" "../foreign/sph/one.c" "./lib/lmdb.c" "math.h")
 
 (pre-define
   (free-and-set-null a)
@@ -23,7 +23,6 @@
 
 (define (uint->string a) (uint8-t* intmax-t)
   (declare
-    status int
     len size-t
     result uint8-t*)
   (set
@@ -48,8 +47,7 @@
     temp b8*
     size size-t
     index size-t
-    delimiter-len size-t
-    strings-len size-t)
+    delimiter-len size-t)
   (if (not strings-len) (return 0))
   (set
     delimiter-len (strlen delimiter)
@@ -224,8 +222,8 @@
 (define (db-free-env-type type) (b0 db-type-t*)
   (if (= 0 type:id) return)
   (free-and-set-null type:fields-fixed-offsets)
-  (db-free-env-types-fields &type:fields type:fields-count)
-  (db-free-env-types-indices &type:indices type:indices-count)
+  (db-free-env-types-fields &type:fields type:fields-len)
+  (db-free-env-types-indices &type:indices type:indices-len)
   (set type:id 0))
 
 (define (db-free-env-types types types-len) (b0 db-type-t** db-type-id-t)
@@ -251,6 +249,6 @@
   (set env:open #f)
   (pthread-mutex-destroy &env:mutex))
 
-(pre-include "./open.c" "./node.c" "./graph.c"
+(pre-include "./open.c" "./type.c" "./node.c" "./graph.c"
   ;"./index.c"
   )

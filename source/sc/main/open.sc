@@ -282,7 +282,7 @@
           (pointer-get (+ i fixed-offsets)) offset))))
   (set
     type:fields fields
-    type:fields-count count
+    type:fields-len count
     type:fields-fixed-count fixed-count
     type:fields-fixed-offsets fixed-offsets
     *data-pointer data)
@@ -362,11 +362,11 @@
   (db-mdb-declare-val val-key (+ 1 (sizeof db-id-t)))
   (declare
     current-type-id db-type-id-t
-    fields db-field-t*
-    fields-count db-field-count-t
+    fields db-field-count-t*
+    fields-len db-field-count-t
     indices db-index-t*
-    indices-alloc-count db-field-count-t
-    indices-count db-field-count-t
+    indices-alloc-len db-field-count-t
+    indices-len db-field-count-t
     indices-temp db-index-t*
     key (array b8 (db-size-system-key))
     type-id db-type-id-t
@@ -376,7 +376,7 @@
     indices 0
     fields 0
     current-type-id 0
-    indices-count 0
+    indices-len 0
     (db-system-key-label key) db-system-label-index
     (db-system-key-id key) 0
     val-key.mv-data key
@@ -388,37 +388,37 @@
     (set type-id (db-system-key-id val-key.mv-data))
     (if (= current-type-id type-id)
       (begin
-        (set indices-count (+ 1 indices-count))
-        (if (> indices-count indices-alloc-count)
+        (set indices-len (+ 1 indices-len))
+        (if (> indices-len indices-alloc-len)
           (begin
-            (set indices-alloc-count (* 2 indices-alloc-count))
-            (db-realloc indices indices-temp (* indices-alloc-count (sizeof db-index-t))))))
+            (set indices-alloc-len (* 2 indices-alloc-len))
+            (db-realloc indices indices-temp (* indices-alloc-len (sizeof db-index-t))))))
       (begin
-        (if indices-count
+        (if indices-len
           (begin
-            (sc-comment "reallocate indices from indices-alloc-count to indices-count")
-            (if (not (= indices-alloc-count indices-count))
-              (db-realloc indices indices-temp (* indices-count (sizeof db-index-t))))
+            (sc-comment "reallocate indices from indices-alloc-len to indices-len")
+            (if (not (= indices-alloc-len indices-len))
+              (db-realloc indices indices-temp (* indices-len (sizeof db-index-t))))
             (set (: (+ current-type-id types) indices) indices)))
         (set
           current-type-id type-id
-          indices-count 1
-          indices-alloc-count 10)
-        (db-calloc indices indices-alloc-count (sizeof db-index-t))))
-    (set fields-count
+          indices-len 1
+          indices-alloc-len 10)
+        (db-calloc indices indices-alloc-len (sizeof db-index-t))))
+    (set fields-len
       (/
         (- val-key.mv-size (sizeof db-system-label-index) (sizeof db-type-id-t))
         (sizeof db-field-count-t)))
-    (db-calloc fields fields-count (sizeof db-field-count-t))
-    (struct-set (pointer-get (+ (- indices-count 1) indices))
+    (db-calloc fields fields-len (sizeof db-field-count-t))
+    (struct-set (array-get indices (- indices-len 1))
       fields fields
-      fields-count fields-count)
+      fields-len fields-len)
     (db-mdb-cursor-get-norequire system val-key val-null MDB-NEXT))
   (if db-mdb-status-notfound? (status-set-id status-id-success)
     status-goto)
   (if current-type-id (set (: (+ current-type-id types) indices) indices))
   (label exit
-    (if status-failure? (db-free-env-types-indices &indices indices-count))
+    (if status-failure? (db-free-env-types-indices &indices indices-len))
     (return status)))
 
 (define (db-open-system txn) (status-t db-txn-t)

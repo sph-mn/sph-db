@@ -73,7 +73,8 @@ enum {
   db_status_id_undefined,
   db_status_group_db,
   db_status_group_lmdb,
-  db_status_group_libc
+  db_status_group_libc,
+  db_status_id_index_keysize
 };
 #define db_status_set_id_goto(status_id) \
   status_set_both_goto(db_status_group_db, status_id)
@@ -165,6 +166,8 @@ b8* db_status_description(status_t a) {
     } else if (db_status_id_different_format == a.id) {
       b = "configured format differs from the format the database was created "
           "with";
+    } else if (db_status_id_index_keysize == a.id) {
+      b = "index key to be inserted exceeds mdb maxkeysize";
     } else {
       b = "";
     };
@@ -204,7 +207,9 @@ b8* db_status_name(status_t a) {
     } else if (db_status_id_no_more_data == a.id) {
       b = "no-more-data";
     } else if (db_status_id_different_format == a.id) {
-      b = "different-format";
+      b = "differing-db-format";
+    } else if (db_status_id_index_keysize == a.id) {
+      b = "index-key-mdb-keysize";
     } else {
       b = "unknown";
     };

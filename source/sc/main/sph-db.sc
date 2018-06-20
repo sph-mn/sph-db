@@ -158,13 +158,7 @@
       (name-len db-name-len-t)
       (type db-field-type-t)
       (index db-field-count-t)))
-  db-index-t
-  (type
-    (struct
-      (dbi MDB-dbi)
-      (fields db-field-count-t*)
-      (fields-len db-field-count-t)
-      (type db-type-t*)))
+  db-index-t struct
   db-type-t
   (type
     (struct
@@ -175,10 +169,17 @@
       (fields db-field-t*)
       (flags b8)
       (id db-type-id-t)
-      (indices db-index-t*)
-      (indices-count db-index-count-t)
+      (indices (struct db-index-t*))
+      (indices-len db-index-count-t)
       (name b8*)
       (sequence db-id-t)))
+  db-index-t
+  (type
+    (struct db-index-t
+      (dbi MDB-dbi)
+      (fields db-field-count-t*)
+      (fields-len db-field-count-t)
+      (type db-type-t*)))
   db-env-t
   (type
     (struct
@@ -194,6 +195,11 @@
       (maxkeysize int)
       (types db-type-t*)
       (types-len db-type-id-t)))
+  db-node-value-t
+  (type
+    (struct
+      (size db-data-len-t)
+      (data b0*)))
   db-data-record-t
   (type
     (struct
@@ -263,9 +269,10 @@
   (db-statistics txn result) (status-t db-txn-t db-statistics-t*)
   (db-close env) (b0 db-env-t*)
   (db-open root options env) (status-t b8* db-open-options-t* db-env-t*)
+  (db-type-field-get type name) (db-field-t* db-type-t* b8*)
   (db-type-get env name) (db-type-t* db-env-t* b8*)
-  (db-type-create env name field-count fields flags result)
-  (status-t db-env-t* b8* db-field-count-t db-field-t* b8 db-type-id-t*) (db-type-delete env id)
+  (db-type-create env name  fields fields-len flags result)
+  (status-t db-env-t* b8* db-field-t* db-field-count-t b8 db-type-t**) (db-type-delete env id)
   (status-t db-env-t* db-type-id-t) (db-sequence-next-system env result)
   (status-t db-env-t* db-type-id-t*) (db-sequence-next env type-id result)
   (status-t db-env-t* db-type-id-t db-id-t*) (db-field-type-size a)
@@ -292,7 +299,13 @@
   (db-debug-count-all-btree-entries txn result) (status-t db-txn-t b32*)
   (db-debug-display-btree-counts txn) (status-t db-txn-t)
   (db-debug-display-content-graph-lr txn) (status-t db-txn-t)
-  (db-debug-display-content-graph-rl txn) (status-t db-txn-t))
+  (db-debug-display-content-graph-rl txn) (status-t db-txn-t)
+  (db-node-values-prepare type result) (status-t db-type-t* db-node-value-t**)
+  (db-node-values-set values field-index data size) (b0 db-node-value-t* db-field-count-t b0* size-t)
+  (db-node-create txn type values result) (status-t db-txn-t db-type-t* db-node-value-t* db-id-t*)
+  (db-node-delete txn ids) (status-t db-txn-t db-ids-t*)
+
+  )
 
 ;-- old --;
 

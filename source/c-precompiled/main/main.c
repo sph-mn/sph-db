@@ -1,6 +1,7 @@
 #include "./sph-db.h"
 #include "../foreign/sph/one.c"
 #include "./lib/lmdb.c"
+#include <math.h>
 #define free_and_set_null(a) \
   free(a); \
   a = 0
@@ -22,6 +23,57 @@
     }; \
     state->options = (db_read_option_skip ^ state->options); \
   }
+uint8_t* uint_to_string(intmax_t a) {
+  size_t len;
+  uint8_t* result;
+  len = ((0 == a) ? 1 : (1 + log10(a)));
+  result = malloc((1 + len));
+  if (!result) {
+    return (0);
+  };
+  if (snprintf(result, len, "%j", a) < 0) {
+    free(result);
+    return (0);
+  } else {
+    result[len] = 0;
+    return (result);
+  };
+};
+/** join strings into one string with each input string separated by delimiter.
+  zero if strings-len is zero or memory could not be allocated */
+b8* string_join(b8** strings,
+  size_t strings_len,
+  b8* delimiter,
+  size_t* result_size) {
+  b8* result;
+  b8* temp;
+  size_t size;
+  size_t index;
+  size_t delimiter_len;
+  if (!strings_len) {
+    return (0);
+  };
+  delimiter_len = strlen(delimiter);
+  size = (1 + (delimiter_len * (strings_len - 1)));
+  for (index = 0; (index < strings_len); index = (1 + index)) {
+    size = (size + strlen((strings[index])));
+  };
+  result = malloc(size);
+  if (!result) {
+    return (0);
+  };
+  temp = result;
+  result[(size - 1)] = 0;
+  memcpy(temp, (strings[0]), (strlen((strings[0]))));
+  for (index = 1; (index < strings_len); index = (1 + index)) {
+    memcpy(temp, delimiter, delimiter_len);
+    memcpy(temp, (strings[index]), (strlen((strings[index]))));
+  };
+  if (result_size) {
+    *result_size = size;
+  };
+  return (result);
+};
 /** display an ids list */
 b0 db_debug_log_ids(db_ids_t* a) {
   printf("ids (%lu):", db_ids_length(a));
@@ -79,7 +131,7 @@ status_t db_debug_count_all_btree_entries(db_txn_t txn, b32* result) {
 exit:
   return (status);
 };
-/** size in octets. only for fixed size types */
+/** size in octets. zero for variable size types */
 b8 db_field_type_size(b8 a) {
   if ((db_field_type_int64 == a) || (db_field_type_uint64 == a) ||
     (db_field_type_char64 == a) || (db_field_type_float64 == a)) {
@@ -208,8 +260,8 @@ b0 db_free_env_type(db_type_t* type) {
     return;
   };
   free_and_set_null((type->fields_fixed_offsets));
-  db_free_env_types_fields((&(type->fields)), (type->fields_count));
-  db_free_env_types_indices((&(type->indices)), (type->indices_count));
+  db_free_env_types_fields((&(type->fields)), (type->fields_len));
+  db_free_env_types_indices((&(type->indices)), (type->indices_len));
   type->id = 0;
 };
 b0 db_free_env_types(db_type_t** types, db_type_id_t types_len) {
@@ -241,5 +293,6 @@ b0 db_close(db_env_t* env) {
   pthread_mutex_destroy((&(env->mutex)));
 };
 #include "./open.c"
+#include "./type.c"
 #include "./node.c"
 #include "./graph.c"

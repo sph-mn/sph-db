@@ -16,7 +16,7 @@
     db-status-id-not-implemented
     db-status-id-path-not-accessible-db-root
     db-status-id-undefined
-    db-status-group-db db-status-group-lmdb db-status-group-libc db-status-id-max-keysize))
+    db-status-group-db db-status-group-lmdb db-status-group-libc db-status-id-index-keysize))
 
 (pre-define
   (db-status-set-id-goto status-id) (status-set-both-goto db-status-group-db status-id)

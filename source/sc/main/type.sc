@@ -39,23 +39,23 @@
 (define (db-type-field-get type name) (db-field-t* db-type-t* b8*)
   (declare
     index db-field-count-t
-    field-count db-field-count-t
+    fields-len db-field-count-t
     fields db-field-t*)
   (set
-    field-count type:field-count
+    fields-len type:fields-len
     fields type:fields)
-  (for ((set index 0) (< index field-count) (set index (+ 1 index)))
+  (for ((set index 0) (< index fields-len) (set index (+ 1 index)))
     (if
       (=
         0
         (strncmp
           name
           (struct-get (array-get fields index) name) (struct-get (array-get fields index) name-len)))
-      (return (array-get fields index))))
+      (return (+ fields index))))
   (return 0))
 
-(define (db-type-create env name field-count fields flags result)
-  (status-t db-env-t* b8* db-field-count-t db-field-t* b8 db-type-id-t*)
+(define (db-type-create env name fields fields-len flags result)
+  (status-t db-env-t* b8* db-field-t* db-field-count-t b8 db-type-t**)
   "the data format is documented in main/open.c"
   status-init
   (declare
@@ -81,7 +81,7 @@
     (status-set-both-goto db-status-group-db db-status-id-data-length))
   (sc-comment "allocate insert data")
   (set data-size (+ (sizeof db-name-len-t) name-len (sizeof db-field-count-t)))
-  (for ((set i 0) (< i field-count) (set i (+ 1 i)))
+  (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
     (set data-size
       (+ data-size (sizeof db-field-type-t) (sizeof db-name-len-t) (: (+ i fields) name-len))))
   (db-malloc data data-size)
@@ -93,9 +93,9 @@
   (memcpy data name name-len)
   (set
     data (+ name-len data)
-    (pointer-get (convert-type data db-field-count-t*)) field-count
+    (pointer-get (convert-type data db-field-count-t*)) fields-len
     data (+ (sizeof db-field-count-t) data))
-  (for ((set i 0) (< i field-count) (set i (+ 1 i)))
+  (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
     (set
       field (array-get fields i)
       (pointer-get (convert-type data db-field-type-t*)) field.type
@@ -124,7 +124,7 @@
     (db-open-type val-key.mv-data val-data.mv-data txn.env:types nodes &type-pointer))
   (db-mdb-cursor-close nodes)
   (db-txn-commit txn)
-  (set *result type-id)
+  (set *result type-pointer)
   (label exit
     (if (db-txn-active? txn)
       (begin

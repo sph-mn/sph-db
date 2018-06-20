@@ -2,7 +2,7 @@
 ; for generated bindings
 
 (define-as generated list-q
-  ; mostly from mi-lists
+  ; mostly from macro-generated mi-lists
   (declare
     db-ids-t (type (struct (link (struct db-ids-struct*)) (data db-id-t)))
     db-data-list-t (type (struct (link (struct db-data-list-struct*)) (data db-data-t)))
@@ -22,11 +22,11 @@
     (db-relation-records-length a) (size-t db-relation-records-t*)))
 
 (define-as excluded list-q
-  ; exported but not really supposed to be used
+  ; exported but should ideally not be exported
   "db-mdb-.*" "mi-list-.*" "db-status-no-more-data-if-mdb-notfound" "imht-set-.*")
 
 (define-as identifier-replacements list-q
-  ; replace short type aliases to make it clear that they do not have to be used
+  ; replace short type aliases to make clear that they do not have to be used
   "^b0" "void"
   "^b8" "uint8_t"
   "^b16" "uint16_t"

@@ -36,55 +36,62 @@
   status-init
   (declare
     fields (array db-field-t 3)
+    fields-2 (array db-field-t* 3)
     i db-field-count-t
-    type-1 db-type-t
-    type-1-pointer db-type-t*
-    type-id-1 db-type-id-t
-    type-2 db-type-t
-    type-id-2 db-type-id-t
-    type-2-pointer db-type-t*)
+    type-1 db-type-t*
+    type-2 db-type-t*
+    type-1-1 db-type-t*
+    type-2-1 db-type-t*)
   (sc-comment "type 1")
-  (status-require! (db-type-create env "test-type-1" 0 0 0 &type-id-1))
-  (set type-1 (array-get env:types type-id-1))
-  (test-helper-assert "type id" (= 1 type-id-1 type-1.id))
-  (test-helper-assert "type sequence" (= 1 type-1.sequence))
-  (test-helper-assert "type field count" (= 0 type-1.fields-count))
+  (status-require! (db-type-create env "test-type-1" 0 0 0 &type-1))
+  (test-helper-assert "type id" (= 1 type-1:id))
+  (test-helper-assert "type sequence" (= 1 type-1:sequence))
+  (test-helper-assert "type field count" (= 0 type-1:fields-len))
+  (sc-comment "type 2")
   (db-field-set (array-get fields 0) db-field-type-int8 "test-field-1" 12)
   (db-field-set (array-get fields 1) db-field-type-int8 "test-field-2" 12)
   (db-field-set (array-get fields 2) db-field-type-string "test-field-3" 12)
-  (sc-comment "type 2")
-  (status-require! (db-type-create env "test-type-2" 3 fields 0 &type-id-2))
-  (set type-2 (array-get env:types type-id-2))
-  (test-helper-assert "second type id" (= 2 type-id-2 type-2.id))
-  (test-helper-assert "second type sequence" (= 1 type-2.sequence))
-  (test-helper-assert "second type field-count" (= 3 type-2.fields-count))
-  (test-helper-assert "second type name" (= 0 (strcmp "test-type-2" type-2.name)))
-  (for ((set i 0) (< i type-2.fields-count) (set i (+ 1 i)))
+  (status-require! (db-type-create env "test-type-2" fields 3 0 &type-2))
+  (test-helper-assert "second type id" (= 2 type-2:id))
+  (test-helper-assert "second type sequence" (= 1 type-2:sequence))
+  (test-helper-assert "second type field-count" (= 3 type-2:fields-len))
+  (test-helper-assert "second type name" (= 0 (strcmp "test-type-2" type-2:name)))
+  (for ((set i 0) (< i type-2:fields-len) (set i (+ 1 i)))
     (test-helper-assert
       "second type field name len equality"
-      (= (: (+ i fields) name-len) (: (+ i type-2.fields) name-len)))
+      (= (: (+ i fields) name-len) (: (+ i type-2:fields) name-len)))
     (test-helper-assert
       "second type field name equality"
-      (= 0 (strcmp (: (+ i fields) name) (: (+ i type-2.fields) name))))
+      (= 0 (strcmp (: (+ i fields) name) (: (+ i type-2:fields) name))))
     (test-helper-assert
-      "second type type equality" (= (: (+ i fields) type) (: (+ i type-2.fields) type))))
+      "second type type equality" (= (: (+ i fields) type) (: (+ i type-2:fields) type))))
+  (array-set
+    fields-2
+    0
+    (db-type-field-get type-2 "test-field-1")
+    1 (db-type-field-get type-2 "test-field-2") 2 (db-type-field-get type-2 "test-field-3"))
+  (test-helper-assert
+    "type-field-get"
+    (=
+      (array-get fields-2 0)
+      (+ 0 type-2:fields)
+      (array-get fields-2 1) (+ 1 type-2:fields) (array-get fields-2 2) (+ 2 type-2:fields)))
   (sc-comment "type-get")
   (test-helper-assert "non existent type" (not (db-type-get env "test-type-x")))
   (set
-    type-1-pointer (db-type-get env "test-type-1")
-    type-2-pointer (db-type-get env "test-type-2"))
-  (test-helper-assert "existent types" (and type-1-pointer type-2-pointer))
-  (test-helper-assert
-    "existent type ids" (and (= type-id-1 type-1-pointer:id) (= type-id-2 type-2-pointer:id)))
+    type-1-1 (db-type-get env "test-type-1")
+    type-2-1 (db-type-get env "test-type-2"))
+  (test-helper-assert "existent types" (and type-1-1 type-2-1))
+  (test-helper-assert "existent type ids" (and (= type-1:id type-1-1:id) (= type-2:id type-2-1:id)))
   (test-helper-assert
     "existent types" (and (db-type-get env "test-type-1") (db-type-get env "test-type-2")))
   (sc-comment "type-delete")
-  (status-require! (db-type-delete env type-id-1))
-  (status-require! (db-type-delete env type-id-2))
+  (status-require! (db-type-delete env type-1:id))
+  (status-require! (db-type-delete env type-2:id))
   (set
-    type-1-pointer (db-type-get env "test-type-1")
-    type-2-pointer (db-type-get env "test-type-2"))
-  (test-helper-assert "type-delete type-get" (not (or type-1-pointer type-2-pointer)))
+    type-1-1 (db-type-get env "test-type-1")
+    type-2-1 (db-type-get env "test-type-2"))
+  (test-helper-assert "type-delete type-get" (not (or type-1-1 type-2-1)))
   (label exit
     (return status)))
 
@@ -94,11 +101,11 @@
   (declare
     i db-type-id-t
     name (array b8 255)
-    type-id db-type-id-t)
+    type db-type-t*)
   (sc-comment "10 times as many as there is extra room left for new types in env:types")
   (for ((set i 0) (< i (* 10 db-env-types-extra-count)) (set i (+ 1 i)))
     (sprintf name "test-type-%lu" i)
-    (status-require! (db-type-create env name 0 0 0 &type-id)))
+    (status-require! (db-type-create env name 0 0 0 &type)))
   (label exit
     (return status)))
 
@@ -109,14 +116,15 @@
     id db-id-t
     prev-id db-id-t
     prev-type-id db-type-id-t
+    type db-type-t*
     type-id db-type-id-t)
   (sc-comment "node sequence. note that sequences only persist through data inserts")
-  (status-require! (db-type-create env "test-type" 0 0 0 &type-id))
+  (status-require! (db-type-create env "test-type" 0 0 0 &type))
   (set
-    (: (+ type-id env:types) sequence) (- db-element-id-limit 100)
-    prev-id (db-id-add-type (- db-element-id-limit 100 1) type-id))
+    type:sequence (- db-element-id-limit 100)
+    prev-id (db-id-add-type (- db-element-id-limit 100 1) type:id))
   (for ((set i db-element-id-limit) (<= i db-element-id-limit) (set i (+ i 1)))
-    (set status (db-sequence-next env type-id &id))
+    (set status (db-sequence-next env type:id &id))
     (if (<= db-element-id-limit (db-id-element (+ 1 prev-id)))
       (begin
         (test-helper-assert "node sequence is limited" (= db-status-id-max-element-id status.id))
@@ -125,8 +133,8 @@
         "node sequence is monotonically increasing" (and status-success? (= 1 (- id prev-id)))))
     (set prev-id id))
   (sc-comment "system sequence. test last, otherwise type ids would be exhausted")
-  (set prev-type-id type-id)
-  (for ((set i type-id) (<= i db-type-id-limit) (set i (+ i 1)))
+  (set prev-type-id type:id)
+  (for ((set i type:id) (<= i db-type-id-limit) (set i (+ i 1)))
     (set status (db-sequence-next-system env &type-id))
     (if (<= db-type-id-limit (+ 1 prev-type-id))
       (begin
@@ -148,6 +156,7 @@
     (return status)))
 
 (define (test-id-construction env) (status-t db-env-t*)
+  "test features related to the combination of element and type id to node id"
   status-init
   (sc-comment "id creation")
   (declare type-id db-type-id-t)
@@ -198,114 +207,59 @@
   (test-helper-graph-delete-one 1 1 1 1)
   test-helper-graph-delete-footer)
 
+(define (test-helper-create-type-1 env result) (status-t db-env-t* db-type-t**)
+  "create a new type with three fields for testing"
+  status-init
+  (declare fields (array db-field-t 3))
+  (db-field-set (array-get fields 0) db-field-type-int8 "test-field-1" 12)
+  (db-field-set (array-get fields 1) db-field-type-int8 "test-field-2" 12)
+  (db-field-set (array-get fields 2) db-field-type-string "test-field-3" 12)
+  (status-require! (db-type-create env "test-type-1" fields 3 0 result))
+  (label exit
+    (return status)))
+
+(define (test-node-create env) (status-t db-env-t*)
+  status-init
+  ; todo: setting to big data for node value. add many nodes
+  (db-txn-declare env txn)
+  (declare
+    type db-type-t*
+    values db-node-value-t*
+    ;fields (array db-field-t 4)
+    value-1 b8
+    value-2 b8
+    id db-id-t)
+  (define value-3 b8* "abc")
+  (status-require! (test-helper-create-type-1 env &type))
+  (status-require! (db-node-values-prepare type &values))
+  (set
+    value-1 11
+    value-2 128)
+  (db-node-values-set values 0 &value-1 0)
+  (db-node-values-set values 1 &value-2 0)
+  (db-node-values-set values 2 &value-3 3)
+  (db-txn-write-begin txn)
+  (status-require! (db-node-create txn type values &id))
+  (db-txn-commit txn)
+  (label exit
+    (return status)))
+
 (define (main) int
   (test-helper-init env)
-  ;(test-helper-test-one test-open-empty env)
-  ;(test-helper-test-one test-statistics env)
-  ;(test-helper-test-one test-id-construction env)
-  ;(test-helper-test-one test-sequence env)
-  ;(test-helper-test-one test-type-create-get-delete env)
-  ;(test-helper-test-one test-type-create-many env)
-  ;(test-helper-test-one test-open-nonempty env)
-  ;(test-helper-test-one test-graph-read env)
+  (test-helper-test-one test-open-empty env)
+  (test-helper-test-one test-statistics env)
+  (test-helper-test-one test-id-construction env)
+  (test-helper-test-one test-sequence env)
+  (test-helper-test-one test-type-create-get-delete env)
+  (test-helper-test-one test-type-create-many env)
+  (test-helper-test-one test-open-nonempty env)
+  (test-helper-test-one test-graph-read env)
   (test-helper-test-one test-graph-delete env)
   (label exit
     test-helper-report-status
     (return status.id)))
 
 #;(
-
-
-(define (test-id-create-identify-exists) status-t
-  status-init
-  (define ids-result db-ids-t* 0)
-  db-txn-introduce
-  db-txn-write-begin
-  (status-require! (db-id-create db-txn 3 &ids-result))
-  (if (not (and ids-result (= 3 (db-ids-length ids-result)))) (status-set-id-goto 1))
-  (define boolean-result boolean)
-  (status-require! (db-exists? db-txn ids-result &boolean-result))
-  (test-helper-assert "db-exists?" boolean-result)
-  (define ids db-ids-t* ids-result)
-  (set ids-result 0)
-  (status-require! (db-identify db-txn ids &ids-result))
-  (test-helper-assert "result length" (and ids-result (= 3 (db-ids-length ids-result))))
-  (label exit
-    (if db-txn db-txn-abort)
-    (db-ids-destroy ids)
-    (db-ids-destroy ids-result)
-    (return status)))
-
-(define (test-extern) status-t
-  (define data-ids db-ids-t* 0)
-  status-init
-  db-txn-introduce
-  db-txn-write-begin
-  (define data-element-value db-id-t 2)
-  (define data-element db-data-t
-    (struct-literal (size db-size-id) (data &data-element-value)))
-  (status-require! (db-extern-create db-txn 50 &data-element &data-ids))
-  (test-helper-assert "db-extern? 1" (and data-ids (db-extern? (db-ids-first data-ids))))
-  (define data-list db-data-list-t* 0)
-  (status-require! (db-extern-nodes db-txn data-ids #t &data-list))
-  (test-helper-assert
-    "data-equal?"
-    (equal?
-      (pointer-get (convert-type data-element.data db-id-t*))
-      (pointer-get (convert-type (struct-get (db-data-list-first data-list) data) db-id-t*))))
-  (define data-ids-2 db-ids-t* 0)
-  (db-status-require-read! (db-extern-data->id db-txn data-element &data-ids-2))
-  (test-helper-assert "db-extern? 2" (db-extern? (db-ids-first data-ids)))
-  (test-helper-assert "db-extern? 3 " (db-extern? (db-ids-first data-ids-2)))
-  db-txn-commit
-  (label exit
-    (if db-txn db-txn-abort)
-    (return status)))
-
-(define (test-intern) status-t
-  ; todo: should test more than one data element
-  (define data-ids db-ids-t* 0)
-  (define data-element-value db-id-t 2)
-  (define data-element db-data-t
-    (struct-literal (size db-size-id) (data &data-element-value)))
-  (define data db-data-list-t* (db-data-list-add 0 data-element))
-  status-init
-  db-txn-introduce
-  db-txn-write-begin
-  (status-require! (db-intern-ensure db-txn data &data-ids))
-  (test-helper-assert
-    "db-intern-ensure result length" (= (db-ids-length data-ids) (db-data-list-length data)))
-  (define id-first db-id-t (db-ids-first data-ids))
-  (test-helper-assert "db-intern?" (and data-ids (db-intern? id-first)))
-  (define data-2 db-data-list-t* 0)
-  (define data-ids-2 db-ids-t* 0)
-  (status-require! (db-intern-nodes db-txn data-ids #t &data-2))
-  (test-helper-assert
-    "nodes return length" (and data (= (db-ids-length data-ids) (db-data-list-length data-2))))
-  (status-require! (db-intern-data->id db-txn data #t &data-ids-2))
-  db-txn-commit
-  (test-helper-assert
-    "data->id return length" (and data (= (db-ids-length data-ids-2) (db-data-list-length data))))
-  db-txn-write-begin
-  (set data-element-value 9)
-  (status-require! (db-intern-update db-txn id-first data-element))
-  (define status-2 status-t (struct-literal 0 0))
-  (set status-2 (db-intern-update db-txn id-first data-element))
-  (test-helper-assert "duplicate update prevention" (= db-status-id-duplicate status-2.id))
-  db-txn-commit
-  db-txn-begin
-  (define data-ids-3 db-ids-t* (db-ids-add 0 id-first))
-  (define data-3 db-data-list-t* 0)
-  (status-require! (db-intern-nodes db-txn data-ids-3 #t &data-3))
-  db-txn-abort
-  (label exit
-    (if db-txn db-txn-abort)
-    (db-ids-destroy data-ids)
-    (db-ids-destroy data-ids-2)
-    (db-data-list-destroy data)
-    (db-data-list-destroy data-2)
-    (return status)))
-
 (define (test-index) status-t
   status-init
   (define ids db-ids-t*)
@@ -361,8 +315,6 @@
     (if db-txn db-txn-abort)
     db-status-success-if-no-more-data
     (return status)))
-
-
 
 (define (test-concurrent-write/read-thread status-pointer) (b0* b0*)
   status-init
@@ -420,32 +372,4 @@
   (set status thread-three-result)
   (label exit
     (return status)))
-
-(define (test-id-creation) status-t
-  status-init
-  db-txn-introduce
-  (define count b32 32)
-  (define ids db-ids-t* 0)
-  (while count
-    db-txn-write-begin
-    (db-id-create db-txn 2 &ids)
-    db-txn-commit
-    ; re-open the database so that the id initialisation is done again
-    (test-helper-db-reset #t)
-    (set count (- count 1)))
-  (define ids-a db-ids-t* ids)
-  (define ids-b db-ids-t* 0)
-  (define ids-c db-ids-t* ids-b)
-  ; check for duplicates
-  (while ids-a
-    (while ids-c
-      (if (= (db-ids-first ids-a) (db-ids-first ids-c)) (status-set-id-goto 1))
-      (set ids-c (db-ids-rest ids-c)))
-    (set ids-b (db-ids-add ids-b (db-ids-first ids-a)))
-    (set ids-c ids-b)
-    (set ids-a (db-ids-rest ids-a)))
-  (db-ids-destroy ids)
-  (label exit
-    (return status)))
-
   )

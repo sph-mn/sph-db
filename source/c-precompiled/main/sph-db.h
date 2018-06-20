@@ -100,7 +100,8 @@ enum {
   db_status_id_undefined,
   db_status_group_db,
   db_status_group_lmdb,
-  db_status_group_libc
+  db_status_group_libc,
+  db_status_id_index_keysize
 };
 #define db_status_set_id_goto(status_id) \
   status_set_both_goto(db_status_group_db, status_id)
@@ -192,6 +193,8 @@ b8* db_status_description(status_t a) {
     } else if (db_status_id_different_format == a.id) {
       b = "configured format differs from the format the database was created "
           "with";
+    } else if (db_status_id_index_keysize == a.id) {
+      b = "index key to be inserted exceeds mdb maxkeysize";
     } else {
       b = "";
     };
@@ -231,7 +234,9 @@ b8* db_status_name(status_t a) {
     } else if (db_status_id_no_more_data == a.id) {
       b = "no-more-data";
     } else if (db_status_id_different_format == a.id) {
-      b = "different-format";
+      b = "differing-db-format";
+    } else if (db_status_id_index_keysize == a.id) {
+      b = "index-key-mdb-keysize";
     } else {
       b = "unknown";
     };
@@ -249,6 +254,8 @@ b8* db_status_name(status_t a) {
 #define db_index_count_t b8
 #define db_name_len_max UINT8_MAX
 #define db_name_len_t b8
+#define db_data_len_t b32
+#define db_data_len_max UINT32_MAX
 #define db_ordinal_t b32
 #define db_type_id_mask UINT16_MAX
 #define db_type_id_t b16
@@ -361,11 +368,6 @@ b8* db_status_name(status_t a) {
 #define db_env_define(name) \
   db_env_t* name; \
   db_calloc(name, 1, sizeof(db_env_t))
-#define db_data_t MDB_val
-#define db_data_data(a) data.mv_data
-#define db_data_data_set(a, value) data.mv_data = value
-#define db_data_size(a) data.mv_size
-#define db_data_size_set(a, value) data.mv_size = value
 /** db-id-t -> db-id-t */
 #define db_node_virtual_to_data(id) (id >> 2)
 #define db_pointer_allocation_set(result, expression, result_temp) \
@@ -413,25 +415,27 @@ typedef struct {
   b8* name;
   db_name_len_t name_len;
   db_field_type_t type;
+  db_field_count_t index;
 } db_field_t;
+struct db_index_t;
 typedef struct {
-  MDB_dbi dbi;
-  db_field_t* fields;
-  db_field_count_t fields_count;
-  db_type_id_t type;
-} db_index_t;
-typedef struct {
-  db_field_count_t fields_count;
+  db_field_count_t fields_len;
   db_field_count_t fields_fixed_count;
   db_field_count_t* fields_fixed_offsets;
   db_field_t* fields;
   b8 flags;
   db_type_id_t id;
-  db_index_t* indices;
-  db_index_count_t indices_count;
+  struct db_index_t* indices;
+  db_index_count_t indices_len;
   b8* name;
   db_id_t sequence;
 } db_type_t;
+typedef struct db_index_t {
+  MDB_dbi dbi;
+  db_field_count_t* fields;
+  db_field_count_t fields_len;
+  db_type_t* type;
+} db_index_t;
 typedef struct {
   MDB_dbi dbi_nodes;
   MDB_dbi dbi_graph_ll;
@@ -442,9 +446,14 @@ typedef struct {
   boolean open;
   b8* root;
   pthread_mutex_t mutex;
+  int maxkeysize;
   db_type_t* types;
   db_type_id_t types_len;
 } db_env_t;
+typedef struct {
+  db_data_len_t size;
+  b0* data;
+} db_node_value_t;
 typedef struct {
   db_id_t id;
   size_t size;
@@ -501,13 +510,14 @@ b0 db_graph_selection_destroy(db_graph_read_state_t* state);
 status_t db_statistics(db_txn_t txn, db_statistics_t* result);
 b0 db_close(db_env_t* env);
 status_t db_open(b8* root, db_open_options_t* options, db_env_t* env);
+db_field_t* db_type_field_get(db_type_t* type, b8* name);
 db_type_t* db_type_get(db_env_t* env, b8* name);
 status_t db_type_create(db_env_t* env,
   b8* name,
-  db_field_count_t field_count,
   db_field_t* fields,
+  db_field_count_t fields_len,
   b8 flags,
-  db_type_id_t* result);
+  db_type_t** result);
 status_t db_type_delete(db_env_t* env, db_type_id_t id);
 status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result);
 status_t db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result);
@@ -557,3 +567,13 @@ status_t db_debug_count_all_btree_entries(db_txn_t txn, b32* result);
 status_t db_debug_display_btree_counts(db_txn_t txn);
 status_t db_debug_display_content_graph_lr(db_txn_t txn);
 status_t db_debug_display_content_graph_rl(db_txn_t txn);
+status_t db_node_values_prepare(db_type_t* type, db_node_value_t** result);
+b0 db_node_values_set(db_node_value_t* values,
+  db_field_count_t field_index,
+  b0* data,
+  size_t size);
+status_t db_node_create(db_txn_t txn,
+  db_type_t* type,
+  db_node_value_t* values,
+  db_id_t* result);
+status_t db_node_delete(db_txn_t txn, db_ids_t* ids);

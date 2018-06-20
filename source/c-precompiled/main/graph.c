@@ -12,6 +12,13 @@
 #define db_graph_records_add_x(target, record, target_temp) \
   db_pointer_allocation_set( \
     target, db_graph_records_add(target, record), target_temp)
+#define db_index_errors_graph_log(message, left, right, label) \
+  db_error_log("(groups index graph) (description \"%s\") (left %lu) (right " \
+               "%lu) (label %lu)", \
+    message, \
+    left, \
+    right, \
+    label)
 /** search data until the given id-right has been found */
 status_t db_mdb_graph_lr_seek_right(MDB_cursor* graph_lr, db_id_t id_right) {
   status_init;
