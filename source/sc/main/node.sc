@@ -56,7 +56,8 @@
     field-count db-field-count-t
     field-size b8
     size size-t
-    data b8*
+    data b0*
+    data-temp b8*
     field-type db-field-type-t)
   (set
     field-count type:fields-len
@@ -73,37 +74,58 @@
       (status-set-both-goto db-status-group-db db-status-id-data-length))
     (set size (+ field-size size)))
   (db-malloc data size)
+  (set data-temp data)
   (sc-comment "copy data")
   (for ((set i 0) (< i field-count) (set i (+ 1 i)))
     (set field-size (struct-get (array-get values i) size))
     (if (>= i type:fields-fixed-count)
       (set
-        (pointer-get (convert-type data db-data-len-t*)) field-size
-        data (+ (sizeof db-data-len-t) data)))
-    (memcpy data (struct-get (array-get values i) data) field-size)
-    (set data (+ size data)))
+        (pointer-get (convert-type data-temp db-data-len-t*)) field-size
+        data-temp (+ (sizeof db-data-len-t) data-temp)))
+    (memcpy data-temp (struct-get (array-get values i) data) field-size)
+    (set data-temp (+ size data-temp)))
   (set
     *result data
     *result-size size)
   (label exit
     (return status)))
 
-(define (db-node-values-prepare type result) (status-t db-type-t* db-node-value-t**)
+(declare
+  db-node-value-t
+  (type
+    (struct
+      (size db-data-len-t)
+      (data b0*)))
+  db-node-values-t
+  (type
+    (struct
+      data
+      db-node-value-t*
+      type
+      db-type-t*)))
+
+(define (db-node-values-new type result) (status-t db-type-t* db-node-values-t*)
   "allocate memory for a new node values array"
   status-init
-  (declare a db-node-value-t*)
-  (db-malloc a (* type:fields-len (sizeof db-node-value-t)))
-  (set *result a)
+  (declare data db-node-value-t*)
+  (db-malloc data (* type:fields-len (sizeof db-node-value-t)))
+  (struct-set *result
+    data data
+    type type)
   (label exit
     (return status)))
 
 (define (db-node-values-set values field-index data size)
-  (b0 db-node-value-t* db-field-count-t b0* size-t)
+  (b0 db-node-values-t db-field-count-t b0* size-t)
   "set a value for a field in node values.
   size can be set to zero and is ignored for fixed length types"
-  (struct-set (array-get values field-index)
+  (declare type db-field-type-t)
+  (set field-type (struct-get (array-get values.type:fields field-index) type))
+  (struct-set (array-get values.data field-index)
     data data
-    size size))
+    size
+    (if* (db-field-type-fixed? field-type) (db-field-type-size field-type)
+      size)))
 
 (define (db-node-create txn type values result)
   (status-t db-txn-t db-type-t* db-node-value-t* db-id-t*)
@@ -112,11 +134,13 @@
   (db-mdb-cursor-declare nodes)
   (declare
     val-data MDB-val
+    data b0*
     id db-id-t)
   (set
-    val-data.mv-data 0
+    data 0
     val-id.mv-data &id)
-  (status-require! (db-node-values->data type values &val-data.mv-data &val-data.mv-size))
+  (status-require! (db-node-values->data type values &data &val-data.mv-size))
+  (set val-data.mv-data data)
   (db-mdb-cursor-open txn nodes)
   (status-require! (db-sequence-next txn.env type:id &id))
   (db-mdb-status-require! (mdb-cursor-put nodes (address-of val-id) (address-of val-data) 0))
@@ -125,7 +149,7 @@
   (set *result id)
   (label exit
     (db-mdb-cursor-close-if-active nodes)
-    (free val-data.mv-data)
+    (free data)
     (return status)))
 
 (define (db-graph-internal-delete left right label ordinal graph-lr graph-rl graph-ll)

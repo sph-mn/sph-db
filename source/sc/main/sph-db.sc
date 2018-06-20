@@ -195,11 +195,6 @@
       (maxkeysize int)
       (types db-type-t*)
       (types-len db-type-id-t)))
-  db-node-value-t
-  (type
-    (struct
-      (size db-data-len-t)
-      (data b0*)))
   db-data-record-t
   (type
     (struct
@@ -300,7 +295,7 @@
   (db-debug-display-btree-counts txn) (status-t db-txn-t)
   (db-debug-display-content-graph-lr txn) (status-t db-txn-t)
   (db-debug-display-content-graph-rl txn) (status-t db-txn-t)
-  (db-node-values-prepare type result) (status-t db-type-t* db-node-value-t**)
+  (db-node-values-new type result) (status-t db-type-t* db-node-value-t**)
   (db-node-values-set values field-index data size) (b0 db-node-value-t* db-field-count-t b0* size-t)
   (db-node-create txn type values result) (status-t db-txn-t db-type-t* db-node-value-t* db-id-t*)
   (db-node-delete txn ids) (status-t db-txn-t db-ids-t*)

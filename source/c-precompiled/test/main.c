@@ -225,7 +225,7 @@ status_t test_node_create(db_env_t* env) {
   db_id_t id;
   b8* value_3 = "abc";
   status_require_x(test_helper_create_type_1(env, (&type)));
-  status_require_x(db_node_values_prepare(type, (&values)));
+  status_require_x(db_node_values_new(type, (&values)));
   value_1 = 11;
   value_2 = 128;
   db_node_values_set(values, 0, (&value_1), 0);
@@ -235,19 +235,12 @@ status_t test_node_create(db_env_t* env) {
   status_require_x(db_node_create(txn, type, values, (&id)));
   db_txn_commit(txn);
 exit:
+  db_txn_abort_if_active(txn);
   return (status);
 };
 int main() {
   test_helper_init(env);
-  test_helper_test_one(test_open_empty, env);
-  test_helper_test_one(test_statistics, env);
-  test_helper_test_one(test_id_construction, env);
-  test_helper_test_one(test_sequence, env);
-  test_helper_test_one(test_type_create_get_delete, env);
-  test_helper_test_one(test_type_create_many, env);
-  test_helper_test_one(test_open_nonempty, env);
-  test_helper_test_one(test_graph_read, env);
-  test_helper_test_one(test_graph_delete, env);
+  test_helper_test_one(test_node_create, env);
 exit:
   test_helper_report_status;
   return ((status.id));

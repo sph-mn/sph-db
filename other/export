@@ -14,7 +14,7 @@
     db_graph_read;
     db_graph_select;
     db_graph_selection_destroy;
-    db_node_values_prepare;
+    db_node_values_new;
     db_node_values_set;
     db_node_create;
     db_node_delete;

@@ -63,7 +63,8 @@ status_t db_node_values_to_data(db_type_t* type,
   db_field_count_t field_count;
   b8 field_size;
   size_t size;
-  b8* data;
+  b0* data;
+  b8* data_temp;
   db_field_type_t field_type;
   field_count = type->fields_len;
   size = 0;
@@ -82,23 +83,25 @@ status_t db_node_values_to_data(db_type_t* type,
     size = (field_size + size);
   };
   db_malloc(data, size);
+  data_temp = data;
   /* copy data */
   for (i = 0; (i < field_count); i = (1 + i)) {
     field_size = (values[i]).size;
     if (i >= type->fields_fixed_count) {
-      *((db_data_len_t*)(data)) = field_size;
-      data = (sizeof(db_data_len_t) + data);
+      *((db_data_len_t*)(data_temp)) = field_size;
+      data_temp = (sizeof(db_data_len_t) + data_temp);
     };
-    memcpy(data, ((values[i]).data), field_size);
-    data = (size + data);
+    memcpy(data_temp, ((values[i]).data), field_size);
+    data_temp = (size + data_temp);
   };
+  debug_log("2 %p", data);
   *result = data;
   *result_size = size;
 exit:
   return (status);
 };
 /** allocate memory for a new node values array */
-status_t db_node_values_prepare(db_type_t* type, db_node_value_t** result) {
+status_t db_node_values_new(db_type_t* type, db_node_value_t** result) {
   status_init;
   db_node_value_t* a;
   db_malloc(a, (type->fields_len * sizeof(db_node_value_t)));
@@ -123,11 +126,13 @@ status_t db_node_create(db_txn_t txn,
   db_mdb_declare_val_id;
   db_mdb_cursor_declare(nodes);
   MDB_val val_data;
+  b0* data;
   db_id_t id;
-  val_data.mv_data = 0;
+  data = 0;
   val_id.mv_data = &id;
-  status_require_x((db_node_values_to_data(
-    type, values, (&(val_data.mv_data)), (&(val_data.mv_size)))));
+  status_require_x(
+    (db_node_values_to_data(type, values, (&data), (&(val_data.mv_size)))));
+  val_data.mv_data = data;
   db_mdb_cursor_open(txn, nodes);
   status_require_x((db_sequence_next((txn.env), (type->id), (&id))));
   db_mdb_status_require_x(mdb_cursor_put(nodes, (&val_id), (&val_data), 0));
@@ -136,7 +141,8 @@ status_t db_node_create(db_txn_t txn,
   *result = id;
 exit:
   db_mdb_cursor_close_if_active(nodes);
-  free((val_data.mv_data));
+  debug_log("3 %p", data);
+  free(data);
   return (status);
 };
 /** declare because it is defined later */

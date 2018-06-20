@@ -228,10 +228,11 @@
     ;fields (array db-field-t 4)
     value-1 b8
     value-2 b8
-    id db-id-t)
+    id db-id-t
+    )
   (define value-3 b8* "abc")
   (status-require! (test-helper-create-type-1 env &type))
-  (status-require! (db-node-values-prepare type &values))
+  (status-require! (db-node-values-new type &values))
   (set
     value-1 11
     value-2 128)
@@ -242,19 +243,21 @@
   (status-require! (db-node-create txn type values &id))
   (db-txn-commit txn)
   (label exit
+    (db-txn-abort-if-active txn)
     (return status)))
 
 (define (main) int
   (test-helper-init env)
-  (test-helper-test-one test-open-empty env)
-  (test-helper-test-one test-statistics env)
-  (test-helper-test-one test-id-construction env)
-  (test-helper-test-one test-sequence env)
-  (test-helper-test-one test-type-create-get-delete env)
-  (test-helper-test-one test-type-create-many env)
-  (test-helper-test-one test-open-nonempty env)
-  (test-helper-test-one test-graph-read env)
-  (test-helper-test-one test-graph-delete env)
+  ;(test-helper-test-one test-open-empty env)
+  ;(test-helper-test-one test-statistics env)
+  ;(test-helper-test-one test-id-construction env)
+  ;(test-helper-test-one test-sequence env)
+  ;(test-helper-test-one test-type-create-get-delete env)
+  ;(test-helper-test-one test-type-create-many env)
+  ;(test-helper-test-one test-open-nonempty env)
+  ;(test-helper-test-one test-graph-read env)
+  ;(test-helper-test-one test-graph-delete env)
+  (test-helper-test-one test-node-create env)
   (label exit
     test-helper-report-status
     (return status.id)))
