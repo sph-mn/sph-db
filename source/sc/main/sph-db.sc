@@ -98,11 +98,6 @@
   (begin
     (declare name db-env-t*)
     (db-calloc name 1 (sizeof db-env-t)))
-  ;db-data-t MDB-val
-  ;(db-data-data a) data.mv-data
-  ;(db-data-data-set a value) (set data.mv-data value)
-  ;(db-data-size a) data.mv-size
-  ;(db-data-size-set a value) (set data.mv-size value)
   (db-node-virtual->data id)
   (begin
     "db-id-t -> db-id-t"
@@ -169,13 +164,16 @@
       (fields db-field-t*)
       (flags b8)
       (id db-type-id-t)
-      (indices (struct db-index-t*))
+      (indices
+        (struct
+          db-index-t*))
       (indices-len db-index-count-t)
       (name b8*)
       (sequence db-id-t)))
   db-index-t
   (type
-    (struct db-index-t
+    (struct
+      db-index-t
       (dbi MDB-dbi)
       (fields db-field-count-t*)
       (fields-len db-field-count-t)
@@ -236,7 +234,33 @@
   (type
     (struct
       (min db-ordinal-t)
-      (max db-ordinal-t))))
+      (max db-ordinal-t)))
+  db-node-value-t
+  (type
+    (struct
+      (size db-data-len-t)
+      (data b0*)))
+  db-node-values-t
+  (type
+    (struct
+      (type db-type-t*)
+      (data db-node-value-t*)))
+  db-node-read-state-t
+  (struct
+    (current b0*)
+    (current-id db-id-t)
+    (current-size size-t)
+    (cursor MDB-cursor*)
+    (options b8)
+    (status status-t)
+    (type db-type-t*))
+  node-matcher-t
+  (function-pointer boolean b0* size-t)
+  db-node-data-t
+  (type
+    (struct
+      (data b0*)
+      (size size-t))))
 
 (pre-include "./lib/data-structures.c")
 
@@ -266,7 +290,7 @@
   (db-open root options env) (status-t b8* db-open-options-t* db-env-t*)
   (db-type-field-get type name) (db-field-t* db-type-t* b8*)
   (db-type-get env name) (db-type-t* db-env-t* b8*)
-  (db-type-create env name  fields fields-len flags result)
+  (db-type-create env name fields fields-len flags result)
   (status-t db-env-t* b8* db-field-t* db-field-count-t b8 db-type-t**) (db-type-delete env id)
   (status-t db-env-t* db-type-id-t) (db-sequence-next-system env result)
   (status-t db-env-t* db-type-id-t*) (db-sequence-next env type-id result)
@@ -295,12 +319,10 @@
   (db-debug-display-btree-counts txn) (status-t db-txn-t)
   (db-debug-display-content-graph-lr txn) (status-t db-txn-t)
   (db-debug-display-content-graph-rl txn) (status-t db-txn-t)
-  (db-node-values-new type result) (status-t db-type-t* db-node-value-t**)
-  (db-node-values-set values field-index data size) (b0 db-node-value-t* db-field-count-t b0* size-t)
-  (db-node-create txn type values result) (status-t db-txn-t db-type-t* db-node-value-t* db-id-t*)
-  (db-node-delete txn ids) (status-t db-txn-t db-ids-t*)
-
-  )
+  (db-node-values-new type result) (status-t db-type-t* db-node-values-t*)
+  (db-node-values-set values field-index data size) (b0 db-node-values-t db-field-count-t b0* size-t)
+  (db-node-create txn values result) (status-t db-txn-t db-node-values-t db-id-t*)
+  (db-node-delete txn ids) (status-t db-txn-t db-ids-t*))
 
 ;-- old --;
 
@@ -324,12 +346,7 @@
 (define db-index-errors-graph-null db-index-errors-graph-t (struct-literal 0 0 0 0 0))
 (define db-index-errors-null db-index-errors-t (struct-literal 0 0 0 0 0))
 
-(define-type db-node-read-state-t
-  (struct
-    (status status-t)
-    (cursor (MDB-cursor* restrict))
-    (types b8)
-    (options b8)))
+
 
 (define-type db-intern-read-state-t
   (struct

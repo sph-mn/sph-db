@@ -219,7 +219,7 @@ status_t test_node_create(db_env_t* env) {
   status_init;
   db_txn_declare(env, txn);
   db_type_t* type;
-  db_node_value_t* values;
+  db_node_values_t values;
   b8 value_1;
   b8 value_2;
   db_id_t id;
@@ -232,7 +232,10 @@ status_t test_node_create(db_env_t* env) {
   db_node_values_set(values, 1, (&value_2), 0);
   db_node_values_set(values, 2, (&value_3), 3);
   db_txn_write_begin(txn);
-  status_require_x(db_node_create(txn, type, values, (&id)));
+  status_require_x(db_node_create(txn, values, (&id)));
+  test_helper_assert("element id 1", (1 == db_id_element(id)));
+  status_require_x(db_node_create(txn, values, (&id)));
+  test_helper_assert("element id 2", (2 == db_id_element(id)));
   db_txn_commit(txn);
 exit:
   db_txn_abort_if_active(txn);

@@ -451,10 +451,6 @@ typedef struct {
   db_type_id_t types_len;
 } db_env_t;
 typedef struct {
-  db_data_len_t size;
-  b0* data;
-} db_node_value_t;
-typedef struct {
   db_id_t id;
   size_t size;
   b0* data;
@@ -490,6 +486,14 @@ typedef struct {
   db_ordinal_t min;
   db_ordinal_t max;
 } db_ordinal_condition_t;
+typedef struct {
+  db_data_len_t size;
+  b0* data;
+} db_node_value_t;
+typedef struct {
+  db_type_t* type;
+  db_node_value_t* data;
+} db_node_values_t;
 #include "./lib/data-structures.c"
 typedef struct {
   status_t status;
@@ -567,13 +571,10 @@ status_t db_debug_count_all_btree_entries(db_txn_t txn, b32* result);
 status_t db_debug_display_btree_counts(db_txn_t txn);
 status_t db_debug_display_content_graph_lr(db_txn_t txn);
 status_t db_debug_display_content_graph_rl(db_txn_t txn);
-status_t db_node_values_new(db_type_t* type, db_node_value_t** result);
-b0 db_node_values_set(db_node_value_t* values,
+status_t db_node_values_new(db_type_t* type, db_node_values_t* result);
+b0 db_node_values_set(db_node_values_t values,
   db_field_count_t field_index,
   b0* data,
   size_t size);
-status_t db_node_create(db_txn_t txn,
-  db_type_t* type,
-  db_node_value_t* values,
-  db_id_t* result);
+status_t db_node_create(db_txn_t txn, db_node_values_t values, db_id_t* result);
 status_t db_node_delete(db_txn_t txn, db_ids_t* ids);

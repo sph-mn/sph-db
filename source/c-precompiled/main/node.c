@@ -1,8 +1,6 @@
 /** add relevant field data to all indices of a type */
-status_t db_node_update_indices(db_txn_t txn,
-  db_type_t* type,
-  db_node_value_t* values,
-  db_id_t id) {
+status_t
+db_node_update_indices(db_txn_t txn, db_node_values_t values, db_id_t id) {
   status_init;
   db_mdb_declare_val_id;
   db_mdb_cursor_declare(node_index_cursor);
@@ -18,14 +16,14 @@ status_t db_node_update_indices(db_txn_t txn,
   db_field_count_t fields_index;
   val_id.mv_data = &id;
   data = 0;
-  node_indices_len = type->indices_len;
-  node_indices = type->indices;
+  node_indices_len = (values.type)->indices_len;
+  node_indices = (values.type)->indices;
   for (i = 0; (i < node_indices_len); i = (1 + i)) {
     node_index = node_indices[i];
     /* calculate size */
     for (fields_index = 0; (fields_index < node_index.fields_len);
          fields_index = (1 + fields_index)) {
-      size = (size + (values[(node_index.fields)[fields_index]]).size);
+      size = (size + ((values.data)[(node_index.fields)[fields_index]]).size);
     };
     if ((txn.env)->maxkeysize < size) {
       status_set_both_goto(db_status_group_db, db_status_id_index_keysize);
@@ -35,8 +33,8 @@ status_t db_node_update_indices(db_txn_t txn,
     val_data.mv_data = data;
     for (fields_index = 0; (fields_index < fields_len);
          fields_index = (1 + fields_index)) {
-      value_size = (values[(node_index.fields)[fields_index]]).size;
-      memcpy(data, ((values[fields_index]).data), value_size);
+      value_size = ((values.data)[(node_index.fields)[fields_index]]).size;
+      memcpy(data, (((values.data)[fields_index]).data), value_size);
       data = (value_size + data);
     };
     db_mdb_status_require_x(
@@ -54,8 +52,7 @@ exit:
   };
   return (status);
 };
-status_t db_node_values_to_data(db_type_t* type,
-  db_node_value_t* values,
+status_t db_node_values_to_data(db_node_values_t values,
   b0** result,
   size_t* result_size) {
   status_init;
@@ -66,16 +63,16 @@ status_t db_node_values_to_data(db_type_t* type,
   b0* data;
   b8* data_temp;
   db_field_type_t field_type;
-  field_count = type->fields_len;
+  field_count = (values.type)->fields_len;
   size = 0;
   /* prepare size information */
   for (i = 0; (i < field_count); i = (1 + i)) {
-    if (i >= type->fields_fixed_count) {
-      field_size = (values[i]).size;
+    if (i >= (values.type)->fields_fixed_count) {
+      field_size = ((values.data)[i]).size;
     } else {
-      field_type = ((type->fields)[i]).type;
+      field_type = (((values.type)->fields)[i]).type;
       field_size = db_field_type_size(field_type);
-      (values[i]).size = field_size;
+      ((values.data)[i]).size = field_size;
     };
     if (field_size > db_data_len_max) {
       status_set_both_goto(db_status_group_db, db_status_id_data_length);
@@ -86,42 +83,43 @@ status_t db_node_values_to_data(db_type_t* type,
   data_temp = data;
   /* copy data */
   for (i = 0; (i < field_count); i = (1 + i)) {
-    field_size = (values[i]).size;
-    if (i >= type->fields_fixed_count) {
+    field_size = ((values.data)[i]).size;
+    if (i >= (values.type)->fields_fixed_count) {
       *((db_data_len_t*)(data_temp)) = field_size;
       data_temp = (sizeof(db_data_len_t) + data_temp);
     };
-    memcpy(data_temp, ((values[i]).data), field_size);
+    memcpy(data_temp, (((values.data)[i]).data), field_size);
     data_temp = (size + data_temp);
   };
-  debug_log("2 %p", data);
   *result = data;
   *result_size = size;
 exit:
   return (status);
 };
 /** allocate memory for a new node values array */
-status_t db_node_values_new(db_type_t* type, db_node_value_t** result) {
+status_t db_node_values_new(db_type_t* type, db_node_values_t* result) {
   status_init;
-  db_node_value_t* a;
-  db_malloc(a, (type->fields_len * sizeof(db_node_value_t)));
-  *result = a;
+  db_node_value_t* data;
+  db_malloc(data, (type->fields_len * sizeof(db_node_value_t)));
+  (*result).type = type;
+  (*result).data = data;
 exit:
   return (status);
 };
 /** set a value for a field in node values.
-  size can be set to zero and is ignored for fixed length types */
-b0 db_node_values_set(db_node_value_t* values,
+  size is ignored for fixed length types */
+b0 db_node_values_set(db_node_values_t values,
   db_field_count_t field_index,
   b0* data,
   size_t size) {
-  (values[field_index]).data = data;
-  (values[field_index]).size = size;
+  db_field_type_t field_type;
+  field_type = (((values.type)->fields)[field_index]).type;
+  ((values.data)[field_index]).data = data;
+  ((values.data)[field_index]).size =
+    (db_field_type_fixed_p(field_type) ? db_field_type_size(field_type) : size);
 };
-status_t db_node_create(db_txn_t txn,
-  db_type_t* type,
-  db_node_value_t* values,
-  db_id_t* result) {
+status_t
+db_node_create(db_txn_t txn, db_node_values_t values, db_id_t* result) {
   status_init;
   db_mdb_declare_val_id;
   db_mdb_cursor_declare(nodes);
@@ -131,17 +129,16 @@ status_t db_node_create(db_txn_t txn,
   data = 0;
   val_id.mv_data = &id;
   status_require_x(
-    (db_node_values_to_data(type, values, (&data), (&(val_data.mv_size)))));
+    (db_node_values_to_data(values, (&data), (&(val_data.mv_size)))));
   val_data.mv_data = data;
   db_mdb_cursor_open(txn, nodes);
-  status_require_x((db_sequence_next((txn.env), (type->id), (&id))));
+  status_require_x((db_sequence_next((txn.env), ((values.type)->id), (&id))));
   db_mdb_status_require_x(mdb_cursor_put(nodes, (&val_id), (&val_data), 0));
   db_mdb_cursor_close(nodes);
-  status_require_x(db_node_update_indices(txn, type, values, id));
+  status_require_x(db_node_update_indices(txn, values, id));
   *result = id;
 exit:
   db_mdb_cursor_close_if_active(nodes);
-  debug_log("3 %p", data);
   free(data);
   return (status);
 };

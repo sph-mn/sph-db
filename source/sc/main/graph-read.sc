@@ -647,7 +647,12 @@
           (db-graph-select-cursor-initialise graph-lr result cursor)
           (set result:reader db-graph-read-0000)))))
   (define reader db-graph-reader-t result:reader)
-  (db-select-ensure-offset result offset reader)
+  (if offset
+    (begin
+      (set state:options (bit-or db-read-option-skip state:options))
+      (set status (reader state offset 0))
+      (if (not db-mdb-status-success?) db-mdb-status-require-notfound)
+      (set state:options (bit-xor db-read-option-skip state:options))))
   (label exit
     (set result:status status)
     (return status)))

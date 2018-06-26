@@ -224,12 +224,11 @@
   (db-txn-declare env txn)
   (declare
     type db-type-t*
-    values db-node-value-t*
+    values db-node-values-t
     ;fields (array db-field-t 4)
     value-1 b8
     value-2 b8
-    id db-id-t
-    )
+    id db-id-t)
   (define value-3 b8* "abc")
   (status-require! (test-helper-create-type-1 env &type))
   (status-require! (db-node-values-new type &values))
@@ -240,7 +239,10 @@
   (db-node-values-set values 1 &value-2 0)
   (db-node-values-set values 2 &value-3 3)
   (db-txn-write-begin txn)
-  (status-require! (db-node-create txn type values &id))
+  (status-require! (db-node-create txn values &id))
+  (test-helper-assert "element id 1" (= 1 (db-id-element id)))
+  (status-require! (db-node-create txn values &id))
+  (test-helper-assert "element id 2" (= 2 (db-id-element id)))
   (db-txn-commit txn)
   (label exit
     (db-txn-abort-if-active txn)

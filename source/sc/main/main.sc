@@ -12,14 +12,7 @@
   (optional-count count)
   (if* (= 0 count) UINT32_MAX
     count)
-  db-size-system-key (+ 1 (sizeof db-type-id-t))
-  (db-select-ensure-offset state offset reader)
-  (if offset
-    (begin
-      (set state:options (bit-or db-read-option-skip state:options))
-      (set status (reader state offset 0))
-      (if (not db-mdb-status-success?) db-mdb-status-require-notfound)
-      (set state:options (bit-xor db-read-option-skip state:options)))))
+  db-size-system-key (+ 1 (sizeof db-type-id-t)))
 
 (define (uint->string a) (uint8-t* intmax-t)
   (declare
