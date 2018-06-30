@@ -245,17 +245,18 @@
     (struct
       (type db-type-t*)
       (data db-node-value-t*)))
+  db-node-matcher-t (function-pointer boolean b0* size-t)
   db-node-read-state-t
   (struct
     (current b0*)
     (current-id db-id-t)
     (current-size size-t)
     (cursor MDB-cursor*)
+    (matcher db-node-matcher-t)
+    (matcher-state b0*)
     (options b8)
     (status status-t)
     (type db-type-t*))
-  node-matcher-t
-  (function-pointer boolean b0* size-t)
   db-node-data-t
   (type
     (struct
