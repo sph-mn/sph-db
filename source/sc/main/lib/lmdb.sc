@@ -12,7 +12,7 @@
     (db-mdb-cursor-declare-two name-a name-b)
     (db-mdb-cursor-declare name-c))
   (db-mdb-cursor-open txn name)
-  (db-mdb-status-require! (mdb-cursor-open txn.mdb-txn (: txn.env (pre-concat dbi- name)) &name))
+  (db-mdb-status-require (mdb-cursor-open txn.mdb-txn (: txn.env (pre-concat dbi- name)) &name))
   (db-mdb-cursor-close name)
   (begin
     (mdb-cursor-close name)
@@ -28,23 +28,23 @@
   (db-mdb-cursor-get-norequire cursor val-a val-b MDB-NEXT-NODUP)
   (db-mdb-cursor-del-norequire cursor flags) (status-set-id (mdb-cursor-del cursor flags))
   (db-mdb-cursor-get cursor val-a val-b cursor-operation)
-  (db-mdb-status-require!
+  (db-mdb-status-require
     (mdb-cursor-get cursor (address-of val-a) (address-of val-b) cursor-operation))
   (db-mdb-cursor-put cursor val-a val-b)
-  (db-mdb-status-require! (mdb-cursor-put cursor (address-of val-a) (address-of val-b) 0))
+  (db-mdb-status-require (mdb-cursor-put cursor (address-of val-a) (address-of val-b) 0))
   (db-mdb-cursor-each-key cursor val-key val-value body)
   (begin
     (db-mdb-cursor-get-norequire cursor val-key val-value MDB-FIRST)
-    (while db-mdb-status-success?
+    (while db-mdb-status-is-success
       body
       (db-mdb-cursor-next-nodup-norequire cursor val-key val-value))
     db-mdb-status-require-notfound)
   (db-mdb-cursor-set-first cursor)
-  (db-mdb-status-require! (mdb-cursor-get cursor &val-null &val-null MDB-FIRST)))
+  (db-mdb-status-require (mdb-cursor-get cursor &val-null &val-null MDB-FIRST)))
 
 (pre-define
   (db-mdb-put txn dbi val-a val-b)
-  (db-mdb-status-require! (mdb-put dbi (address-of val-a) (address-of val-b) 0))
+  (db-mdb-status-require (mdb-put dbi (address-of val-a) (address-of val-b) 0))
   (db-mdb-declare-val name size)
   (begin
     (declare name MDB-val)

@@ -778,7 +778,14 @@ status_t db_graph_select(db_txn_t txn,
     };
   };
   db_graph_reader_t reader = result->reader;
-  db_select_ensure_offset(result, offset, reader);
+  if (offset) {
+    state->options = (db_read_option_skip | state->options);
+    status = reader(state, offset, 0);
+    if (!db_mdb_status_success_p) {
+      db_mdb_status_require_notfound;
+    };
+    state->options = (db_read_option_skip ^ state->options);
+  };
 exit:
   result->status = status;
   return (status);

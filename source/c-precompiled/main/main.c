@@ -14,15 +14,6 @@
   }
 #define optional_count(count) ((0 == count) ? UINT32_MAX : count)
 #define db_size_system_key (1 + sizeof(db_type_id_t))
-#define db_select_ensure_offset(state, offset, reader) \
-  if (offset) { \
-    state->options = (db_read_option_skip | state->options); \
-    status = reader(state, offset, 0); \
-    if (!db_mdb_status_success_p) { \
-      db_mdb_status_require_notfound; \
-    }; \
-    state->options = (db_read_option_skip ^ state->options); \
-  }
 uint8_t* uint_to_string(intmax_t a) {
   size_t len;
   uint8_t* result;

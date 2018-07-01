@@ -85,9 +85,9 @@
     (set records (db-graph-records-rest records))))
 
 (define (db-debug-display-btree-counts txn) (status-t db-txn-t)
-  status-init
+  status-declare
   (declare stat db-statistics-t)
-  (status-require! (db-statistics txn &stat))
+  (status-require (db-statistics txn &stat))
   (printf
     "btree entry count: system %zu, nodes %zu, graph-lr %zu, graph-rl %zu, graph-ll %zu\n"
     stat.system.ms_entries
@@ -97,9 +97,9 @@
 
 (define (db-debug-count-all-btree-entries txn result) (status-t db-txn-t b32*)
   "sum the count of all entries in all btrees used by the database"
-  status-init
+  status-declare
   (declare stat db-statistics-t)
-  (status-require! (db-statistics txn &stat))
+  (status-require (db-statistics txn &stat))
   (set *result
     (+
       stat.system.ms_entries
@@ -120,7 +120,7 @@
     (else (return 0))))
 
 (define (db-ids->set a result) (status-t db-ids-t* imht-set-t**)
-  status-init
+  status-declare
   (if (not (imht-set-create (db-ids-length a) result)) (db-status-set-id-goto db-status-id-memory))
   (while a
     (imht-set-add *result (db-ids-first a))
@@ -131,7 +131,7 @@
 (define (db-read-name data-pointer result) (status-t b8** b8**)
   "read a length prefixed string from system type data.
   on success set result to a newly allocated string and data to the next byte after the string"
-  status-init
+  status-declare
   (declare
     data b8*
     len db-name-len-t
@@ -150,19 +150,19 @@
 
 (define (db-statistics txn result) (status-t db-txn-t db-statistics-t*)
   "expects an allocated db-statistics-t"
-  status-init
-  (db-mdb-status-require! (mdb-stat txn.mdb-txn txn.env:dbi-system &result:system))
-  (db-mdb-status-require! (mdb-stat txn.mdb-txn txn.env:dbi-nodes &result:nodes))
-  (db-mdb-status-require! (mdb-stat txn.mdb-txn txn.env:dbi-graph-lr &result:graph-lr))
-  (db-mdb-status-require! (mdb-stat txn.mdb-txn txn.env:dbi-graph-ll &result:graph-ll))
-  (db-mdb-status-require! (mdb-stat txn.mdb-txn txn.env:dbi-graph-rl &result:graph-rl))
+  status-declare
+  (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-system &result:system))
+  (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-nodes &result:nodes))
+  (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-graph-lr &result:graph-lr))
+  (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-graph-ll &result:graph-ll))
+  (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-graph-rl &result:graph-rl))
   (label exit
     (return status)))
 
 (define (db-sequence-next-system env result) (status-t db-env-t* db-type-id-t*)
   "return one new unique type identifier.
   the maximum identifier returned is db-type-id-limit minus one"
-  status-init
+  status-declare
   (declare sequence db-type-id-t)
   (pthread-mutex-lock &env:mutex)
   (set sequence (convert-type env:types:sequence db-type-id-t))
@@ -180,7 +180,7 @@
 (define (db-sequence-next env type-id result) (status-t db-env-t* db-type-id-t db-id-t*)
   "return one new unique type node identifier.
   the maximum identifier returned is db-id-limit minus one"
-  status-init
+  status-declare
   (declare sequence db-id-t)
   (pthread-mutex-lock &env:mutex)
   (set sequence (: (+ type-id env:types) sequence))

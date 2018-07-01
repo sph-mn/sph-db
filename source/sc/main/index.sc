@@ -21,7 +21,7 @@
 
 #;(define (db-index-system-key type fields fields-len data size)
   (status-t db-type-t* db-field-count-t* db-field-count-t b8* size-t*)
-  status-init
+  status-declare
   (declare data b8*)
   (set *size (+ db-size-type-id (* (sizeof db-field-count-t) fields-len)))
   (db-malloc data *size)
@@ -37,7 +37,7 @@
 #;(define (db-index-name type-id fields fields-len result result-len)
   (status-t db-type-id-t db-field-count-t* db-field-count-t b8* size-t*)
   "create a string name from type-id and field offsets"
-  status-init
+  status-declare
   (declare
     result-len int
     i db-field-count-t
@@ -93,16 +93,16 @@
   (set indices (db-index-get type fields fields-len))
   (if indices (status-set-both-goto db-status-group-db db-status-id-duplicate))
   (sc-comment "prepare data")
-  (status-require!
+  (status-require
     (db-index-system-key type:id fields fields-len &val-data.mv-data &val-data.mv-size))
-  (status-require! (db-index-name type:id fields &name &name-len))
+  (status-require (db-index-name type:id fields &name &name-len))
   (sc-comment "add to system btree")
   (db-txn-write-begin txn)
   (db-mdb-cursor-open txn system)
   (db-mdb-put system val-data val-null)
   (db-mdb-cursor-close system)
   (sc-comment "add data btree")
-  (db-mdb-status-require! (mdb-dbi-open txn.mdb-txn name MDB-CREATE &node-index.dbi))
+  (db-mdb-status-require (mdb-dbi-open txn.mdb-txn name MDB-CREATE &node-index.dbi))
   (db-txn-commit txn)
   (sc-comment "update cache")
   (db-realloc type:indices indices (+ (sizeof db-index-t) type:indices-count))
@@ -121,24 +121,24 @@
 
 #;(define (db-index-delete env index) (status-t db-env-t* db-index-t*)
   "index must be a pointer into env:types:indices"
-  status-init
+  status-declare
   (db-txn-declare env txn)
   (db-mdb-cursor-declare system)
   (declare
     name b8*
     name-len size-t)
   (set name 0)
-  (status-require!
+  (status-require
     (db-index-system-key index:type:id fields fields-len &val-data.mv-data &val-data.mv-size))
   (sc-comment "remove from system btree")
   (db-txn-write-begin txn)
   (db-mdb-cursor-open txn system)
   (db-mdb-cursor-get-norequire system val-data val-null MDB-SET)
-  (if db-mdb-status-success? (db-mdb-status-require! (mdb-cursor-del system 0))
+  (if db-mdb-status-is-success (db-mdb-status-require (mdb-cursor-del system 0))
     db-mdb-status-require-notfound)
   (db-mdb-cursor-close system)
   (sc-comment "remove data btree")
-  (db-mdb-status-require! (mdb-drop txn.mdb-txn index:dbi 1))
+  (db-mdb-status-require (mdb-drop txn.mdb-txn index:dbi 1))
   (db-txn-commit txn)
   (sc-comment "update cache")
   (free index:fields)
@@ -154,7 +154,7 @@
     (return status)))
 
 #;(define (db-index-rebuild env index) (status-t db-env-t* db-index-t*)
-  status-init
+  status-declare
   db-mdb-declare-val-id
   (declare
     val-data MDB-val
@@ -169,13 +169,13 @@
     id (db-id-add-type 0 type-id)
     val-id.mv-data &id)
   (sc-comment "clear data btree")
-  (db-mdb-status-require! (mdb-drop txn.mdb-txn index:dbi 0))
+  (db-mdb-status-require (mdb-drop txn.mdb-txn index:dbi 0))
   (sc-comment "get every node of type")
   (db-mdb-cursor-get-norequire val-id val-data MDB-SET-KEY)
-  (while (and db-mdb-status-success? (= type-id (db-id-type (db-pointer->id val-id.mv-data))))
+  (while (and db-mdb-status-is-success (= type-id (db-id-type (db-pointer->id val-id.mv-data))))
     (db-mdb-put val-data-2 val-id)
     (db-mdb-cursor-next-nodup-norequire val-id val-data))
-  (if (not db-mdb-status-success?) db-mdb-status-require-notfound)
+  (if (not db-mdb-status-is-success) db-mdb-status-require-notfound)
   (db-mdb-cursor-close nodes)
   (db-txn-commit txn)
   (label exit
@@ -185,7 +185,7 @@
     (return status)))
 
 #;(define (db-index-errors txn index result) (status-t db-txn-t db-index-t db-index-errors-t*)
-  status-init
+  status-declare
   (set *result db-index-errors-null)
   db-mdb-declare-val-id
   db-mdb-declare-val-data
@@ -199,7 +199,7 @@
     val-id
     (compound-statement
       (db-mdb-cursor-get! nodes val-id val-data-2 MDB-SET-KEY)
-      (if db-mdb-status-success?
+      (if db-mdb-status-is-success
         (begin
           (sc-comment "compare data")
           (if (db-mdb-compare-data &val-data &val-data-2)
@@ -225,7 +225,7 @@
       (if (db-intern? (db-mdb-val->id val-id))
         (begin
           (db-mdb-cursor-get! data-intern->id val-data val-id-2 MDB-SET-KEY)
-          (if db-mdb-status-success?
+          (if db-mdb-status-is-success
             (if (not (db-id-equal? (db-mdb-val->id val-id) (db-mdb-val->id val-id-2)))
               (begin
                 (db-index-errors-data-log

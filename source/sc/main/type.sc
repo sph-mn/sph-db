@@ -2,7 +2,7 @@
 
 (define (db-env-types-extend env type-id) (status-t db-env-t* db-type-id-t)
   "extend the size of the types array if type-id is an index out of bounds"
-  status-init
+  status-declare
   (declare
     types-temp db-type-t*
     types-len db-type-id-t
@@ -57,7 +57,7 @@
 (define (db-type-create env name fields fields-len flags result)
   (status-t db-env-t* b8* db-field-t* db-field-count-t b8 db-type-t**)
   "the data format is documented in main/open.c"
-  status-init
+  status-declare
   (declare
     data b8*
     data-start b8*
@@ -104,7 +104,7 @@
       data (+ 1 (convert-type data db-name-len-t*)))
     (memcpy data field.name field.name-len)
     (set data (+ field.name-len data)))
-  (status-require! (db-sequence-next-system txn.env &type-id))
+  (status-require (db-sequence-next-system txn.env &type-id))
   (set
     (db-system-key-label key) db-system-label-type
     (db-system-key-id key) type-id
@@ -118,9 +118,9 @@
   (db-mdb-cursor-put system val-key val-data)
   (db-mdb-cursor-close system)
   (sc-comment "update cache")
-  (status-require! (db-env-types-extend txn.env type-id))
+  (status-require (db-env-types-extend txn.env type-id))
   (db-mdb-cursor-open txn nodes)
-  (status-require!
+  (status-require
     (db-open-type val-key.mv-data val-data.mv-data txn.env:types nodes &type-pointer))
   (db-mdb-cursor-close nodes)
   (db-txn-commit txn)
@@ -135,7 +135,7 @@
 
 (define (db-type-delete env type-id) (status-t db-env-t* db-type-id-t)
   "delete system entry and/or all nodes and cache entries"
-  status-init
+  status-declare
   (declare
     id db-id-t
     key (array b8 (db-size-system-key)))
@@ -152,7 +152,7 @@
   (sc-comment "system. continue even if not found")
   (db-mdb-cursor-open txn system)
   (db-mdb-cursor-get-norequire system val-key val-null MDB-SET)
-  (if db-mdb-status-success? (db-mdb-status-require! (mdb-cursor-del system 0))
+  (if db-mdb-status-is-success (db-mdb-status-require (mdb-cursor-del system 0))
     (begin
       db-mdb-status-require-notfound
       (status-set-id status-id-success)))
@@ -164,10 +164,10 @@
     id (db-id-add-type 0 type-id)
     val-key.mv-data &id)
   (db-mdb-cursor-get-norequire nodes val-key val-null MDB-SET-RANGE)
-  (while (and db-mdb-status-success? (= type-id (db-id-type (db-pointer->id val-key.mv-data))))
-    (db-mdb-status-require! (mdb-cursor-del nodes 0))
+  (while (and db-mdb-status-is-success (= type-id (db-id-type (db-pointer->id val-key.mv-data))))
+    (db-mdb-status-require (mdb-cursor-del nodes 0))
     (db-mdb-cursor-get-norequire nodes val-key val-null MDB-NEXT-NODUP))
-  (if status-failure?
+  (if status-is-failure
     (if db-mdb-status-notfound? (status-set-id status-id-success)
       (status-set-group-goto db-status-group-lmdb)))
   (sc-comment "cache")
@@ -175,6 +175,6 @@
   (label exit
     (db-mdb-cursor-close-if-active system)
     (db-mdb-cursor-close-if-active nodes)
-    (if status-success? (db-txn-commit txn)
+    (if status-is-success (db-txn-commit txn)
       (db-txn-abort txn))
     (return status)))

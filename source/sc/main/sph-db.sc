@@ -130,8 +130,8 @@
   ; db-txn
   (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
   (db-txn-begin txn)
-  (db-mdb-status-require! (mdb-txn-begin txn.env:mdb-env 0 MDB-RDONLY &txn.mdb-txn))
-  (db-txn-write-begin txn) (db-mdb-status-require! (mdb-txn-begin txn.env:mdb-env 0 0 &txn.mdb-txn))
+  (db-mdb-status-require (mdb-txn-begin txn.env:mdb-env 0 MDB-RDONLY &txn.mdb-txn))
+  (db-txn-write-begin txn) (db-mdb-status-require (mdb-txn-begin txn.env:mdb-env 0 0 &txn.mdb-txn))
   (db-txn-abort a)
   (begin
     (mdb-txn-abort a.mdb-txn)
@@ -142,7 +142,7 @@
     #f)
   (db-txn-commit a)
   (begin
-    (db-mdb-status-require! (mdb-txn-commit a.mdb-txn))
+    (db-mdb-status-require (mdb-txn-commit a.mdb-txn))
     (set a.mdb-txn 0)))
 
 (declare
