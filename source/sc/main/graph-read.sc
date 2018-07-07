@@ -664,7 +664,7 @@
   (status-require state:status)
   (set status ((convert-type state:reader db-graph-reader-t) state count result))
   (label exit
-    db-status-no-more-data-if-mdb-notfound
+    db-mdb-status-no-more-data-if-notfound
     (return status)))
 
 (define (db-graph-selection-destroy state) (b0 db-graph-read-state-t*)

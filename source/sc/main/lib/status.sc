@@ -24,29 +24,8 @@
   (begin
     (set status expression)
     (if (not (or status-is-success (status-id-is? db-status-id-no-more-data))) status-goto))
-  db-status-no-more-data-if-mdb-notfound
-  (if db-mdb-status-notfound? (status-set-both db-status-group-db db-status-id-no-more-data))
-  db-status-success-if-mdb-notfound (if db-mdb-status-notfound? (status-set-id status-id-success))
   db-status-success-if-no-more-data
-  (if (status-id-is? db-status-id-no-more-data) (set status.id status-id-success))
-  db-mdb-status-is-success (status-id-is? MDB-SUCCESS)
-  db-mdb-status-is-failure (not db-mdb-status-is-success)
-  db-mdb-status-notfound? (status-id-is? MDB-NOTFOUND)
-  (db-mdb-status-set-id-goto id) (status-set-both-goto db-status-group-lmdb id)
-  (db-mdb-status-require expression)
-  (begin
-    (status-set-id expression)
-    (if db-mdb-status-is-failure (status-set-group-goto db-status-group-lmdb)))
-  db-mdb-status-require (if db-mdb-status-is-failure (status-set-group-goto db-status-group-lmdb))
-  db-mdb-status-require-read
-  (if (not (or db-mdb-status-is-success db-mdb-status-notfound?))
-    (status-set-group-goto db-status-group-lmdb))
-  (db-mdb-status-require-read! expression)
-  (begin
-    (status-set-id expression)
-    db-mdb-status-require-read)
-  db-mdb-status-require-notfound
-  (if (not db-mdb-status-notfound?) (status-set-group-goto db-status-group-lmdb)))
+  (if (status-id-is? db-status-id-no-more-data) (set status.id status-id-success)))
 
 (define (db-status-group-id->name a) (b8* status-i-t)
   (declare b char*)

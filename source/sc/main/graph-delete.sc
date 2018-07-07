@@ -513,7 +513,7 @@
       (if label db-graph-internal-delete-0010
         (db-status-set-id-goto db-status-id-not-implemented))))
   (label exit
-    db-status-success-if-mdb-notfound
+    db-mdb-status-success-if-notfound
     (return status)))
 
 (define (db-graph-delete txn left right label ordinal)

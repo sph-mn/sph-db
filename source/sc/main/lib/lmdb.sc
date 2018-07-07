@@ -1,6 +1,30 @@
 (pre-include "string.h")
 
 (pre-define
+  ; status
+  db-mdb-status-no-more-data-if-notfound
+  (if db-mdb-status-is-notfound (status-set-both db-status-group-db db-status-id-no-more-data))
+  db-mdb-status-success-if-notfound (if db-mdb-status-is-notfound (status-set-id status-id-success))
+  db-mdb-status-is-success (status-id-is? MDB-SUCCESS)
+  db-mdb-status-is-failure (not db-mdb-status-is-success)
+  db-mdb-status-is-notfound(status-id-is? MDB-NOTFOUND)
+  (db-mdb-status-set-id-goto id) (status-set-both-goto db-status-group-lmdb id)
+  (db-mdb-status-require expression)
+  (begin
+    (status-set-id expression)
+    (if db-mdb-status-is-failure (status-set-group-goto db-status-group-lmdb)))
+  db-mdb-status-require (if db-mdb-status-is-failure (status-set-group-goto db-status-group-lmdb))
+  db-mdb-status-require-read
+  (if (not (or db-mdb-status-is-success db-mdb-status-is-notfound))
+    (status-set-group-goto db-status-group-lmdb))
+  (db-mdb-status-require-read! expression)
+  (begin
+    (status-set-id expression)
+    db-mdb-status-require-read)
+  db-mdb-status-require-notfound
+  (if (not db-mdb-status-is-notfound) (status-set-group-goto db-status-group-lmdb)))
+
+(pre-define
   ; cursor
   (db-mdb-cursor-declare name) (define name MDB-cursor* 0)
   (db-mdb-cursor-declare-two name-a name-b)

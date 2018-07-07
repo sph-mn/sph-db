@@ -144,7 +144,7 @@
         db-mdb-status-require-notfound))
     db-mdb-status-require-notfound)
   (label exit
-    db-status-success-if-mdb-notfound
+    db-mdb-status-success-if-notfound
     (set *result
       (if* (= db-type-id-limit current) current
         (+ 1 current)))

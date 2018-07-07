@@ -1,92 +1,3 @@
-(define (db-node-index-key index values result-data result-size)
-  (status-t db-index-t db-node-values-t b0** size-t*)
-  "calculate size and prepare data"
-  status-declare
-  (declare
-    value-size size-t
-    data b8*
-    i db-field-count-t
-    size size-t
-    data-temp b0*)
-  (for ((set i 0) (< i index.fields-len) (set i (+ 1 i)))
-    (set size (+ size (struct-get (array-get values.data (array-get index.fields i)) size))))
-  (if (< txn.env:maxkeysize size)
-    (status-set-both-goto db-status-group-db db-status-id-index-keysize))
-  (db-malloc data size)
-  (set data-temp data)
-  (for ((set i 0) (< i index.fields-len) (set i (+ 1 i)))
-    (set value-size (struct-get (array-get values.data (array-get index.fields i)) size))
-    (memcpy data-temp (struct-get (array-get values.data i) data) value-size)
-    (set data-temp (+ value-size data-temp)))
-  (set
-    *result-data data
-    *result-size size)
-  (label exit
-    (return status)))
-
-(define (db-node-indices-ensure txn values id) (status-t db-txn-t db-node-values-t db-id-t)
-  "create entries in all indices for id and values.
-  index: field-data ... -> id"
-  status-declare
-  db-mdb-declare-val-id
-  (db-mdb-cursor-declare node-index-cursor)
-  (declare
-    data b0*
-    val-data MDB-val
-    size size-t
-    i db-index-count-t
-    node-index db-index-t
-    node-indices db-index-t*
-    node-indices-len db-index-count-t)
-  (set
-    val-id.mv-data &id
-    data 0
-    node-indices-len values.type:indices-len
-    node-indices values.type:indices)
-  (for ((set i 0) (< i node-indices-len) (set i (+ 1 i)))
-    (set node-index (array-get node-indices i))
-    (status-require (db-node-index-key node-index values &data &val-data.mv-size))
-    (set val-data.mv-data data)
-    (db-mdb-status-require (mdb-cursor-open txn.mdb-txn node-index.dbi &node-index-cursor))
-    (db-mdb-cursor-put node-index-cursor val-data val-id)
-    (db-mdb-cursor-close node-index-cursor))
-  (label exit
-    (db-mdb-cursor-close-if-active node-index-cursor)
-    (if data (free data))
-    (return status)))
-
-(define (db-node-indices-delete txn values id) (status-t db-txn-t db-node-values-t db-id-t)
-  "delete all entries from all indices for id and values"
-  status-declare
-  db-mdb-declare-val-id
-  (db-mdb-cursor-declare node-index-cursor)
-  (declare
-    data b8*
-    val-data MDB-val
-    i db-index-count-t
-    node-index db-index-t
-    node-indices db-index-t*
-    node-indices-len db-index-count-t)
-  (set
-    val-id.mv-data &id
-    data 0
-    node-indices-len values.type:indices-len
-    node-indices values.type:indices)
-  (for ((set i 0) (< i node-indices-len) (set i (+ 1 i)))
-    (set node-index (array-get node-indices i))
-    (status-require (db-node-index-key node-index values &data &val-data.mv-size))
-    (set val-data.mv-data data)
-    ; delete
-    (db-mdb-status-require (mdb-cursor-open txn.mdb-txn node-index.dbi &node-index-cursor))
-    (db-mdb-cursor-put node-index-cursor val-data val-id)
-    (db-mdb-cursor-get-norequire node-index-cursor val-data val-id MDB-GET-BOTH)
-    (if db-status-is-success (db-mdb-cursor-del node-index-cursor))
-    (db-mdb-cursor-close node-index-cursor))
-  (label exit
-    (db-mdb-cursor-close-if-active node-index-cursor)
-    (if data (free data))
-    (return status)))
-
 (define (db-node-values->data values result result-size) (status-t db-node-values-t b0** size-t*)
   status-declare
   (declare
@@ -170,7 +81,7 @@
   (status-require (db-sequence-next txn.env values.type:id &id))
   (db-cursor-put nodes val-id val-data)
   (db-mdb-cursor-close nodes)
-  (status-require (db-node-indices-ensure txn values id))
+  (status-require (db-indices-entry-ensure txn values id))
   (set *result id)
   (label exit
     (db-mdb-cursor-close-if-active nodes)
@@ -308,7 +219,7 @@
         (db-cursor-get-norequire state:cursor val-id val-null MDB-NEXT-NODUP))
       (if (not db-mdb-status-is-success) db-mdb-status-require-notfound)))
   (label exit
-    db-status-no-more-data-if-mdb-notfound
+    db-mdb-status-no-more-data-if-notfound
     (set state:ids ids)
     (return status)))
 
@@ -350,7 +261,7 @@
     (if (not db-mdb-status-is-success)
       (begin
         (mdb-cursor-close nodes)
-        db-status-no-more-data-if-mdb-notfound))
+        db-mdb-status-no-more-data-if-notfound))
     (set result-state:status status)
     (return status)))
 
@@ -382,7 +293,7 @@
     (if db-mdb-status-is-success
       (begin
         (status-require (db-node-data->values type val-data.mv-data val-data.mv-size &values))
-        (status-require (db-node-indices-delete txn values (db-ids-first ids)))
+        (status-require (db-indices-entry-delete txn values (db-ids-first ids)))
         (db-mdb-cursor-del nodes 0))
       (if db-mdb-status-notfound? (status-set-id status-id-success)
         (status-set-group-goto db-status-group-lmdb)))
@@ -419,33 +330,10 @@
   (db-mdb-cursor-open txn nodes)
   (db-mdb-cursor-put nodes val-id val-data)
   (db-mdb-cursor-close nodes)
-  (status-require (db-node-indices-ensure txn values id))
+  (status-require (db-indices-entry-ensure txn values id))
   (label exit
     (db-mdb-cursor-close-if-active nodes)
     (free data)
-    (return status)))
-
-(define (db-node-identify txn ids result) (status-t db-txn-t db-ids-t* db-ids-t**)
-  "add the existing ids from the given ids to \"result\""
-  status-declare
-  db-mdb-declare-val-id
-  db-mdb-declare-val-null
-  (db-mdb-cursor-declare nodes)
-  (declare result-ids dg-ids-t*)
-  (set result-ids 0)
-  (db-mdb-cursor-open txn nodes)
-  (while ids
-    (set
-      val-id.mv-data (db-ids-first-address ids)
-      status.id (mdb-cursor-get nodes (address-of val-id) (address-of val-null) MDB-SET))
-    (if db-mdb-status-is-success (set result-ids (db-ids-add result-ids (db-ids-first ids)))
-      db-mdb-status-require-notfound)
-    (set ids (db-ids-rest ids)))
-  (label exit
-    (mdb-cursor-close nodes)
-    db-status-success-if-mdb-notfound
-    (if status-is-failure (db-ids-destroy result-ids)
-      (set *result result-ids))
     (return status)))
 
 (define (db-node-exists? txn ids result) (status-t db-txn-t* db-ids-t* boolean*)
