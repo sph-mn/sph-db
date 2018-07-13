@@ -71,47 +71,14 @@ enum {
   status_set_both_goto(db_status_group_db, status_id)
 #define db_status_require_read_x(expression) \
   status = expression; \
-  if (!(status_success_p || status_id_is_p(db_status_id_no_more_data))) { \
+  if (!(status_is_success || status_id_is_p(db_status_id_no_more_data))) { \
     status_goto; \
-  }
-#define db_status_no_more_data_if_mdb_notfound \
-  if (db_mdb_status_notfound_p) { \
-    status_set_both(db_status_group_db, db_status_id_no_more_data); \
-  }
-#define db_status_success_if_mdb_notfound \
-  if (db_mdb_status_notfound_p) { \
-    status_set_id(status_id_success); \
   }
 #define db_status_success_if_no_more_data \
   if (status_id_is_p(db_status_id_no_more_data)) { \
     status.id = status_id_success; \
   }
-#define db_mdb_status_success_p status_id_is_p(MDB_SUCCESS)
-#define db_mdb_status_failure_p !db_mdb_status_success_p
-#define db_mdb_status_notfound_p status_id_is_p(MDB_NOTFOUND)
-#define db_mdb_status_set_id_goto(id) \
-  status_set_both_goto(db_status_group_lmdb, id)
-#define db_mdb_status_require_x(expression) \
-  status_set_id(expression); \
-  if (db_mdb_status_failure_p) { \
-    status_set_group_goto(db_status_group_lmdb); \
-  }
-#define db_mdb_status_require \
-  if (db_mdb_status_failure_p) { \
-    status_set_group_goto(db_status_group_lmdb); \
-  }
-#define db_mdb_status_require_read \
-  if (!(db_mdb_status_success_p || db_mdb_status_notfound_p)) { \
-    status_set_group_goto(db_status_group_lmdb); \
-  }
-#define db_mdb_status_require_read_x(expression) \
-  status_set_id(expression); \
-  db_mdb_status_require_read
-#define db_mdb_status_require_notfound \
-  if (!db_mdb_status_notfound_p) { \
-    status_set_group_goto(db_status_group_lmdb); \
-  }
-b8* db_status_group_id_to_name(status_i_t a) {
+b8* db_status_group_id_to_name(status_id_t a) {
   char* b;
   if (db_status_group_db == a) {
     b = "sph-db";

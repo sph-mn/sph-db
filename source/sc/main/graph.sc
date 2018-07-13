@@ -9,8 +9,8 @@
   (db-declare-graph-key name) (declare name (array db-id-t 2 0 0))
   (db-declare-graph-data name)
   (begin
-    (declare name (array b8 ((+ db-size-ordinal db-size-id))))
-    (memset name 0 (+ db-size-ordinal db-size-id)))
+    (declare graph-data (array b8 ((+ db-size-ordinal db-size-id))))
+    (memset graph-data 0 (+ db-size-ordinal db-size-id)))
   (db-declare-graph-record name) (define name db-graph-record-t (struct-literal 0 0 0 0))
   (db-graph-records-add! target record target-temp)
   (db-pointer-allocation-set target (db-graph-records-add target record) target-temp))
@@ -20,14 +20,14 @@
   status-declare
   db-mdb-declare-val-graph-key
   db-mdb-declare-val-graph-data
-  (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
+  (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
   (label each-data
     (if db-mdb-status-is-success
       (if (= id-right (db-graph-data->id val-graph-data.mv-data)) (return status)
         (begin
-          (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data)
+          (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
           (goto each-data)))
-      db-mdb-status-require-notfound))
+      db-mdb-status-expect-notfound))
   (label exit
     (return status)))
 
@@ -35,6 +35,15 @@
   (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-graph-ordinal-generator-t b0*)
   "check if a relation exists and create it if not"
   status-declare
+  db-mdb-declare-val-id
+  db-mdb-declare-val-id-2
+  db-mdb-declare-val-graph-key
+  db-mdb-declare-val-graph-data
+  (db-declare-graph-key graph-key)
+  (db-declare-graph-data graph-data)
+  (db-mdb-cursor-declare graph-lr)
+  (db-mdb-cursor-declare graph-rl)
+  (db-mdb-cursor-declare graph-ll)
   (declare
     id-label db-id-t
     id-left db-id-t
@@ -42,16 +51,9 @@
     label-pointer db-ids-t*
     ordinal db-ordinal-t
     right-pointer db-ids-t*)
-  db-mdb-declare-val-id
-  db-mdb-declare-val-id-2
-  db-mdb-declare-val-graph-key
-  db-mdb-declare-val-graph-data
-  (db-declare-graph-key graph-key)
-  (db-declare-graph-data graph-data)
-  (db-mdb-cursor-declare-three graph-lr graph-rl graph-ll)
-  (db-mdb-cursor-open txn graph-lr)
-  (db-mdb-cursor-open txn graph-rl)
-  (db-mdb-cursor-open txn graph-ll)
+  (db-mdb-status-require (db-mdb-env-cursor-open txn graph-lr))
+  (db-mdb-status-require (db-mdb-env-cursor-open txn graph-rl))
+  (db-mdb-status-require (db-mdb-env-cursor-open txn graph-ll))
   (set ordinal
     (if* (and (not ordinal-generator) ordinal-generator-state)
       (set ordinal (pointer-get (convert-type ordinal-generator-state db-ordinal-t*)))
@@ -72,7 +74,7 @@
           (array-get graph-key 1) id-label
           val-graph-key.mv-data graph-key
           val-id.mv-data &id-left)
-        (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-GET-BOTH)
+        (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-GET-BOTH))
         (if (= MDB-NOTFOUND status.id)
           (begin
             (db-mdb-status-require (mdb-cursor-put graph-rl &val-graph-key &val-id 0))
@@ -103,10 +105,12 @@
   db-mdb-declare-val-graph-data
   db-mdb-declare-val-id
   db-mdb-declare-val-id-2
+  (db-mdb-cursor-declare graph-lr)
+  (db-mdb-cursor-declare graph-rl)
+  (db-mdb-cursor-declare graph-ll)
+  (db-txn-declare env txn)
   (db-declare-graph-data graph-data)
   (db-declare-graph-key graph-key)
-  (db-mdb-cursor-declare-three graph-lr graph-rl graph-ll)
-  (db-txn-declare env txn)
   (declare
     id-left db-id-t
     id-right db-id-t
@@ -116,7 +120,9 @@
   (db-mdb-status-require (mdb-drop txn dbi-graph-ll 0))
   (db-txn-commit txn)
   (db-txn-write-begin txn)
-  (db-mdb-cursor-open-three txn graph-lr graph-rl graph-ll)
+  (db-mdb-status-require (db-mdb-env-cursor-open txn graph-lr))
+  (db-mdb-status-require (db-mdb-env-cursor-open txn graph-rl))
+  (db-mdb-status-require (db-mdb-env-cursor-open txn graph-ll))
   (db-mdb-cursor-each-key
     graph-lr
     val-graph-key
@@ -127,17 +133,17 @@
         id-label (db-pointer->id-at val-graph-key.mv-data 1))
       (do-while db-mdb-status-is-success
         (set id-right (db-pointer->id val-graph-data.mv-data))
-        (sc-comment "create graph-rl")
+        (sc-comment "graph-rl")
         (set
           (array-get graph-key 0) id-right
           (array-get graph-key 1) id-label)
         (set val-graph-key.mv-data graph-key)
         (set val-id.mv-data *id-left)
-        (db-mdb-cursor-put graph-rl val-graph-key val-id)
-        (sc-comment "create graph-ll")
+        (db-mdb-status-require (mdb-cursor-put graph-rl &val-graph-key &val-id 0))
+        (sc-comment "graph-ll")
         (set val-id-2.mv-data &id-label)
-        (db-mdb-cursor-put graph-ll val-id-2 val-id)
-        (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data))))
+        (db-mdb-status-require (mdb-cursor-put graph-ll &val-id-2 &val-id 0))
+        (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP)))))
   (db-txn-commit txn)
   (label exit
     (db-txn-abort-if-active txn)

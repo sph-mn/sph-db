@@ -15,14 +15,14 @@
 (define common-label-count b32 3)
 
 (define (test-open-empty env) (status-t db-env-t*)
-  status-init
+  status-declare
   (test-helper-assert "env.open is true" (= #t env:open))
   (test-helper-assert "env.root is set" (= 0 (strcmp env:root test-helper-db-root)))
   (label exit
     (return status)))
 
 (define (test-statistics env) (status-t db-env-t*)
-  status-init
+  status-declare
   (declare stat db-statistics-t)
   (db-txn-declare env txn)
   (db-txn-begin txn)
@@ -33,11 +33,11 @@
     (return status)))
 
 (define (test-type-create-get-delete env) (status-t db-env-t*)
-  status-init
+  status-declare
   (declare
     fields (array db-field-t 3)
     fields-2 (array db-field-t* 3)
-    i db-field-count-t
+    i db-fields-len-t
     type-1 db-type-t*
     type-2 db-type-t*
     type-1-1 db-type-t*
@@ -54,7 +54,7 @@
   (status-require! (db-type-create env "test-type-2" fields 3 0 &type-2))
   (test-helper-assert "second type id" (= 2 type-2:id))
   (test-helper-assert "second type sequence" (= 1 type-2:sequence))
-  (test-helper-assert "second type field-count" (= 3 type-2:fields-len))
+  (test-helper-assert "second type fields-len" (= 3 type-2:fields-len))
   (test-helper-assert "second type name" (= 0 (strcmp "test-type-2" type-2:name)))
   (for ((set i 0) (< i type-2:fields-len) (set i (+ 1 i)))
     (test-helper-assert
@@ -97,7 +97,7 @@
 
 (define (test-type-create-many env) (status-t db-env-t*)
   "create several types, particularly to test automatic env:types array resizing"
-  status-init
+  status-declare
   (declare
     i db-type-id-t
     name (array b8 255)
@@ -110,7 +110,7 @@
     (return status)))
 
 (define (test-sequence env) (status-t db-env-t*)
-  status-init
+  status-declare
   (declare
     i size-t
     id db-id-t
@@ -128,7 +128,7 @@
     (if (<= db-element-id-limit (db-id-element (+ 1 prev-id)))
       (begin
         (test-helper-assert "node sequence is limited" (= db-status-id-max-element-id status.id))
-        (status-set-id status-id-success))
+        (set status.id status-id-success))
       (test-helper-assert
         "node sequence is monotonically increasing" (and status-success? (= 1 (- id prev-id)))))
     (set prev-id id))
@@ -139,7 +139,7 @@
     (if (<= db-type-id-limit (+ 1 prev-type-id))
       (begin
         (test-helper-assert "system sequence is limited" (= db-status-id-max-type-id status.id))
-        (status-set-id status-id-success))
+        (set status.id status-id-success))
       (begin
         (test-helper-assert
           "system sequence is monotonically increasing"
@@ -149,7 +149,7 @@
     (return status)))
 
 (define (test-open-nonempty env) (status-t db-env-t*)
-  status-init
+  status-declare
   (status-require! (test-type-create-get-delete env))
   (status-require! (test-helper-reset env #t))
   (label exit
@@ -157,7 +157,7 @@
 
 (define (test-id-construction env) (status-t db-env-t*)
   "test features related to the combination of element and type id to node id"
-  status-init
+  status-declare
   (sc-comment "id creation")
   (declare type-id db-type-id-t)
   (set type-id (/ db-type-id-limit 2))
@@ -209,7 +209,7 @@
 
 (define (test-helper-create-type-1 env result) (status-t db-env-t* db-type-t**)
   "create a new type with three fields for testing"
-  status-init
+  status-declare
   (declare fields (array db-field-t 3))
   (db-field-set (array-get fields 0) db-field-type-int8 "test-field-1" 12)
   (db-field-set (array-get fields 1) db-field-type-int8 "test-field-2" 12)
@@ -219,7 +219,7 @@
     (return status)))
 
 (define (test-node-create env) (status-t db-env-t*)
-  status-init
+  status-declare
   ; todo: setting to big data for node value. add many nodes
   (db-txn-declare env txn)
   (declare
@@ -266,7 +266,7 @@
 
 #;(
 (define (test-index) status-t
-  status-init
+  status-declare
   (define ids db-ids-t*)
   (db-define-ids-3 left right label)
   (status-require!
@@ -293,7 +293,7 @@
     (return status)))
 
 (define (test-node-read) status-t
-  status-init
+  status-declare
   (define ids-intern db-ids-t* 0)
   (define ids-id db-ids-t* 0)
   (status-require! (test-helper-create-interns common-element-count &ids-intern))
@@ -322,7 +322,7 @@
     (return status)))
 
 (define (test-concurrent-write/read-thread status-pointer) (b0* b0*)
-  status-init
+  status-declare
   (set status (pointer-get (convert-type status-pointer status-t*)))
   (define state db-graph-read-state-t)
   (define records db-graph-records-t* 0)
@@ -338,7 +338,7 @@
     (set (pointer-get (convert-type status-pointer status-t*)) status)))
 
 (define (test-concurrent-write/read) status-t
-  status-init
+  status-declare
   (define
     thread-two pthread_t
     thread-three pthread_t)

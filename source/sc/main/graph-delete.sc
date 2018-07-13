@@ -1,18 +1,17 @@
 (define (db-graph-internal-delete-graph-ll graph-ll id-label id-left)
   (status-t MDB-cursor* db-id-t db-id-t)
+  status-declare
   db-mdb-declare-val-id
   db-mdb-declare-val-id-2
-  status-declare
   (set
     val-id.mv-data &id-label
     val-id-2.mv-data &id-left)
-  (db-mdb-cursor-get-norequire graph-ll val-id val-id-2 MDB-GET-BOTH)
+  (set status.id (mdb-cursor-get graph-ll &val-id &val-id-2 MDB-GET-BOTH))
   (if db-mdb-status-is-success
     (begin
-      (db-mdb-cursor-del-norequire graph-ll 0)
-      db-mdb-status-require)
-    db-mdb-status-require-notfound)
-  (status-set-id status-id-success)
+      (db-mdb-status-require (mdb-cursor-del graph-ll 0)))
+    db-mdb-status-expect-notfound)
+  (set status.id status-id-success)
   (label exit
     (return status)))
 
@@ -25,11 +24,10 @@
   (set
     (array-get graph-key 0) id-left
     (array-get graph-key 1) id-label
-    val-graph-key.mv-data graph-key)
-  (db-mdb-cursor-get-norequire graph-lr val-graph-key val-null MDB-SET)
-  (if (status-id-is? MDB-NOTFOUND)
-    (return (db-graph-internal-delete-graph-ll graph-ll id-label id-left))
-    db-mdb-status-require)
+    val-graph-key.mv-data graph-key
+    status.id (mdb-cursor-get graph-lr &val-graph-key &val-null MDB-SET))
+  (if db-mdb-status-is-notfound
+    (return (db-graph-internal-delete-graph-ll graph-ll id-label id-left)))
   (label exit
     (return status)))
 
@@ -44,12 +42,9 @@
     (array-get graph-key 1) id-label
     val-graph-key.mv-data graph-key
     val-id.mv-data &id-left)
-  (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-GET-BOTH)
-  (if db-mdb-status-is-success
-    (begin
-      (db-mdb-cursor-del-norequire graph-rl 0)
-      db-mdb-status-require)
-    db-mdb-status-require-notfound)
+  (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-GET-BOTH))
+  (if db-mdb-status-is-success (db-mdb-status-require (mdb-cursor-del graph-rl 0))
+    db-mdb-status-expect-notfound)
   (label exit
     (return status)))
 
@@ -62,9 +57,9 @@
       (set
         id-label (db-ids-first label)
         val-id.mv-data &id-label)
-      (db-mdb-cursor-get-norequire graph-ll val-id val-id-2 MDB-SET-KEY)
+      (set status.id (mdb-cursor-get graph-ll &val-id &val-id-2 MDB-SET-KEY))
       (if db-mdb-status-is-success (goto each-data-0010)
-        db-mdb-status-require-notfound)
+        db-mdb-status-expect-notfound)
       (label each-key-0010
         (set label (db-ids-rest label))
         (if label (goto set-key-0010)
@@ -75,24 +70,22 @@
         (array-get graph-key 0) id-left
         (array-get graph-key 1) id-label
         val-graph-key.mv-data graph-key)
-      (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-KEY)
+      (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-KEY))
       (if db-mdb-status-is-success
         (label each-data-2-0010
           (set status
             (db-graph-internal-delete-graph-rl
               graph-rl id-left (db-graph-data->id val-graph-data.mv-data) id-label))
           db-mdb-status-require-read
-          (db-mdb-cursor-del-norequire graph-lr 0)
-          db-mdb-status-require
-          (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data)
+          (db-mdb-status-require (mdb-cursor-del graph-lr 0))
+          (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
           (if db-mdb-status-is-success (goto each-data-2-0010)
-            db-mdb-status-require-notfound))
-        db-mdb-status-require-notfound)
-      (db-mdb-cursor-del-norequire graph-ll 0)
-      db-mdb-status-require
-      (db-mdb-cursor-next-dup-norequire graph-ll val-id val-id-2)
+            db-mdb-status-expect-notfound))
+        db-mdb-status-expect-notfound)
+      (db-mdb-status-require (mdb-cursor-del graph-ll 0))
+      (set status.id (mdb-cursor-get graph-ll &val-id &val-id-2 MDB-NEXT-DUP))
       (if db-mdb-status-is-success (goto each-data-0010)
-        db-mdb-status-require-notfound)
+        db-mdb-status-expect-notfound)
       (goto each-key-0010))))
 
 (pre-define db-graph-internal-delete-0110
@@ -100,8 +93,9 @@
     (declare
       id-right db-id-t
       id-left db-id-t
-      id-label db-id-t)
-    (define right-pointer db-ids-t* right)
+      id-label db-id-t
+      right-pointer db-ids-t*)
+    (set right-pointer right)
     (label set-key-0110
       (set
         id-right (db-ids-first right-pointer)
@@ -109,9 +103,9 @@
         (array-get graph-key 0) id-right
         (array-get graph-key 1) id-label
         val-graph-key.mv-data graph-key)
-      (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-SET-KEY)
+      (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-SET-KEY))
       (if db-mdb-status-is-success (goto each-data-0110)
-        db-mdb-status-require-notfound)
+        db-mdb-status-expect-notfound)
       (label each-key-0110
         (set right-pointer (db-ids-rest right-pointer))
         (if right-pointer (goto set-key-0110)
@@ -128,23 +122,18 @@
         (array-get graph-key 0) id-left
         (array-get graph-key 1) id-label
         val-graph-key.mv-data graph-key)
-      (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-KEY)
+      (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-KEY))
       (if db-mdb-status-is-success
         (begin
           (set status (db-mdb-graph-lr-seek-right graph-lr id-right))
-          (if db-mdb-status-is-success
-            (begin
-              (db-mdb-cursor-del-norequire graph-lr 0)
-              db-mdb-status-require)
-            db-mdb-status-require-notfound))
-        db-mdb-status-require-notfound)
-      (set status (db-graph-internal-delete-graph-ll graph-ll id-label id-left))
-      db-mdb-status-require-read
-      (db-mdb-cursor-del-norequire graph-rl 0)
-      db-mdb-status-require
-      (db-mdb-cursor-next-dup-norequire graph-rl val-graph-key val-id)
+          (if db-mdb-status-is-success (db-mdb-status- (mdb-cursor-del graph-lr 0))
+            db-mdb-status-expect-notfound))
+        db-mdb-status-expect-notfound)
+      (db-mdb-status-requir-read (db-graph-internal-delete-graph-ll graph-ll id-label id-left))
+      (db-mdb-status-require (mdb-cursor-del graph-rl 0))
+      (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-NEXT-DUP))
       (if db-mdb-status-is-success (goto each-data-0110)
-        db-mdb-status-require-notfound))
+        db-mdb-status-expect-notfound))
     (goto each-key-0110)))
 
 (pre-define db-graph-internal-delete-1010
@@ -163,24 +152,23 @@
           (array-get graph-key 0) id-left
           (array-get graph-key 1) id-label
           val-graph-key.mv-data graph-key)
-        (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-KEY)
+        (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-KEY))
         (if db-mdb-status-is-success
           (begin
             (do-while db-mdb-status-is-success
               (db-graph-internal-delete-graph-rl
                 graph-rl id-left (db-graph-data->id val-graph-data.mv-data) id-label)
               (db-graph-internal-delete-graph-ll graph-ll id-label id-left)
-              (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data))
-            db-mdb-status-require-notfound
+              (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data NEXT-DUP)))
+            db-mdb-status-expect-notfound
             (set
               (array-get graph-key 0) id-left
               (array-get graph-key 1) id-label
               val-graph-key.mv-data graph-key)
-            (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-KEY)
-            db-mdb-status-require
-            (db-mdb-cursor-del-norequire graph-lr MDB-NODUPDATA)
-            db-mdb-status-require)
-          db-mdb-status-require-notfound)
+            (db-mdb-status-require
+              (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-KEY))
+            (db-mdb-status-require (mdb-cursor-del graph-lr MDB-NODUPDATA)))
+          db-mdb-status-expect-notfound)
         (set label-pointer (db-ids-rest label-pointer)))
       (set left (db-ids-rest left)))))
 
@@ -196,13 +184,13 @@
         (array-get graph-key 0) id-right
         (array-get graph-key 1) 0
         val-graph-key.mv-data graph-key)
-      (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-SET-RANGE)
+      (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-SET-RANGE))
       (if db-mdb-status-is-success
         (if (= id-right (db-pointer->id val-graph-key.mv-data))
           (begin
             (set id-label (db-pointer->id-at val-graph-key.mv-data 1))
             (goto each-data-0100)))
-        db-mdb-status-require-notfound)
+        db-mdb-status-expect-notfound)
       (set right (db-ids-rest right))
       (if right (goto set-range-0100)
         (goto exit)))
@@ -212,23 +200,19 @@
         (array-get graph-key 0) id-left
         (array-get graph-key 1) id-label
         val-graph-key.mv-data graph-key)
-      (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-KEY)
+      (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-KEY))
       (if db-mdb-status-is-success
         (begin
           (set status (db-mdb-graph-lr-seek-right graph-lr id-right))
-          (if db-mdb-status-is-success
-            (begin
-              (db-mdb-cursor-del-norequire graph-lr 0)
-              db-mdb-status-require)
-            db-mdb-status-require-notfound))
-        db-mdb-status-require-notfound)
+          (if db-mdb-status-is-success (db-mdb-status-require (mdb-cursor-del graph-lr 0))
+            db-mdb-status-expect-notfound))
+        db-mdb-status-expect-notfound)
       (status-require
         (db-graph-internal-delete-graph-ll-conditional graph-lr graph-ll id-label id-left))
-      (db-mdb-cursor-del-norequire graph-rl 0)
-      db-mdb-status-require
-      (db-mdb-cursor-next-dup-norequire graph-rl val-graph-key val-id)
+      (db-mdb-status-require (mdb-cursor-del graph-rl 0))
+      (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-NEXT-DUP))
       (if db-mdb-status-is-success (goto each-data-0100)
-        db-mdb-status-require-notfound))
+        db-mdb-status-expect-notfound))
     (goto set-range-0100)))
 
 (pre-define db-graph-internal-delete-1000
@@ -242,15 +226,15 @@
         id-left (db-ids-first left)
         (array-get graph-key 0) id-left
         (array-get graph-key 1) 0
-        val-graph-key.mv-data graph-key)
-      (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-RANGE)
+        val-graph-key.mv-data graph-key
+        status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-RANGE))
       (label each-key-1000
         (if db-mdb-status-is-success
           (if (= id-left (db-pointer->id val-graph-key.mv-data))
             (begin
               (set id-label (db-pointer->id-at val-graph-key.mv-data 1))
               (goto each-data-1000)))
-          db-mdb-status-require-notfound)
+          db-mdb-status-expect-notfound)
         (set left (db-ids-rest left))
         (if left (goto set-range-1000)
           (goto exit))))
@@ -258,15 +242,13 @@
       (set id-right (db-graph-data->id val-graph-data.mv-data))
       (db-graph-internal-delete-graph-rl graph-rl id-left id-right id-label)
       (db-graph-internal-delete-graph-ll graph-ll id-label id-left)
-      (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data)
+      (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
       (if db-mdb-status-is-success (goto each-data-1000)
-        db-mdb-status-require-notfound))
+        db-mdb-status-expect-notfound))
     (array-set graph-key 0 id-left 1 id-label)
-    (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-KEY)
-    db-mdb-status-require
-    (db-mdb-cursor-del-norequire graph-lr MDB-NODUPDATA)
-    db-mdb-status-require
-    (db-mdb-cursor-next-nodup-norequire graph-lr val-graph-key val-graph-data)
+    (db-mdb-status-require (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-KEY))
+    (db-mdb-status-require (mdb-cursor-del graph-lr MDB-NODUPDATA))
+    (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-NODUP))
     (goto each-key-1000)))
 
 (pre-define db-graph-internal-delete-1100
@@ -282,15 +264,15 @@
       (set
         id-left (db-ids-first left)
         (array-get graph-key 0) id-left
-        val-graph-key.mv-data graph-key)
-      (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-RANGE)
+        val-graph-key.mv-data graph-key
+        status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-RANGE))
       (label each-key-1100
         (if db-mdb-status-is-success
           (if (= id-left (db-pointer->id val-graph-key.mv-data))
             (begin
               (set id-label (db-pointer->id-at val-graph-key.mv-data 1))
               (goto each-data-1100)))
-          db-mdb-status-require-notfound)
+          db-mdb-status-expect-notfound)
         (set left (db-ids-rest left))
         (if left
           (begin
@@ -302,21 +284,20 @@
       (if (imht-set-contains? right-set id-right)
         (begin
           (db-graph-internal-delete-graph-rl graph-rl id-left id-right id-label)
-          (db-mdb-cursor-del-norequire graph-lr 0)
-          db-mdb-status-require))
-      (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data)
+          (db-mdb-status-require (mdb-cursor-del graph-lr 0))))
+      (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
       (if db-mdb-status-is-success (goto each-data-1100)
-        db-mdb-status-require-notfound))
+        db-mdb-status-expect-notfound))
     (status-require
       (db-graph-internal-delete-graph-ll-conditional graph-lr graph-ll id-label id-left))
     (set
       (array-get graph-key 0) id-left
       (array-get graph-key 1) id-label
       val-graph-key.mv-data graph-key)
-    (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-KEY)
+    (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-KEY))
     (cond
       (db-mdb-status-is-success
-        (db-mdb-cursor-next-nodup-norequire graph-lr val-graph-key val-graph-data)
+        (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-NODUP))
         (goto each-key-1100))
       ((status-id-is? MDB-NOTFOUND) (goto set-range-1100))
       (else (status-set-group-goto db-status-group-lmdb)))))
@@ -338,16 +319,14 @@
           (array-get graph-key 0) id-left
           (array-get graph-key 1) id-label
           val-graph-key.mv-data graph-key)
-        (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-KEY)
+        (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-KEY))
         (while db-mdb-status-is-success
           (if (imht-set-contains? right-set (db-graph-data->id val-graph-data.mv-data))
             (begin
               (set id-right (db-graph-data->id val-graph-data.mv-data))
               (db-graph-internal-delete-graph-rl graph-rl id-left id-right id-label)
-              (begin
-                (db-mdb-cursor-del-norequire graph-lr 0)
-                db-mdb-status-require)))
-          (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data))
+              (db-mdb-status-require (mdb-cursor-del graph-lr 0))))
+          (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP)))
         (db-graph-internal-delete-graph-ll-conditional graph-lr graph-ll id-label id-left)
         (set label (db-ids-rest label)))
       (set
@@ -376,21 +355,23 @@
         id-left (db-ids-first left)
         (array-get graph-key 0) id-left
         val-graph-key.mv-data graph-key)
-      (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-RANGE)
+      (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-RANGE))
       (label each-key-1001-1101
         (if db-mdb-status-is-success
           (if (= id-left (db-pointer->id val-graph-key.mv-data))
             (begin
               (set val-graph-data.mv-data graph-data)
-              (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-BOTH-RANGE)
+              (set status.id
+                (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-BOTH-RANGE))
               (if db-mdb-status-is-success
                 (begin
                   (set id-label (db-pointer->id-at val-graph-key.mv-data 1))
                   (goto each-data-1001-1101))
-                db-mdb-status-require-notfound)
-              (db-mdb-cursor-next-nodup-norequire graph-lr val-graph-key val-graph-data)
+                db-mdb-status-expect-notfound)
+              (set status.id
+                (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-NODUP))
               (goto each-key-1001-1101)))
-          db-mdb-status-require-notfound)
+          db-mdb-status-expect-notfound)
         (set left (db-ids-rest left))
         (if left
           (begin
@@ -405,12 +386,11 @@
             (begin
               (set status (db-graph-internal-delete-graph-rl graph-rl id-left id-right id-label))
               db-mdb-status-require-read
-              (db-mdb-cursor-del-norequire graph-lr 0)
-              db-mdb-status-require)))
+              (db-mdb-status-require (mdb-cursor-del graph-lr 0)))))
         (goto next-label-1001-1101))
-      (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data)
+      (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
       (if db-mdb-status-is-success (goto each-data-1001-1101)
-        db-mdb-status-require-notfound))
+        db-mdb-status-expect-notfound))
     (status-require
       (db-graph-internal-delete-graph-ll-conditional graph-lr graph-ll id-label id-left))
     (label next-label-1001-1101
@@ -418,10 +398,10 @@
         (array-get graph-key 0) id-left
         (array-get graph-key 1) id-label
         val-graph-key.mv-data graph-key)
-      (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-KEY)
+      (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-KEY))
       (cond
         (db-mdb-status-is-success
-          (db-mdb-cursor-next-nodup-norequire graph-lr val-graph-key val-graph-data)
+          (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-NODUP))
           (goto each-key-1001-1101))
         ((status-id-is? MDB-NOTFOUND) (goto set-range-1001-1101))
         (else (status-set-group-goto db-status-group-lmdb))))))
@@ -447,7 +427,7 @@
         (array-get graph-key 1) id-label
         val-graph-key.mv-data graph-key
         val-graph-data.mv-data graph-data)
-      (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-BOTH-RANGE)
+      (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-BOTH-RANGE))
       (if db-mdb-status-is-success (goto each-data-1011-1111)
         (label each-key-1011-1111
           (set left-pointer (db-ids-rest left-pointer))
@@ -473,11 +453,10 @@
                 id-right (db-graph-data->id val-graph-data.mv-data)
                 status (db-graph-internal-delete-graph-rl graph-rl id-left id-right id-label))
               db-mdb-status-require-read
-              (db-mdb-cursor-del-norequire graph-lr 0)
-              db-mdb-status-require))
-          (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data)
+              (db-mdb-status-require (mdb-cursor-del graph-lr 0))))
+          (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
           (if db-mdb-status-is-success (goto each-data-1011-1111)
-            db-mdb-status-require-notfound))))
+            db-mdb-status-expect-notfound))))
     (status-require
       (db-graph-internal-delete-graph-ll-conditional graph-lr graph-ll id-label id-left))
     (goto each-key-1011-1111)))
@@ -527,12 +506,12 @@
   (db-mdb-cursor-declare graph-lr)
   (db-mdb-cursor-declare graph-rl)
   (db-mdb-cursor-declare graph-ll)
-  (db-mdb-cursor-open txn graph-lr)
-  (db-mdb-cursor-open txn graph-rl)
-  (db-mdb-cursor-open txn graph-ll)
+  (db-mdb-status-require (db-mdb-env-cursor-open txn graph-lr))
+  (db-mdb-status-require (db-mdb-env-cursor-open txn graph-rl))
+  (db-mdb-status-require (db-mdb-env-cursor-open txn graph-ll))
   (set status (db-graph-internal-delete left right label ordinal graph-lr graph-rl graph-ll))
   (label exit
-    (db-mdb-cursor-close graph-lr)
-    (db-mdb-cursor-close graph-rl)
-    (db-mdb-cursor-close graph-ll)
+    (db-mdb-cursor-close-if-active graph-lr)
+    (db-mdb-cursor-close-if-active graph-rl)
+    (db-mdb-cursor-close-if-active graph-ll)
     (return status)))

@@ -10,7 +10,7 @@
 b32 common_element_count = 3;
 b32 common_label_count = 3;
 status_t test_open_empty(db_env_t* env) {
-  status_init;
+  status_declare;
   test_helper_assert(("env.open is true"), (1 == env->open));
   test_helper_assert(
     ("env.root is set"), (0 == strcmp((env->root), test_helper_db_root)));
@@ -18,7 +18,7 @@ exit:
   return (status);
 };
 status_t test_statistics(db_env_t* env) {
-  status_init;
+  status_declare;
   db_statistics_t stat;
   db_txn_declare(env, txn);
   db_txn_begin(txn);
@@ -30,10 +30,10 @@ exit:
   return (status);
 };
 status_t test_type_create_get_delete(db_env_t* env) {
-  status_init;
+  status_declare;
   db_field_t fields[3];
   db_field_t* fields_2[3];
-  db_field_count_t i;
+  db_fields_len_t i;
   db_type_t* type_1;
   db_type_t* type_2;
   db_type_t* type_1_1;
@@ -50,7 +50,7 @@ status_t test_type_create_get_delete(db_env_t* env) {
   status_require_x(db_type_create(env, "test-type-2", fields, 3, 0, (&type_2)));
   test_helper_assert("second type id", (2 == type_2->id));
   test_helper_assert("second type sequence", (1 == type_2->sequence));
-  test_helper_assert("second type field-count", (3 == type_2->fields_len));
+  test_helper_assert("second type fields-len", (3 == type_2->fields_len));
   test_helper_assert(
     "second type name", (0 == strcmp("test-type-2", (type_2->name))));
   for (i = 0; (i < type_2->fields_len); i = (1 + i)) {
@@ -91,7 +91,7 @@ exit:
 /** create several types, particularly to test automatic env:types array
  * resizing */
 status_t test_type_create_many(db_env_t* env) {
-  status_init;
+  status_declare;
   db_type_id_t i;
   b8 name[255];
   db_type_t* type;
@@ -104,7 +104,7 @@ exit:
   return (status);
 };
 status_t test_sequence(db_env_t* env) {
-  status_init;
+  status_declare;
   size_t i;
   db_id_t id;
   db_id_t prev_id;
@@ -120,7 +120,7 @@ status_t test_sequence(db_env_t* env) {
     if (db_element_id_limit <= db_id_element((1 + prev_id))) {
       test_helper_assert(
         "node sequence is limited", (db_status_id_max_element_id == status.id));
-      status_set_id(status_id_success);
+      status.id = status_id_success;
     } else {
       test_helper_assert("node sequence is monotonically increasing",
         (status_success_p && (1 == (id - prev_id))));
@@ -134,7 +134,7 @@ status_t test_sequence(db_env_t* env) {
     if (db_type_id_limit <= (1 + prev_type_id)) {
       test_helper_assert(
         "system sequence is limited", (db_status_id_max_type_id == status.id));
-      status_set_id(status_id_success);
+      status.id = status_id_success;
     } else {
       test_helper_assert("system sequence is monotonically increasing",
         (status_success_p && (1 == (type_id - prev_type_id))));
@@ -145,7 +145,7 @@ exit:
   return (status);
 };
 status_t test_open_nonempty(db_env_t* env) {
-  status_init;
+  status_declare;
   status_require_x(test_type_create_get_delete(env));
   status_require_x(test_helper_reset(env, 1));
 exit:
@@ -154,7 +154,7 @@ exit:
 /** test features related to the combination of element and type id to node id
  */
 status_t test_id_construction(db_env_t* env) {
-  status_init;
+  status_declare;
   /* id creation */
   db_type_id_t type_id;
   type_id = (db_type_id_limit / 2);
@@ -206,7 +206,7 @@ status_t test_graph_delete(db_env_t* env) {
 };
 /** create a new type with three fields for testing */
 status_t test_helper_create_type_1(db_env_t* env, db_type_t** result) {
-  status_init;
+  status_declare;
   db_field_t fields[3];
   db_field_set((fields[0]), db_field_type_int8, "test-field-1", 12);
   db_field_set((fields[1]), db_field_type_int8, "test-field-2", 12);
@@ -216,7 +216,7 @@ exit:
   return (status);
 };
 status_t test_node_create(db_env_t* env) {
-  status_init;
+  status_declare;
   db_txn_declare(env, txn);
   db_type_t* type;
   db_node_values_t values;

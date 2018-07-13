@@ -1,8 +1,8 @@
-#define db_field_count_t b8
+#define db_fields_len_t b8
 #define db_field_type_t b8
 #define db_id_mask UINT64_MAX
 #define db_id_t b64
-#define db_index_count_t b8
+#define db_index_len_t b8
 #define db_name_len_max UINT8_MAX
 #define db_name_len_t b8
 #define db_data_len_t b32

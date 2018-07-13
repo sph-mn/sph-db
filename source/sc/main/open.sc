@@ -1,7 +1,7 @@
 (sc-comment
   "system btree entry format. key -> value
-     type-label id -> 8b:name-len name db-field-count-t:field-count (b8:field-type b8:name-len name) ...
-     index-label db-type-id-t:type-id db-field-count-t:field-offset ... -> ()")
+     type-label id -> 8b:name-len name db-field-len-t:field-len (b8:field-type b8:name-len name) ...
+     index-label db-type-id-t:type-id db-field-len-t:field-offset ... -> ()")
 
 (define (db-open-root env options path) (status-t db-env-t* db-open-options-t* b8*)
   "prepare the database filesystem root path.
@@ -41,7 +41,7 @@
   (if (not data-path) (db-status-set-id-goto db-status-id-memory))
   (db-mdb-status-require (mdb-env-create &mdb-env))
   (db-mdb-status-require (mdb-env-set-maxdbs mdb-env options:maximum-db-count))
-  (db-mdb-status-require (mdb-env-set-mapsize mdb-env options:maximum-size-octets))
+  (db-mdb-status-require (mdb-env-set-mapsize mdb-env options:maximum-size))
   (db-mdb-status-require (mdb-env-set-maxreaders mdb-env options:maximum-reader-count))
   (db-mdb-status-require
     (mdb-env-open mdb-env data-path (db-open-mdb-env-flags options) options:file-permissions))
@@ -59,32 +59,36 @@
   after data has been inserted"
   status-declare
   (declare
+    data b8*
     label b8
-    format (array b8 (3) db-size-id db-size-type-id db-size-ordinal))
-  (db-mdb-declare-val val-key 1)
-  (db-mdb-declare-val val-data 3)
+    format (array b8 (3) db-size-id db-size-type-id db-size-ordinal)
+    val-key MDB-val
+    val-data MDB-val
+    stat-info MDB-stat)
   (set
+    val-key.mv-size 1
+    val-data.mv-size 3
     label db-system-label-format
-    val-key.mv-data &label)
-  (db-mdb-cursor-get-norequire system val-key val-data MDB-SET)
+    val-key.mv-data &label
+    status.id (mdb-cursor-get system &val-key &val-data MDB-SET))
   (if db-mdb-status-is-success
     (begin
-      (define data b8* val-data.mv-data)
+      (set data val-data.mv-data)
       (if
         (not
           (and
             (= (array-get data 0) (array-get format 0))
             (= (array-get data 1) (array-get format 1)) (= (array-get data 2) (array-get format 2))))
         (begin
-          ; differing type sizes are not a problem if there is no data yet.
-          ; this only checks if any tables/indices exist by checking the contents of the system btree
-          (declare stat-info MDB-stat)
+          (sc-comment
+            "differing type sizes are not a problem if there is no data yet.
+             this only checks if any tables/indices exist by checking the contents of the system btree")
           (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-system &stat-info))
           (if (= 1 stat-info.ms-entries)
             (begin
               ; only one entry, the previous format entry. update
               (set val-data.mv-data format)
-              (db-mdb-cursor-put system val-key val-data))
+              (db-mdb-status-require (mdb-cursor-put system &val-key &val-data 0)))
             (begin
               (fprintf
                 stderr
@@ -92,10 +96,10 @@
                 (array-get data 0) (array-get data 1) (array-get data 2))
               (db-status-set-id-goto db-status-id-different-format))))))
     (begin
-      db-mdb-status-require-notfound
+      db-mdb-status-expect-notfound
       (sc-comment "no format entry exists yet")
       (set val-data.mv-data format)
-      (db-mdb-cursor-put system val-key val-data)))
+      (db-mdb-status-require (mdb-cursor-put system &val-key &val-data 0))))
   (label exit
     (return status)))
 
@@ -103,18 +107,19 @@
   "initialise the sequence for system ids like type ids in result.
   set result to the next sequence value. id zero is reserved for null"
   status-declare
+  db-mdb-declare-val-null
   (declare
+    val-key MDB-val
     current db-type-id-t
     key (array b8 (db-size-system-key)))
-  db-mdb-declare-val-null
-  (db-mdb-declare-val val-key 1)
   (set
+    val-key.mv-size 1
     current 0
     (db-system-key-label key) db-system-label-type
     (db-system-key-id key) db-type-id-limit
     val-key.mv-data key)
   (sc-comment "search from the last possible type or the key after")
-  (db-mdb-cursor-get-norequire system val-key val-null MDB-SET-RANGE)
+  (set status.id (mdb-cursor-get system &val-key &val-null MDB-SET-RANGE))
   (if db-mdb-status-is-success
     (begin
       (if (= db-system-label-type (db-system-key-label val-key.mv-data))
@@ -122,27 +127,28 @@
           (set current (db-system-key-id val-key.mv-data))
           (goto exit))
         (begin
-          (db-mdb-cursor-get-norequire system val-key val-null MDB-PREV)
+          (set status.id (mdb-cursor-get system &val-key &val-null MDB-PREV))
           (if db-mdb-status-is-success
             (begin
               (set current (db-system-key-id val-key.mv-data))
               (goto exit))
-            db-mdb-status-require-notfound))))
-    db-mdb-status-require-notfound)
+            db-mdb-status-expect-notfound))))
+    db-mdb-status-expect-notfound)
   (sc-comment "search from the last key")
-  (db-mdb-cursor-get-norequire system val-key val-null MDB-LAST)
+  (set status.id (mdb-cursor-get system &val-key &val-null MDB-LAST))
   (if db-mdb-status-is-success
     (begin
       (while
         (and
-          db-mdb-status-is-success (not (= db-system-label-type (db-system-key-label val-key.mv-data))))
-        (db-mdb-cursor-get-norequire system val-key val-null MDB-PREV))
+          db-mdb-status-is-success
+          (not (= db-system-label-type (db-system-key-label val-key.mv-data))))
+        (set status.id (mdb-cursor-get system &val-key &val-null MDB-PREV)))
       (if db-mdb-status-is-success
         (begin
           (set current (db-system-key-id val-key.mv-data))
           (goto exit))
-        db-mdb-status-require-notfound))
-    db-mdb-status-require-notfound)
+        db-mdb-status-expect-notfound))
+    db-mdb-status-expect-notfound)
   (label exit
     db-mdb-status-success-if-notfound
     (set *result
@@ -160,11 +166,11 @@
     *result 0
     id (db-id-add-type 0 type-id)
     val-id.mv-data &id)
-  (db-mdb-cursor-get-norequire nodes val-id val-null MDB-SET-RANGE)
+  (set status.id (mdb-cursor-get nodes &val-id &val-null MDB-SET-RANGE))
   (if db-mdb-status-is-success
     (if (= type-id (db-id-type (db-pointer->id val-id.mv-data)))
       (set *result (db-pointer->id val-id.mv-data)))
-    (if db-mdb-status-notfound? (status-set-id status-id-success)
+    (if db-mdb-status-is-notfound (set status.id status-id-success)
       (status-set-group-goto db-status-group-lmdb)))
   (label exit
     (return status)))
@@ -176,7 +182,7 @@
   db-mdb-declare-val-id
   db-mdb-declare-val-null
   (set *result 0)
-  (db-mdb-cursor-get-norequire nodes val-id val-null MDB-LAST)
+  (set status.id (mdb-cursor-get nodes &val-id &val-null MDB-LAST))
   (if (and db-mdb-status-is-success (= type-id (db-id-type (db-pointer->id val-id.mv-data))))
     (set *result (db-pointer->id val-id.mv-data)))
   (return status))
@@ -186,9 +192,9 @@
    algorithm: check if data of type exists, if yes then check if last key is of type or
    position next type and step back"
   status-declare
-  (declare id db-id-t)
-  db-mdb-declare-val-null
   db-mdb-declare-val-id
+  db-mdb-declare-val-null
+  (declare id db-id-t)
   (sc-comment
     "if last key is of type then there are no greater type-ids and data of type exists.
     if there is no last key, the database is empty")
@@ -198,9 +204,9 @@
       (begin
         (set *result id)
         (goto exit)))
-    (if db-mdb-status-notfound?
-      ; database is empty
+    (if db-mdb-status-is-notfound
       (begin
+        (sc-comment "database is empty")
         (set *result 0)
         (status-set-id-goto status-id-success))
       status-goto))
@@ -216,7 +222,7 @@
       (set *result 0)
       (goto exit)))
   (sc-comment "greater type found, step back")
-  (db-mdb-cursor-get nodes val-id val-null MDB-PREV)
+  (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-null MDB-PREV))
   (set *result
     (if* (= type-id (db-id-type (db-pointer->id val-id.mv-data))) (db-pointer->id val-id.mv-data)
       0))
@@ -244,22 +250,22 @@
   "read information for fields from system btree type data"
   status-declare
   (declare
-    count db-field-count-t
+    count db-fields-len-t
     data b8*
     field-type b8
     field-pointer db-field-t*
     fields db-field-t*
-    fixed-count db-field-count-t
-    fixed-offsets db-field-count-t*
-    i db-field-count-t
-    offset db-field-count-t)
+    fixed-count db-fields-len-t
+    fixed-offsets db-fields-len-t*
+    i db-fields-len-t
+    offset db-fields-len-t)
   (set
     data *data-pointer
     fixed-offsets 0
     fixed-count 0
     fields 0
-    count (pointer-get (convert-type data db-field-count-t*))
-    data (+ (sizeof db-field-count-t) data))
+    count (pointer-get (convert-type data db-fields-len-t*))
+    data (+ (sizeof db-fields-len-t) data))
   (db-calloc fields count (sizeof db-field-t))
   (sc-comment "field")
   (for ((set i 0) (< i count) (set i (+ 1 i)))
@@ -275,7 +281,7 @@
   (sc-comment "offsets")
   (if fixed-count
     (begin
-      (db-malloc fixed-offsets (* fixed-count (sizeof db-field-count-t)))
+      (db-malloc fixed-offsets (* fixed-count (sizeof db-fields-len-t)))
       (for ((set i 0) (< i fixed-count) (set i (+ 1 i)))
         (set
           offset (+ offset (db-field-type-size (: (+ i fields) type)))
@@ -315,14 +321,17 @@
    type id zero is the system btree"
   status-declare
   (declare
+    val-key MDB-val
+    val-data MDB-val
     key (array b8 (db-size-system-key))
     type-pointer db-type-t*
     types db-type-t*
     types-len db-type-id-t
     system-sequence db-type-id-t)
-  (db-mdb-declare-val val-key (+ 1 (sizeof db-id-t)))
-  (db-mdb-declare-val val-data 3)
-  (set types 0)
+  (set
+    val-key.mv-size (+ 1 (sizeof db-id-t))
+    val-data.mv-size 3
+    types 0)
   (if (< db-size-type-id-max (sizeof db-type-id-t))
     (status-set-both-goto db-status-group-db db-status-id-max-type-id-size))
   (sc-comment "initialise system sequence (type 0)")
@@ -340,13 +349,13 @@
   (db-calloc types types-len (sizeof db-type-t))
   (set types:sequence system-sequence)
   (sc-comment "node types")
-  (db-mdb-cursor-get-norequire system val-key val-data MDB-SET-RANGE)
+  (set status.id (mdb-cursor-get system &val-key &val-data MDB-SET-RANGE))
   (while
     (and db-mdb-status-is-success (= db-system-label-type (db-system-key-label val-key.mv-data)))
     (status-require (db-open-type val-key.mv-data val-data.mv-data types nodes &type-pointer))
     (status-require (db-open-sequence nodes type-pointer))
-    (db-mdb-cursor-get-norequire system val-key val-data MDB-NEXT))
-  (if db-mdb-status-notfound? (status-set-id status-id-success)
+    (set status.id (mdb-cursor-get system &val-key &val-data MDB-NEXT)))
+  (if db-mdb-status-is-notfound (set status.id status-id-success)
     status-goto)
   (set
     txn.env:types types
@@ -359,20 +368,21 @@
   "extend type cache with index information. there can be multiple indices per type"
   status-declare
   db-mdb-declare-val-null
-  (db-mdb-declare-val val-key (+ 1 (sizeof db-id-t)))
   (declare
+    val-key MDB-val
     current-type-id db-type-id-t
-    fields db-field-count-t*
-    fields-len db-field-count-t
+    fields db-fields-len-t*
+    fields-len db-fields-len-t
     indices db-index-t*
-    indices-alloc-len db-field-count-t
-    indices-len db-field-count-t
+    indices-alloc-len db-fields-len-t
+    indices-len db-fields-len-t
     indices-temp db-index-t*
     key (array b8 (db-size-system-key))
     type-id db-type-id-t
     types db-type-t*
     types-len db-type-id-t)
   (set
+    val-key.mv-size (+ 1 (sizeof db-id-t))
     indices 0
     fields 0
     current-type-id 0
@@ -382,7 +392,7 @@
     val-key.mv-data key
     types txn.env:types
     types-len txn.env:types-len)
-  (db-mdb-cursor-get-norequire system val-key val-null MDB-SET-RANGE)
+  (set status.id (mdb-cursor-get system &val-key &val-null MDB-SET-RANGE))
   (while
     (and db-mdb-status-is-success (= db-system-label-index (db-system-key-label val-key.mv-data)))
     (set type-id (db-system-key-id val-key.mv-data))
@@ -408,13 +418,13 @@
     (set fields-len
       (/
         (- val-key.mv-size (sizeof db-system-label-index) (sizeof db-type-id-t))
-        (sizeof db-field-count-t)))
-    (db-calloc fields fields-len (sizeof db-field-count-t))
+        (sizeof db-fields-len-t)))
+    (db-calloc fields fields-len (sizeof db-fields-len-t))
     (struct-set (array-get indices (- indices-len 1))
       fields fields
       fields-len fields-len)
-    (db-mdb-cursor-get-norequire system val-key val-null MDB-NEXT))
-  (if db-mdb-status-notfound? (status-set-id status-id-success)
+    (set status.id (mdb-cursor-get system &val-key &val-null MDB-NEXT)))
+  (if db-mdb-status-is-notfound (set status.id status-id-success)
     status-goto)
   (if current-type-id (set (: (+ current-type-id types) indices) indices))
   (label exit
@@ -428,9 +438,9 @@
   (db-mdb-cursor-declare system)
   (db-mdb-cursor-declare nodes)
   (db-mdb-status-require (mdb-dbi-open txn.mdb-txn "system" MDB-CREATE &txn.env:dbi-system))
-  (db-mdb-cursor-open txn system)
+  (db-mdb-env-cursor-open txn system)
   (status-require (db-open-format system txn))
-  (db-mdb-cursor-open txn nodes)
+  (db-mdb-env-cursor-open txn nodes)
   (status-require (db-open-types system nodes txn))
   (status-require (db-open-indices system txn))
   (label exit
@@ -473,7 +483,7 @@
 (define (db-open-options-set-defaults a) (db-open-options-t db-open-options-t*)
   (set
     a:read-only? #f
-    a:maximum-size-octets 17179869183
+    a:maximum-size 17179869183
     a:maximum-reader-count 65535
     a:maximum-db-count 255
     a:env-open-flags 0

@@ -2,11 +2,11 @@
 
 (pre-define (db-graph-select-cursor-initialise name state state-field-name)
   (begin
-    (db-mdb-cursor-open txn name)
-    (db-mdb-cursor-get-norequire name val-null val-null MDB-FIRST)
+    (db-mdb-status-require (db-mdb-env-cursor-open txn name))
+    (db-mdb-status-require (mdb-cursor-get name &val-null &val-null MDB-FIRST))
     (if (not db-mdb-status-is-success)
       (begin
-        db-mdb-status-require-notfound
+        db-mdb-status-expect-notfound
         (status-set-both-goto db-status-group-db db-status-id-no-more-data)))
     (set state:state-field-name name)))
 
@@ -16,7 +16,7 @@
     (status-require (db-ids->set name (address-of (pre-concat name _set))))
     (set
       state:name (pre-concat name _set)
-      state:options (bit-or (pre-concat db-read-option-is-set_ name) state:options))))
+      state:options (bit-or (pre-concat db-graph-selection-flag-is-set_ name) state:options))))
 
 (pre-define (db-graph-reader-header state)
   (begin
@@ -24,16 +24,20 @@
     db-mdb-declare-val-graph-key
     (db-declare-graph-key graph-key)
     (db-declare-graph-record record)
-    (declare result-temp db-graph-records-t*)
-    (define skip? boolean (bit-and db-read-option-skip state:options))))
+    (declare
+      result-temp db-graph-records-t*
+      skip boolean)
+    (set skip (bit-and db-selection-flag-skip state:options))))
 
 (pre-define (db-graph-reader-header-0000 state)
   (begin
     status-declare
     db-mdb-declare-val-graph-key
     (db-declare-graph-record record)
-    (declare result-temp db-graph-records-t*)
-    (define skip? boolean (bit-and db-read-option-skip state:options))))
+    (declare
+      result-temp db-graph-records-t*
+      skip boolean)
+    (set skip (bit-and db-selection-flag-skip state:options))))
 
 (pre-define (db-graph-reader-get-ordinal-data state)
   (begin
@@ -50,19 +54,18 @@
   (set
     graph-lr state:cursor
     left state:left)
-  (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
-  db-mdb-status-require
+  (db-mdb-status-require (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
   (set (array-get graph-key 0) (db-ids-first left))
   (if (db-id-equal? (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0))
     (goto each-data)
     (label set-range
       (set val-graph-key.mv-data graph-key)
-      (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-RANGE)
+      (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-RANGE))
       (label each-key
         (if db-mdb-status-is-success
           (if (db-id-equal? (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0))
             (goto each-data))
-          db-mdb-status-require-notfound)
+          db-mdb-status-expect-notfound)
         (set left (db-ids-rest left))
         (if left
           (begin
@@ -80,10 +83,10 @@
           record.ordinal (db-graph-data->ordinal val-graph-data.mv-data))
         (db-graph-records-add! *result record result-temp)))
     reduce-count
-    (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data)
+    (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
     (if db-mdb-status-is-success (goto each-data)
-      db-mdb-status-require-notfound))
-  (db-mdb-cursor-next-nodup-norequire graph-lr val-graph-key val-graph-data)
+      db-mdb-status-expect-notfound))
+  (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-NODUP))
   (goto each-key)
   (label exit
     (set
@@ -95,21 +98,26 @@
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-graph-reader-header state)
   db-mdb-declare-val-graph-data
-  (define graph-lr MDB-cursor* state:cursor)
-  (define left db-ids-t* state:left)
-  (define left-first db-ids-t* state:left-first)
-  (define label db-ids-t* state:label)
-  (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
-  db-mdb-status-require
+  (declare
+    graph-lr MDB-cursor*
+    left db-ids-t*
+    left-first db-ids-t*
+    label db-ids-t*)
+  (set
+    graph-lr state:cursor
+    left state:left
+    left-first state:left-first
+    label state:label)
+  (db-mdb-status-require (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
   (set
     (array-get graph-key 0) (db-ids-first left)
     (array-get graph-key 1) (db-ids-first label))
   (if (db-graph-key-equal? graph-key (db-mdb-val->graph-key val-graph-key)) (goto each-data)
     (label set-key
       (set val-graph-key.mv-data graph-key)
-      (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-KEY)
+      (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-KEY))
       (if db-mdb-status-is-success (goto each-data)
-        db-mdb-status-require-notfound)
+        db-mdb-status-expect-notfound)
       (label next-key
         (set left (db-ids-rest left))
         (if left
@@ -137,7 +145,7 @@
           record.ordinal (db-graph-data->ordinal val-graph-data.mv-data))
         (db-graph-records-add! *result record result-temp)))
     reduce-count
-    (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data)
+    (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
     (if db-mdb-status-is-success (goto each-data)
       (goto next-key)))
   (label exit
@@ -149,25 +157,30 @@
 
 (define (db-graph-read-1100 state count result)
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
-  (db-graph-reader-header state)
   db-mdb-declare-val-id
-  (define graph-rl MDB-cursor* state:cursor)
-  (define left db-ids-t* state:left)
-  (define left-first db-ids-t* state:left-first)
-  (define right db-ids-t* state:right)
-  (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-GET-CURRENT)
-  db-mdb-status-require
+  (db-graph-reader-header state)
+  (declare
+    graph-rl MDB-cursor*
+    left db-ids-t*
+    left-first db-ids-t*
+    right db-ids-t*)
+  (set
+    graph-rl state:cursor
+    left state:left
+    left-first state:left-first
+    right state:right)
+  (db-mdb-status-require (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-GET-CURRENT))
   (set (array-get graph-key 0) (db-ids-first right))
   (if (db-id-equal? (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0))
     (goto each-left)
     (label set-range
       (set val-graph-key.mv-data graph-key)
-      (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-SET-RANGE)
+      (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-SET-RANGE))
       (label each-right
         (if db-mdb-status-is-success
           (if (db-id-equal? (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0))
             (goto each-left))
-          db-mdb-status-require-notfound)
+          db-mdb-status-expect-notfound)
         (set right (db-ids-rest right))
         (if right (set (array-get graph-key 0) (db-ids-first right))
           no-more-data-exit)
@@ -175,7 +188,7 @@
   (label each-left
     stop-if-count-zero
     (set val-id.mv-data (db-ids-first-address left))
-    (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-GET-BOTH)
+    (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-GET-BOTH))
     (if db-mdb-status-is-success
       (begin
         (if (not skip?)
@@ -186,11 +199,11 @@
               record.label (db-pointer->id-at val-graph-key.mv-data 1))
             (db-graph-records-add! *result record result-temp)
             reduce-count)))
-      db-mdb-status-require-notfound)
+      db-mdb-status-expect-notfound)
     (set left (db-ids-rest left))
     (if left (goto each-left)
       (set left left-first)))
-  (db-mdb-cursor-next-nodup-norequire graph-rl val-graph-key val-id)
+  (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-NEXT-NODUP))
   (goto each-right)
   (label exit
     (set
@@ -203,14 +216,21 @@
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-graph-reader-header state)
   db-mdb-declare-val-id
-  (define graph-rl MDB-cursor* state:cursor)
-  (define left db-ids-t* state:left)
-  (define left-first db-ids-t* state:left-first)
-  (define right db-ids-t* state:right)
-  (define right-first db-ids-t* state:right-first)
-  (define label db-ids-t* state:label)
-  (declare id-left db-id-t)
+  (declare
+    graph-rl MDB-cursor*
+    left db-ids-t*
+    left-first db-ids-t*
+    right db-ids-t*
+    right-first db-ids-t*
+    label db-ids-t*
+    id-left db-id-t)
   (set
+    graph-rl state:cursor
+    left state:left
+    left-first state:left-first
+    right state:right
+    right-first state:right-first
+    label state:label
     (array-get graph-key 1) (db-ids-first label)
     id-left (db-ids-first left)
     (array-get graph-key 0) (db-ids-first right))
@@ -218,9 +238,9 @@
     (set
       val-graph-key.mv-data graph-key
       val-id.mv-data &id-left)
-    (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-GET-BOTH)
+    (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-GET-BOTH))
     (if db-mdb-status-is-success (goto match)
-      db-mdb-status-require-notfound)
+      db-mdb-status-expect-notfound)
     (label next-query
       (set right (db-ids-rest right))
       (if right
@@ -269,13 +289,18 @@
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-graph-reader-header state)
   db-mdb-declare-val-graph-data
-  (define graph-lr MDB-cursor* state:cursor)
-  (define left db-ids-t* state:left)
-  (define right imht-set-t* state:right)
-  (db-graph-reader-get-ordinal-data state)
   (db-declare-graph-data graph-data)
+  (declare
+    graph-lr MDB-cursor*
+    left db-ids-t*
+    right imht-set-t*)
+  (set
+    graph-lr state:cursor
+    left state:left
+    right state:right)
+  (db-graph-reader-get-ordinal-data state)
   (db-graph-data-set-ordinal graph-data ordinal-min)
-  (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
+  (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
   db-mdb-status-require
   (if left (set (array-get graph-key 0) (db-ids-first left))
     no-more-data-exit)
@@ -283,18 +308,19 @@
     (goto each-data))
   (label each-left
     (set val-graph-key.mv-data graph-key)
-    (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-RANGE)
+    (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-RANGE))
     (label each-key
       (if db-mdb-status-is-success
         (if (db-id-equal? (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0))
           (begin
             (set val-graph-data.mv-data graph-data)
-            (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-BOTH-RANGE)
+            (set status.id
+              (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-BOTH-RANGE))
             (if db-mdb-status-is-success (goto each-data)
-              db-mdb-status-require-notfound)
-            (db-mdb-cursor-next-nodup-norequire graph-lr val-graph-key val-graph-data)
+              db-mdb-status-expect-notfound)
+            (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-NODUP))
             (goto each-key)))
-        db-mdb-status-require-notfound)
+        db-mdb-status-expect-notfound)
       (set left (db-ids-rest left))
       (if left (set (array-get graph-key 0) (db-ids-first left))
         no-more-data-exit)
@@ -317,10 +343,10 @@
                   record.right (db-graph-data->id val-graph-data.mv-data))
                 (db-graph-records-add! *result record result-temp)))
             reduce-count))
-        (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data)
+        (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
         (if db-mdb-status-is-success (goto each-data)
-          db-mdb-status-require-notfound))))
-  (db-mdb-cursor-next-nodup-norequire graph-lr val-graph-key val-graph-data)
+          db-mdb-status-expect-notfound))))
+  (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-NODUP))
   (goto each-key)
   (label exit
     (set
@@ -331,16 +357,23 @@
 (define (db-graph-read-1011-1111 state count result)
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-graph-reader-header state)
-  db-mdb-declare-val-graph-data
   (db-declare-graph-data graph-data)
-  (define graph-lr MDB-cursor* state:cursor)
-  (define left db-ids-t* state:left)
-  (define left-first db-ids-t* state:left-first)
-  (define label db-ids-t* state:label)
-  (define right imht-set-t* state:right)
+  db-mdb-declare-val-graph-data
+  (declare
+    graph-lr MDB-cursor*
+    left db-ids-t*
+    left-first db-ids-t*
+    label db-ids-t*
+    right imht-set-t*)
+  (set
+    graph-lr state:cursor
+    left state:left
+    left-first state:left-first
+    label state:label
+    right state:right)
   (db-graph-reader-get-ordinal-data state)
   (db-graph-data-set-ordinal graph-data ordinal-min)
-  (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
+  (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
   db-mdb-status-require
   (set
     (array-get graph-key 0) (db-ids-first left)
@@ -350,10 +383,10 @@
       (set
         val-graph-key.mv-data graph-key
         val-graph-data.mv-data graph-data)
-      (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-BOTH-RANGE)
+      (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-BOTH-RANGE))
       (if db-mdb-status-is-success (goto each-data)
         (begin
-          db-mdb-status-require-notfound
+          db-mdb-status-expect-notfound
           (label each-key
             (set left (db-ids-rest left))
             (if left (set (array-get graph-key 0) (db-ids-first left))
@@ -382,7 +415,7 @@
                   record.ordinal (db-graph-data->ordinal val-graph-data.mv-data))
                 (db-graph-records-add! *result record result-temp)))
             reduce-count))
-        (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data)
+        (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
         (if db-mdb-status-is-success (goto each-data)
           (goto each-key)))
       (goto each-key)))
@@ -399,16 +432,18 @@
   db-mdb-declare-val-id
   db-mdb-declare-val-id-2
   db-mdb-declare-val-graph-data
-  (define graph-ll MDB-cursor* state:cursor)
-  (define graph-lr MDB-cursor* state:cursor-2)
-  (define label db-ids-t* state:label)
   (declare
+    graph-ll MDB-cursor*
+    graph-lr MDB-cursor*
+    label db-ids-t*
     id-left db-id-t
     id-label db-id-t)
-  (db-mdb-cursor-get-norequire graph-ll val-id val-id-2 MDB-GET-CURRENT)
-  db-mdb-status-require
-  (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
-  db-mdb-status-require
+  (set
+    graph-ll state:cursor
+    graph-lr state:cursor-2
+    label state:label)
+  (db-mdb-status-require (mdb-cursor-get graph-ll &val-id &val-id-2 MDB-GET-CURRENT))
+  (db-mdb-status-require (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
   (if label (set id-label (db-ids-first label))
     no-more-data-exit)
   (if (db-id-equal? id-label (db-pointer->id val-id.mv-data))
@@ -417,13 +452,13 @@
       (goto each-label-data))
     (label set-label-key
       (set val-id.mv-data &id-label)
-      (db-mdb-cursor-get-norequire graph-ll val-id val-id-2 MDB-SET-KEY)
+      (set status.id (mdb-cursor-get graph-ll &val-id &val-id-2 MDB-SET-KEY))
       (if db-mdb-status-is-success
         (begin
           (set (array-get graph-key 1) id-label)
           (goto each-label-data))
         (begin
-          db-mdb-status-require-notfound
+          db-mdb-status-expect-notfound
           (set label (db-ids-rest label))
           (if label (set id-label (db-ids-first label))
             no-more-data-exit)
@@ -434,7 +469,7 @@
       (begin
         (set (array-get graph-key 0) id-left)
         (set val-graph-key.mv-data graph-key)
-        (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-SET-KEY)
+        (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-KEY))
         (if db-mdb-status-is-success (goto each-left-data)
           (goto exit))))
     (label each-left-data
@@ -447,10 +482,10 @@
             record.label id-label)
           (db-graph-records-add! *result record result-temp)))
       reduce-count
-      (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data)
+      (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
       (if db-mdb-status-is-success (goto each-left-data)
-        db-mdb-status-require-notfound))
-    (db-mdb-cursor-next-dup-norequire graph-ll val-id val-id-2)
+        db-mdb-status-expect-notfound))
+    (set status.id (mdb-cursor-get graph-ll &val-id &val-id-2 MDB-NEXT-DUP))
     (if db-mdb-status-is-success (goto each-label-data)
       (begin
         (set label (db-ids-rest label))
@@ -467,22 +502,28 @@
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-graph-reader-header state)
   db-mdb-declare-val-id
-  (define graph-rl MDB-cursor* state:cursor)
-  (define label db-ids-t* state:label)
-  (define right db-ids-t* state:right)
-  (define right-first db-ids-t* state:right-first)
-  (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-GET-CURRENT)
-  db-mdb-status-require
+  (declare
+    graph-rl MDB-cursor*
+    label db-ids-t*
+    right db-ids-t*
+    right-first db-ids-t*)
+  (set
+    graph-rl state:cursor
+    label state:label
+    right state:right
+    right-first state:right-first)
+  (db-mdb-status-require (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-GET-CURRENT))
   (set
     (array-get graph-key 1) (db-ids-first label)
     (array-get graph-key 0) (db-ids-first right))
   (if (db-graph-key-equal? graph-key (db-mdb-val->graph-key val-graph-key)) (goto each-data)
     (label set-key
-      (set val-graph-key.mv-data graph-key)
-      (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-SET-KEY)
+      (set
+        val-graph-key.mv-data graph-key
+        status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-SET-KEY))
       (if db-mdb-status-is-success (goto each-data)
         (label each-key
-          db-mdb-status-require-notfound
+          db-mdb-status-expect-notfound
           (set right (db-ids-rest right))
           (if right (set (array-get graph-key 0) (db-ids-first right))
             (begin
@@ -505,7 +546,7 @@
           record.label (array-get graph-key 1))
         (db-graph-records-add! *result record result-temp)))
     reduce-count
-    (db-mdb-cursor-next-dup-norequire graph-rl val-graph-key val-id)
+    (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-NEXT-DUP))
     (if db-mdb-status-is-success (goto each-data)
       (goto each-key)))
   (label exit
@@ -519,19 +560,22 @@
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-graph-reader-header state)
   db-mdb-declare-val-id
-  (define graph-rl MDB-cursor* state:cursor)
-  (define right db-ids-t* state:right)
-  (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-GET-CURRENT)
-  db-mdb-status-require
+  (declare
+    graph-rl MDB-cursor*
+    right db-ids-t*)
+  (set
+    graph-rl state:cursor
+    right state:right)
+  (db-mdb-status-require (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-GET-CURRENT))
   (set (array-get graph-key 0) (db-ids-first right))
   (if (db-id-equal? (array-get graph-key 0) (db-pointer->id val-graph-key.mv-data)) (goto each-key)
     (label set-range
       (set val-graph-key.mv-data graph-key)
-      (db-mdb-cursor-get-norequire graph-rl val-graph-key val-id MDB-SET-RANGE)
+      (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-SET-RANGE))
       (if db-mdb-status-is-success
         (if (db-id-equal? (array-get graph-key 0) (db-pointer->id val-graph-key.mv-data))
           (goto each-key))
-        db-mdb-status-require-notfound)
+        db-mdb-status-expect-notfound)
       (set right (db-ids-rest right))
       (if right (set (array-get graph-key 0) (db-ids-first right))
         no-more-data-exit)
@@ -547,14 +591,14 @@
             record.label (db-pointer->id-at val-graph-key.mv-data 1))
           (db-graph-records-add! *result record result-temp)))
       reduce-count
-      (db-mdb-cursor-next-dup-norequire graph-rl val-graph-key val-id)
+      (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-NEXT-DUP))
       (if db-mdb-status-is-success (goto each-data)
-        db-mdb-status-require-notfound))
-    (db-mdb-cursor-next-nodup-norequire graph-rl val-graph-key val-id)
+        db-mdb-status-expect-notfound))
+    (set status.id (db-mdb-cursor-get graph-rl &val-graph-key &val-id MDB-NEXT-NODUP))
     (if db-mdb-status-is-success
       (if (db-id-equal? (array-get graph-key 0) (db-pointer->id val-graph-key.mv-data))
         (goto each-key))
-      db-mdb-status-require-notfound)
+      db-mdb-status-expect-notfound)
     (set right (db-ids-rest right))
     (if right (set (array-get graph-key 0) (db-ids-first right))
       no-more-data-exit)
@@ -569,9 +613,9 @@
   (status-t db-graph-read-state-t* b32 db-graph-records-t**)
   (db-graph-reader-header-0000 state)
   db-mdb-declare-val-graph-data
-  (define graph-lr MDB-cursor* state:cursor)
-  (db-mdb-cursor-get-norequire graph-lr val-graph-key val-graph-data MDB-GET-CURRENT)
-  db-mdb-status-require
+  (declare graph-lr MDB-cursor*)
+  (set graph-lr state:cursor)
+  (db-mdb-status-require (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
   (label each-key
     (label each-data
       stop-if-count-zero
@@ -584,12 +628,12 @@
             record.ordinal (db-graph-data->ordinal val-graph-data.mv-data))
           (db-graph-records-add! *result record result-temp)))
       reduce-count
-      (db-mdb-cursor-next-dup-norequire graph-lr val-graph-key val-graph-data)
+      (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
       (if db-mdb-status-is-success (goto each-data)
-        db-mdb-status-require-notfound))
-    (db-mdb-cursor-next-nodup-norequire graph-lr val-graph-key val-graph-data)
+        db-mdb-status-expect-notfound))
+    (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-NODUP))
     (if db-mdb-status-is-success (goto each-key)
-      db-mdb-status-require-notfound))
+      db-mdb-status-expect-notfound))
   (label exit
     (set state:status status)
     (return status)))
@@ -604,7 +648,9 @@
   readers always leave cursors at a valid entry, usually the next entry unless the results have been exhausted"
   status-declare
   db-mdb-declare-val-null
-  (db-mdb-cursor-declare-three graph-lr graph-rl graph-ll)
+  (db-mdb-cursor-declare graph-lr)
+  (db-mdb-cursor-declare graph-rl)
+  (db-mdb-cursor-declare graph-ll)
   (set
     result:status status
     result:left left
@@ -649,10 +695,10 @@
   (define reader db-graph-reader-t result:reader)
   (if offset
     (begin
-      (set state:options (bit-or db-read-option-skip state:options))
+      (set state:options (bit-or db-selection-flag-skip state:options))
       (set status (reader state offset 0))
-      (if (not db-mdb-status-is-success) db-mdb-status-require-notfound)
-      (set state:options (bit-xor db-read-option-skip state:options))))
+      (if (not db-mdb-status-is-success) db-mdb-status-expect-notfound)
+      (set state:options (bit-xor db-selection-flag-skip state:options))))
   (label exit
     (set result:status status)
     (return status)))
@@ -670,7 +716,7 @@
 (define (db-graph-selection-destroy state) (b0 db-graph-read-state-t*)
   (db-mdb-cursor-close state:cursor)
   (db-mdb-cursor-close state:cursor-2)
-  (if (bit-and db-read-option-is-set-right state:options)
+  (if (bit-and db-graph-selection-flag-is-set-right state:options)
     (begin
       (imht-set-destroy (convert-type state:right imht-set-t*))
       (set state:right 0))))

@@ -27,7 +27,7 @@
   db-status-success-if-no-more-data
   (if (status-id-is? db-status-id-no-more-data) (set status.id status-id-success)))
 
-(define (db-status-group-id->name a) (b8* status-i-t)
+(define (db-status-group-id->name a) (b8* status-id-t)
   (declare b char*)
   (case = a
     (db-status-group-db (set b "sph-db"))

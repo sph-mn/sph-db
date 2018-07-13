@@ -98,9 +98,9 @@ b0 db_debug_display_graph_records(db_graph_records_t* records) {
   };
 };
 status_t db_debug_display_btree_counts(db_txn_t txn) {
-  status_init;
+  status_declare;
   db_statistics_t stat;
-  status_require_x(db_statistics(txn, (&stat)));
+  status_require(db_statistics(txn, (&stat)));
   printf("btree entry count: system %zu, nodes %zu, graph-lr %zu, graph-rl "
          "%zu, graph-ll %zu\n",
     (stat.system.ms_entries),
@@ -113,9 +113,9 @@ exit:
 };
 /** sum the count of all entries in all btrees used by the database */
 status_t db_debug_count_all_btree_entries(db_txn_t txn, b32* result) {
-  status_init;
+  status_declare;
   db_statistics_t stat;
-  status_require_x(db_statistics(txn, (&stat)));
+  status_require(db_statistics(txn, (&stat)));
   *result =
     (stat.system.ms_entries + stat.nodes.ms_entries + stat.graph_lr.ms_entries +
       stat.graph_rl.ms_entries + stat.graph_ll.ms_entries);
@@ -141,7 +141,7 @@ b8 db_field_type_size(b8 a) {
   };
 };
 status_t db_ids_to_set(db_ids_t* a, imht_set_t** result) {
-  status_init;
+  status_declare;
   if (!imht_set_create(db_ids_length(a), result)) {
     db_status_set_id_goto(db_status_id_memory);
   };
@@ -156,7 +156,7 @@ exit:
   on success set result to a newly allocated string and data to the next byte
   after the string */
 status_t db_read_name(b8** data_pointer, b8** result) {
-  status_init;
+  status_declare;
   b8* data;
   db_name_len_t len;
   b8* name;
@@ -172,16 +172,16 @@ exit:
 };
 /** expects an allocated db-statistics-t */
 status_t db_statistics(db_txn_t txn, db_statistics_t* result) {
-  status_init;
-  db_mdb_status_require_x(
+  status_declare;
+  db_mdb_status_require(
     (mdb_stat((txn.mdb_txn), ((txn.env)->dbi_system), (&(result->system)))));
-  db_mdb_status_require_x(
+  db_mdb_status_require(
     (mdb_stat((txn.mdb_txn), ((txn.env)->dbi_nodes), (&(result->nodes)))));
-  db_mdb_status_require_x((
+  db_mdb_status_require((
     mdb_stat((txn.mdb_txn), ((txn.env)->dbi_graph_lr), (&(result->graph_lr)))));
-  db_mdb_status_require_x((
+  db_mdb_status_require((
     mdb_stat((txn.mdb_txn), ((txn.env)->dbi_graph_ll), (&(result->graph_ll)))));
-  db_mdb_status_require_x((
+  db_mdb_status_require((
     mdb_stat((txn.mdb_txn), ((txn.env)->dbi_graph_rl), (&(result->graph_rl)))));
 exit:
   return (status);
@@ -189,7 +189,7 @@ exit:
 /** return one new unique type identifier.
   the maximum identifier returned is db-type-id-limit minus one */
 status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result) {
-  status_init;
+  status_declare;
   db_type_id_t sequence;
   pthread_mutex_lock((&(env->mutex)));
   sequence = ((db_type_id_t)(env->types->sequence));
@@ -208,7 +208,7 @@ exit:
   the maximum identifier returned is db-id-limit minus one */
 status_t
 db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result) {
-  status_init;
+  status_declare;
   db_id_t sequence;
   pthread_mutex_lock((&(env->mutex)));
   sequence = (type_id + env->types)->sequence;
@@ -224,8 +224,8 @@ exit:
   return (status);
 };
 b0 db_free_env_types_indices(db_index_t** indices,
-  db_field_count_t indices_len) {
-  db_field_count_t i;
+  db_fields_len_t indices_len) {
+  db_fields_len_t i;
   db_index_t* index_pointer;
   if (!*indices) {
     return;
@@ -236,8 +236,8 @@ b0 db_free_env_types_indices(db_index_t** indices,
   };
   free_and_set_null((*indices));
 };
-b0 db_free_env_types_fields(db_field_t** fields, db_field_count_t fields_len) {
-  db_field_count_t i;
+b0 db_free_env_types_fields(db_field_t** fields, db_fields_len_t fields_len) {
+  db_fields_len_t i;
   if (!*fields) {
     return;
   };
@@ -285,5 +285,6 @@ b0 db_close(db_env_t* env) {
 };
 #include "./open.c"
 #include "./type.c"
+#include "./index.c"
 #include "./node.c"
 #include "./graph.c"

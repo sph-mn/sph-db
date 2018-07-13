@@ -1,86 +1,70 @@
 (pre-include "string.h")
+(sc-comment "lmdb helpers")
 
 (pre-define
   ; status
-  db-mdb-status-no-more-data-if-notfound
-  (if db-mdb-status-is-notfound (status-set-both db-status-group-db db-status-id-no-more-data))
-  db-mdb-status-success-if-notfound (if db-mdb-status-is-notfound (status-set-id status-id-success))
-  db-mdb-status-is-success (status-id-is? MDB-SUCCESS)
+  db-mdb-status-is-success (= MDB-SUCCESS status.id)
   db-mdb-status-is-failure (not db-mdb-status-is-success)
-  db-mdb-status-is-notfound(status-id-is? MDB-NOTFOUND)
-  (db-mdb-status-set-id-goto id) (status-set-both-goto db-status-group-lmdb id)
+  db-mdb-status-no-more-data-if-notfound
+  (if db-mdb-status-is-notfound
+    (set
+      status.group db-status-group-db
+      status.id db-status-id-no-more-data))
+  db-mdb-status-success-if-notfound (if db-mdb-status-is-notfound (set status.id status-id-success))
+  db-mdb-status-is-notfound (= MDB-NOTFOUND status.id)
+  (db-mdb-status-set-id-goto id)
+  (set
+    status.group db-status-group-lmdb
+    status.id id)
   (db-mdb-status-require expression)
   (begin
-    (status-set-id expression)
+    (set status.id expression)
     (if db-mdb-status-is-failure (status-set-group-goto db-status-group-lmdb)))
-  db-mdb-status-require (if db-mdb-status-is-failure (status-set-group-goto db-status-group-lmdb))
-  db-mdb-status-require-read
-  (if (not (or db-mdb-status-is-success db-mdb-status-is-notfound))
-    (status-set-group-goto db-status-group-lmdb))
-  (db-mdb-status-require-read! expression)
+  (db-mdb-status-require-read expression)
   (begin
-    (status-set-id expression)
-    db-mdb-status-require-read)
-  db-mdb-status-require-notfound
-  (if (not db-mdb-status-is-notfound) (status-set-group-goto db-status-group-lmdb)))
-
-(pre-define
+    (set status.id expression)
+    (if (not (or db-mdb-status-is-success db-mdb-status-is-notfound))
+      (status-set-group-goto db-status-group-lmdb)))
+  db-mdb-status-expect-notfound
+  (if (not db-mdb-status-is-notfound) (status-set-group-goto db-status-group-lmdb))
   ; cursor
   (db-mdb-cursor-declare name) (define name MDB-cursor* 0)
-  (db-mdb-cursor-declare-two name-a name-b)
-  (begin
-    (db-mdb-cursor-declare name-a)
-    (db-mdb-cursor-declare name-b))
-  (db-mdb-cursor-declare-three name-a name-b name-c)
-  (begin
-    (db-mdb-cursor-declare-two name-a name-b)
-    (db-mdb-cursor-declare name-c))
-  (db-mdb-cursor-open txn name)
-  (db-mdb-status-require (mdb-cursor-open txn.mdb-txn (: txn.env (pre-concat dbi- name)) &name))
-  (db-mdb-cursor-close name)
+  (db-mdb-env-cursor-open txn name)
+  (mdb-cursor-open txn.mdb-txn (: txn.env (pre-concat dbi- name)) &name) (db-mdb-cursor-close name)
   (begin
     (mdb-cursor-close name)
     (set name 0))
-  (db-mdb-cursor-close-if-active name) (if name (db-mdb-cursor-close name))
-  (db-mdb-cursor-get-norequire cursor val-a val-b cursor-operation)
-  (begin
-    "only updates status, no goto on error"
-    (status-set-id (mdb-cursor-get cursor &val-a &val-b cursor-operation)))
-  (db-mdb-cursor-next-dup-norequire cursor val-a val-b)
-  (db-mdb-cursor-get-norequire cursor val-a val-b MDB-NEXT-DUP)
-  (db-mdb-cursor-next-nodup-norequire cursor val-a val-b)
-  (db-mdb-cursor-get-norequire cursor val-a val-b MDB-NEXT-NODUP)
-  (db-mdb-cursor-del-norequire cursor flags) (status-set-id (mdb-cursor-del cursor flags))
-  (db-mdb-cursor-get cursor val-a val-b cursor-operation)
-  (db-mdb-status-require
-    (mdb-cursor-get cursor (address-of val-a) (address-of val-b) cursor-operation))
-  (db-mdb-cursor-put cursor val-a val-b)
-  (db-mdb-status-require (mdb-cursor-put cursor (address-of val-a) (address-of val-b) 0))
+  (db-mdb-cursor-close-if-active a) (if a (db-mdb-cursor-close a))
   (db-mdb-cursor-each-key cursor val-key val-value body)
   (begin
-    (db-mdb-cursor-get-norequire cursor val-key val-value MDB-FIRST)
+    (set status.id (mdb-cursor-get cursor &val-key &val-value MDB-FIRST))
     (while db-mdb-status-is-success
       body
-      (db-mdb-cursor-next-nodup-norequire cursor val-key val-value))
-    db-mdb-status-require-notfound)
-  (db-mdb-cursor-set-first cursor)
-  (db-mdb-status-require (mdb-cursor-get cursor &val-null &val-null MDB-FIRST)))
-
-(pre-define
-  (db-mdb-put txn dbi val-a val-b)
-  (db-mdb-status-require (mdb-put dbi (address-of val-a) (address-of val-b) 0))
-  (db-mdb-declare-val name size)
+      (set status.id (mdb-cursor-get cursor &val-key &val-value MDB-NEXT-NODUP)))
+    db-mdb-status-expect-notfound)
+  ; other
+  (db-mdb-val->graph-key a) (convert-type a.mv-data db-id-t*)
+  db-mdb-declare-val-id
   (begin
-    (declare name MDB-val)
-    (set name.mv-size size))
-  db-mdb-declare-val-id (db-mdb-declare-val val-id db-size-id)
-  db-mdb-declare-val-id-2 (db-mdb-declare-val val-id-2 db-size-id)
-  db-mdb-declare-val-id-3 (db-mdb-declare-val val-id-3 db-size-id)
-  db-mdb-declare-val-null (db-mdb-declare-val val-null 0)
-  db-mdb-declare-val-graph-data (db-mdb-declare-val val-graph-data db-size-graph-data)
-  db-mdb-declare-val-graph-key (db-mdb-declare-val val-graph-key db-size-graph-key)
-  db-mdb-reset-val-null (set val-null.mv-size 0)
-  (db-mdb-val->graph-key a) (convert-type a.mv-data db-id-t*))
+    (declare val-id MDB-val)
+    (set val-id.mv-size db-size-id))
+  db-mdb-declare-val-id-2
+  (begin
+    (declare val-id-2 MDB-val)
+    (set val-id-2.mv-size db-size-id))
+  db-mdb-declare-val-null
+  (begin
+    (declare val-null MDB-val)
+    (set val-null.mv-size 0))
+  db-mdb-declare-val-graph-data
+  (begin
+    (declare val-graph-data MDB-val)
+    (set val-graph-data.mv-size db-size-graph-data))
+  db-mdb-declare-val-graph-key
+  (begin
+    (declare val-graph-key MDB-val)
+    (set val-graph-key.mv-size db-size-graph-key))
+  db-mdb-reset-val-null (set val-null.mv-size 0))
 
 (define (db-mdb-compare-id a b) ((static int) (const MDB-val*) (const MDB-val*))
   "mdb comparison routines are used by lmdb for search, insert and delete"

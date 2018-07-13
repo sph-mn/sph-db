@@ -9,7 +9,7 @@
 
 (pre-define (test-helper-init env-name)
   (begin
-    status-init
+    status-declare
     (db-env-define env-name)))
 
 (pre-define test-helper-report-status
@@ -19,8 +19,8 @@
 (pre-define (test-helper-test-one func env)
   (begin
     (printf "%s\n" (pre-stringify func))
-    (status-require! (test-helper-reset env #f))
-    (status-require! (func env))))
+    (status-require (test-helper-reset env #f))
+    (status-require (func env))))
 
 (pre-define (test-helper-assert description expression)
   (if (not expression)
@@ -29,13 +29,13 @@
       (status-set-id-goto 1))))
 
 (define (test-helper-reset env re-use) (status-t db-env-t* boolean)
-  status-init
+  status-declare
   (if env:open (db-close env))
   (if (and (not re-use) (file-exists? test-helper-path-data))
     (begin
-      (status-set-id (system (pre-string-concat "rm " test-helper-path-data)))
-      status-require))
-  (status-require! (db-open test-helper-db-root 0 env))
+      (set status.id (system (pre-string-concat "rm " test-helper-path-data)))
+      (if status-is-failure status-goto)))
+  (status-require (db-open test-helper-db-root 0 env))
   (label exit
     (return status)))
 
@@ -57,7 +57,7 @@
   (return #f))
 
 (define (db-ids-reverse a result) (status-t db-ids-t* db-ids-t**)
-  status-init
+  status-declare
   (declare ids-temp db-ids-t*)
   (set ids-temp 0)
   (while a
@@ -84,18 +84,18 @@
   "create only ids, without nodes. doesnt depend on node creation.
   dont reverse id list because it leads to more unorderly data which can expose bugs
   especially with relation reading where order lead to lucky success results"
-  status-init
+  status-declare
   (db-declare-ids ids-temp)
   (declare id db-id-t)
   (while count
     (sc-comment
       "use type id zero - normally not valid for nodes but it works"
       " and for tests it keeps the ids small numbers")
-    (status-require! (db-sequence-next txn.env 0 &id))
+    (status-require (db-sequence-next txn.env 0 &id))
     (set ids-temp (db-ids-add ids-temp id))
     (if (not ids-temp) (status-set-id-goto db-status-id-memory))
     (set count (- count 1)))
-  ;(status-require! (db-ids-reverse ids-temp result))
+  ;(status-require (db-ids-reverse ids-temp result))
   (set *result ids-temp)
   (label exit
     (return status)))
@@ -104,7 +104,7 @@
   "add newly created ids to the list.
    create as many elements as there are in ids-old. add them with interleaved overlap at half of ids-old
    approximately like this: 1 1 1 1 + 2 2 2 2 -> 1 1 2 1 2 1 2 2"
-  status-init
+  status-declare
   (db-declare-ids ids-new)
   (declare
     target-count b32
@@ -112,7 +112,7 @@
     start-new b32
     count b32)
   (set *result 0)
-  (status-require! (test-helper-create-ids txn (db-ids-length ids-old) (address-of ids-new)))
+  (status-require (test-helper-create-ids txn (db-ids-length ids-old) (address-of ids-new)))
   (set
     target-count (* 2 (db-ids-length ids-old))
     start-mixed (/ target-count 4)
@@ -180,7 +180,7 @@
   (status-t
     db-graph-records-t*
     db-ids-t* db-ids-t* db-ids-t* db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t*)
-  status-init
+  status-declare
   (declare
     records-temp db-graph-records-t*
     ids-temp db-ids-t*)
@@ -199,10 +199,10 @@
 (define (test-helper-create-relations txn left right label)
   (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t*)
   "create relations with linearly increasing ordinal starting from zero"
-  status-init
+  status-declare
   (declare ordinal-state-value db-ordinal-t)
   (set ordinal-state-value 0)
-  (status-require!
+  (status-require
     (db-graph-ensure
       txn left right label test-helper-default-ordinal-generator (address-of ordinal-state-value)))
   (label exit
@@ -216,10 +216,10 @@
     (printf " %s" reader-suffix-string)
     (free reader-suffix-string)
     (set records 0)
-    (status-require! (db-graph-select txn left right label ordinal offset (address-of state)))
+    (status-require (db-graph-select txn left right label ordinal offset (address-of state)))
     (db-status-require-read! (db-graph-read (address-of state) 2 (address-of records)))
     (db-status-require-read! (db-graph-read (address-of state) 0 (address-of records)))
-    (if (status-id-is? db-status-id-no-more-data) (status-set-id status-id-success)
+    (if (status-id-is? db-status-id-no-more-data) (set status.id status-id-success)
       (begin
         (printf "\n  final read result does not indicate that there is no more data")
         (status-set-id-goto 1)))
@@ -241,7 +241,7 @@
         (test-helper-display-all-relations txn)
         (status-set-id-goto 1)))
     (if (not ordinal)
-      (status-require!
+      (status-require
         (test-helper-graph-read-records-validate
           records left existing-left right existing-right label existing-label ordinal)))
     db-status-success-if-no-more-data
@@ -250,12 +250,12 @@
 
 (pre-define (test-helper-graph-read-header env)
   (begin
-    status-init
+    status-declare
     (db-txn-declare env txn)
     (db-declare-ids-three existing-left existing-right existing-label)
     (db-declare-ids-three left right label)
     (declare
-      state db-graph-read-state-t
+      state db-graph-selection-t
       ordinal-min b32
       ordinal-max b32
       ordinal-condition db-ordinal-condition-t
@@ -281,11 +281,11 @@
     (test-helper-create-ids txn existing-left-count &existing-left)
     (test-helper-create-ids txn existing-right-count &existing-right)
     (test-helper-create-ids txn existing-label-count &existing-label)
-    (status-require! (test-helper-create-relations txn existing-left existing-right existing-label))
+    (status-require (test-helper-create-relations txn existing-left existing-right existing-label))
     (sc-comment "add ids that do not exist anywhere in the graph")
-    (status-require! (test-helper-ids-add-new-ids txn existing-left &left))
-    (status-require! (test-helper-ids-add-new-ids txn existing-right &right))
-    (status-require! (test-helper-ids-add-new-ids txn existing-label &label))
+    (status-require (test-helper-ids-add-new-ids txn existing-left &left))
+    (status-require (test-helper-ids-add-new-ids txn existing-right &right))
+    (status-require (test-helper-ids-add-new-ids txn existing-label &label))
     (printf " ")))
 
 (pre-define test-helper-graph-read-footer
@@ -308,10 +308,10 @@
       0)))
 
 (define (test-helper-display-all-relations txn) (status-t db-txn-t)
-  status-init
+  status-declare
   (declare
     records db-graph-records-t*
-    state db-graph-read-state-t)
+    state db-graph-selection-t)
   (set records 0)
   (db-status-require-read! (db-graph-select txn 0 0 0 0 0 (address-of state)))
   (db-status-require-read! (db-graph-read (address-of state) 0 (address-of records)))
@@ -382,11 +382,11 @@
 
 (pre-define test-helper-graph-delete-header
   (begin
-    status-init
+    status-declare
     (db-declare-ids-three left right label)
     (db-txn-declare env txn)
     (declare
-      state db-graph-read-state-t
+      state db-graph-selection-t
       read-count-before-expected b32
       btree-count-after-delete b32
       btree-count-before-create b32
@@ -424,11 +424,11 @@
     (test-helper-create-ids txn existing-right-count &right)
     (test-helper-create-ids txn existing-label-count &label)
     (db-debug-count-all-btree-entries txn &btree-count-before-create)
-    (status-require! (test-helper-create-relations txn left right label))
+    (status-require (test-helper-create-relations txn left right label))
     (db-txn-commit txn)
     (db-txn-write-begin txn)
     (sc-comment "delete")
-    (status-require!
+    (status-require
       (db-graph-delete
         txn
         (if* left? left
@@ -522,7 +522,7 @@
   (return result))
 
 #;(define (test-helper-create-interns count result) (status-t b32 db-ids-t**)
-  status-init
+  status-declare
   (db-txn-declare env txn)
   (declare
     data-element db-data-t
@@ -537,7 +537,7 @@
     (set data-list (db-data-list-add data-list data-element))
     (set count (- count 1)))
   (db-txn-write-begin txn)
-  ;(status-require! (db-intern-ensure db-txn data-list result))
+  ;(status-require (db-intern-ensure db-txn data-list result))
   (db-txn-commit txn)
   (label exit
     (db-txn-abort-if-active txn)

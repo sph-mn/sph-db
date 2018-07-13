@@ -10,7 +10,7 @@
 #define set_plus_one(a) a = (1 + a)
 #define set_minus_one(a) a = (a - 1)
 #define test_helper_init(env_name) \
-  status_init; \
+  status_declare; \
   db_env_define(env_name)
 #define test_helper_report_status \
   if (status_success_p) { \
@@ -22,23 +22,25 @@
   }
 #define test_helper_test_one(func, env) \
   printf("%s\n", #func); \
-  status_require_x(test_helper_reset(env, 0)); \
-  status_require_x(func(env))
+  status_require(test_helper_reset(env, 0)); \
+  status_require(func(env))
 #define test_helper_assert(description, expression) \
   if (!expression) { \
     printf("%s failed\n", description); \
     status_set_id_goto(1); \
   }
 status_t test_helper_reset(db_env_t* env, boolean re_use) {
-  status_init;
+  status_declare;
   if (env->open) {
     db_close(env);
   };
   if (!re_use && file_exists_p(test_helper_path_data)) {
-    status_set_id(system("rm " test_helper_path_data));
-    status_require;
+    status.id = system("rm " test_helper_path_data);
+    if (status_is_failure) {
+      status_goto;
+    };
   };
-  status_require_x(db_open(test_helper_db_root, 0, env));
+  status_require(db_open(test_helper_db_root, 0, env));
 exit:
   return (status);
 };
@@ -61,7 +63,7 @@ boolean db_ids_contains_p(db_ids_t* ids, db_id_t id) {
   return (0);
 };
 status_t db_ids_reverse(db_ids_t* a, db_ids_t** result) {
-  status_init;
+  status_declare;
   db_ids_t* ids_temp;
   ids_temp = 0;
   while (a) {
@@ -94,13 +96,13 @@ db_debug_define_graph_records_contains_at_p(label);
   bugs especially with relation reading where order lead to lucky success
   results */
 status_t test_helper_create_ids(db_txn_t txn, b32 count, db_ids_t** result) {
-  status_init;
+  status_declare;
   db_declare_ids(ids_temp);
   db_id_t id;
   while (count) {
     /* use type id zero - normally not valid for nodes but it works  and for
      * tests it keeps the ids small numbers */
-    status_require_x((db_sequence_next((txn.env), 0, (&id))));
+    status_require((db_sequence_next((txn.env), 0, (&id))));
     ids_temp = db_ids_add(ids_temp, id);
     if (!ids_temp) {
       status_set_id_goto(db_status_id_memory);
@@ -118,14 +120,14 @@ exit:
 status_t test_helper_ids_add_new_ids(db_txn_t txn,
   db_ids_t* ids_old,
   db_ids_t** result) {
-  status_init;
+  status_declare;
   db_declare_ids(ids_new);
   b32 target_count;
   b32 start_mixed;
   b32 start_new;
   b32 count;
   *result = 0;
-  status_require_x(
+  status_require(
     test_helper_create_ids(txn, db_ids_length(ids_old), (&ids_new)));
   target_count = (2 * db_ids_length(ids_old));
   start_mixed = (target_count / 4);
@@ -196,7 +198,7 @@ status_t test_helper_graph_read_records_validate(db_graph_records_t* records,
   db_ids_t* label,
   db_ids_t* existing_label,
   db_ordinal_condition_t* ordinal) {
-  status_init;
+  status_declare;
   db_graph_records_t* records_temp;
   db_ids_t* ids_temp;
   test_helper_graph_read_records_validate_one(left);
@@ -216,10 +218,10 @@ status_t test_helper_create_relations(db_txn_t txn,
   db_ids_t* left,
   db_ids_t* right,
   db_ids_t* label) {
-  status_init;
+  status_declare;
   db_ordinal_t ordinal_state_value;
   ordinal_state_value = 0;
-  status_require_x(db_graph_ensure(txn,
+  status_require(db_graph_ensure(txn,
     left,
     right,
     label,
@@ -236,12 +238,12 @@ exit:
   printf(" %s", reader_suffix_string); \
   free(reader_suffix_string); \
   records = 0; \
-  status_require_x( \
+  status_require( \
     db_graph_select(txn, left, right, label, ordinal, offset, (&state))); \
   db_status_require_read_x(db_graph_read((&state), 2, (&records))); \
   db_status_require_read_x(db_graph_read((&state), 0, (&records))); \
   if (status_id_is_p(db_status_id_no_more_data)) { \
-    status_set_id(status_id_success); \
+    status.id = status_id_success; \
   } else { \
     printf( \
       "\n  final read result does not indicate that there is no more data"); \
@@ -261,7 +263,7 @@ exit:
     status_set_id_goto(1); \
   }; \
   if (!ordinal) { \
-    status_require_x(test_helper_graph_read_records_validate(records, \
+    status_require(test_helper_graph_read_records_validate(records, \
       left, \
       existing_left, \
       right, \
@@ -274,11 +276,11 @@ exit:
   db_graph_selection_destroy((&state)); \
   db_graph_records_destroy(records)
 #define test_helper_graph_read_header(env) \
-  status_init; \
+  status_declare; \
   db_txn_declare(env, txn); \
   db_declare_ids_three(existing_left, existing_right, existing_label); \
   db_declare_ids_three(left, right, label); \
-  db_graph_read_state_t state; \
+  db_graph_selection_t state; \
   b32 ordinal_min; \
   b32 ordinal_max; \
   db_ordinal_condition_t ordinal_condition; \
@@ -303,14 +305,12 @@ exit:
   test_helper_create_ids(txn, existing_left_count, (&existing_left)); \
   test_helper_create_ids(txn, existing_right_count, (&existing_right)); \
   test_helper_create_ids(txn, existing_label_count, (&existing_label)); \
-  status_require_x(test_helper_create_relations( \
+  status_require(test_helper_create_relations( \
     txn, existing_left, existing_right, existing_label)); \
   /* add ids that do not exist anywhere in the graph */ \
-  status_require_x(test_helper_ids_add_new_ids(txn, existing_left, (&left))); \
-  status_require_x( \
-    test_helper_ids_add_new_ids(txn, existing_right, (&right))); \
-  status_require_x( \
-    test_helper_ids_add_new_ids(txn, existing_label, (&label))); \
+  status_require(test_helper_ids_add_new_ids(txn, existing_left, (&left))); \
+  status_require(test_helper_ids_add_new_ids(txn, existing_right, (&right))); \
+  status_require(test_helper_ids_add_new_ids(txn, existing_label, (&label))); \
   printf(" ")
 #define test_helper_graph_read_footer \
   db_status_success_if_no_more_data; \
@@ -322,9 +322,9 @@ exit:
   left, right, label, ordinal) \
   ((left ? 8 : 0) | (right ? 4 : 0) | (label ? 2 : 0) | (ordinal ? 1 : 0))
 status_t test_helper_display_all_relations(db_txn_t txn) {
-  status_init;
+  status_declare;
   db_graph_records_t* records;
-  db_graph_read_state_t state;
+  db_graph_selection_t state;
   records = 0;
   db_status_require_read_x(db_graph_select(txn, 0, 0, 0, 0, 0, (&state)));
   db_status_require_read_x(db_graph_read((&state), 0, (&records)));
@@ -398,10 +398,10 @@ b32 test_helper_estimate_graph_read_btree_entry_count(b32 existing_left_count,
   return ((left_right_count + right_left_count + label_left_count));
 };
 #define test_helper_graph_delete_header \
-  status_init; \
+  status_declare; \
   db_declare_ids_three(left, right, label); \
   db_txn_declare(env, txn); \
-  db_graph_read_state_t state; \
+  db_graph_selection_t state; \
   b32 read_count_before_expected; \
   b32 btree_count_after_delete; \
   b32 btree_count_before_create; \
@@ -437,11 +437,11 @@ b32 test_helper_estimate_graph_read_btree_entry_count(b32 existing_left_count,
   test_helper_create_ids(txn, existing_right_count, (&right)); \
   test_helper_create_ids(txn, existing_label_count, (&label)); \
   db_debug_count_all_btree_entries(txn, (&btree_count_before_create)); \
-  status_require_x(test_helper_create_relations(txn, left, right, label)); \
+  status_require(test_helper_create_relations(txn, left, right, label)); \
   db_txn_commit(txn); \
   db_txn_write_begin(txn); \
   /* delete */ \
-  status_require_x(db_graph_delete(txn, \
+  status_require(db_graph_delete(txn, \
     (left_p ? left : 0), \
     (right_p ? right : 0), \
     (label_p ? label : 0), \

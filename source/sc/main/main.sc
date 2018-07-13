@@ -195,9 +195,9 @@
   (label exit
     (return status)))
 
-(define (db-free-env-types-indices indices indices-len) (b0 db-index-t** db-field-count-t)
+(define (db-free-env-types-indices indices indices-len) (b0 db-index-t** db-fields-len-t)
   (declare
-    i db-field-count-t
+    i db-fields-len-t
     index-pointer db-index-t*)
   (if (not *indices) return)
   (for ((set i 0) (< i indices-len) (set i (+ 1 i)))
@@ -205,8 +205,8 @@
     (free-and-set-null index-pointer:fields))
   (free-and-set-null *indices))
 
-(define (db-free-env-types-fields fields fields-len) (b0 db-field-t** db-field-count-t)
-  (declare i db-field-count-t)
+(define (db-free-env-types-fields fields fields-len) (b0 db-field-t** db-fields-len-t)
+  (declare i db-fields-len-t)
   (if (not *fields) return)
   (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
     (free-and-set-null (: (+ i *fields) name)))
@@ -242,6 +242,4 @@
   (set env:open #f)
   (pthread-mutex-destroy &env:mutex))
 
-(pre-include "./open.c" "./type.c" "./node.c" "./graph.c"
-  ;"./index.c"
-  )
+(pre-include "./open.c" "./type.c" "./index.c" "./node.c" "./graph.c")
