@@ -11,8 +11,8 @@
    the values should also not be so high that the linearly created ordinals exceed the size of the ordinal type.
    tip: reduce when debugging to make tests run faster")
 
-(define common-element-count b32 3)
-(define common-label-count b32 3)
+(define common-element-count ui32 3)
+(define common-label-count ui32 3)
 
 (define (test-open-empty env) (status-t db-env-t*)
   status-declare
@@ -26,7 +26,7 @@
   (declare stat db-statistics-t)
   (db-txn-declare env txn)
   (db-txn-begin txn)
-  (status-require! (db-statistics txn (address-of stat)))
+  (status-require (db-statistics txn (address-of stat)))
   (test-helper-assert "dbi-system contanis only one entry" (= 1 stat.system.ms_entries))
   (label exit
     (db-txn-abort-if-active txn)
@@ -43,7 +43,7 @@
     type-1-1 db-type-t*
     type-2-1 db-type-t*)
   (sc-comment "type 1")
-  (status-require! (db-type-create env "test-type-1" 0 0 0 &type-1))
+  (status-require (db-type-create env "test-type-1" 0 0 0 &type-1))
   (test-helper-assert "type id" (= 1 type-1:id))
   (test-helper-assert "type sequence" (= 1 type-1:sequence))
   (test-helper-assert "type field count" (= 0 type-1:fields-len))
@@ -51,7 +51,7 @@
   (db-field-set (array-get fields 0) db-field-type-int8 "test-field-1" 12)
   (db-field-set (array-get fields 1) db-field-type-int8 "test-field-2" 12)
   (db-field-set (array-get fields 2) db-field-type-string "test-field-3" 12)
-  (status-require! (db-type-create env "test-type-2" fields 3 0 &type-2))
+  (status-require (db-type-create env "test-type-2" fields 3 0 &type-2))
   (test-helper-assert "second type id" (= 2 type-2:id))
   (test-helper-assert "second type sequence" (= 1 type-2:sequence))
   (test-helper-assert "second type fields-len" (= 3 type-2:fields-len))
@@ -86,8 +86,8 @@
   (test-helper-assert
     "existent types" (and (db-type-get env "test-type-1") (db-type-get env "test-type-2")))
   (sc-comment "type-delete")
-  (status-require! (db-type-delete env type-1:id))
-  (status-require! (db-type-delete env type-2:id))
+  (status-require (db-type-delete env type-1:id))
+  (status-require (db-type-delete env type-2:id))
   (set
     type-1-1 (db-type-get env "test-type-1")
     type-2-1 (db-type-get env "test-type-2"))
@@ -100,12 +100,12 @@
   status-declare
   (declare
     i db-type-id-t
-    name (array b8 255)
+    name (array ui8 255)
     type db-type-t*)
   (sc-comment "10 times as many as there is extra room left for new types in env:types")
   (for ((set i 0) (< i (* 10 db-env-types-extra-count)) (set i (+ 1 i)))
     (sprintf name "test-type-%lu" i)
-    (status-require! (db-type-create env name 0 0 0 &type)))
+    (status-require (db-type-create env name 0 0 0 &type)))
   (label exit
     (return status)))
 
@@ -119,7 +119,7 @@
     type db-type-t*
     type-id db-type-id-t)
   (sc-comment "node sequence. note that sequences only persist through data inserts")
-  (status-require! (db-type-create env "test-type" 0 0 0 &type))
+  (status-require (db-type-create env "test-type" 0 0 0 &type))
   (set
     type:sequence (- db-element-id-limit 100)
     prev-id (db-id-add-type (- db-element-id-limit 100 1) type:id))
@@ -130,7 +130,7 @@
         (test-helper-assert "node sequence is limited" (= db-status-id-max-element-id status.id))
         (set status.id status-id-success))
       (test-helper-assert
-        "node sequence is monotonically increasing" (and status-success? (= 1 (- id prev-id)))))
+        "node sequence is monotonically increasing" (and status-is-success (= 1 (- id prev-id)))))
     (set prev-id id))
   (sc-comment "system sequence. test last, otherwise type ids would be exhausted")
   (set prev-type-id type:id)
@@ -143,15 +143,15 @@
       (begin
         (test-helper-assert
           "system sequence is monotonically increasing"
-          (and status-success? (= 1 (- type-id prev-type-id))))))
+          (and status-is-success (= 1 (- type-id prev-type-id))))))
     (set prev-type-id type-id))
   (label exit
     (return status)))
 
 (define (test-open-nonempty env) (status-t db-env-t*)
   status-declare
-  (status-require! (test-type-create-get-delete env))
-  (status-require! (test-helper-reset env #t))
+  (status-require (test-type-create-get-delete env))
+  (status-require (test-helper-reset env #t))
   (label exit
     (return status)))
 
@@ -214,7 +214,7 @@
   (db-field-set (array-get fields 0) db-field-type-int8 "test-field-1" 12)
   (db-field-set (array-get fields 1) db-field-type-int8 "test-field-2" 12)
   (db-field-set (array-get fields 2) db-field-type-string "test-field-3" 12)
-  (status-require! (db-type-create env "test-type-1" fields 3 0 result))
+  (status-require (db-type-create env "test-type-1" fields 3 0 result))
   (label exit
     (return status)))
 
@@ -226,12 +226,12 @@
     type db-type-t*
     values db-node-values-t
     ;fields (array db-field-t 4)
-    value-1 b8
-    value-2 b8
+    value-1 ui8
+    value-2 ui8
     id db-id-t)
-  (define value-3 b8* "abc")
-  (status-require! (test-helper-create-type-1 env &type))
-  (status-require! (db-node-values-new type &values))
+  (define value-3 ui8* "abc")
+  (status-require (test-helper-create-type-1 env &type))
+  (status-require (db-node-values-new type &values))
   (set
     value-1 11
     value-2 128)
@@ -239,9 +239,9 @@
   (db-node-values-set values 1 &value-2 0)
   (db-node-values-set values 2 &value-3 3)
   (db-txn-write-begin txn)
-  (status-require! (db-node-create txn values &id))
+  (status-require (db-node-create txn values &id))
   (test-helper-assert "element id 1" (= 1 (db-id-element id)))
-  (status-require! (db-node-create txn values &id))
+  (status-require (db-node-create txn values &id))
   (test-helper-assert "element id 2" (= 2 (db-id-element id)))
   (db-txn-commit txn)
   (label exit
@@ -250,16 +250,16 @@
 
 (define (main) int
   (test-helper-init env)
-  ;(test-helper-test-one test-open-empty env)
-  ;(test-helper-test-one test-statistics env)
-  ;(test-helper-test-one test-id-construction env)
-  ;(test-helper-test-one test-sequence env)
-  ;(test-helper-test-one test-type-create-get-delete env)
-  ;(test-helper-test-one test-type-create-many env)
-  ;(test-helper-test-one test-open-nonempty env)
-  ;(test-helper-test-one test-graph-read env)
-  ;(test-helper-test-one test-graph-delete env)
-  (test-helper-test-one test-node-create env)
+  (test-helper-test-one test-open-empty env)
+  (test-helper-test-one test-statistics env)
+  (test-helper-test-one test-id-construction env)
+  (test-helper-test-one test-sequence env)
+  (test-helper-test-one test-type-create-get-delete env)
+  (test-helper-test-one test-type-create-many env)
+  (test-helper-test-one test-open-nonempty env)
+  (test-helper-test-one test-graph-read env)
+  (test-helper-test-one test-graph-delete env)
+  ;(test-helper-test-one test-node-create env)
   (label exit
     test-helper-report-status
     (return status.id)))
@@ -269,22 +269,22 @@
   status-declare
   (define ids db-ids-t*)
   (db-define-ids-3 left right label)
-  (status-require!
+  (status-require
     (test-helper-create-relations txn
       common-label-count
       common-element-count common-label-count &left &right &label))
-  (status-require! (test-helper-create-interns common-element-count &ids))
+  (status-require (test-helper-create-interns common-element-count &ids))
   db-txn-introduce
-  (status-require! (db-index-recreate-intern))
-  (status-require! (db-index-recreate-extern))
-  ;(status-require! (db-index-recreate-graph))
+  (status-require (db-index-recreate-intern))
+  (status-require (db-index-recreate-extern))
+  ;(status-require (db-index-recreate-graph))
   (define index-errors-extern db-index-errors-extern-t)
   (define index-errors-intern db-index-errors-intern-t)
   (define index-errors-graph db-index-errors-graph-t)
   db-txn-begin
-  (status-require! (db-index-errors-intern db-txn &index-errors-intern))
-  (status-require! (db-index-errors-extern db-txn &index-errors-extern))
-  (status-require! (db-index-errors-graph db-txn &index-errors-graph))
+  (status-require (db-index-errors-intern db-txn &index-errors-intern))
+  (status-require (db-index-errors-extern db-txn &index-errors-extern))
+  (status-require (db-index-errors-graph db-txn &index-errors-graph))
   (test-helper-assert "errors-intern?" (not (struct-get index-errors-intern errors?)))
   (test-helper-assert "errors-extern?" (not (struct-get index-errors-extern errors?)))
   (test-helper-assert "errors-graph?" (not (struct-get index-errors-graph errors?)))
@@ -296,12 +296,12 @@
   status-declare
   (define ids-intern db-ids-t* 0)
   (define ids-id db-ids-t* 0)
-  (status-require! (test-helper-create-interns common-element-count &ids-intern))
-  (status-require! (test-helper-create-ids txn common-element-count &ids-id))
+  (status-require (test-helper-create-interns common-element-count &ids-intern))
+  (status-require (test-helper-create-ids txn common-element-count &ids-id))
   db-txn-introduce
   db-txn-begin
   (define state db-node-read-state-t)
-  (status-require! (db-node-select db-txn 0 0 &state))
+  (status-require (db-node-select db-txn 0 0 &state))
   (define records db-data-records-t* 0)
   (db-status-require-read! (db-node-read &state 0 &records))
   (db-node-selection-destroy &state)
@@ -310,7 +310,7 @@
   (db-data-records-destroy records)
   ; with type filter
   (set records 0)
-  (status-require! (db-node-select db-txn 1 0 &state))
+  (status-require (db-node-select db-txn 1 0 &state))
   (db-status-require-read! (db-node-read &state 0 &records))
   (db-node-selection-destroy &state)
   (test-helper-assert
@@ -321,7 +321,7 @@
     db-status-success-if-no-more-data
     (return status)))
 
-(define (test-concurrent-write/read-thread status-pointer) (b0* b0*)
+(define (test-concurrent-write/read-thread status-pointer) (void* void*)
   status-declare
   (set status (pointer-get (convert-type status-pointer status-t*)))
   (define state db-graph-read-state-t)
@@ -329,7 +329,7 @@
   db-txn-introduce
   db-txn-begin
   (set records 0)
-  (status-require! (db-graph-select db-txn 0 0 0 0 0 &state))
+  (status-require (db-graph-select db-txn 0 0 0 0 0 &state))
   (db-status-require-read! (db-graph-read &state 2 &records))
   (db-status-require-read! (db-graph-read &state 0 &records))
   db-txn-abort
@@ -342,9 +342,9 @@
   (define
     thread-two pthread_t
     thread-three pthread_t)
-  (status-require! (test-helper-db-reset #f))
+  (status-require (test-helper-db-reset #f))
   (db-define-ids-3 left right label)
-  (status-require!
+  (status-require
     (test-helper-create-relations txn
       common-element-count
       common-element-count common-label-count &left &right &label))

@@ -13,7 +13,7 @@
     (db-env-define env-name)))
 
 (pre-define test-helper-report-status
-  (if status-success? (printf "--\ntests finished successfully.\n")
+  (if status-is-success (printf "--\ntests finished successfully.\n")
     (printf "\ntests failed. %d %s\n" status.id (db-status-description status))))
 
 (pre-define (test-helper-test-one func env)
@@ -39,18 +39,18 @@
   (label exit
     (return status)))
 
-(define (test-helper-print-binary-b64 a) (b0 b64)
+(define (test-helper-print-binary-ui64 a) (void ui64)
   (declare
     i size-t
-    result (array b8 65))
+    result (array ui8 65))
   (set (pointer-get (+ 64 result)) 0)
   (for ((set i 0) (< i 64) (set i (+ 1 i)))
     (set (pointer-get (+ i result))
-      (if* (bit-and (bit-shift-left (convert-type 1 b64) i) a) #\1
+      (if* (bit-and (bit-shift-left (convert-type 1 ui64) i) a) #\1
         #\0)))
   (printf "%s\n" result))
 
-(define (db-ids-contains? ids id) (boolean db-ids-t* db-id-t)
+(define (db-ids-contains ids id) (boolean db-ids-t* db-id-t)
   (while ids
     (if (= id (db-ids-first ids)) (return #t))
     (set ids (db-ids-rest ids)))
@@ -68,7 +68,7 @@
   (label exit
     (return status)))
 
-(pre-define (db-debug-define-graph-records-contains-at? field)
+(pre-define (db-debug-define-graph-records-contains-at field)
   (define ((pre-concat db-debug-graph-records-contains-at_ field _p) records id)
     (boolean db-graph-records-t* db-id-t)
     (while records
@@ -76,11 +76,11 @@
       (set records (db-graph-records-rest records)))
     (return #f)))
 
-(db-debug-define-graph-records-contains-at? left)
-(db-debug-define-graph-records-contains-at? right)
-(db-debug-define-graph-records-contains-at? label)
+(db-debug-define-graph-records-contains-at left)
+(db-debug-define-graph-records-contains-at right)
+(db-debug-define-graph-records-contains-at label)
 
-(define (test-helper-create-ids txn count result) (status-t db-txn-t b32 db-ids-t**)
+(define (test-helper-create-ids txn count result) (status-t db-txn-t ui32 db-ids-t**)
   "create only ids, without nodes. doesnt depend on node creation.
   dont reverse id list because it leads to more unorderly data which can expose bugs
   especially with relation reading where order lead to lucky success results"
@@ -107,10 +107,10 @@
   status-declare
   (db-declare-ids ids-new)
   (declare
-    target-count b32
-    start-mixed b32
-    start-new b32
-    count b32)
+    target-count ui32
+    start-mixed ui32
+    start-new ui32
+    count ui32)
   (set *result 0)
   (status-require (test-helper-create-ids txn (db-ids-length ids-old) (address-of ids-new)))
   (set
@@ -140,11 +140,11 @@
   (label exit
     (return status)))
 
-(define (test-helper-calculate-relation-count left-count right-count label-count) (b32 b32 b32 b32)
-  (return (* left-count right-count label-count)))
+(define (test-helper-calculate-relation-count left-count right-count label-count)
+  (ui32 ui32 ui32 ui32) (return (* left-count right-count label-count)))
 
 (define (test-helper-calculate-relation-count-from-ids left right label)
-  (b32 db-ids-t* db-ids-t* db-ids-t*)
+  (ui32 db-ids-t* db-ids-t* db-ids-t*)
   (return
     (test-helper-calculate-relation-count
       (db-ids-length left) (db-ids-length right) (db-ids-length label))))
@@ -156,7 +156,7 @@
     (while records-temp
       (if
         (not
-          (db-ids-contains?
+          (db-ids-contains
             (pre-concat existing_ name) (struct-get (db-graph-records-first records-temp) name)))
         (begin
           (printf "\n  result records contain inexistant %s ids\n" (pre-stringify name))
@@ -190,7 +190,7 @@
   (label exit
     (return status)))
 
-(define (test-helper-default-ordinal-generator state) (db-ordinal-t b0*)
+(define (test-helper-default-ordinal-generator state) (db-ordinal-t void*)
   (define ordinal-pointer db-ordinal-t* state)
   (define result db-ordinal-t (+ 1 (pointer-get ordinal-pointer)))
   (set (pointer-get ordinal-pointer) result)
@@ -217,9 +217,9 @@
     (free reader-suffix-string)
     (set records 0)
     (status-require (db-graph-select txn left right label ordinal offset (address-of state)))
-    (db-status-require-read! (db-graph-read (address-of state) 2 (address-of records)))
-    (db-status-require-read! (db-graph-read (address-of state) 0 (address-of records)))
-    (if (status-id-is? db-status-id-no-more-data) (set status.id status-id-success)
+    (db-status-require-read (db-graph-read (address-of state) 2 (address-of records)))
+    (db-status-require-read (db-graph-read (address-of state) 0 (address-of records)))
+    (if (= status.id db-status-id-no-more-data) (set status.id status-id-success)
       (begin
         (printf "\n  final read result does not indicate that there is no more data")
         (status-set-id-goto 1)))
@@ -256,17 +256,17 @@
     (db-declare-ids-three left right label)
     (declare
       state db-graph-selection-t
-      ordinal-min b32
-      ordinal-max b32
+      ordinal-min ui32
+      ordinal-max ui32
       ordinal-condition db-ordinal-condition-t
       ordinal db-ordinal-condition-t*
-      existing-left-count b32
-      existing-right-count b32
-      existing-label-count b32
+      existing-left-count ui32
+      existing-right-count ui32
+      existing-label-count ui32
       records db-graph-records-t*
-      expected-count b32
-      reader-suffix b8
-      reader-suffix-string b8*)
+      expected-count ui32
+      reader-suffix ui8
+      reader-suffix-string ui8*)
     (set
       ordinal-min 2
       ordinal-max 5
@@ -313,8 +313,8 @@
     records db-graph-records-t*
     state db-graph-selection-t)
   (set records 0)
-  (db-status-require-read! (db-graph-select txn 0 0 0 0 0 (address-of state)))
-  (db-status-require-read! (db-graph-read (address-of state) 0 (address-of records)))
+  (db-status-require-read (db-graph-select txn 0 0 0 0 0 (address-of state)))
+  (db-status-require-read (db-graph-read (address-of state) 0 (address-of records)))
   (printf "all ")
   (db-graph-selection-destroy (address-of state))
   (db-debug-display-graph-records records)
@@ -323,12 +323,12 @@
     (return status)))
 
 (define (test-helper-estimate-graph-read-result-count left-count right-count label-count ordinal)
-  (b32 b32 b32 b32 db-ordinal-condition-t*)
+  (ui32 ui32 ui32 ui32 db-ordinal-condition-t*)
   "assumes linearly set-plus-oneed ordinal integers starting at 1 and queries for all or no ids"
-  (define count b32 (* left-count right-count label-count))
+  (define count ui32 (* left-count right-count label-count))
   (declare
-    max b32
-    min b32)
+    max ui32
+    min ui32)
   (if ordinal
     (begin
       (set
@@ -345,23 +345,23 @@
 (define
   (test-helper-estimate-graph-read-btree-entry-count
     existing-left-count existing-right-count existing-label-count ordinal)
-  (b32 b32 b32 b32 db-ordinal-condition-t*)
+  (ui32 ui32 ui32 ui32 db-ordinal-condition-t*)
   "calculates the number of btree entries affected by a relation read or delete.
    assumes linearly set-plus-oneed ordinal integers starting at 1 and queries for all or no ids"
-  (define ordinal-min b32 0)
-  (define ordinal-max b32 0)
+  (define ordinal-min ui32 0)
+  (define ordinal-max ui32 0)
   (if ordinal
     (set
       ordinal-min (struct-pointer-get ordinal min)
       ordinal-max (struct-pointer-get ordinal max)))
-  (define label-left-count b32 0)
-  (define left-right-count b32 0)
-  (define right-left-count b32 0)
+  (define label-left-count ui32 0)
+  (define left-right-count ui32 0)
+  (define right-left-count ui32 0)
   ;test relation ordinals currently start at one
-  (define ordinal-value b32 1)
-  (define left-count b32 0)
-  (define right-count b32 0)
-  (define label-count b32 0)
+  (define ordinal-value ui32 1)
+  (define left-count ui32 0)
+  (define right-count ui32 0)
+  (define label-count ui32 0)
   (sc-comment
     "the number of relations is not proportional to the number of entries in graph-ll.
     use a process similar to relation creation to correctly calculate graph-ll and ordinal dependent entries")
@@ -387,15 +387,15 @@
     (db-txn-declare env txn)
     (declare
       state db-graph-selection-t
-      read-count-before-expected b32
-      btree-count-after-delete b32
-      btree-count-before-create b32
-      btree-count-deleted-expected b32
+      read-count-before-expected ui32
+      btree-count-after-delete ui32
+      btree-count-before-create ui32
+      btree-count-deleted-expected ui32
       records db-graph-records-t*
       ordinal db-ordinal-condition-t*
-      existing-left-count b32
-      existing-right-count b32
-      existing-label-count b32)
+      existing-left-count ui32
+      existing-right-count ui32
+      existing-label-count ui32)
     (define ordinal-condition db-ordinal-condition-t (struct-literal 2 5))
     (set
       records 0
@@ -442,7 +442,7 @@
     (db-txn-commit txn)
     (db-txn-begin txn)
     (db-debug-count-all-btree-entries txn &btree-count-after-delete)
-    (db-status-require-read!
+    (db-status-require-read
       (db-graph-select
         txn
         (if* left? left
@@ -455,7 +455,7 @@
           0)
         0 &state))
     (sc-comment "check that readers can handle empty selections")
-    (db-status-require-read! (db-graph-read &state 0 &records))
+    (db-status-require-read (db-graph-read &state 0 &records))
     (db-graph-selection-destroy &state)
     (db-txn-abort txn)
     (if (not (= 0 (db-graph-records-length records)))
@@ -478,8 +478,8 @@
           (- btree-count-after-delete btree-count-before-create))
         (db-txn-begin txn)
         (db-debug-display-btree-counts txn)
-        (db-status-require-read! (db-graph-select txn 0 0 0 0 0 &state))
-        (db-status-require-read! (db-graph-read &state 0 &records))
+        (db-status-require-read (db-graph-select txn 0 0 0 0 0 &state))
+        (db-status-require-read (db-graph-read &state 0 &records))
         (printf "all remaining ")
         (db-debug-display-graph-records records)
         (db-graph-selection-destroy &state)
@@ -501,9 +501,9 @@
     (printf "\n")
     (return status)))
 
-(define (test-helper-reader-suffix-integer->string a) (b8* b8)
+(define (test-helper-reader-suffix-integer->string a) (ui8* ui8)
   "1101 -> \"1101\""
-  (define result b8* (malloc 40))
+  (define result ui8* (malloc 40))
   (array-set
     result
     0
@@ -521,7 +521,7 @@
     4 0)
   (return result))
 
-#;(define (test-helper-create-interns count result) (status-t b32 db-ids-t**)
+#;(define (test-helper-create-interns count result) (status-t ui32 db-ids-t**)
   status-declare
   (db-txn-declare env txn)
   (declare

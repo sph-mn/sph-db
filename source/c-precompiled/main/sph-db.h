@@ -5,26 +5,38 @@
 #include <lmdb.h>
 #include <inttypes.h>
 #include <stdio.h>
-#define boolean b8
-#define pointer_t uintptr_t
-#define b0 void
-#define b8 uint8_t
-#define b16 uint16_t
-#define b32 uint32_t
-#define b64 uint64_t
-#define b8_s int8_t
-#define b16_s int16_t
-#define b32_s int32_t
-#define b64_s int64_t
-#define f32_s float
-#define f64_s double
+#define boolean ui8
+#define i8 int8_t
+#define i16 int16_t
+#define i32 int32_t
+#define i64 int64_t
+#define i8_least int_least8_t
+#define i16_least int_least16_t
+#define i32_least int_least32_t
+#define i64_least int_least64_t
+#define i8_fast int_fast8_t
+#define i16_fast int_fast16_t
+#define i32_fast int_fast32_t
+#define i64_fast int_fast64_t
+#define ui8 int8_t
+#define ui16 uint16_t
+#define ui32 uint32_t
+#define ui64 uint64_t
+#define ui8_least uint_least8_t
+#define ui16_least uint_least16_t
+#define ui32_least uint_least32_t
+#define ui64_least uint_least64_t
+#define ui8_fast uint_fast8_t
+#define ui16_fast uint_fast16_t
+#define ui32_fast uint_fast32_t
+#define ui64_fast uint_fast64_t
+#define f32 float
+#define f64 double
 /** writes values with current routine name and line info to standard output.
     example: (debug-log "%d" 1)
     otherwise like printf */
 #define debug_log(format, ...) \
   fprintf(stdout, "%s:%d " format "\n", __func__, __LINE__, __VA_ARGS__)
-#define null ((b0)(0))
-#define zero_p(a) (0 == a)
 /* return status and error handling */
 /* return status code and error handling. uses a local variable named "status"
    and a goto label named "exit". a status has an identifier and a group to
@@ -69,10 +81,10 @@
     status_goto; \
   }
 ;
-typedef b32_s status_id_t;
+typedef i32 status_id_t;
 typedef struct {
   status_id_t id;
-  b8 group;
+  ui8 group;
 } status_t;
 enum {
   db_status_id_condition_unfulfilled,
@@ -96,16 +108,16 @@ enum {
 };
 #define db_status_set_id_goto(status_id) \
   status_set_both_goto(db_status_group_db, status_id)
-#define db_status_require_read_x(expression) \
+#define db_status_require_read(expression) \
   status = expression; \
-  if (!(status_is_success || status_id_is_p(db_status_id_no_more_data))) { \
+  if (!(status_is_success || (status.id == db_status_id_no_more_data))) { \
     status_goto; \
   }
 #define db_status_success_if_no_more_data \
-  if (status_id_is_p(db_status_id_no_more_data)) { \
+  if (status.id == db_status_id_no_more_data) { \
     status.id = status_id_success; \
   }
-b8* db_status_group_id_to_name(status_id_t a) {
+ui8* db_status_group_id_to_name(status_id_t a) {
   char* b;
   if (db_status_group_db == a) {
     b = "sph-db";
@@ -119,7 +131,7 @@ b8* db_status_group_id_to_name(status_id_t a) {
   return (b);
 };
 /** get the description if available for a status */
-b8* db_status_description(status_t a) {
+ui8* db_status_description(status_t a) {
   char* b;
   if (db_status_group_db == a.group) {
     if (db_status_id_input_type == a.id) {
@@ -161,10 +173,10 @@ b8* db_status_description(status_t a) {
   } else {
     b = "";
   };
-  return (((b8*)(b)));
+  return (((ui8*)(b)));
 };
 /** get the name if available for a status */
-b8* db_status_name(status_t a) {
+ui8* db_status_name(status_t a) {
   char* b;
   if (db_status_group_db == a.group) {
     if (db_status_id_input_type == a.id) {
@@ -203,43 +215,47 @@ b8* db_status_name(status_t a) {
   } else {
     b = "unknown";
   };
-  return (((b8*)(b)));
+  return (((ui8*)(b)));
 };
-#define db_fields_len_t b8
-#define db_field_type_t b8
+#define db_count_t ui32
+#define db_fields_len_t ui8
+#define db_field_type_t ui8
 #define db_id_mask UINT64_MAX
-#define db_id_t b64
-#define db_index_len_t b8
+#define db_id_t ui64
+#define db_index_len_t ui8
 #define db_name_len_max UINT8_MAX
-#define db_name_len_t b8
-#define db_data_len_t b32
+#define db_name_len_t ui8
+#define db_data_len_t ui32
 #define db_data_len_max UINT32_MAX
-#define db_ordinal_t b32
+#define db_ordinal_t ui32
 #define db_type_id_mask UINT16_MAX
-#define db_type_id_t b16
+#define db_type_id_t ui16
 #ifndef db_id_t
-#define db_id_t b64
+#define db_id_t ui64
 #endif
 #ifndef db_type_id_t
-#define db_type_id_t b16
+#define db_type_id_t ui16
 #endif
 #ifndef db_ordinal_t
-#define db_ordinal_t b32
+#define db_ordinal_t ui32
+#endif
+#ifndef db_count_t
+#define db_count_t ui32
 #endif
 #ifndef db_indices_len_t
-#define db_indices_len_t b8
+#define db_indices_len_t ui8
 #endif
 #ifndef db_fields_len_t
-#define db_fields_len_t b8
+#define db_fields_len_t ui8
 #endif
 #ifndef db_name_len_t
-#define db_name_len_t b8
+#define db_name_len_t ui8
 #endif
 #ifndef db_name_len_max
 #define db_name_len_max UINT8_MAX
 #endif
 #ifndef db_field_type_t
-#define db_field_type_t b8
+#define db_field_type_t ui8
 #endif
 #ifndef db_id_mask
 #define db_id_mask UINT64_MAX
@@ -247,8 +263,8 @@ b8* db_status_name(status_t a) {
 #ifndef db_type_id_mask
 #define db_type_id_mask UINT16_MAX
 #endif
-#ifndef db_id_equal_p
-#define db_id_equal_p(a, b) (a == b)
+#ifndef db_id_equal
+#define db_id_equal(a, b) (a == b)
 #endif
 #ifndef db_id_compare
 #define db_id_compare(a, b) ((a < b) ? -1 : (a > b))
@@ -260,9 +276,8 @@ b8* db_status_name(status_t a) {
 #define db_size_graph_data (db_size_ordinal + db_size_id)
 #define db_size_graph_key (2 * db_size_id)
 #define db_selection_flag_skip 1
-#define db_node_selection_flag_is_set_left 2
-#define db_node_selection_flag_is_set_right 4
-#define db_node_selection_flag_initialised 8
+#define db_graph_selection_flag_is_set_left 2
+#define db_graph_selection_flag_is_set_right 4
 #define db_null 0
 #define db_type_id_limit db_type_id_mask
 #define db_size_element_id (sizeof(db_id_t) - sizeof(db_type_id_t))
@@ -301,10 +316,10 @@ b8* db_status_name(status_t a) {
 #define db_id_element(id) (db_id_element_mask & id)
 #define db_pointer_to_id_at(a, index) *(index + ((db_id_t*)(a)))
 #define db_pointer_to_id(a) *((db_id_t*)(a))
-#define db_field_type_fixed_p(a) !(1 & a)
-#define db_system_key_label(a) *((b8*)(a))
+#define db_field_type_is_fixed(a) !(1 & a)
+#define db_system_key_label(a) *((ui8*)(a))
 #define db_system_key_id(a) \
-  *((db_type_id_t*)((db_size_system_label + ((b8*)(a)))))
+  *((db_type_id_t*)((db_size_system_label + ((ui8*)(a)))))
 #define db_status_memory_error_if_null(variable) \
   if (!variable) { \
     status_set_both_goto(db_status_group_db, db_status_id_memory); \
@@ -351,26 +366,8 @@ b8* db_status_name(status_t a) {
 #define db_graph_data_set_both(a, ordinal, id) \
   db_graph_data_set_ordinal(ordinal); \
   db_graph_data_set_id(id)
-#define db_txn_declare(env, name) db_txn_t name = { 0, env }
-#define db_txn_begin(txn) \
-  db_mdb_status_require( \
-    (mdb_txn_begin(((txn.env)->mdb_env), 0, MDB_RDONLY, (&(txn.mdb_txn)))))
-#define db_txn_write_begin(txn) \
-  db_mdb_status_require( \
-    (mdb_txn_begin(((txn.env)->mdb_env), 0, 0, (&(txn.mdb_txn)))))
-#define db_txn_abort(a) \
-  mdb_txn_abort((a.mdb_txn)); \
-  a.mdb_txn = 0
-#define db_txn_abort_if_active(a) \
-  if (a.mdb_txn) { \
-    db_txn_abort(a); \
-  }
-#define db_txn_active_p(a) (a.mdb_txn ? 1 : 0)
-#define db_txn_commit(a) \
-  db_mdb_status_require((mdb_txn_commit((a.mdb_txn)))); \
-  a.mdb_txn = 0
 typedef struct {
-  b8* name;
+  ui8* name;
   db_name_len_t name_len;
   db_field_type_t type;
   db_fields_len_t index;
@@ -381,11 +378,11 @@ typedef struct {
   db_fields_len_t fields_fixed_count;
   db_fields_len_t* fields_fixed_offsets;
   db_field_t* fields;
-  b8 flags;
+  ui8 flags;
   db_type_id_t id;
   struct db_index_t* indices;
   db_indices_len_t indices_len;
-  b8* name;
+  ui8* name;
   db_id_t sequence;
 } db_type_t;
 typedef struct db_index_t {
@@ -402,7 +399,7 @@ typedef struct {
   MDB_dbi dbi_system;
   MDB_env* mdb_env;
   boolean open;
-  b8* root;
+  ui8* root;
   pthread_mutex_t mutex;
   int maxkeysize;
   db_type_t* types;
@@ -411,7 +408,7 @@ typedef struct {
 typedef struct {
   db_id_t id;
   size_t size;
-  b0* data;
+  void* data;
 } db_data_record_t;
 typedef struct {
   MDB_txn* mdb_txn;
@@ -425,13 +422,13 @@ typedef struct {
   MDB_stat graph_ll;
 } db_statistics_t;
 typedef struct {
-  b8 read_only_p;
+  boolean is_read_only;
   size_t maximum_size;
-  b32 maximum_reader_count;
-  b32 maximum_db_count;
-  b8 filesystem_has_ordered_writes_p;
-  b32 env_open_flags;
-  b16 file_permissions;
+  db_count_t maximum_reader_count;
+  db_count_t maximum_db_count;
+  boolean filesystem_has_ordered_writes;
+  ui32_least env_open_flags;
+  ui16 file_permissions;
 } db_open_options_t;
 typedef struct {
   db_id_t left;
@@ -439,22 +436,22 @@ typedef struct {
   db_id_t label;
   db_ordinal_t ordinal;
 } db_graph_record_t;
-typedef db_ordinal_t (*db_graph_ordinal_generator_t)(b0*);
+typedef db_ordinal_t (*db_graph_ordinal_generator_t)(void*);
 typedef struct {
   db_ordinal_t min;
   db_ordinal_t max;
 } db_ordinal_condition_t;
 typedef struct {
   db_data_len_t size;
-  b0* data;
+  void* data;
 } db_node_value_t;
 typedef struct {
   db_type_t* type;
   db_node_value_t* data;
 } db_node_values_t;
-typedef boolean (*db_node_matcher_t)(b0*, size_t);
+typedef boolean (*db_node_matcher_t)(db_id_t, void*, size_t);
 typedef struct {
-  b0* data;
+  void* data;
   size_t size;
 } db_node_data_t;
 typedef struct {
@@ -468,73 +465,74 @@ typedef struct {
 } db_node_index_selection_t;
 #include "./lib/data-structures.c"
 typedef struct {
-  b0* current;
+  db_count_t count;
+  void* current;
   db_id_t current_id;
   size_t current_size;
   MDB_cursor* cursor;
   db_ids_t* ids;
   db_node_matcher_t matcher;
-  b0* matcher_state;
-  b8 options;
+  void* matcher_state;
+  ui8 options;
   db_type_t* type;
 } db_node_selection_t;
 typedef struct {
   status_t status;
   MDB_cursor* restrict cursor;
   MDB_cursor* restrict cursor_2;
-  b0* left;
-  b0* right;
-  b0* label;
+  void* left;
+  void* right;
+  void* label;
   db_ids_t* left_first;
   db_ids_t* right_first;
   db_ordinal_condition_t* ordinal;
-  b8 options;
-  b0* reader;
+  ui8 options;
+  void* reader;
 } db_graph_selection_t;
 typedef status_t (
-  *db_graph_reader_t)(db_graph_selection_t*, b32, db_graph_records_t**);
-b0 db_graph_selection_destroy(db_graph_selection_t* state);
+  *db_graph_reader_t)(db_graph_selection_t*, db_count_t, db_graph_records_t**);
+void db_graph_selection_destroy(db_graph_selection_t* state);
 status_t db_statistics(db_txn_t txn, db_statistics_t* result);
-b0 db_close(db_env_t* env);
-status_t db_open(b8* root, db_open_options_t* options, db_env_t* env);
-db_field_t* db_type_field_get(db_type_t* type, b8* name);
-db_type_t* db_type_get(db_env_t* env, b8* name);
+void db_close(db_env_t* env);
+status_t db_open(ui8* root, db_open_options_t* options, db_env_t* env);
+db_field_t* db_type_field_get(db_type_t* type, ui8* name);
+db_type_t* db_type_get(db_env_t* env, ui8* name);
 status_t db_type_create(db_env_t* env,
-  b8* name,
+  ui8* name,
   db_field_t* fields,
   db_fields_len_t fields_len,
-  b8 flags,
+  ui8 flags,
   db_type_t** result);
 status_t db_type_delete(db_env_t* env, db_type_id_t id);
 status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result);
 status_t db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result);
-b8 db_field_type_size(b8 a);
+ui8 db_field_type_size(ui8 a);
 status_t db_graph_ensure(db_txn_t txn,
   db_ids_t* left,
   db_ids_t* right,
   db_ids_t* label,
   db_graph_ordinal_generator_t ordinal_generator,
-  b0* ordinal_generator_state);
-b8* db_status_description(status_t a);
-b8* db_status_name(status_t a);
-b8* db_status_group_id_to_name(status_id_t a);
+  void* ordinal_generator_state);
+ui8* db_status_description(status_t a);
+ui8* db_status_name(status_t a);
+ui8* db_status_group_id_to_name(status_id_t a);
 status_t db_graph_select(db_txn_t txn,
   db_ids_t* left,
   db_ids_t* right,
   db_ids_t* label,
   db_ordinal_condition_t* ordinal,
-  b32 offset,
+  db_count_t offset,
   db_graph_selection_t* result);
 status_t db_graph_read(db_graph_selection_t* state,
-  b32 count,
+  db_count_t count,
   db_graph_records_t** result);
 status_t db_graph_ensure(db_txn_t txn,
   db_ids_t* left,
   db_ids_t* right,
   db_ids_t* label,
   db_graph_ordinal_generator_t ordinal_generator,
-  b0* ordinal_generator_state);
-b0 db_graph_selection_destroy(db_graph_selection_t* state);
+  void* ordinal_generator_state);
+void db_graph_selection_destroy(db_graph_selection_t* state);
 status_t db_graph_delete(db_txn_t txn,
   db_ids_t* left,
   db_ids_t* right,
@@ -545,19 +543,142 @@ status_t db_graph_select(db_txn_t txn,
   db_ids_t* right,
   db_ids_t* label,
   db_ordinal_condition_t* ordinal,
-  b32 offset,
+  db_count_t offset,
   db_graph_selection_t* result);
-b0 db_debug_log_ids(db_ids_t* a);
-b0 db_debug_log_ids_set(imht_set_t a);
-b0 db_debug_display_graph_records(db_graph_records_t* records);
-status_t db_debug_count_all_btree_entries(db_txn_t txn, b32* result);
+void db_debug_log_ids(db_ids_t* a);
+void db_debug_log_ids_set(imht_set_t a);
+void db_debug_display_graph_records(db_graph_records_t* records);
+status_t db_debug_count_all_btree_entries(db_txn_t txn, db_count_t* result);
 status_t db_debug_display_btree_counts(db_txn_t txn);
 status_t db_debug_display_content_graph_lr(db_txn_t txn);
 status_t db_debug_display_content_graph_rl(db_txn_t txn);
 status_t db_node_values_new(db_type_t* type, db_node_values_t* result);
-b0 db_node_values_set(db_node_values_t values,
+void db_node_values_set(db_node_values_t values,
   db_fields_len_t field_index,
-  b0* data,
+  void* data,
   size_t size);
 status_t db_node_create(db_txn_t txn, db_node_values_t values, db_id_t* result);
 status_t db_node_delete(db_txn_t txn, db_ids_t* ids);
+#include <string.h>
+/* lmdb helpers */
+#define db_mdb_status_is_notfound (MDB_NOTFOUND == status.id)
+#define db_mdb_status_is_success (MDB_SUCCESS == status.id)
+#define db_mdb_status_is_failure !db_mdb_status_is_success
+#define db_mdb_status_no_more_data_if_notfound \
+  if (db_mdb_status_is_notfound) { \
+    status.group = db_status_group_db; \
+    status.id = db_status_id_no_more_data; \
+  }
+#define db_mdb_status_success_if_notfound \
+  if (db_mdb_status_is_notfound) { \
+    status.id = status_id_success; \
+  }
+#define db_mdb_status_set_id_goto(id) \
+  status.group = db_status_group_lmdb; \
+  status.id = id
+#define db_mdb_status_require(expression) \
+  status.id = expression; \
+  if (db_mdb_status_is_failure) { \
+    status_set_group_goto(db_status_group_lmdb); \
+  }
+#define db_mdb_status_require_read(expression) \
+  status.id = expression; \
+  if (!(db_mdb_status_is_success || db_mdb_status_is_notfound)) { \
+    status_set_group_goto(db_status_group_lmdb); \
+  }
+#define db_mdb_status_expect_notfound \
+  if (!db_mdb_status_is_notfound) { \
+    status_set_group_goto(db_status_group_lmdb); \
+  }
+#define db_mdb_status_expect_read \
+  if (!(db_mdb_status_is_success || db_mdb_status_is_notfound)) { \
+    status_set_group_goto(db_status_group_lmdb); \
+  }
+#define db_mdb_cursor_declare(name) MDB_cursor* name = 0
+#define db_mdb_env_cursor_open(txn, name) \
+  mdb_cursor_open((txn.mdb_txn), ((txn.env)->dbi_##name), (&name))
+#define db_mdb_cursor_close(name) \
+  mdb_cursor_close(name); \
+  name = 0
+#define db_mdb_cursor_close_if_active(a) \
+  if (a) { \
+    db_mdb_cursor_close(a); \
+  }
+#define db_mdb_cursor_each_key(cursor, val_key, val_value, body) \
+  status.id = mdb_cursor_get(cursor, (&val_key), (&val_value), MDB_FIRST); \
+  while (db_mdb_status_is_success) { \
+    body; \
+    status.id = \
+      mdb_cursor_get(cursor, (&val_key), (&val_value), MDB_NEXT_NODUP); \
+  }; \
+  db_mdb_status_expect_notfound
+#define db_mdb_val_to_graph_key(a) ((db_id_t*)(a.mv_data))
+#define db_mdb_declare_val_id \
+  MDB_val val_id; \
+  val_id.mv_size = db_size_id;
+#define db_mdb_declare_val_id_2 \
+  MDB_val val_id_2; \
+  val_id_2.mv_size = db_size_id;
+#define db_mdb_declare_val_null \
+  MDB_val val_null; \
+  val_null.mv_size = 0;
+#define db_mdb_declare_val_graph_data \
+  MDB_val val_graph_data; \
+  val_graph_data.mv_size = db_size_graph_data;
+#define db_mdb_declare_val_graph_key \
+  MDB_val val_graph_key; \
+  val_graph_key.mv_size = db_size_graph_key;
+#define db_mdb_reset_val_null val_null.mv_size = 0
+/** mdb comparison routines are used by lmdb for search, insert and delete */
+static int db_mdb_compare_id(const MDB_val* a, const MDB_val* b) {
+  return ((db_id_compare(
+    (db_pointer_to_id((a->mv_data))), (db_pointer_to_id((b->mv_data))))));
+};
+static int db_mdb_compare_graph_key(const MDB_val* a, const MDB_val* b) {
+  if (db_pointer_to_id((a->mv_data)) < db_pointer_to_id((b->mv_data))) {
+    return (-1);
+  } else if (db_pointer_to_id((a->mv_data)) > db_pointer_to_id((b->mv_data))) {
+    return (1);
+  } else {
+    return ((db_id_compare((db_pointer_to_id_at((a->mv_data), 1)),
+      (db_pointer_to_id_at((b->mv_data), 1)))));
+  };
+};
+/** memcmp does not work here, gives -1 for 256 vs 1 */
+static int db_mdb_compare_graph_data(const MDB_val* a, const MDB_val* b) {
+  if (db_graph_data_to_ordinal((a->mv_data)) <
+    db_graph_data_to_ordinal((b->mv_data))) {
+    return (-1);
+  } else if (db_graph_data_to_ordinal((a->mv_data)) >
+    db_graph_data_to_ordinal((b->mv_data))) {
+    return (1);
+  } else {
+    return ((db_id_compare((db_graph_data_to_id((a->mv_data))),
+      (db_graph_data_to_id((b->mv_data))))));
+  };
+};
+static int db_mdb_compare_data(const MDB_val* a, const MDB_val* b) {
+  ssize_t length_difference =
+    (((ssize_t)(a->mv_size)) - ((ssize_t)(b->mv_size)));
+  return (
+    (length_difference ? ((length_difference < 0) ? -1 : 1)
+                       : memcmp((a->mv_data), (b->mv_data), (a->mv_size))));
+};
+#define db_txn_declare(env, name) db_txn_t name = { 0, env }
+#define db_txn_begin(txn) \
+  db_mdb_status_require( \
+    (mdb_txn_begin(((txn.env)->mdb_env), 0, MDB_RDONLY, (&(txn.mdb_txn)))))
+#define db_txn_write_begin(txn) \
+  db_mdb_status_require( \
+    (mdb_txn_begin(((txn.env)->mdb_env), 0, 0, (&(txn.mdb_txn)))))
+#define db_txn_abort(a) \
+  mdb_txn_abort((a.mdb_txn)); \
+  a.mdb_txn = 0
+#define db_txn_abort_if_active(a) \
+  if (a.mdb_txn) { \
+    db_txn_abort(a); \
+  }
+#define db_txn_is_active(a) (a.mdb_txn ? 1 : 0)
+#define db_txn_commit(a) \
+  db_mdb_status_require((mdb_txn_commit((a.mdb_txn)))); \
+  a.mdb_txn = 0

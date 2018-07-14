@@ -1,5 +1,5 @@
-(pre-define db-id-t b64
-  db-ordinal-t b32
+(pre-define db-id-t ui64
+  db-ordinal-t ui32
   db-id-max UINT64_MAX
   ;data can not be greater than lmdb max keysize, which is 511 by lmdb default but can be adjusted with recompiling lmdb
   db-size-data-max 511

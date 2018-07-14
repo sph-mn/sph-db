@@ -25,7 +25,7 @@ exit:
 };
 /** return a pointer to the type struct for the type with the given name. zero
  * if not found */
-db_type_t* db_type_get(db_env_t* env, b8* name) {
+db_type_t* db_type_get(db_env_t* env, ui8* name) {
   db_type_id_t i;
   db_type_id_t types_len;
   db_type_t* type;
@@ -38,7 +38,7 @@ db_type_t* db_type_get(db_env_t* env, b8* name) {
   };
   return (0);
 };
-db_field_t* db_type_field_get(db_type_t* type, b8* name) {
+db_field_t* db_type_field_get(db_type_t* type, ui8* name) {
   db_fields_len_t index;
   db_fields_len_t fields_len;
   db_field_t* fields;
@@ -54,22 +54,22 @@ db_field_t* db_type_field_get(db_type_t* type, b8* name) {
 };
 /** the data format is documented in main/open.c */
 status_t db_type_create(db_env_t* env,
-  b8* name,
+  ui8* name,
   db_field_t* fields,
   db_fields_len_t fields_len,
-  b8 flags,
+  ui8 flags,
   db_type_t** result) {
   status_declare;
   db_mdb_cursor_declare(system);
   db_mdb_cursor_declare(nodes);
   db_txn_declare(env, txn);
-  b8* data;
-  b8* data_start;
+  ui8* data;
+  ui8* data_start;
   db_field_t field;
   db_fields_len_t i;
   db_type_t* type_pointer;
-  b8 key[db_size_system_key];
-  b8 name_len;
+  ui8 key[db_size_system_key];
+  ui8 name_len;
   size_t data_size;
   db_type_id_t type_id;
   MDB_val val_data;
@@ -131,7 +131,7 @@ status_t db_type_create(db_env_t* env,
   db_txn_commit(txn);
   *result = type_pointer;
 exit:
-  if (db_txn_active_p(txn)) {
+  if (db_txn_is_active(txn)) {
     db_mdb_cursor_close_if_active(system);
     db_mdb_cursor_close_if_active(nodes);
     db_txn_abort(txn);
@@ -147,7 +147,7 @@ status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
   db_txn_declare(env, txn);
   MDB_val val_key;
   db_id_t id;
-  b8 key[db_size_system_key];
+  ui8 key[db_size_system_key];
   val_key.mv_size = db_size_system_key;
   db_system_key_label(key) = db_system_label_type;
   db_system_key_id(key) = type_id;

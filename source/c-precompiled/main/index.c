@@ -1,10 +1,10 @@
 #define db_index_errors_data_log(message, type, id) \
   db_error_log("(groups index %s) (description %s) (id %lu)", type, message, id)
 status_t db_node_data_to_values(db_type_t* type,
-  b0* data,
+  void* data,
   size_t data_size,
   db_node_values_t* result);
-b0 db_free_node_values(db_node_values_t* values);
+void db_free_node_values(db_node_values_t* values);
 db_index_t* db_index_get(db_type_t* type,
   db_fields_len_t* fields,
   db_fields_len_t fields_len) {
@@ -25,10 +25,10 @@ db_index_t* db_index_get(db_type_t* type,
 status_t db_index_system_key(db_type_id_t type_id,
   db_fields_len_t* fields,
   db_fields_len_t fields_len,
-  b0** result_data,
+  void** result_data,
   size_t* result_size) {
   status_declare;
-  b8* data;
+  ui8* data;
   size_t size;
   size = (db_size_type_id + (sizeof(db_fields_len_t) * fields_len));
   db_malloc(data, size);
@@ -46,17 +46,17 @@ exit:
 status_t db_index_name(db_type_id_t type_id,
   db_fields_len_t* fields,
   db_fields_len_t fields_len,
-  b8** result,
+  ui8** result,
   size_t* result_size) {
   status_declare;
   db_fields_len_t i;
-  b8* str;
-  b8** strings;
+  ui8* str;
+  ui8** strings;
   int strings_len;
-  b8* name;
+  ui8* name;
   name = 0;
   strings_len = (1 + fields_len);
-  strings = calloc(strings_len, sizeof(b8*));
+  strings = calloc(strings_len, sizeof(ui8*));
   if (!strings) {
     status_set_both(db_status_group_db, db_status_id_memory);
     return (status);
@@ -93,14 +93,14 @@ exit:
 status_t db_index_key(db_env_t* env,
   db_index_t index,
   db_node_values_t values,
-  b0** result_data,
+  void** result_data,
   size_t* result_size) {
   status_declare;
   size_t value_size;
-  b8* data;
+  ui8* data;
   db_fields_len_t i;
   size_t size;
-  b0* data_temp;
+  void* data_temp;
   for (i = 0; (i < index.fields_len); i = (1 + i)) {
     size = (size + ((values.data)[(index.fields)[i]]).size);
   };
@@ -127,10 +127,10 @@ status_t db_index_build(db_env_t* env, db_index_t* index) {
   db_mdb_cursor_declare(nodes);
   db_mdb_cursor_declare(index_cursor);
   MDB_val val_data;
-  b0* data;
+  void* data;
   db_id_t id;
   db_type_t type;
-  b8* name;
+  ui8* name;
   db_node_values_t values;
   type = *(index->type);
   id = db_id_add_type(0, (type.id));
@@ -180,7 +180,7 @@ status_t db_index_create(db_env_t* env,
   db_txn_declare(env, txn);
   db_mdb_cursor_declare(system);
   MDB_val val_data;
-  b8* name;
+  ui8* name;
   size_t name_len;
   db_index_t* indices;
   db_index_t node_index;
@@ -265,7 +265,7 @@ exit:
 status_t db_index_rebuild(db_env_t* env, db_index_t* index) {
   status_declare;
   db_txn_declare(env, txn);
-  b8* name;
+  ui8* name;
   size_t name_len;
   name = 0;
   status_require((db_index_name((index->type->id),
@@ -289,7 +289,7 @@ db_indices_entry_ensure(db_txn_t txn, db_node_values_t values, db_id_t id) {
   status_declare;
   db_mdb_declare_val_id;
   db_mdb_cursor_declare(node_index_cursor);
-  b0* data;
+  void* data;
   MDB_val val_data;
   db_indices_len_t i;
   db_index_t node_index;
@@ -323,7 +323,7 @@ db_indices_entry_delete(db_txn_t txn, db_node_values_t values, db_id_t id) {
   status_declare;
   db_mdb_declare_val_id;
   db_mdb_cursor_declare(node_index_cursor);
-  b8* data;
+  ui8* data;
   MDB_val val_data;
   db_indices_len_t i;
   db_index_t node_index;
@@ -335,8 +335,11 @@ db_indices_entry_delete(db_txn_t txn, db_node_values_t values, db_id_t id) {
   node_indices = (values.type)->indices;
   for (i = 0; (i < node_indices_len); i = (1 + i)) {
     node_index = node_indices[i];
-    status_require((db_index_key(
-      (txn.env), node_index, values, ((b0**)(&data)), (&(val_data.mv_size)))));
+    status_require((db_index_key((txn.env),
+      node_index,
+      values,
+      ((void**)(&data)),
+      (&(val_data.mv_size)))));
     val_data.mv_data = data;
     db_mdb_status_require(
       (mdb_cursor_open((txn.mdb_txn), (node_index.dbi), (&node_index_cursor))));
@@ -403,7 +406,7 @@ exit:
   db_mdb_status_no_more_data_if_notfound;
   return (status);
 };
-b0 db_index_selection_destroy(db_index_selection_t* state) {
+void db_index_selection_destroy(db_index_selection_t* state) {
   if (state->cursor) {
     mdb_cursor_close((state->cursor));
   };
@@ -417,7 +420,7 @@ status_t db_index_select(db_txn_t txn,
   status_declare;
   db_mdb_declare_val_id;
   db_mdb_cursor_declare(cursor);
-  b0* data;
+  void* data;
   MDB_val val_data;
   data = 0;
   status_require((

@@ -14,7 +14,7 @@
 ; the following definition sets the integer type and size for values
 (pre-if-not-defined imht-set-key-t (pre-define imht-set-key-t uint64_t))
 ; using the following leads to slightly faster set operations but a stored zero will not be found
-(pre-if-not-defined imht-set-can-contain-zero? (pre-define imht-set-can-contain-zero? 1))
+(pre-if-not-defined imht-set-can-contain-zero (pre-define imht-set-can-contain-zero 1))
 ; the minimum memory usage is size times imht-set-size-factor
 (pre-if-not-defined imht-set-size-factor (pre-define imht-set-size-factor 2))
 
@@ -123,7 +123,7 @@
       (free a))))
 
 (pre-if
-  imht-set-can-contain-zero?
+  imht-set-can-contain-zero
   (pre-define (imht-set-hash value hash-table)
     (if* value (+ 1 (modulo value (- hash-table.size 1)))
       0))
@@ -131,13 +131,13 @@
 
 (define (imht-set-find a value) (imht-set-key-t* imht-set-t* imht-set-key-t)
   "returns the address of the element in the set, 0 if it was not found.
-  caveat: if imht-set-can-contain-zero? is defined, which is the default,
+  caveat: if imht-set-can-contain-zero is defined, which is the default,
   pointer-geterencing a returned address for the found value 0 will return 1 instead"
   (define h imht-set-key-t* (+ a:content (imht-set-hash value *a)))
   (if *h
     (begin
       (pre-if
-        imht-set-can-contain-zero?
+        imht-set-can-contain-zero
         ; the value zero is stored at a special index and is the only value that can be stored there
         (if (or (= *h value) (= 0 value)) (return h)) (if (= *h value) (return h)))
       (define content-end imht-set-key-t* (+ a:content (- a:size 1)))
@@ -156,7 +156,7 @@
         (set h2 (+ 1 h2)))))
   (return 0))
 
-(pre-define (imht-set-contains? a value)
+(pre-define (imht-set-contains a value)
   (if* (= 0 (imht-set-find a value)) #f
     #t))
 
@@ -176,7 +176,7 @@
     (begin
       ; the first element is special for storing 0
       (pre-if
-        imht-set-can-contain-zero?
+        imht-set-can-contain-zero
         (if (or (= value *h) (= 0 value)) (return h)) (if (= value *h) (return h)))
       (define content-end imht-set-key-t* (+ a:content (- a:size 1)))
       (define h2 imht-set-key-t* (+ 1 h))
@@ -190,20 +190,20 @@
             (set h2 (+ 1 h2)))
           (if (= h2 h) (return 0)
             (pre-if
-              imht-set-can-contain-zero?
+              imht-set-can-contain-zero
               (set *h2
                 (if* (= 0 value) 1
                   value))
               (set *h2 value))))
         (pre-if
-          imht-set-can-contain-zero?
+          imht-set-can-contain-zero
           (set *h2
             (if* (= 0 value) 1
               value))
           (set *h2 value))))
     (begin
       (pre-if
-        imht-set-can-contain-zero?
+        imht-set-can-contain-zero
         (set *h
           (if* (= 0 value) 1
             value))

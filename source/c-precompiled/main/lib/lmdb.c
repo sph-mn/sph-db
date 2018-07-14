@@ -1,5 +1,6 @@
 #include <string.h>
 /* lmdb helpers */
+#define db_mdb_status_is_notfound (MDB_NOTFOUND == status.id)
 #define db_mdb_status_is_success (MDB_SUCCESS == status.id)
 #define db_mdb_status_is_failure !db_mdb_status_is_success
 #define db_mdb_status_no_more_data_if_notfound \
@@ -11,7 +12,6 @@
   if (db_mdb_status_is_notfound) { \
     status.id = status_id_success; \
   }
-#define db_mdb_status_is_notfound (MDB_NOTFOUND == status.id)
 #define db_mdb_status_set_id_goto(id) \
   status.group = db_status_group_lmdb; \
   status.id = id
@@ -27,6 +27,10 @@
   }
 #define db_mdb_status_expect_notfound \
   if (!db_mdb_status_is_notfound) { \
+    status_set_group_goto(db_status_group_lmdb); \
+  }
+#define db_mdb_status_expect_read \
+  if (!(db_mdb_status_is_success || db_mdb_status_is_notfound)) { \
     status_set_group_goto(db_status_group_lmdb); \
   }
 #define db_mdb_cursor_declare(name) MDB_cursor* name = 0

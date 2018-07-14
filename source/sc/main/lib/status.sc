@@ -20,14 +20,14 @@
 
 (pre-define
   (db-status-set-id-goto status-id) (status-set-both-goto db-status-group-db status-id)
-  (db-status-require-read! expression)
+  (db-status-require-read expression)
   (begin
     (set status expression)
-    (if (not (or status-is-success (status-id-is? db-status-id-no-more-data))) status-goto))
+    (if (not (or status-is-success (= status.id db-status-id-no-more-data))) status-goto))
   db-status-success-if-no-more-data
-  (if (status-id-is? db-status-id-no-more-data) (set status.id status-id-success)))
+  (if (= status.id db-status-id-no-more-data) (set status.id status-id-success)))
 
-(define (db-status-group-id->name a) (b8* status-id-t)
+(define (db-status-group-id->name a) (ui8* status-id-t)
   (declare b char*)
   (case = a
     (db-status-group-db (set b "sph-db"))
@@ -36,7 +36,7 @@
     (else (set b "")))
   (return b))
 
-(define (db-status-description a) (b8* status-t)
+(define (db-status-description a) (ui8* status-t)
   "get the description if available for a status"
   (declare b char*)
   (case = a.group
@@ -63,9 +63,9 @@
         (else (set b ""))))
     (db-status-group-lmdb (set b (mdb-strerror a.id)))
     (else (set b "")))
-  (return (convert-type b b8*)))
+  (return (convert-type b ui8*)))
 
-(define (db-status-name a) (b8* status-t)
+(define (db-status-name a) (ui8* status-t)
   "get the name if available for a status"
   (declare b char*)
   (case = a.group
@@ -88,4 +88,4 @@
         (else (set b "unknown"))))
     (db-status-group-lmdb (set b (mdb-strerror a.id)))
     (else (set b "unknown")))
-  (return (convert-type b b8*)))
+  (return (convert-type b ui8*)))

@@ -1,13 +1,13 @@
 (sc-comment
   "system btree entry format. key -> value
-     type-label id -> 8b:name-len name db-field-len-t:field-len (b8:field-type b8:name-len name) ...
+     type-label id -> 8b:name-len name db-field-len-t:field-len (ui8:field-type ui8:name-len name) ...
      index-label db-type-id-t:type-id db-field-len-t:field-offset ... -> ()")
 
-(define (db-open-root env options path) (status-t db-env-t* db-open-options-t* b8*)
+(define (db-open-root env options path) (status-t db-env-t* db-open-options-t* ui8*)
   "prepare the database filesystem root path.
   create the full directory path if it does not exist"
   status-declare
-  (declare path-temp b8*)
+  (declare path-temp ui8*)
   (set
     path-temp 0
     path-temp (string-clone path))
@@ -19,21 +19,21 @@
     (if status-is-failure (free path-temp))
     (return status)))
 
-(define (db-open-mdb-env-flags options) (b32 db-open-options-t*)
+(define (db-open-mdb-env-flags options) (ui32 db-open-options-t*)
   (return
     (if* options:env-open-flags options:env-open-flags
       (bit-or
         MDB-NOSUBDIR
         MDB-WRITEMAP
-        (if* options:read-only? MDB-RDONLY
+        (if* options:is-read-only MDB-RDONLY
           0)
-        (if* options:filesystem-has-ordered-writes? MDB-MAPASYNC
+        (if* options:filesystem-has-ordered-writes MDB-MAPASYNC
           0)))))
 
 (define (db-open-mdb-env env options) (status-t db-env-t* db-open-options-t*)
   status-declare
   (declare
-    data-path b8*
+    data-path ui8*
     mdb-env MDB-env*)
   (set
     mdb-env 0
@@ -59,9 +59,9 @@
   after data has been inserted"
   status-declare
   (declare
-    data b8*
-    label b8
-    format (array b8 (3) db-size-id db-size-type-id db-size-ordinal)
+    data ui8*
+    label ui8
+    format (array ui8 (3) db-size-id db-size-type-id db-size-ordinal)
     val-key MDB-val
     val-data MDB-val
     stat-info MDB-stat)
@@ -111,7 +111,7 @@
   (declare
     val-key MDB-val
     current db-type-id-t
-    key (array b8 (db-size-system-key)))
+    key (array ui8 (db-size-system-key)))
   (set
     val-key.mv-size 1
     current 0
@@ -246,13 +246,13 @@
   (label exit
     (return status)))
 
-(define (db-open-type-read-fields data-pointer type) (status-t b8** db-type-t*)
+(define (db-open-type-read-fields data-pointer type) (status-t ui8** db-type-t*)
   "read information for fields from system btree type data"
   status-declare
   (declare
     count db-fields-len-t
-    data b8*
-    field-type b8
+    data ui8*
+    field-type ui8
     field-pointer db-field-t*
     fields db-field-t*
     fixed-count db-fields-len-t
@@ -277,7 +277,7 @@
       field-pointer:type field-type
       field-pointer:name-len (pointer-get (convert-type data db-name-len-t*)))
     (db-read-name &data (address-of (: field-pointer name)))
-    (if (db-field-type-fixed? field-type) (set fixed-count (+ 1 fixed-count))))
+    (if (db-field-type-is-fixed field-type) (set fixed-count (+ 1 fixed-count))))
   (sc-comment "offsets")
   (if fixed-count
     (begin
@@ -297,7 +297,7 @@
     (return status)))
 
 (define (db-open-type system-key system-value types nodes result-type)
-  (status-t b8* b8* db-type-t* MDB-cursor* db-type-t**)
+  (status-t ui8* ui8* db-type-t* MDB-cursor* db-type-t**)
   status-declare
   (declare
     id db-type-id-t
@@ -323,7 +323,7 @@
   (declare
     val-key MDB-val
     val-data MDB-val
-    key (array b8 (db-size-system-key))
+    key (array ui8 (db-size-system-key))
     type-pointer db-type-t*
     types db-type-t*
     types-len db-type-id-t
@@ -377,7 +377,7 @@
     indices-alloc-len db-fields-len-t
     indices-len db-fields-len-t
     indices-temp db-index-t*
-    key (array b8 (db-size-system-key))
+    key (array ui8 (db-size-system-key))
     type-id db-type-id-t
     types db-type-t*
     types-len db-type-id-t)
@@ -452,7 +452,7 @@
   "ensure that the trees used for the graph exist, configure and open dbi"
   status-declare
   (declare
-    db-options b32
+    db-options ui32
     dbi-graph-lr MDB-dbi
     dbi-graph-rl MDB-dbi
     dbi-graph-ll MDB-dbi)
@@ -482,12 +482,12 @@
 
 (define (db-open-options-set-defaults a) (db-open-options-t db-open-options-t*)
   (set
-    a:read-only? #f
+    a:is-read-only #f
     a:maximum-size 17179869183
     a:maximum-reader-count 65535
     a:maximum-db-count 255
     a:env-open-flags 0
-    a:filesystem-has-ordered-writes? #t
+    a:filesystem-has-ordered-writes #t
     a:file-permissions 384))
 
 (define (db-open-nodes txn) (status-t db-txn-t)
@@ -498,7 +498,7 @@
   (label exit
     (return status)))
 
-(define (db-open path options-pointer env) (status-t b8* db-open-options-t* db-env-t*)
+(define (db-open path options-pointer env) (status-t ui8* db-open-options-t* db-env-t*)
   status-declare
   (declare options db-open-options-t)
   (if (not (> db-size-id db-size-type-id))

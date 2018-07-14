@@ -42,10 +42,10 @@
     status_goto; \
   }
 ;
-typedef b32_s status_id_t;
+typedef i32 status_id_t;
 typedef struct {
   status_id_t id;
-  b8 group;
+  ui8 group;
 } status_t;
 enum {
   db_status_id_condition_unfulfilled,
@@ -69,16 +69,16 @@ enum {
 };
 #define db_status_set_id_goto(status_id) \
   status_set_both_goto(db_status_group_db, status_id)
-#define db_status_require_read_x(expression) \
+#define db_status_require_read(expression) \
   status = expression; \
-  if (!(status_is_success || status_id_is_p(db_status_id_no_more_data))) { \
+  if (!(status_is_success || (status.id == db_status_id_no_more_data))) { \
     status_goto; \
   }
 #define db_status_success_if_no_more_data \
-  if (status_id_is_p(db_status_id_no_more_data)) { \
+  if (status.id == db_status_id_no_more_data) { \
     status.id = status_id_success; \
   }
-b8* db_status_group_id_to_name(status_id_t a) {
+ui8* db_status_group_id_to_name(status_id_t a) {
   char* b;
   if (db_status_group_db == a) {
     b = "sph-db";
@@ -92,7 +92,7 @@ b8* db_status_group_id_to_name(status_id_t a) {
   return (b);
 };
 /** get the description if available for a status */
-b8* db_status_description(status_t a) {
+ui8* db_status_description(status_t a) {
   char* b;
   if (db_status_group_db == a.group) {
     if (db_status_id_input_type == a.id) {
@@ -134,10 +134,10 @@ b8* db_status_description(status_t a) {
   } else {
     b = "";
   };
-  return (((b8*)(b)));
+  return (((ui8*)(b)));
 };
 /** get the name if available for a status */
-b8* db_status_name(status_t a) {
+ui8* db_status_name(status_t a) {
   char* b;
   if (db_status_group_db == a.group) {
     if (db_status_id_input_type == a.id) {
@@ -176,5 +176,5 @@ b8* db_status_name(status_t a) {
   } else {
     b = "unknown";
   };
-  return (((b8*)(b)));
+  return (((ui8*)(b)));
 };

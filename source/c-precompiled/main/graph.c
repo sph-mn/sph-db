@@ -1,12 +1,12 @@
-#define db_graph_key_equal_p(a, b) \
-  (db_id_equal_p((a[0]), (b[0])) && db_id_equal_p((a[1]), (b[1])))
+#define db_graph_key_equal(a, b) \
+  (db_id_equal((a[0]), (b[0])) && db_id_equal((a[1]), (b[1])))
 #define db_graph_data_ordinal_set(graph_data, value) \
   ((db_ordinal_t*)(graph_data))[0] = value
 #define db_graph_data_id_set(graph_data, value) \
   ((db_id_t*)((1 + ((db_ordinal_t*)(graph_data)))))[0] = value
 #define db_declare_graph_key(name) db_id_t name[2] = { 0, 0 }
 #define db_declare_graph_data(name) \
-  b8 graph_data[(db_size_ordinal + db_size_id)]; \
+  ui8 graph_data[(db_size_ordinal + db_size_id)]; \
   memset(graph_data, 0, (db_size_ordinal + db_size_id))
 #define db_declare_graph_record(name) db_graph_record_t name = { 0, 0, 0, 0 }
 #define db_graph_records_add_x(target, record, target_temp) \
@@ -40,7 +40,7 @@ status_t db_graph_ensure(db_txn_t txn,
   db_ids_t* right,
   db_ids_t* label,
   db_graph_ordinal_generator_t ordinal_generator,
-  b0* ordinal_generator_state) {
+  void* ordinal_generator_state) {
   status_declare;
   db_mdb_declare_val_id;
   db_mdb_declare_val_id_2;
@@ -127,8 +127,8 @@ status_t db_graph_index_rebuild(db_env_t* env) {
   db_id_t id_right;
   db_id_t id_label;
   db_txn_write_begin(txn);
-  db_mdb_status_require(mdb_drop(txn, dbi_graph_rl, 0));
-  db_mdb_status_require(mdb_drop(txn, dbi_graph_ll, 0));
+  db_mdb_status_require((mdb_drop((txn.mdb_txn), (env->dbi_graph_rl), 0)));
+  db_mdb_status_require((mdb_drop((txn.mdb_txn), (env->dbi_graph_ll), 0)));
   db_txn_commit(txn);
   db_txn_write_begin(txn);
   db_mdb_status_require(db_mdb_env_cursor_open(txn, graph_lr));
@@ -143,7 +143,7 @@ status_t db_graph_index_rebuild(db_env_t* env) {
       graph_key[0] = id_right;
       graph_key[1] = id_label;
       val_graph_key.mv_data = graph_key;
-      val_id.mv_data = *id_left;
+      val_id.mv_data = &id_left;
       db_mdb_status_require(
         mdb_cursor_put(graph_rl, (&val_graph_key), (&val_id), 0));
       /* graph-ll */

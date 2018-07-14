@@ -1,6 +1,5 @@
 #include "./sph-db.h"
 #include "../foreign/sph/one.c"
-#include "./lib/lmdb.c"
 #include <math.h>
 #define free_and_set_null(a) \
   free(a); \
@@ -32,12 +31,12 @@ uint8_t* uint_to_string(intmax_t a) {
 };
 /** join strings into one string with each input string separated by delimiter.
   zero if strings-len is zero or memory could not be allocated */
-b8* string_join(b8** strings,
+ui8* string_join(ui8** strings,
   size_t strings_len,
-  b8* delimiter,
+  ui8* delimiter,
   size_t* result_size) {
-  b8* result;
-  b8* temp;
+  ui8* result;
+  ui8* temp;
   size_t size;
   size_t index;
   size_t delimiter_len;
@@ -66,7 +65,7 @@ b8* string_join(b8** strings,
   return (result);
 };
 /** display an ids list */
-b0 db_debug_log_ids(db_ids_t* a) {
+void db_debug_log_ids(db_ids_t* a) {
   printf("ids (%lu):", db_ids_length(a));
   while (a) {
     printf(" %lu", db_ids_first(a));
@@ -75,8 +74,8 @@ b0 db_debug_log_ids(db_ids_t* a) {
   printf("\n");
 };
 /** display an ids set */
-b0 db_debug_log_ids_set(imht_set_t a) {
-  b32 index = 0;
+void db_debug_log_ids_set(imht_set_t a) {
+  ui32 index = 0;
   printf("id set (%lu):", (a.size));
   while ((index < a.size)) {
     printf(" %lu", ((a.content)[index]));
@@ -84,7 +83,7 @@ b0 db_debug_log_ids_set(imht_set_t a) {
   };
   printf("\n");
 };
-b0 db_debug_display_graph_records(db_graph_records_t* records) {
+void db_debug_display_graph_records(db_graph_records_t* records) {
   db_graph_record_t record;
   printf(("graph records (ll -> or)\n"));
   while (records) {
@@ -112,7 +111,7 @@ exit:
   return (status);
 };
 /** sum the count of all entries in all btrees used by the database */
-status_t db_debug_count_all_btree_entries(db_txn_t txn, b32* result) {
+status_t db_debug_count_all_btree_entries(db_txn_t txn, ui32* result) {
   status_declare;
   db_statistics_t stat;
   status_require(db_statistics(txn, (&stat)));
@@ -123,7 +122,7 @@ exit:
   return (status);
 };
 /** size in octets. zero for variable size types */
-b8 db_field_type_size(b8 a) {
+ui8 db_field_type_size(ui8 a) {
   if ((db_field_type_int64 == a) || (db_field_type_uint64 == a) ||
     (db_field_type_char64 == a) || (db_field_type_float64 == a)) {
     return (64);
@@ -155,11 +154,11 @@ exit:
 /** read a length prefixed string from system type data.
   on success set result to a newly allocated string and data to the next byte
   after the string */
-status_t db_read_name(b8** data_pointer, b8** result) {
+status_t db_read_name(ui8** data_pointer, ui8** result) {
   status_declare;
-  b8* data;
+  ui8* data;
   db_name_len_t len;
-  b8* name;
+  ui8* name;
   data = *data_pointer;
   len = *((db_name_len_t*)(data));
   data = (sizeof(db_name_len_t) + data);
@@ -223,7 +222,7 @@ db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result) {
 exit:
   return (status);
 };
-b0 db_free_env_types_indices(db_index_t** indices,
+void db_free_env_types_indices(db_index_t** indices,
   db_fields_len_t indices_len) {
   db_fields_len_t i;
   db_index_t* index_pointer;
@@ -236,7 +235,7 @@ b0 db_free_env_types_indices(db_index_t** indices,
   };
   free_and_set_null((*indices));
 };
-b0 db_free_env_types_fields(db_field_t** fields, db_fields_len_t fields_len) {
+void db_free_env_types_fields(db_field_t** fields, db_fields_len_t fields_len) {
   db_fields_len_t i;
   if (!*fields) {
     return;
@@ -246,7 +245,7 @@ b0 db_free_env_types_fields(db_field_t** fields, db_fields_len_t fields_len) {
   };
   free_and_set_null((*fields));
 };
-b0 db_free_env_type(db_type_t* type) {
+void db_free_env_type(db_type_t* type) {
   if (0 == type->id) {
     return;
   };
@@ -255,7 +254,7 @@ b0 db_free_env_type(db_type_t* type) {
   db_free_env_types_indices((&(type->indices)), (type->indices_len));
   type->id = 0;
 };
-b0 db_free_env_types(db_type_t** types, db_type_id_t types_len) {
+void db_free_env_types(db_type_t** types, db_type_id_t types_len) {
   db_type_id_t i;
   if (!*types) {
     return;
@@ -265,7 +264,7 @@ b0 db_free_env_types(db_type_t** types, db_type_id_t types_len) {
   };
   free_and_set_null((*types));
 };
-b0 db_close(db_env_t* env) {
+void db_close(db_env_t* env) {
   MDB_env* mdb_env = env->mdb_env;
   if (mdb_env) {
     mdb_dbi_close(mdb_env, (env->dbi_system));

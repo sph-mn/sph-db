@@ -3,6 +3,7 @@
 
 (pre-define
   ; status
+  db-mdb-status-is-notfound (= MDB-NOTFOUND status.id)
   db-mdb-status-is-success (= MDB-SUCCESS status.id)
   db-mdb-status-is-failure (not db-mdb-status-is-success)
   db-mdb-status-no-more-data-if-notfound
@@ -11,7 +12,6 @@
       status.group db-status-group-db
       status.id db-status-id-no-more-data))
   db-mdb-status-success-if-notfound (if db-mdb-status-is-notfound (set status.id status-id-success))
-  db-mdb-status-is-notfound (= MDB-NOTFOUND status.id)
   (db-mdb-status-set-id-goto id)
   (set
     status.group db-status-group-lmdb
@@ -27,6 +27,9 @@
       (status-set-group-goto db-status-group-lmdb)))
   db-mdb-status-expect-notfound
   (if (not db-mdb-status-is-notfound) (status-set-group-goto db-status-group-lmdb))
+  db-mdb-status-expect-read
+  (if (not (or db-mdb-status-is-success db-mdb-status-is-notfound))
+    (status-set-group-goto db-status-group-lmdb))
   ; cursor
   (db-mdb-cursor-declare name) (define name MDB-cursor* 0)
   (db-mdb-env-cursor-open txn name)

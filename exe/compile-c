@@ -17,5 +17,5 @@ compile_test() {
 
 mkdir -p temp &&
 compile_libsph_db $@
-compile_test $@ &&
+compile_test $@
 chmod 755 temp/*

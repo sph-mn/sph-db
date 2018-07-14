@@ -3,8 +3,8 @@
 
 (declare
   (db-node-data->values type data data-size result)
-  (status-t db-type-t* b0* size-t db-node-values-t*) (db-free-node-values values)
-  (b0 db-node-values-t*))
+  (status-t db-type-t* void* size-t db-node-values-t*) (db-free-node-values values)
+  (void db-node-values-t*))
 
 (define (db-index-get type fields fields-len)
   (db-index-t* db-type-t* db-fields-len-t* db-fields-len-t)
@@ -25,10 +25,10 @@
   (return 0))
 
 (define (db-index-system-key type-id fields fields-len result-data result-size)
-  (status-t db-type-id-t db-fields-len-t* db-fields-len-t b0** size-t*)
+  (status-t db-type-id-t db-fields-len-t* db-fields-len-t void** size-t*)
   status-declare
   (declare
-    data b8*
+    data ui8*
     size size-t)
   (set size (+ db-size-type-id (* (sizeof db-fields-len-t) fields-len)))
   (db-malloc data size)
@@ -45,19 +45,19 @@
     (return status)))
 
 (define (db-index-name type-id fields fields-len result result-size)
-  (status-t db-type-id-t db-fields-len-t* db-fields-len-t b8** size-t*)
+  (status-t db-type-id-t db-fields-len-t* db-fields-len-t ui8** size-t*)
   "create a string name from type-id and field offsets"
   status-declare
   (declare
     i db-fields-len-t
-    str b8*
-    strings b8**
+    str ui8*
+    strings ui8**
     strings-len int
-    name b8*)
+    name ui8*)
   (set
     name 0
     strings-len (+ 1 fields-len)
-    strings (calloc strings-len (sizeof b8*)))
+    strings (calloc strings-len (sizeof ui8*)))
   (if (not strings)
     (begin
       (status-set-both db-status-group-db db-status-id-memory)
@@ -87,15 +87,15 @@
     (return status)))
 
 (define (db-index-key env index values result-data result-size)
-  (status-t db-env-t* db-index-t db-node-values-t b0** size-t*)
+  (status-t db-env-t* db-index-t db-node-values-t void** size-t*)
   "calculate size and prepare data"
   status-declare
   (declare
     value-size size-t
-    data b8*
+    data ui8*
     i db-fields-len-t
     size size-t
-    data-temp b0*)
+    data-temp void*)
   (for ((set i 0) (< i index.fields-len) (set i (+ 1 i)))
     (set size (+ size (struct-get (array-get values.data (array-get index.fields i)) size))))
   (if (< env:maxkeysize size) (status-set-both-goto db-status-group-db db-status-id-index-keysize))
@@ -120,10 +120,10 @@
   (db-mdb-cursor-declare index-cursor)
   (declare
     val-data MDB-val
-    data b0*
+    data void*
     id db-id-t
     type db-type-t
-    name b8*
+    name ui8*
     values db-node-values-t)
   (set
     type *index:type
@@ -161,7 +161,7 @@
   (db-mdb-cursor-declare system)
   (declare
     val-data MDB-val
-    name b8*
+    name ui8*
     name-len size-t
     indices db-index-t*
     node-index db-index-t)
@@ -236,7 +236,7 @@
   status-declare
   (db-txn-declare env txn)
   (declare
-    name b8*
+    name ui8*
     name-len size-t)
   (set name 0)
   (status-require (db-index-name index:type:id index:fields index:fields-len &name &name-len))
@@ -255,7 +255,7 @@
   db-mdb-declare-val-id
   (db-mdb-cursor-declare node-index-cursor)
   (declare
-    data b0*
+    data void*
     val-data MDB-val
     i db-indices-len-t
     node-index db-index-t
@@ -284,7 +284,7 @@
   db-mdb-declare-val-id
   (db-mdb-cursor-declare node-index-cursor)
   (declare
-    data b8*
+    data ui8*
     val-data MDB-val
     i db-indices-len-t
     node-index db-index-t
@@ -298,7 +298,7 @@
   (for ((set i 0) (< i node-indices-len) (set i (+ 1 i)))
     (set node-index (array-get node-indices i))
     (status-require
-      (db-index-key txn.env node-index values (convert-type &data b0**) &val-data.mv-size))
+      (db-index-key txn.env node-index values (convert-type &data void**) &val-data.mv-size))
     (set val-data.mv-data data)
     ; delete
     (db-mdb-status-require (mdb-cursor-open txn.mdb-txn node-index.dbi &node-index-cursor))
@@ -353,7 +353,7 @@
     db-mdb-status-no-more-data-if-notfound
     (return status)))
 
-(define (db-index-selection-destroy state) (b0 db-index-selection-t*)
+(define (db-index-selection-destroy state) (void db-index-selection-t*)
   (if state:cursor (mdb-cursor-close state:cursor)))
 
 (define (db-index-select txn index values result)
@@ -363,7 +363,7 @@
   db-mdb-declare-val-id
   (db-mdb-cursor-declare cursor)
   (declare
-    data b0*
+    data void*
     val-data MDB-val)
   (set data 0)
   (status-require (db-index-key txn.env *index values &data &val-data.mv-size))

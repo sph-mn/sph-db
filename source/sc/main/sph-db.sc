@@ -3,17 +3,18 @@
 (sc-include "foreign/sph" "main/lib/status" "main/config")
 
 (pre-define-if-not-defined
-  db-id-t b64
-  db-type-id-t b16
-  db-ordinal-t b32
-  db-indices-len-t b8
-  db-fields-len-t b8
-  db-name-len-t b8
+  db-id-t ui64
+  db-type-id-t ui16
+  db-ordinal-t ui32
+  db-count-t ui32
+  db-indices-len-t ui8
+  db-fields-len-t ui8
+  db-name-len-t ui8
   db-name-len-max UINT8_MAX
-  db-field-type-t b8
+  db-field-type-t ui8
   db-id-mask UINT64_MAX
   db-type-id-mask UINT16_MAX
-  (db-id-equal? a b) (= a b)
+  (db-id-equal a b) (= a b)
   (db-id-compare a b)
   (if* (< a b) -1
     (> a b)))
@@ -26,9 +27,8 @@
   db-size-graph-data (+ db-size-ordinal db-size-id)
   db-size-graph-key (* 2 db-size-id)
   db-selection-flag-skip 1
-  db-node-selection-flag-is-set-left 2
-  db-node-selection-flag-is-set-right 4
-  db-node-selection-flag-initialised 8
+  db-graph-selection-flag-is-set-left 2
+  db-graph-selection-flag-is-set-right 4
   db-null 0
   db-type-id-limit db-type-id-mask
   db-size-element-id (- (sizeof db-id-t) (sizeof db-type-id-t))
@@ -70,10 +70,10 @@
     (bit-and db-id-element-mask id))
   (db-pointer->id-at a index) (pointer-get (+ index (convert-type a db-id-t*)))
   (db-pointer->id a) (pointer-get (convert-type a db-id-t*))
-  (db-field-type-fixed? a) (not (bit-and 1 a))
-  (db-system-key-label a) (pointer-get (convert-type a b8*))
+  (db-field-type-is-fixed a) (not (bit-and 1 a))
+  (db-system-key-label a) (pointer-get (convert-type a ui8*))
   (db-system-key-id a)
-  (pointer-get (convert-type (+ db-size-system-label (convert-type a b8*)) db-type-id-t*))
+  (pointer-get (convert-type (+ db-size-system-label (convert-type a ui8*)) db-type-id-t*))
   (db-status-memory-error-if-null variable)
   (if (not variable) (status-set-both-goto db-status-group-db db-status-id-memory))
   (db-malloc variable size)
@@ -126,30 +126,11 @@
     (db-graph-data-set-ordinal ordinal)
     (db-graph-data-set-id id)))
 
-(pre-define
-  ; db-txn
-  (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
-  (db-txn-begin txn)
-  (db-mdb-status-require (mdb-txn-begin txn.env:mdb-env 0 MDB-RDONLY &txn.mdb-txn))
-  (db-txn-write-begin txn) (db-mdb-status-require (mdb-txn-begin txn.env:mdb-env 0 0 &txn.mdb-txn))
-  (db-txn-abort a)
-  (begin
-    (mdb-txn-abort a.mdb-txn)
-    (set a.mdb-txn 0))
-  (db-txn-abort-if-active a) (if a.mdb-txn (db-txn-abort a))
-  (db-txn-active? a)
-  (if* a.mdb-txn #t
-    #f)
-  (db-txn-commit a)
-  (begin
-    (db-mdb-status-require (mdb-txn-commit a.mdb-txn))
-    (set a.mdb-txn 0)))
-
 (declare
   db-field-t
   (type
     (struct
-      (name b8*)
+      (name ui8*)
       (name-len db-name-len-t)
       (type db-field-type-t)
       (index db-fields-len-t)))
@@ -162,13 +143,13 @@
       ; example: field-sizes-in-bits: 8 32 16, fields-fixed-offsets: 8 40 56
       (fields-fixed-offsets db-fields-len-t*)
       (fields db-field-t*)
-      (flags b8)
+      (flags ui8)
       (id db-type-id-t)
       (indices
         (struct
           db-index-t*))
       (indices-len db-indices-len-t)
-      (name b8*)
+      (name ui8*)
       (sequence db-id-t)))
   db-index-t
   (type
@@ -188,7 +169,7 @@
       (dbi-system MDB-dbi)
       (mdb-env MDB-env*)
       (open boolean)
-      (root b8*)
+      (root ui8*)
       (mutex pthread-mutex-t)
       (maxkeysize int)
       (types db-type-t*)
@@ -198,7 +179,7 @@
     (struct
       (id db-id-t)
       (size size-t)
-      (data b0*)))
+      (data void*)))
   db-txn-t
   (type
     (struct
@@ -215,13 +196,13 @@
   db-open-options-t
   (type
     (struct
-      (read-only? b8)
+      (is-read-only boolean)
       (maximum-size size-t)
-      (maximum-reader-count b32)
-      (maximum-db-count b32)
-      (filesystem-has-ordered-writes? b8)
-      (env-open-flags b32)
-      (file-permissions b16)))
+      (maximum-reader-count db-count-t)
+      (maximum-db-count db-count-t)
+      (filesystem-has-ordered-writes boolean)
+      (env-open-flags ui32-least)
+      (file-permissions ui16)))
   db-graph-record-t
   (type
     (struct
@@ -229,7 +210,7 @@
       (right db-id-t)
       (label db-id-t)
       (ordinal db-ordinal-t)))
-  db-graph-ordinal-generator-t (type (function-pointer db-ordinal-t b0*))
+  db-graph-ordinal-generator-t (type (function-pointer db-ordinal-t void*))
   db-ordinal-condition-t
   (type
     (struct
@@ -239,17 +220,17 @@
   (type
     (struct
       (size db-data-len-t)
-      (data b0*)))
+      (data void*)))
   db-node-values-t
   (type
     (struct
       (type db-type-t*)
       (data db-node-value-t*)))
-  db-node-matcher-t (type (function-pointer boolean b0* size-t))
+  db-node-matcher-t (type (function-pointer boolean db-id-t void* size-t))
   db-node-data-t
   (type
     (struct
-      (data b0*)
+      (data void*)
       (size size-t)))
   db-index-selection-t
   (type
@@ -269,15 +250,15 @@
   db-node-selection-t
   (type
     (struct
-      (count b32)
-      (current b0*)
+      (count db-count-t)
+      (current void*)
       (current-id db-id-t)
       (current-size size-t)
       (cursor MDB-cursor*)
       (ids db-ids-t*)
       (matcher db-node-matcher-t)
-      (matcher-state b0*)
-      (options b8)
+      (matcher-state void*)
+      (options ui8)
       (type db-type-t*)))
   db-graph-selection-t
   (type
@@ -285,111 +266,75 @@
       (status status-t)
       (cursor (MDB-cursor* restrict))
       (cursor-2 (MDB-cursor* restrict))
-      (left b0*)
-      (right b0*)
-      (label b0*)
+      (left void*)
+      (right void*)
+      (label void*)
       (left-first db-ids-t*)
       (right-first db-ids-t*)
       (ordinal db-ordinal-condition-t*)
-      (options b8)
-      (reader b0*)))
-  db-graph-reader-t (type (function-pointer status-t db-graph-selection-t* b32 db-graph-records-t**)))
-
-(declare
+      (options ui8)
+      (reader void*)))
+  db-graph-reader-t
+  (type (function-pointer status-t db-graph-selection-t* db-count-t db-graph-records-t**))
   ; routines
-  (db-graph-selection-destroy state) (b0 db-graph-selection-t*)
+  (db-graph-selection-destroy state) (void db-graph-selection-t*)
   (db-statistics txn result) (status-t db-txn-t db-statistics-t*)
-  (db-close env) (b0 db-env-t*)
-  (db-open root options env) (status-t b8* db-open-options-t* db-env-t*)
-  (db-type-field-get type name) (db-field-t* db-type-t* b8*)
-  (db-type-get env name) (db-type-t* db-env-t* b8*)
+  (db-close env) (void db-env-t*)
+  (db-open root options env) (status-t ui8* db-open-options-t* db-env-t*)
+  (db-type-field-get type name) (db-field-t* db-type-t* ui8*)
+  (db-type-get env name) (db-type-t* db-env-t* ui8*)
   (db-type-create env name fields fields-len flags result)
-  (status-t db-env-t* b8* db-field-t* db-fields-len-t b8 db-type-t**) (db-type-delete env id)
+  (status-t db-env-t* ui8* db-field-t* db-fields-len-t ui8 db-type-t**) (db-type-delete env id)
   (status-t db-env-t* db-type-id-t) (db-sequence-next-system env result)
   (status-t db-env-t* db-type-id-t*) (db-sequence-next env type-id result)
   (status-t db-env-t* db-type-id-t db-id-t*) (db-field-type-size a)
-  (b8 b8) (db-graph-ensure txn left right label ordinal-generator ordinal-generator-state)
-  (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-graph-ordinal-generator-t b0*)
-  (db-status-description a) (b8* status-t)
-  (db-status-name a) (b8* status-t)
-  (db-status-group-id->name a) (b8* status-id-t)
+  (ui8 ui8) (db-graph-ensure txn left right label ordinal-generator ordinal-generator-state)
+  (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-graph-ordinal-generator-t void*)
+  (db-status-description a) (ui8* status-t)
+  (db-status-name a) (ui8* status-t)
+  (db-status-group-id->name a) (ui8* status-id-t)
   (db-graph-select txn left right label ordinal offset result)
   (status-t
-    db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* b32 db-graph-selection-t*)
-  (db-graph-read state count result) (status-t db-graph-selection-t* b32 db-graph-records-t**)
+    db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* db-count-t db-graph-selection-t*)
+  (db-graph-read state count result) (status-t db-graph-selection-t* db-count-t db-graph-records-t**)
   (db-graph-ensure txn left right label ordinal-generator ordinal-generator-state)
-  (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-graph-ordinal-generator-t b0*)
-  (db-graph-selection-destroy state) (b0 db-graph-selection-t*)
+  (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-graph-ordinal-generator-t void*)
+  (db-graph-selection-destroy state) (void db-graph-selection-t*)
   (db-graph-delete txn left right label ordinal)
   (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t*)
   (db-graph-select txn left right label ordinal offset result)
   (status-t
-    db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* b32 db-graph-selection-t*)
-  (db-debug-log-ids a) (b0 db-ids-t*)
-  (db-debug-log-ids-set a) (b0 imht-set-t)
-  (db-debug-display-graph-records records) (b0 db-graph-records-t*)
-  (db-debug-count-all-btree-entries txn result) (status-t db-txn-t b32*)
+    db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* db-count-t db-graph-selection-t*)
+  (db-debug-log-ids a) (void db-ids-t*)
+  (db-debug-log-ids-set a) (void imht-set-t)
+  (db-debug-display-graph-records records) (void db-graph-records-t*)
+  (db-debug-count-all-btree-entries txn result) (status-t db-txn-t db-count-t*)
   (db-debug-display-btree-counts txn) (status-t db-txn-t)
   (db-debug-display-content-graph-lr txn) (status-t db-txn-t)
   (db-debug-display-content-graph-rl txn) (status-t db-txn-t)
   (db-node-values-new type result) (status-t db-type-t* db-node-values-t*)
-  (db-node-values-set values field-index data size) (b0 db-node-values-t db-fields-len-t b0* size-t)
-  (db-node-create txn values result) (status-t db-txn-t db-node-values-t db-id-t*)
-  (db-node-delete txn ids) (status-t db-txn-t db-ids-t*))
+  (db-node-values-set values field-index data size)
+  (void db-node-values-t db-fields-len-t void* size-t) (db-node-create txn values result)
+  (status-t db-txn-t db-node-values-t db-id-t*) (db-node-delete txn ids)
+  (status-t db-txn-t db-ids-t*))
 
-;-- old --;
+(sc-include "main/lib/lmdb")
 
-#;(
-(declare (type db-index-errors-graph-t
-    (struct
-      (errors? boolean)
-      (missing-right-left db-graph-records-t*)
-      (missing-label-left db-graph-records-t*)
-      (excess-right-left db-graph-records-t*)
-      (excess-label-left db-graph-records-t*))))
-
-(declare (type db-index-errors-t
-    (struct
-      (errors? boolean)
-      (different-data-id db-ids-t*)
-      (excess-data-id db-ids-t*)
-      (different-id-data db-ids-t*)
-      (missing-id-data db-ids-t*))))
-
-(define db-index-errors-graph-null db-index-errors-graph-t (struct-literal 0 0 0 0 0))
-(define db-index-errors-null db-index-errors-t (struct-literal 0 0 0 0 0))
-
-
-
-(define-type db-intern-selection-t
-  (struct
-    (status status-t)
-    (cursor (MDB-cursor* restrict))
-    (options b8)))
-
-(define (db-intern-data->id txn data every? result)
-  (status-t db-txn-t db-data-list-t* boolean db-ids-t**))
-(define (db-intern-nodes txn ids every? result)
-  (status-t db-txn-t db-ids-t* boolean db-data-list-t**))
-(define (db-extern-nodes txn ids every? result)
-  (status-t db-txn-t db-ids-t* boolean db-data-list-t**))
-(define (db-node-read state count result) (status-t db-node-selection-t* b32 db-data-records-t**))
-(define (db-node-select txn types offset state) (status-t db-txn-t b8 b32 db-node-selection-t*))
-(define (db-node-selection-destroy state) (b0 db-node-selection-t*))
-(define (db-intern-ensure txn data result) (status-t db-txn-t db-data-list-t* db-ids-t**))
-(define (db-intern-update txn id data) (status-t db-txn-t db-id-t db-data-t))
-(define (db-extern-update txn id data) (status-t db-txn-t db-id-t db-data-t))
-(define (db-extern-create txn count data result) (status-t db-txn-t b32 db-data-t* db-ids-t**))
-(define (db-extern-data->id txn data result) (status-t db-txn-t db-data-t db-ids-t**))
-(define (db-id-create txn count result) (status-t db-txn-t b32 db-ids-t**))
-(define (db-exists? txn ids result) (status-t db-txn-t db-ids-t* boolean*))
-(define (db-intern-small? id) (boolean db-id-t))
-(define (db-identify txn ids result) (status-t db-txn-t db-ids-t* db-ids-t**))
-(define (db-index-errors txn result) (status-t db-txn-t db-index-errors-t*))
-(define (db-index-errors-graph txn result) (status-t db-txn-t db-index-errors-graph-t*))
-(define (db-index-recreate-extern) status-t)
-(define (db-index-recreate-intern) status-t)
-(define (db-index-recreate-graph) status-t)
-(define (db-open-options-set-defaults a) (db-open-options-t db-open-options-t*))
-(define (db-delete txn ids) (status-t db-txn-t db-ids-t*))
-)
+(pre-define
+  ; db-txn
+  (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
+  (db-txn-begin txn)
+  (db-mdb-status-require (mdb-txn-begin txn.env:mdb-env 0 MDB-RDONLY &txn.mdb-txn))
+  (db-txn-write-begin txn) (db-mdb-status-require (mdb-txn-begin txn.env:mdb-env 0 0 &txn.mdb-txn))
+  (db-txn-abort a)
+  (begin
+    (mdb-txn-abort a.mdb-txn)
+    (set a.mdb-txn 0))
+  (db-txn-abort-if-active a) (if a.mdb-txn (db-txn-abort a))
+  (db-txn-is-active a)
+  (if* a.mdb-txn #t
+    #f)
+  (db-txn-commit a)
+  (begin
+    (db-mdb-status-require (mdb-txn-commit a.mdb-txn))
+    (set a.mdb-txn 0)))

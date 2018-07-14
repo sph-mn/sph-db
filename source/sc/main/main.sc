@@ -1,4 +1,4 @@
-(pre-include "./sph-db.h" "../foreign/sph/one.c" "./lib/lmdb.c" "math.h")
+(pre-include "./sph-db.h" "../foreign/sph/one.c" "math.h")
 
 (pre-define
   (free-and-set-null a)
@@ -32,12 +32,12 @@
       (set (array-get result len) 0)
       (return result))))
 
-(define (string-join strings strings-len delimiter result-size) (b8* b8** size-t b8* size-t*)
+(define (string-join strings strings-len delimiter result-size) (ui8* ui8** size-t ui8* size-t*)
   "join strings into one string with each input string separated by delimiter.
   zero if strings-len is zero or memory could not be allocated"
   (declare
-    result b8*
-    temp b8*
+    result ui8*
+    temp ui8*
     size size-t
     index size-t
     delimiter-len size-t)
@@ -59,7 +59,7 @@
   (if result-size (set *result-size size))
   (return result))
 
-(define (db-debug-log-ids a) (b0 db-ids-t*)
+(define (db-debug-log-ids a) (void db-ids-t*)
   "display an ids list"
   (printf "ids (%lu):" (db-ids-length a))
   (while a
@@ -67,16 +67,16 @@
     (set a (db-ids-rest a)))
   (printf "\n"))
 
-(define (db-debug-log-ids-set a) (b0 imht-set-t)
+(define (db-debug-log-ids-set a) (void imht-set-t)
   "display an ids set"
-  (define index b32 0)
+  (define index ui32 0)
   (printf "id set (%lu):" a.size)
   (while (< index a.size)
     (printf " %lu" (array-get a.content index))
     (set index (+ 1 index)))
   (printf "\n"))
 
-(define (db-debug-display-graph-records records) (b0 db-graph-records-t*)
+(define (db-debug-display-graph-records records) (void db-graph-records-t*)
   (declare record db-graph-record-t)
   (printf "graph records (ll -> or)\n")
   (while records
@@ -95,7 +95,7 @@
   (label exit
     (return status)))
 
-(define (db-debug-count-all-btree-entries txn result) (status-t db-txn-t b32*)
+(define (db-debug-count-all-btree-entries txn result) (status-t db-txn-t ui32*)
   "sum the count of all entries in all btrees used by the database"
   status-declare
   (declare stat db-statistics-t)
@@ -108,7 +108,7 @@
   (label exit
     (return status)))
 
-(define (db-field-type-size a) (b8 b8)
+(define (db-field-type-size a) (ui8 ui8)
   "size in octets. zero for variable size types"
   (case = a
     ( (db-field-type-int64 db-field-type-uint64 db-field-type-char64 db-field-type-float64)
@@ -128,14 +128,14 @@
   (label exit
     (return status)))
 
-(define (db-read-name data-pointer result) (status-t b8** b8**)
+(define (db-read-name data-pointer result) (status-t ui8** ui8**)
   "read a length prefixed string from system type data.
   on success set result to a newly allocated string and data to the next byte after the string"
   status-declare
   (declare
-    data b8*
+    data ui8*
     len db-name-len-t
-    name b8*)
+    name ui8*)
   (set
     data *data-pointer
     len (pointer-get (convert-type data db-name-len-t*))
@@ -195,7 +195,7 @@
   (label exit
     (return status)))
 
-(define (db-free-env-types-indices indices indices-len) (b0 db-index-t** db-fields-len-t)
+(define (db-free-env-types-indices indices indices-len) (void db-index-t** db-fields-len-t)
   (declare
     i db-fields-len-t
     index-pointer db-index-t*)
@@ -205,28 +205,28 @@
     (free-and-set-null index-pointer:fields))
   (free-and-set-null *indices))
 
-(define (db-free-env-types-fields fields fields-len) (b0 db-field-t** db-fields-len-t)
+(define (db-free-env-types-fields fields fields-len) (void db-field-t** db-fields-len-t)
   (declare i db-fields-len-t)
   (if (not *fields) return)
   (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
     (free-and-set-null (: (+ i *fields) name)))
   (free-and-set-null *fields))
 
-(define (db-free-env-type type) (b0 db-type-t*)
+(define (db-free-env-type type) (void db-type-t*)
   (if (= 0 type:id) return)
   (free-and-set-null type:fields-fixed-offsets)
   (db-free-env-types-fields &type:fields type:fields-len)
   (db-free-env-types-indices &type:indices type:indices-len)
   (set type:id 0))
 
-(define (db-free-env-types types types-len) (b0 db-type-t** db-type-id-t)
+(define (db-free-env-types types types-len) (void db-type-t** db-type-id-t)
   (declare i db-type-id-t)
   (if (not *types) return)
   (for ((set i 0) (< i types-len) (set i (+ 1 i)))
     (db-free-env-type (+ i *types)))
   (free-and-set-null *types))
 
-(define (db-close env) (b0 db-env-t*)
+(define (db-close env) (void db-env-t*)
   (define mdb-env MDB-env* env:mdb-env)
   (if mdb-env
     (begin

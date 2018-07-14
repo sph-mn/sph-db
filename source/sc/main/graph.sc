@@ -1,7 +1,6 @@
 (pre-define
-  (db-graph-key-equal? a b)
-  (and
-    (db-id-equal? (array-get a 0) (array-get b 0)) (db-id-equal? (array-get a 1) (array-get b 1)))
+  (db-graph-key-equal a b)
+  (and (db-id-equal (array-get a 0) (array-get b 0)) (db-id-equal (array-get a 1) (array-get b 1)))
   (db-graph-data-ordinal-set graph-data value)
   (set (array-get (convert-type graph-data db-ordinal-t*) 0) value)
   (db-graph-data-id-set graph-data value)
@@ -9,7 +8,7 @@
   (db-declare-graph-key name) (declare name (array db-id-t 2 0 0))
   (db-declare-graph-data name)
   (begin
-    (declare graph-data (array b8 ((+ db-size-ordinal db-size-id))))
+    (declare graph-data (array ui8 ((+ db-size-ordinal db-size-id))))
     (memset graph-data 0 (+ db-size-ordinal db-size-id)))
   (db-declare-graph-record name) (define name db-graph-record-t (struct-literal 0 0 0 0))
   (db-graph-records-add! target record target-temp)
@@ -32,7 +31,7 @@
     (return status)))
 
 (define (db-graph-ensure txn left right label ordinal-generator ordinal-generator-state)
-  (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-graph-ordinal-generator-t b0*)
+  (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-graph-ordinal-generator-t void*)
   "check if a relation exists and create it if not"
   status-declare
   db-mdb-declare-val-id
@@ -116,8 +115,8 @@
     id-right db-id-t
     id-label db-id-t)
   (db-txn-write-begin txn)
-  (db-mdb-status-require (mdb-drop txn dbi-graph-rl 0))
-  (db-mdb-status-require (mdb-drop txn dbi-graph-ll 0))
+  (db-mdb-status-require (mdb-drop txn.mdb-txn (: env dbi-graph-rl) 0))
+  (db-mdb-status-require (mdb-drop txn.mdb-txn (: env dbi-graph-ll) 0))
   (db-txn-commit txn)
   (db-txn-write-begin txn)
   (db-mdb-status-require (db-mdb-env-cursor-open txn graph-lr))
@@ -138,7 +137,7 @@
           (array-get graph-key 0) id-right
           (array-get graph-key 1) id-label)
         (set val-graph-key.mv-data graph-key)
-        (set val-id.mv-data *id-left)
+        (set val-id.mv-data &id-left)
         (db-mdb-status-require (mdb-cursor-put graph-rl &val-graph-key &val-id 0))
         (sc-comment "graph-ll")
         (set val-id-2.mv-data &id-label)
