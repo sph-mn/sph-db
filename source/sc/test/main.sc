@@ -1,11 +1,5 @@
 (pre-include "./helper.c")
 
-(pre-define (db-field-set a a-type a-name a-name-len)
-  (set
-    a.type a-type
-    a.name a-name
-    a.name-len a-name-len))
-
 (sc-comment
   "these values should not be below 3, or important cases would not be tested.
    the values should also not be so high that the linearly created ordinals exceed the size of the ordinal type.
@@ -207,16 +201,10 @@
   (test-helper-graph-delete-one 1 1 1 1)
   test-helper-graph-delete-footer)
 
-(define (test-helper-create-type-1 env result) (status-t db-env-t* db-type-t**)
-  "create a new type with three fields for testing"
-  status-declare
-  (declare fields (array db-field-t 3))
-  (db-field-set (array-get fields 0) db-field-type-int8 "test-field-1" 12)
-  (db-field-set (array-get fields 1) db-field-type-int8 "test-field-2" 12)
-  (db-field-set (array-get fields 2) db-field-type-string "test-field-3" 12)
-  (status-require (db-type-create env "test-type-1" fields 3 0 result))
-  (label exit
-    (return status)))
+(define (debug-display-array-ui8 a size) (void ui8* size-t)
+  (declare i size-t)
+  (for ((set i 0) (< i size) (set i (+ 1 i)))
+    (printf "%lu " (array-get a i))))
 
 (define (test-node-create env) (status-t db-env-t*)
   status-declare
@@ -224,42 +212,85 @@
   (db-txn-declare env txn)
   (declare
     type db-type-t*
-    values db-node-values-t
+    values-1 db-node-values-t
+    values-2 db-node-values-t
     ;fields (array db-field-t 4)
     value-1 ui8
-    value-2 ui8
-    id db-id-t)
+    value-2 i8
+    id-1 db-id-t
+    id-2 db-id-t
+    node-data-1 db-node-data-t
+    node-data-2 db-node-data-t
+    field-data db-node-data-t)
   (define value-3 ui8* "abc")
   (status-require (test-helper-create-type-1 env &type))
-  (status-require (db-node-values-new type &values))
+  (sc-comment "prepare values")
+  (status-require (db-node-values-new type &values-1))
   (set
     value-1 11
-    value-2 128)
-  (db-node-values-set values 0 &value-1 0)
-  (db-node-values-set values 1 &value-2 0)
-  (db-node-values-set values 2 &value-3 3)
+    value-2 -128)
+  (db-node-values-set values-1 0 &value-1 0)
+  (db-node-values-set values-1 1 &value-2 0)
+  (db-node-values-set values-1 2 &value-3 3)
+  (sc-comment "node values/data conversion")
+  (db-node-values->data values-1 &node-data-1)
+  (db-node-data->values type node-data-1 &values-2)
+
+  (test-helper-assert
+    "node-data->values"
+    (and
+      (= values-1.type values-2.type)
+      (= 0 (memcmp values-1.data values-2.data (* type:fields-len (sizeof db-node-value-t))))))
+  (db-node-values->data values-2 &node-data-2)
+  (debug-log "node-data sizes %lu %lu" node-data-1.size node-data-2.size)
+  (test-helper-assert
+    "node-values->data"
+    (and
+      (= node-data-1.size node-data-2.size)
+      (= 0 (memcmp node-data-1.data node-data-2.data node-data-1.size))))
   (db-txn-write-begin txn)
-  (status-require (db-node-create txn values &id))
-  (test-helper-assert "element id 1" (= 1 (db-id-element id)))
-  (status-require (db-node-create txn values &id))
-  (test-helper-assert "element id 2" (= 2 (db-id-element id)))
+  (status-require (db-node-create txn values-1 &id-1))
+  (test-helper-assert "element id 1" (= 1 (db-id-element id-1)))
+  (status-require (db-node-create txn values-1 &id-2))
+  (test-helper-assert "element id 2" (= 2 (db-id-element id-2)))
   (db-txn-commit txn)
+  (db-txn-begin txn)
+  (status-require (db-node-get txn id-1 &node-data-1))
+  (set field-data (db-node-data-ref type node-data-1 1))
+  (test-helper-assert
+    "node-data-ref"
+    (and
+      (= (sizeof i8) field-data.size) (= value-2 (pointer-get (convert-type field-data.data i8*)))))
+  ;(status-require (db-node-get txn id-2 &data &size))
+  ;(set status (db-node-get txn 9999 &data &size))
+  ;(debug-log "status id %d" status.id)
+  (db-txn-abort txn)
+  #;(
+  (db-node-select txn ids type offset matcher matcher-state result-state)
+  (status-t db-txn-t db-ids-t* db-type-t* db-count-t db-node-matcher-t void* db-node-selection-t*)
+  (db-node-skip state count) (status-t db-node-selection-t* db-count-t)
+  (db-node-next state) (status-t db-node-selection-t*)
+  (db-node-delete txn ids) (status-t db-txn-t db-ids-t*)
+  (db-node-update txn id values) (status-t db-txn-t db-id-t db-node-values-t)
+  (db-node-selection-destroy state) (void db-node-selection-t*)
+  (db-node-exists txn ids result) (status-t db-txn-t db-ids-t* boolean*)
+  )
   (label exit
     (db-txn-abort-if-active txn)
     (return status)))
 
 (define (main) int
   (test-helper-init env)
-  (test-helper-test-one test-open-empty env)
-  (test-helper-test-one test-statistics env)
-  (test-helper-test-one test-id-construction env)
-  (test-helper-test-one test-sequence env)
-  (test-helper-test-one test-type-create-get-delete env)
-  (test-helper-test-one test-type-create-many env)
-  (test-helper-test-one test-open-nonempty env)
-  (test-helper-test-one test-graph-read env)
-  (test-helper-test-one test-graph-delete env)
-  ;(test-helper-test-one test-node-create env)
+  ;(test-helper-test-one test-open-empty env)
+  ;(test-helper-test-one test-statistics env)
+  ;(test-helper-test-one test-id-construction env)
+  ;(test-helper-test-one test-sequence env)
+  ;(test-helper-test-one test-type-create-get-delete env)
+  ;(test-helper-test-one test-type-create-many env)
+  ;(test-helper-test-one test-open-nonempty env)
+  ;(test-helper-test-one test-graph-read env)
+  ;(test-helper-test-one test-graph-delete env)
+  (test-helper-test-one test-node-create env)
   (label exit
     test-helper-report-status
     (return status.id)))

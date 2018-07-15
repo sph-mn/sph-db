@@ -124,7 +124,17 @@
   (db-graph-data-set-both a ordinal id)
   (begin
     (db-graph-data-set-ordinal ordinal)
-    (db-graph-data-set-id id)))
+    (db-graph-data-set-id id))
+  (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
+  (db-txn-begin txn)
+  (db-mdb-status-require (mdb-txn-begin txn.env:mdb-env 0 MDB-RDONLY &txn.mdb-txn)) (db-txn-abort a)
+  (begin
+    (mdb-txn-abort a.mdb-txn)
+    (set a.mdb-txn 0))
+  (db-txn-abort-if-active a) (if a.mdb-txn (db-txn-abort a))
+  (db-txn-is-active a)
+  (if* a.mdb-txn #t
+    #f))
 
 (declare
   db-field-t
@@ -251,9 +261,8 @@
   (type
     (struct
       (count db-count-t)
-      (current void*)
+      (current db-node-data-t)
       (current-id db-id-t)
-      (current-size size-t)
       (cursor MDB-cursor*)
       (ids db-ids-t*)
       (matcher db-node-matcher-t)
@@ -277,7 +286,6 @@
   db-graph-reader-t
   (type (function-pointer status-t db-graph-selection-t* db-count-t db-graph-records-t**))
   ; routines
-  (db-graph-selection-destroy state) (void db-graph-selection-t*)
   (db-statistics txn result) (status-t db-txn-t db-statistics-t*)
   (db-close env) (void db-env-t*)
   (db-open root options env) (status-t ui8* db-open-options-t* db-env-t*)
@@ -293,6 +301,8 @@
   (db-status-description a) (ui8* status-t)
   (db-status-name a) (ui8* status-t)
   (db-status-group-id->name a) (ui8* status-id-t)
+  ; db-graph
+  (db-graph-selection-destroy state) (void db-graph-selection-t*)
   (db-graph-select txn left right label ordinal offset result)
   (status-t
     db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* db-count-t db-graph-selection-t*)
@@ -305,6 +315,7 @@
   (db-graph-select txn left right label ordinal offset result)
   (status-t
     db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* db-count-t db-graph-selection-t*)
+  ; db-debug
   (db-debug-log-ids a) (void db-ids-t*)
   (db-debug-log-ids-set a) (void imht-set-t)
   (db-debug-display-graph-records records) (void db-graph-records-t*)
@@ -312,28 +323,22 @@
   (db-debug-display-btree-counts txn) (status-t db-txn-t)
   (db-debug-display-content-graph-lr txn) (status-t db-txn-t)
   (db-debug-display-content-graph-rl txn) (status-t db-txn-t)
+  ; db-node
   (db-node-values-new type result) (status-t db-type-t* db-node-values-t*)
   (db-node-values-set values field-index data size)
-  (void db-node-values-t db-fields-len-t void* size-t) (db-node-create txn values result)
-  (status-t db-txn-t db-node-values-t db-id-t*) (db-node-delete txn ids)
-  (status-t db-txn-t db-ids-t*))
+  (void db-node-values-t db-fields-len-t void* size-t) (db-node-values->data values result)
+  (status-t db-node-values-t db-node-data-t*) (db-node-data->values type data result)
+  (status-t db-type-t* db-node-data-t db-node-values-t*) (db-node-create txn values result)
+  (status-t db-txn-t db-node-values-t db-id-t*) (db-node-get txn id result)
+  (status-t db-txn-t db-id-t db-node-data-t*) (db-node-delete txn ids)
+  (status-t db-txn-t db-ids-t*) (db-node-data-ref type data field)
+  (db-node-data-t db-type-t* db-node-data-t db-fields-len-t) (db-node-ref state field)
+  (db-node-data-t db-node-selection-t* db-fields-len-t))
 
 (sc-include "main/lib/lmdb")
 
 (pre-define
-  ; db-txn
-  (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
-  (db-txn-begin txn)
-  (db-mdb-status-require (mdb-txn-begin txn.env:mdb-env 0 MDB-RDONLY &txn.mdb-txn))
   (db-txn-write-begin txn) (db-mdb-status-require (mdb-txn-begin txn.env:mdb-env 0 0 &txn.mdb-txn))
-  (db-txn-abort a)
-  (begin
-    (mdb-txn-abort a.mdb-txn)
-    (set a.mdb-txn 0))
-  (db-txn-abort-if-active a) (if a.mdb-txn (db-txn-abort a))
-  (db-txn-is-active a)
-  (if* a.mdb-txn #t
-    #f)
   (db-txn-commit a)
   (begin
     (db-mdb-status-require (mdb-txn-commit a.mdb-txn))

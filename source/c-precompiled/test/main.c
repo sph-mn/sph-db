@@ -1,8 +1,4 @@
 #include "./helper.c"
-#define db_field_set(a, a_type, a_name, a_name_len) \
-  a.type = a_type; \
-  a.name = a_name; \
-  a.name_len = a_name_len
 /* these values should not be below 3, or important cases would not be tested.
    the values should also not be so high that the linearly created ordinals
    exceed the size of the ordinal type.
@@ -204,54 +200,70 @@ status_t test_graph_delete(db_env_t* env) {
   test_helper_graph_delete_one(1, 1, 1, 1);
   test_helper_graph_delete_footer;
 };
-/** create a new type with three fields for testing */
-status_t test_helper_create_type_1(db_env_t* env, db_type_t** result) {
-  status_declare;
-  db_field_t fields[3];
-  db_field_set((fields[0]), db_field_type_int8, "test-field-1", 12);
-  db_field_set((fields[1]), db_field_type_int8, "test-field-2", 12);
-  db_field_set((fields[2]), db_field_type_string, "test-field-3", 12);
-  status_require(db_type_create(env, "test-type-1", fields, 3, 0, result));
-exit:
-  return (status);
+void debug_display_array_ui8(ui8* a, size_t size) {
+  size_t i;
+  for (i = 0; (i < size); i = (1 + i)) {
+    printf("%lu ", (a[i]));
+  };
 };
 status_t test_node_create(db_env_t* env) {
   status_declare;
   db_txn_declare(env, txn);
   db_type_t* type;
-  db_node_values_t values;
+  db_node_values_t values_1;
+  db_node_values_t values_2;
   ui8 value_1;
-  ui8 value_2;
-  db_id_t id;
+  i8 value_2;
+  db_id_t id_1;
+  db_id_t id_2;
+  db_node_data_t node_data_1;
+  db_node_data_t node_data_2;
+  db_node_data_t field_data;
   ui8* value_3 = "abc";
   status_require(test_helper_create_type_1(env, (&type)));
-  status_require(db_node_values_new(type, (&values)));
+  /* prepare values */
+  status_require(db_node_values_new(type, (&values_1)));
   value_1 = 11;
-  value_2 = 128;
-  db_node_values_set(values, 0, (&value_1), 0);
-  db_node_values_set(values, 1, (&value_2), 0);
-  db_node_values_set(values, 2, (&value_3), 3);
+  value_2 = -128;
+  db_node_values_set(values_1, 0, (&value_1), 0);
+  db_node_values_set(values_1, 1, (&value_2), 0);
+  db_node_values_set(values_1, 2, (&value_3), 3);
+  /* node values/data conversion */
+  db_node_values_to_data(values_1, (&node_data_1));
+  debug_display_array_ui8((node_data_1.data), (node_data_1.size));
+  db_node_data_to_values(type, node_data_1, (&values_2));
+  test_helper_assert(("node-data->values"),
+    ((values_1.type == values_2.type) &&
+      (0 ==
+        memcmp((values_1.data),
+          (values_2.data),
+          (type->fields_len * sizeof(db_node_value_t))))));
+  db_node_values_to_data(values_2, (&node_data_2));
+  debug_log("node-data sizes %lu %lu", (node_data_1.size), (node_data_2.size));
+  test_helper_assert(("node-values->data"),
+    ((node_data_1.size == node_data_2.size) &&
+      (0 ==
+        memcmp((node_data_1.data), (node_data_2.data), (node_data_1.size)))));
   db_txn_write_begin(txn);
-  status_require(db_node_create(txn, values, (&id)));
-  test_helper_assert("element id 1", (1 == db_id_element(id)));
-  status_require(db_node_create(txn, values, (&id)));
-  test_helper_assert("element id 2", (2 == db_id_element(id)));
+  status_require(db_node_create(txn, values_1, (&id_1)));
+  test_helper_assert("element id 1", (1 == db_id_element(id_1)));
+  status_require(db_node_create(txn, values_1, (&id_2)));
+  test_helper_assert("element id 2", (2 == db_id_element(id_2)));
   db_txn_commit(txn);
+  db_txn_begin(txn);
+  status_require(db_node_get(txn, id_1, (&node_data_1)));
+  field_data = db_node_data_ref(type, node_data_1, 1);
+  test_helper_assert("node-data-ref",
+    ((sizeof(i8) == field_data.size) &&
+      (value_2 == *((i8*)(field_data.data)))));
+  db_txn_abort(txn);
 exit:
   db_txn_abort_if_active(txn);
   return (status);
 };
 int main() {
   test_helper_init(env);
-  test_helper_test_one(test_open_empty, env);
-  test_helper_test_one(test_statistics, env);
-  test_helper_test_one(test_id_construction, env);
-  test_helper_test_one(test_sequence, env);
-  test_helper_test_one(test_type_create_get_delete, env);
-  test_helper_test_one(test_type_create_many, env);
-  test_helper_test_one(test_open_nonempty, env);
-  test_helper_test_one(test_graph_read, env);
-  test_helper_test_one(test_graph_delete, env);
+  test_helper_test_one(test_node_create, env);
 exit:
   test_helper_report_status;
   return ((status.id));

@@ -1,8 +1,7 @@
 #define db_index_errors_data_log(message, type, id) \
   db_error_log("(groups index %s) (description %s) (id %lu)", type, message, id)
 status_t db_node_data_to_values(db_type_t* type,
-  void* data,
-  size_t data_size,
+  db_node_data_t data,
   db_node_values_t* result);
 void db_free_node_values(db_node_values_t* values);
 db_index_t* db_index_get(db_type_t* type,
@@ -131,6 +130,7 @@ status_t db_index_build(db_env_t* env, db_index_t* index) {
   db_id_t id;
   db_type_t type;
   ui8* name;
+  db_node_data_t node_data;
   db_node_values_t values;
   type = *(index->type);
   id = db_id_add_type(0, (type.id));
@@ -144,8 +144,9 @@ status_t db_index_build(db_env_t* env, db_index_t* index) {
   /* for each node of type */
   while ((db_mdb_status_is_success &&
     (type.id == db_id_type((db_pointer_to_id((val_id.mv_data))))))) {
-    status_require((db_node_data_to_values(
-      (&type), (val_data.mv_data), (val_data.mv_size), (&values))));
+    node_data.data = val_data.mv_data;
+    node_data.size = val_data.mv_size;
+    status_require(db_node_data_to_values((&type), node_data, (&values)));
     status_require(
       (db_index_key(env, (*index), values, (&data), (&(val_data.mv_size)))));
     val_data.mv_data = data;
@@ -365,6 +366,7 @@ status_t db_indices_build(db_env_t* env, db_index_t* index) {
   db_mdb_declare_val_id;
   db_txn_declare(env, txn);
   db_mdb_cursor_declare(nodes);
+  db_node_data_t node_data;
   MDB_val val_data;
   db_id_t id;
   db_type_t type;
@@ -377,8 +379,9 @@ status_t db_indices_build(db_env_t* env, db_index_t* index) {
   status.id = mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_SET_KEY);
   while ((db_mdb_status_is_success &&
     (type.id == db_id_type((db_pointer_to_id((val_id.mv_data))))))) {
-    status_require((db_node_data_to_values(
-      (&type), (val_data.mv_data), (val_data.mv_size), (&values))));
+    node_data.data = val_data.mv_data;
+    node_data.size = val_data.mv_size;
+    status_require(db_node_data_to_values((&type), node_data, (&values)));
     status_require((db_indices_entry_ensure(
       txn, values, (db_pointer_to_id((val_id.mv_data))))));
     db_free_node_values((&values));

@@ -112,11 +112,11 @@
   "size in octets. zero for variable size types"
   (case = a
     ( (db-field-type-int64 db-field-type-uint64 db-field-type-char64 db-field-type-float64)
-      (return 64))
+      (return 8))
     ( (db-field-type-int32 db-field-type-uint32 db-field-type-char32 db-field-type-float32)
-      (return 32))
-    ((db-field-type-int16 db-field-type-uint16 db-field-type-char16) (return 16))
-    ((db-field-type-int8 db-field-type-uint8 db-field-type-char8) (return 8))
+      (return 4))
+    ((db-field-type-int16 db-field-type-uint16 db-field-type-char16) (return 2))
+    ((db-field-type-int8 db-field-type-uint8 db-field-type-char8) (return 1))
     (else (return 0))))
 
 (define (db-ids->set a result) (status-t db-ids-t* imht-set-t**)

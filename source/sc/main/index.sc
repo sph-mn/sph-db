@@ -2,9 +2,8 @@
   (db-error-log "(groups index %s) (description %s) (id %lu)" type message id))
 
 (declare
-  (db-node-data->values type data data-size result)
-  (status-t db-type-t* void* size-t db-node-values-t*) (db-free-node-values values)
-  (void db-node-values-t*))
+  (db-node-data->values type data result) (status-t db-type-t* db-node-data-t db-node-values-t*)
+  (db-free-node-values values) (void db-node-values-t*))
 
 (define (db-index-get type fields fields-len)
   (db-index-t* db-type-t* db-fields-len-t* db-fields-len-t)
@@ -124,6 +123,7 @@
     id db-id-t
     type db-type-t
     name ui8*
+    node-data db-node-data-t
     values db-node-values-t)
   (set
     type *index:type
@@ -135,7 +135,10 @@
   (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-data MDB-SET-KEY))
   (sc-comment "for each node of type")
   (while (and db-mdb-status-is-success (= type.id (db-id-type (db-pointer->id val-id.mv-data))))
-    (status-require (db-node-data->values &type val-data.mv-data val-data.mv-size &values))
+    (set
+      node-data.data val-data.mv-data
+      node-data.size val-data.mv-size)
+    (status-require (db-node-data->values &type node-data &values))
     (status-require (db-index-key env *index values &data &val-data.mv-size))
     (set val-data.mv-data data)
     (db-mdb-status-require (mdb-cursor-put index-cursor &val-data &val-id 0))
@@ -318,6 +321,7 @@
   (db-txn-declare env txn)
   (db-mdb-cursor-declare nodes)
   (declare
+    node-data db-node-data-t
     val-data MDB-val
     id db-id-t
     type db-type-t
@@ -330,7 +334,10 @@
   (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
   (set status.id (mdb-cursor-get nodes &val-id &val-data MDB-SET-KEY))
   (while (and db-mdb-status-is-success (= type.id (db-id-type (db-pointer->id val-id.mv-data))))
-    (status-require (db-node-data->values &type val-data.mv-data val-data.mv-size &values))
+    (set
+      node-data.data val-data.mv-data
+      node-data.size val-data.mv-size)
+    (status-require (db-node-data->values &type node-data &values))
     (status-require (db-indices-entry-ensure txn values (db-pointer->id val-id.mv-data)))
     (db-free-node-values &values)
     (set status.id (mdb-cursor-get nodes &val-id &val-data MDB-NEXT-NODUP)))

@@ -29,6 +29,10 @@
     printf("%s failed\n", description); \
     status_set_id_goto(1); \
   }
+#define db_field_set(a, a_type, a_name, a_name_len) \
+  a.type = a_type; \
+  a.name = a_name; \
+  a.name_len = a_name_len
 status_t test_helper_reset(db_env_t* env, boolean re_use) {
   status_declare;
   if (env->open) {
@@ -91,6 +95,17 @@ exit:
 db_debug_define_graph_records_contains_at(left);
 db_debug_define_graph_records_contains_at(right);
 db_debug_define_graph_records_contains_at(label);
+/** create a new type with three fields for testing */
+status_t test_helper_create_type_1(db_env_t* env, db_type_t** result) {
+  status_declare;
+  db_field_t fields[3];
+  db_field_set((fields[0]), db_field_type_uint8, "test-field-1", 12);
+  db_field_set((fields[1]), db_field_type_int8, "test-field-2", 12);
+  db_field_set((fields[2]), db_field_type_string, "test-field-3", 12);
+  status_require(db_type_create(env, "test-type-1", fields, 3, 0, result));
+exit:
+  return (status);
+};
 /** create only ids, without nodes. doesnt depend on node creation.
   dont reverse id list because it leads to more unorderly data which can expose
   bugs especially with relation reading where order lead to lucky success

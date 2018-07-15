@@ -366,6 +366,18 @@ ui8* db_status_name(status_t a) {
 #define db_graph_data_set_both(a, ordinal, id) \
   db_graph_data_set_ordinal(ordinal); \
   db_graph_data_set_id(id)
+#define db_txn_declare(env, name) db_txn_t name = { 0, env }
+#define db_txn_begin(txn) \
+  db_mdb_status_require( \
+    (mdb_txn_begin(((txn.env)->mdb_env), 0, MDB_RDONLY, (&(txn.mdb_txn)))))
+#define db_txn_abort(a) \
+  mdb_txn_abort((a.mdb_txn)); \
+  a.mdb_txn = 0
+#define db_txn_abort_if_active(a) \
+  if (a.mdb_txn) { \
+    db_txn_abort(a); \
+  }
+#define db_txn_is_active(a) (a.mdb_txn ? 1 : 0)
 typedef struct {
   ui8* name;
   db_name_len_t name_len;
@@ -466,9 +478,8 @@ typedef struct {
 #include "./lib/data-structures.c"
 typedef struct {
   db_count_t count;
-  void* current;
+  db_node_data_t current;
   db_id_t current_id;
-  size_t current_size;
   MDB_cursor* cursor;
   db_ids_t* ids;
   db_node_matcher_t matcher;
@@ -491,7 +502,6 @@ typedef struct {
 } db_graph_selection_t;
 typedef status_t (
   *db_graph_reader_t)(db_graph_selection_t*, db_count_t, db_graph_records_t**);
-void db_graph_selection_destroy(db_graph_selection_t* state);
 status_t db_statistics(db_txn_t txn, db_statistics_t* result);
 void db_close(db_env_t* env);
 status_t db_open(ui8* root, db_open_options_t* options, db_env_t* env);
@@ -516,6 +526,7 @@ status_t db_graph_ensure(db_txn_t txn,
 ui8* db_status_description(status_t a);
 ui8* db_status_name(status_t a);
 ui8* db_status_group_id_to_name(status_id_t a);
+void db_graph_selection_destroy(db_graph_selection_t* state);
 status_t db_graph_select(db_txn_t txn,
   db_ids_t* left,
   db_ids_t* right,
@@ -557,8 +568,17 @@ void db_node_values_set(db_node_values_t values,
   db_fields_len_t field_index,
   void* data,
   size_t size);
+status_t
+db_node_values_to_data(db_node_values_t values, db_node_data_t* result);
+status_t db_node_data_to_values(db_type_t* type,
+  db_node_data_t data,
+  db_node_values_t* result);
 status_t db_node_create(db_txn_t txn, db_node_values_t values, db_id_t* result);
+status_t db_node_get(db_txn_t txn, db_id_t id, db_node_data_t* result);
 status_t db_node_delete(db_txn_t txn, db_ids_t* ids);
+db_node_data_t
+db_node_data_ref(db_type_t* type, db_node_data_t data, db_fields_len_t field);
+db_node_data_t db_node_ref(db_node_selection_t* state, db_fields_len_t field);
 #include <string.h>
 /* lmdb helpers */
 #define db_mdb_status_is_notfound (MDB_NOTFOUND == status.id)
@@ -664,21 +684,9 @@ static int db_mdb_compare_data(const MDB_val* a, const MDB_val* b) {
     (length_difference ? ((length_difference < 0) ? -1 : 1)
                        : memcmp((a->mv_data), (b->mv_data), (a->mv_size))));
 };
-#define db_txn_declare(env, name) db_txn_t name = { 0, env }
-#define db_txn_begin(txn) \
-  db_mdb_status_require( \
-    (mdb_txn_begin(((txn.env)->mdb_env), 0, MDB_RDONLY, (&(txn.mdb_txn)))))
 #define db_txn_write_begin(txn) \
   db_mdb_status_require( \
     (mdb_txn_begin(((txn.env)->mdb_env), 0, 0, (&(txn.mdb_txn)))))
-#define db_txn_abort(a) \
-  mdb_txn_abort((a.mdb_txn)); \
-  a.mdb_txn = 0
-#define db_txn_abort_if_active(a) \
-  if (a.mdb_txn) { \
-    db_txn_abort(a); \
-  }
-#define db_txn_is_active(a) (a.mdb_txn ? 1 : 0)
 #define db_txn_commit(a) \
   db_mdb_status_require((mdb_txn_commit((a.mdb_txn)))); \
   a.mdb_txn = 0

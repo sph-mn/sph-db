@@ -125,16 +125,16 @@ exit:
 ui8 db_field_type_size(ui8 a) {
   if ((db_field_type_int64 == a) || (db_field_type_uint64 == a) ||
     (db_field_type_char64 == a) || (db_field_type_float64 == a)) {
-    return (64);
+    return (8);
   } else if ((db_field_type_int32 == a) || (db_field_type_uint32 == a) ||
     (db_field_type_char32 == a) || (db_field_type_float32 == a)) {
-    return (32);
+    return (4);
   } else if ((db_field_type_int16 == a) || (db_field_type_uint16 == a) ||
     (db_field_type_char16 == a)) {
-    return (16);
+    return (2);
   } else if ((db_field_type_int8 == a) || (db_field_type_uint8 == a) ||
     (db_field_type_char8 == a)) {
-    return (8);
+    return (1);
   } else {
     return (0);
   };

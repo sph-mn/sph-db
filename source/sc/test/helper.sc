@@ -1,4 +1,3 @@
-(pre-define debug-log? #t)
 (pre-include "stdio.h" "stdlib.h" "errno.h" "pthread.h" "../main/sph-db.h" "../foreign/sph/one.c")
 
 (pre-define
@@ -27,6 +26,12 @@
     (begin
       (printf "%s failed\n" description)
       (status-set-id-goto 1))))
+
+(pre-define (db-field-set a a-type a-name a-name-len)
+  (set
+    a.type a-type
+    a.name a-name
+    a.name-len a-name-len))
 
 (define (test-helper-reset env re-use) (status-t db-env-t* boolean)
   status-declare
@@ -79,6 +84,17 @@
 (db-debug-define-graph-records-contains-at left)
 (db-debug-define-graph-records-contains-at right)
 (db-debug-define-graph-records-contains-at label)
+
+(define (test-helper-create-type-1 env result) (status-t db-env-t* db-type-t**)
+  "create a new type with three fields for testing"
+  status-declare
+  (declare fields (array db-field-t 3))
+  (db-field-set (array-get fields 0) db-field-type-uint8 "test-field-1" 12)
+  (db-field-set (array-get fields 1) db-field-type-int8 "test-field-2" 12)
+  (db-field-set (array-get fields 2) db-field-type-string "test-field-3" 12)
+  (status-require (db-type-create env "test-type-1" fields 3 0 result))
+  (label exit
+    (return status)))
 
 (define (test-helper-create-ids txn count result) (status-t db-txn-t ui32 db-ids-t**)
   "create only ids, without nodes. doesnt depend on node creation.

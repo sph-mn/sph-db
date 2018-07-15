@@ -14,10 +14,15 @@
     db_graph_read;
     db_graph_select;
     db_graph_selection_destroy;
+    db_node_data_ref;
+    db_node_data_to_values;
+    db_node_values_to_data;
+    db_node_ref;
     db_node_values_new;
     db_node_values_set;
     db_node_create;
     db_node_delete;
+    db_node_get;
     db_open;
     db_open_options_set_defaults;
     db_read;
