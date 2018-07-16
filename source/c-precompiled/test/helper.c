@@ -1,4 +1,3 @@
-#define debug_log_p 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>

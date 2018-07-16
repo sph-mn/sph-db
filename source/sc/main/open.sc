@@ -256,7 +256,7 @@
     field-pointer db-field-t*
     fields db-field-t*
     fixed-count db-fields-len-t
-    fixed-offsets db-fields-len-t*
+    fixed-offsets size-t*
     i db-fields-len-t
     offset db-fields-len-t)
   (set
@@ -281,7 +281,7 @@
   (sc-comment "offsets")
   (if fixed-count
     (begin
-      (db-malloc fixed-offsets (* fixed-count (sizeof db-fields-len-t)))
+      (db-malloc fixed-offsets (* fixed-count (sizeof size-t)))
       (for ((set i 0) (< i fixed-count) (set i (+ 1 i)))
         (set
           offset (+ offset (db-field-type-size (: (+ i fields) type)))

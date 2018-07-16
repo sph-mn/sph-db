@@ -388,7 +388,7 @@ struct db_index_t;
 typedef struct {
   db_fields_len_t fields_len;
   db_fields_len_t fields_fixed_count;
-  db_fields_len_t* fields_fixed_offsets;
+  size_t* fields_fixed_offsets;
   db_field_t* fields;
   ui8 flags;
   db_type_id_t id;
@@ -458,8 +458,9 @@ typedef struct {
   void* data;
 } db_node_value_t;
 typedef struct {
-  db_type_t* type;
   db_node_value_t* data;
+  db_fields_len_t last;
+  db_type_t* type;
 } db_node_values_t;
 typedef boolean (*db_node_matcher_t)(db_id_t, void*, size_t);
 typedef struct {

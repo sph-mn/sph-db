@@ -230,14 +230,14 @@ status_t test_node_create(db_env_t* env) {
   db_node_values_set(values_1, 2, (&value_3), 3);
   /* node values/data conversion */
   db_node_values_to_data(values_1, (&node_data_1));
-  debug_display_array_ui8((node_data_1.data), (node_data_1.size));
   db_node_data_to_values(type, node_data_1, (&values_2));
-  test_helper_assert(("node-data->values"),
-    ((values_1.type == values_2.type) &&
-      (0 ==
-        memcmp((values_1.data),
-          (values_2.data),
-          (type->fields_len * sizeof(db_node_value_t))))));
+  test_helper_assert(
+    ("node-data->values type equal"), (values_1.type == values_2.type));
+  test_helper_assert(("node-data->values data equal"),
+    (0 ==
+      memcmp((values_1.data),
+        (values_2.data),
+        (type->fields_len * sizeof(db_node_value_t)))));
   db_node_values_to_data(values_2, (&node_data_2));
   debug_log("node-data sizes %lu %lu", (node_data_1.size), (node_data_2.size));
   test_helper_assert(("node-values->data"),

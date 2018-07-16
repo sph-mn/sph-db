@@ -1,32 +1,36 @@
 (define (db-node-values->data values result) (status-t db-node-values-t db-node-data-t*)
+  "convert a node-values array to the data format that is used as btree value for nodes.
+  unset trailing fields are not included"
   status-declare
   (declare
     data void*
     data-temp ui8*
     field-size ui8
     field-type db-field-type-t
-    fields-len db-fields-len-t
     i db-fields-len-t
     size size-t)
-  (set
-    fields-len values.type:fields-len
-    size 0)
+  (set size 0)
   (sc-comment "prepare size information")
-  (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
-    (if (>= i values.type:fields-fixed-count)
-      (set field-size (struct-get (array-get values.data i) size))
+  (for ((set i 0) (< i values.last) (set i (+ 1 i)))
+    (if (< i values.type:fields-fixed-count)
       (begin
+        (sc-comment "fixed length field")
         (set
           field-type (struct-get (array-get values.type:fields i) type)
           field-size (db-field-type-size field-type)
-          (struct-get (array-get values.data i) size) field-size)))
-    (if (> field-size db-data-len-max)
-      (status-set-both-goto db-status-group-db db-status-id-data-length))
-    (set size (+ field-size size)))
+          (struct-get (array-get values.data i) size) field-size
+          size (+ field-size size)))
+      (begin
+        (set
+          field-size (struct-get (array-get values.data i) size)
+          size (+ (sizeof db-data-len-t) field-size size))
+        (sc-comment "check if data is larger than the size prefix can specify")
+        (if (> field-size db-data-len-max)
+          (status-set-both-goto db-status-group-db db-status-id-data-length)))))
   (db-malloc data size)
   (set data-temp data)
   (sc-comment "copy data")
-  (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
+  (for ((set i 0) (< i values.last) (set i (+ 1 i)))
     (set field-size (struct-get (array-get values.data i) size))
     (if (>= i values.type:fields-fixed-count)
       (set
@@ -47,7 +51,8 @@
   (db-calloc data type:fields-len (sizeof db-node-value-t))
   (struct-set *result
     type type
-    data data)
+    data data
+    last 0)
   (label exit
     (return status)))
 
@@ -61,7 +66,8 @@
     data data
     size
     (if* (db-field-type-is-fixed field-type) (db-field-type-size field-type)
-      size)))
+      size))
+  (if (> field-index values.last) (set values.last field-index)))
 
 (define (db-node-create txn values result) (status-t db-txn-t db-node-values-t db-id-t*)
   status-declare
@@ -92,40 +98,50 @@
 
 (define (db-node-data-ref type data field)
   (db-node-data-t db-type-t* db-node-data-t db-fields-len-t)
-  "from the full data of a node (all fields) return a reference to the data for a field without copying"
-  ; todo: allow short btree node data? mv-size
+  "from the full btree value a node (all fields), return a reference
+  to the data for specific field and the size"
   (declare
-    result-data ui8*
+    data-temp ui8*
     end ui8*
-    field-index db-fields-len-t
+    i db-fields-len-t
+    offset size-t
     result db-node-data-t
     size size-t)
-  (if (> type:fields-fixed-count field)
+  (if (< field type:fields-fixed-count)
     (begin
       (sc-comment "fixed length field")
-      (set
-        result.data (+ data.data (array-get type:fields-fixed-offsets field))
-        result.size (db-field-type-size (struct-get (array-get type:fields field) type)))
+      (set offset (array-get type:fields-fixed-offsets field))
+      (if (< offset data.size)
+        (set
+          result.data (+ offset (convert-type data.data ui8*))
+          result.size (db-field-type-size (struct-get (array-get type:fields field) type)))
+        (set
+          result.data 0
+          result.size 0))
       (return result))
     (begin
       (sc-comment "variable length field")
-      (set
-        result-data (+ data.data (array-get type:fields-fixed-offsets (- type:fields-fixed-count 1)))
-        field-index type:fields-fixed-count
-        end (+ result-data data.size))
-      (while (and (<= field-index field) (< result-data end))
-        (set
-          size (pointer-get (convert-type result-data db-data-len-t*))
-          result-data (+ (sizeof db-data-len-t) result-data))
-        (if (= field-index field)
-          (begin
+      (set offset (array-get type:fields-fixed-offsets (- type:fields-fixed-count 1)))
+      (if (< offset data.size)
+        (begin
+          (set
+            data-temp (+ offset (convert-type data.data ui8*))
+            end (+ data.size (convert-type data.data ui8*))
+            i type:fields-fixed-count)
+          (sc-comment "variable length data is prefixed by its size")
+          (while (and (<= i field) (< data-temp end))
             (set
-              result.data result-data
-              result.size size)
-            (return result)))
-        (set
-          field-index (+ 1 field-index)
-          result-data (+ size result-data)))
+              size (pointer-get (convert-type data-temp db-data-len-t*))
+              data-temp (+ (sizeof db-data-len-t) data-temp))
+            (if (= i field)
+              (begin
+                (set
+                  result.data data-temp
+                  result.size size)
+                (return result)))
+            (set
+              i (+ 1 i)
+              data-temp (+ size data-temp)))))
       (set
         result.data 0
         result.size 0)
@@ -150,6 +166,7 @@
     fields-len type:fields-len
     size 0)
   (status-require (db-node-values-new type &values))
+  ; todo: limit by data size
   (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
     (set field-data (db-node-data-ref type data i))
     (db-node-values-set values i field-data.data field-data.size))

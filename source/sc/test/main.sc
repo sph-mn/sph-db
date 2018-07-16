@@ -235,12 +235,13 @@
   (sc-comment "node values/data conversion")
   (db-node-values->data values-1 &node-data-1)
   (db-node-data->values type node-data-1 &values-2)
-
   (test-helper-assert
-    "node-data->values"
-    (and
-      (= values-1.type values-2.type)
-      (= 0 (memcmp values-1.data values-2.data (* type:fields-len (sizeof db-node-value-t))))))
+    "node-data->values type equal"
+    (= values-1.type values-2.type))
+  (test-helper-assert
+    "node-data->values data equal"
+    (= 0 (memcmp values-1.data values-2.data (* type:fields-len (sizeof db-node-value-t)))))
+
   (db-node-values->data values-2 &node-data-2)
   (debug-log "node-data sizes %lu %lu" node-data-1.size node-data-2.size)
   (test-helper-assert

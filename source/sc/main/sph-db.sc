@@ -150,8 +150,8 @@
     (struct
       (fields-len db-fields-len-t)
       (fields-fixed-count db-fields-len-t)
-      ; example: field-sizes-in-bits: 8 32 16, fields-fixed-offsets: 8 40 56
-      (fields-fixed-offsets db-fields-len-t*)
+      ; example: field-sizes-in-bytes: 1 4 2, fields-fixed-offsets: 1 5 7
+      (fields-fixed-offsets size-t*)
       (fields db-field-t*)
       (flags ui8)
       (id db-type-id-t)
@@ -234,8 +234,9 @@
   db-node-values-t
   (type
     (struct
-      (type db-type-t*)
-      (data db-node-value-t*)))
+      (data db-node-value-t*)
+      (last db-fields-len-t)
+      (type db-type-t*)))
   db-node-matcher-t (type (function-pointer boolean db-id-t void* size-t))
   db-node-data-t
   (type
