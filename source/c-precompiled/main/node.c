@@ -11,7 +11,7 @@ db_node_values_to_data(db_node_values_t values, db_node_data_t* result) {
   size_t size;
   size = 0;
   /* prepare size information */
-  for (i = 0; (i < values.last); i = (1 + i)) {
+  for (i = 0; (i <= values.last); i = (1 + i)) {
     if (i < (values.type)->fields_fixed_count) {
       /* fixed length field */
       field_type = (((values.type)->fields)[i]).type;
@@ -30,7 +30,7 @@ db_node_values_to_data(db_node_values_t values, db_node_data_t* result) {
   db_malloc(data, size);
   data_temp = data;
   /* copy data */
-  for (i = 0; (i < values.last); i = (1 + i)) {
+  for (i = 0; (i <= values.last); i = (1 + i)) {
     field_size = ((values.data)[i]).size;
     if (i >= (values.type)->fields_fixed_count) {
       *((db_data_len_t*)(data_temp)) = field_size;
@@ -57,19 +57,22 @@ exit:
 };
 /** set a value for a field in node values.
   size is ignored for fixed length types */
-void db_node_values_set(db_node_values_t values,
-  db_fields_len_t field_index,
+void db_node_values_set(db_node_values_t* values,
+  db_fields_len_t field,
   void* data,
   size_t size) {
   db_field_type_t field_type;
-  field_type = (((values.type)->fields)[field_index]).type;
-  ((values.data)[field_index]).data = data;
-  ((values.data)[field_index]).size =
+  db_node_values_t values_temp;
+  values_temp = *values;
+  field_type = (((values_temp.type)->fields)[field]).type;
+  ((values_temp.data)[field]).data = data;
+  ((values_temp.data)[field]).size =
     (db_field_type_is_fixed(field_type) ? db_field_type_size(field_type)
                                         : size);
-  if (field_index > values.last) {
-    values.last = field_index;
+  if (!values_temp.last || (field > values_temp.last)) {
+    values_temp.last = field;
   };
+  *values = values_temp;
 };
 status_t
 db_node_create(db_txn_t txn, db_node_values_t values, db_id_t* result) {
@@ -120,14 +123,17 @@ db_node_data_ref(db_type_t* type, db_node_data_t data, db_fields_len_t field) {
   } else {
     /* variable length field */
     offset = (type->fields_fixed_offsets)[(type->fields_fixed_count - 1)];
+    debug_log("offset %lu", offset);
     if (offset < data.size) {
       data_temp = (offset + ((ui8*)(data.data)));
       end = (data.size + ((ui8*)(data.data)));
       i = type->fields_fixed_count;
+      debug_log("offset %lu", offset);
       /* variable length data is prefixed by its size */
       while (((i <= field) && (data_temp < end))) {
         size = *((db_data_len_t*)(data_temp));
         data_temp = (sizeof(db_data_len_t) + data_temp);
+        debug_log("size %lu", size);
         if (i == field) {
           result.data = data_temp;
           result.size = size;
@@ -155,15 +161,16 @@ status_t db_node_data_to_values(db_type_t* type,
   status_declare;
   db_node_data_t field_data;
   db_fields_len_t fields_len;
-  size_t size;
   db_node_values_t values;
   db_fields_len_t i;
   fields_len = type->fields_len;
-  size = 0;
   status_require(db_node_values_new(type, (&values)));
   for (i = 0; (i < fields_len); i = (1 + i)) {
     field_data = db_node_data_ref(type, data, i);
-    db_node_values_set(values, i, (field_data.data), (field_data.size));
+    if (!field_data.data) {
+      break;
+    };
+    db_node_values_set((&values), i, (field_data.data), (field_data.size));
   };
   *result = values;
 exit:

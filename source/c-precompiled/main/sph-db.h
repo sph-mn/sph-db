@@ -565,7 +565,7 @@ status_t db_debug_display_btree_counts(db_txn_t txn);
 status_t db_debug_display_content_graph_lr(db_txn_t txn);
 status_t db_debug_display_content_graph_rl(db_txn_t txn);
 status_t db_node_values_new(db_type_t* type, db_node_values_t* result);
-void db_node_values_set(db_node_values_t values,
+void db_node_values_set(db_node_values_t* values,
   db_fields_len_t field_index,
   void* data,
   size_t size);

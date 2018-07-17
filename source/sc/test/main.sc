@@ -29,27 +29,29 @@
 (define (test-type-create-get-delete env) (status-t db-env-t*)
   status-declare
   (declare
-    fields (array db-field-t 3)
-    fields-2 (array db-field-t* 3)
+    fields (array db-field-t 4)
+    fields-2 (array db-field-t* 4)
     i db-fields-len-t
     type-1 db-type-t*
     type-2 db-type-t*
     type-1-1 db-type-t*
     type-2-1 db-type-t*)
-  (sc-comment "type 1")
+  (sc-comment "create type-1")
   (status-require (db-type-create env "test-type-1" 0 0 0 &type-1))
   (test-helper-assert "type id" (= 1 type-1:id))
   (test-helper-assert "type sequence" (= 1 type-1:sequence))
   (test-helper-assert "type field count" (= 0 type-1:fields-len))
-  (sc-comment "type 2")
+  (sc-comment "create type-2")
   (db-field-set (array-get fields 0) db-field-type-int8 "test-field-1" 12)
   (db-field-set (array-get fields 1) db-field-type-int8 "test-field-2" 12)
   (db-field-set (array-get fields 2) db-field-type-string "test-field-3" 12)
-  (status-require (db-type-create env "test-type-2" fields 3 0 &type-2))
+  (db-field-set (array-get fields 3) db-field-type-string "test-field-4" 12)
+  (status-require (db-type-create env "test-type-2" fields 4 0 &type-2))
   (test-helper-assert "second type id" (= 2 type-2:id))
   (test-helper-assert "second type sequence" (= 1 type-2:sequence))
-  (test-helper-assert "second type fields-len" (= 3 type-2:fields-len))
+  (test-helper-assert "second type fields-len" (= 4 type-2:fields-len))
   (test-helper-assert "second type name" (= 0 (strcmp "test-type-2" type-2:name)))
+  (sc-comment "test cached field values")
   (for ((set i 0) (< i type-2:fields-len) (set i (+ 1 i)))
     (test-helper-assert
       "second type field name len equality"
@@ -59,18 +61,28 @@
       (= 0 (strcmp (: (+ i fields) name) (: (+ i type-2:fields) name))))
     (test-helper-assert
       "second type type equality" (= (: (+ i fields) type) (: (+ i type-2:fields) type))))
+  (sc-comment "test db-type-field-get")
   (array-set
     fields-2
     0
     (db-type-field-get type-2 "test-field-1")
     1 (db-type-field-get type-2 "test-field-2") 2 (db-type-field-get type-2 "test-field-3"))
+  (sc-comment "test fixed count and offsets")
+  (test-helper-assert "fixed count" (= 2 type-2:fields-fixed-count))
+  (test-helper-assert
+    "fixed offsets"
+    (and
+      (= 0 (array-get type-2:fields-fixed-offsets 0)) (= 1 (array-get type-2:fields-fixed-offsets 1))))
+  (sc-comment "test type-field-get")
   (test-helper-assert
     "type-field-get"
     (=
       (array-get fields-2 0)
       (+ 0 type-2:fields)
-      (array-get fields-2 1) (+ 1 type-2:fields) (array-get fields-2 2) (+ 2 type-2:fields)))
-  (sc-comment "type-get")
+      (array-get fields-2 1)
+      (+ 1 type-2:fields)
+      (array-get fields-2 2) (+ 2 type-2:fields) (array-get fields-2 3) (+ 3 type-2:fields)))
+  (sc-comment "test type-get")
   (test-helper-assert "non existent type" (not (db-type-get env "test-type-x")))
   (set
     type-1-1 (db-type-get env "test-type-1")
@@ -79,7 +91,7 @@
   (test-helper-assert "existent type ids" (and (= type-1:id type-1-1:id) (= type-2:id type-2-1:id)))
   (test-helper-assert
     "existent types" (and (db-type-get env "test-type-1") (db-type-get env "test-type-2")))
-  (sc-comment "type-delete")
+  (sc-comment "test type-delete")
   (status-require (db-type-delete env type-1:id))
   (status-require (db-type-delete env type-2:id))
   (set
@@ -229,19 +241,32 @@
   (set
     value-1 11
     value-2 -128)
-  (db-node-values-set values-1 0 &value-1 0)
-  (db-node-values-set values-1 1 &value-2 0)
-  (db-node-values-set values-1 2 &value-3 3)
+  (db-node-values-set &values-1 0 &value-1 0)
+  (db-node-values-set &values-1 1 &value-2 0)
+  (db-node-values-set &values-1 2 &value-3 3)
   (sc-comment "node values/data conversion")
   (db-node-values->data values-1 &node-data-1)
+  (test-helper-assert "node-values->data size" (= (+ (sizeof db-data-len-t) 5) node-data-1.size))
   (db-node-data->values type node-data-1 &values-2)
+  (test-helper-assert "node-data->values type equal" (= values-1.type values-2.type))
+  (debug-log "%lu" (struct-get (array-get values-1.data 0) size))
+  (debug-log "%lu" (struct-get (array-get values-1.data 1) size))
+  (debug-log "%lu" (struct-get (array-get values-1.data 2) size))
+  (debug-log "%lu" (struct-get (array-get values-2.data 0) size))
+  (debug-log "%lu" (struct-get (array-get values-2.data 1) size))
+  (debug-log "%lu" (struct-get (array-get values-2.data 2) size))
   (test-helper-assert
-    "node-data->values type equal"
-    (= values-1.type values-2.type))
+    "node-data->values size equal"
+    (and
+      (=
+        (struct-get (array-get values-1.data 0) size) (struct-get (array-get values-2.data 0) size))
+      (=
+        (struct-get (array-get values-1.data 1) size) (struct-get (array-get values-2.data 1) size))
+      (=
+        (struct-get (array-get values-1.data 1) size) (struct-get (array-get values-2.data 1) size))))
   (test-helper-assert
     "node-data->values data equal"
     (= 0 (memcmp values-1.data values-2.data (* type:fields-len (sizeof db-node-value-t)))))
-
   (db-node-values->data values-2 &node-data-2)
   (debug-log "node-data sizes %lu %lu" node-data-1.size node-data-2.size)
   (test-helper-assert

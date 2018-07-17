@@ -275,6 +275,7 @@ status_t db_open_type_read_fields(ui8** data_pointer, db_type_t* type) {
   fixed_offsets = 0;
   fixed_count = 0;
   fields = 0;
+  offset = 0;
   count = *((db_fields_len_t*)(data));
   data = (sizeof(db_fields_len_t) + data);
   db_calloc(fields, count, sizeof(db_field_t));
@@ -293,11 +294,12 @@ status_t db_open_type_read_fields(ui8** data_pointer, db_type_t* type) {
   };
   /* offsets */
   if (fixed_count) {
-    db_malloc(fixed_offsets, (fixed_count * sizeof(size_t)));
+    db_malloc(fixed_offsets, ((1 + fixed_count) * sizeof(size_t)));
     for (i = 0; (i < fixed_count); i = (1 + i)) {
-      offset = (offset + db_field_type_size(((i + fields)->type)));
       *(i + fixed_offsets) = offset;
+      offset = (offset + db_field_type_size(((i + fields)->type)));
     };
+    *(i + fixed_offsets) = offset;
   };
   type->fields = fields;
   type->fields_len = count;

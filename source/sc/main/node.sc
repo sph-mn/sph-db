@@ -11,7 +11,7 @@
     size size-t)
   (set size 0)
   (sc-comment "prepare size information")
-  (for ((set i 0) (< i values.last) (set i (+ 1 i)))
+  (for ((set i 0) (<= i values.last) (set i (+ 1 i)))
     (if (< i values.type:fields-fixed-count)
       (begin
         (sc-comment "fixed length field")
@@ -30,7 +30,7 @@
   (db-malloc data size)
   (set data-temp data)
   (sc-comment "copy data")
-  (for ((set i 0) (< i values.last) (set i (+ 1 i)))
+  (for ((set i 0) (<= i values.last) (set i (+ 1 i)))
     (set field-size (struct-get (array-get values.data i) size))
     (if (>= i values.type:fields-fixed-count)
       (set
@@ -56,18 +56,23 @@
   (label exit
     (return status)))
 
-(define (db-node-values-set values field-index data size)
-  (void db-node-values-t db-fields-len-t void* size-t)
+(define (db-node-values-set values field data size)
+  (void db-node-values-t* db-fields-len-t void* size-t)
   "set a value for a field in node values.
   size is ignored for fixed length types"
-  (declare field-type db-field-type-t)
-  (set field-type (struct-get (array-get values.type:fields field-index) type))
-  (struct-set (array-get values.data field-index)
+  (declare
+    field-type db-field-type-t
+    values-temp db-node-values-t)
+  (set
+    values-temp *values
+    field-type (struct-get (array-get values-temp.type:fields field) type))
+  (struct-set (array-get values-temp.data field)
     data data
     size
     (if* (db-field-type-is-fixed field-type) (db-field-type-size field-type)
       size))
-  (if (> field-index values.last) (set values.last field-index)))
+  (if (or (not values-temp.last) (> field values-temp.last)) (set values-temp.last field))
+  (set *values values-temp))
 
 (define (db-node-create txn values result) (status-t db-txn-t db-node-values-t db-id-t*)
   status-declare
@@ -121,7 +126,9 @@
       (return result))
     (begin
       (sc-comment "variable length field")
-      (set offset (array-get type:fields-fixed-offsets (- type:fields-fixed-count 1)))
+      (set offset
+        (if* type:fields-fixed-count (array-get type:fields-fixed-offsets type:fields-fixed-count)
+          0))
       (if (< offset data.size)
         (begin
           (set
@@ -159,17 +166,14 @@
   (declare
     field-data db-node-data-t
     fields-len db-fields-len-t
-    size size-t
     values db-node-values-t
     i db-fields-len-t)
-  (set
-    fields-len type:fields-len
-    size 0)
+  (set fields-len type:fields-len)
   (status-require (db-node-values-new type &values))
-  ; todo: limit by data size
   (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
     (set field-data (db-node-data-ref type data i))
-    (db-node-values-set values i field-data.data field-data.size))
+    (if (not field-data.data) break)
+    (db-node-values-set &values i field-data.data field-data.size))
   (set *result values)
   (label exit
     (if status-is-failure (db-free-node-values &values))

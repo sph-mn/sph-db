@@ -264,6 +264,7 @@
     fixed-offsets 0
     fixed-count 0
     fields 0
+    offset 0
     count (pointer-get (convert-type data db-fields-len-t*))
     data (+ (sizeof db-fields-len-t) data))
   (db-calloc fields count (sizeof db-field-t))
@@ -281,11 +282,12 @@
   (sc-comment "offsets")
   (if fixed-count
     (begin
-      (db-malloc fixed-offsets (* fixed-count (sizeof size-t)))
+      (db-malloc fixed-offsets (* (+ 1 fixed-count) (sizeof size-t)))
       (for ((set i 0) (< i fixed-count) (set i (+ 1 i)))
         (set
-          offset (+ offset (db-field-type-size (: (+ i fields) type)))
-          (pointer-get (+ i fixed-offsets)) offset))))
+          (pointer-get (+ i fixed-offsets)) offset
+          offset (+ offset (db-field-type-size (: (+ i fields) type)))))
+      (set (pointer-get (+ i fixed-offsets)) offset)))
   (set
     type:fields fields
     type:fields-len count

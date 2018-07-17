@@ -97,11 +97,12 @@ db_debug_define_graph_records_contains_at(label);
 /** create a new type with three fields for testing */
 status_t test_helper_create_type_1(db_env_t* env, db_type_t** result) {
   status_declare;
-  db_field_t fields[3];
+  db_field_t fields[4];
   db_field_set((fields[0]), db_field_type_uint8, "test-field-1", 12);
   db_field_set((fields[1]), db_field_type_int8, "test-field-2", 12);
   db_field_set((fields[2]), db_field_type_string, "test-field-3", 12);
-  status_require(db_type_create(env, "test-type-1", fields, 3, 0, result));
+  db_field_set((fields[3]), db_field_type_string, "test-field-4", 12);
+  status_require(db_type_create(env, "test-type-1", fields, 4, 0, result));
 exit:
   return (status);
 };

@@ -327,7 +327,7 @@
   ; db-node
   (db-node-values-new type result) (status-t db-type-t* db-node-values-t*)
   (db-node-values-set values field-index data size)
-  (void db-node-values-t db-fields-len-t void* size-t) (db-node-values->data values result)
+  (void db-node-values-t* db-fields-len-t void* size-t) (db-node-values->data values result)
   (status-t db-node-values-t db-node-data-t*) (db-node-data->values type data result)
   (status-t db-type-t* db-node-data-t db-node-values-t*) (db-node-create txn values result)
   (status-t db-txn-t db-node-values-t db-id-t*) (db-node-get txn id result)

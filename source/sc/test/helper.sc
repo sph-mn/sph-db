@@ -88,11 +88,12 @@
 (define (test-helper-create-type-1 env result) (status-t db-env-t* db-type-t**)
   "create a new type with three fields for testing"
   status-declare
-  (declare fields (array db-field-t 3))
+  (declare fields (array db-field-t 4))
   (db-field-set (array-get fields 0) db-field-type-uint8 "test-field-1" 12)
   (db-field-set (array-get fields 1) db-field-type-int8 "test-field-2" 12)
   (db-field-set (array-get fields 2) db-field-type-string "test-field-3" 12)
-  (status-require (db-type-create env "test-type-1" fields 3 0 result))
+  (db-field-set (array-get fields 3) db-field-type-string "test-field-4" 12)
+  (status-require (db-type-create env "test-type-1" fields 4 0 result))
   (label exit
     (return status)))
 
