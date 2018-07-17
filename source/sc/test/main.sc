@@ -216,7 +216,8 @@
 (define (debug-display-array-ui8 a size) (void ui8* size-t)
   (declare i size-t)
   (for ((set i 0) (< i size) (set i (+ 1 i)))
-    (printf "%lu " (array-get a i))))
+    (printf "%lu " (array-get a i)))
+  (printf "\n"))
 
 (define (test-node-create env) (status-t db-env-t*)
   status-declare
@@ -226,35 +227,35 @@
     type db-type-t*
     values-1 db-node-values-t
     values-2 db-node-values-t
+    field-index db-fields-len-t
     ;fields (array db-field-t 4)
     value-1 ui8
+    size-1 size-t
+    size-2 size-t
     value-2 i8
     id-1 db-id-t
     id-2 db-id-t
     node-data-1 db-node-data-t
     node-data-2 db-node-data-t
     field-data db-node-data-t)
-  (define value-3 ui8* "abc")
+  (define value-3 ui8* (convert-type "abc" ui8*))
+  (define value-4 ui8* (convert-type "abcde" ui8*))
   (status-require (test-helper-create-type-1 env &type))
-  (sc-comment "prepare values")
+  (sc-comment "prepare node values")
   (status-require (db-node-values-new type &values-1))
   (set
     value-1 11
     value-2 -128)
   (db-node-values-set &values-1 0 &value-1 0)
   (db-node-values-set &values-1 1 &value-2 0)
-  (db-node-values-set &values-1 2 &value-3 3)
-  (sc-comment "node values/data conversion")
+  (db-node-values-set &values-1 2 value-3 3)
+  (db-node-values-set &values-1 3 value-4 5)
+  (sc-comment "test node values/data conversion")
   (db-node-values->data values-1 &node-data-1)
-  (test-helper-assert "node-values->data size" (= (+ (sizeof db-data-len-t) 5) node-data-1.size))
+  (test-helper-assert
+    "node-values->data size" (= (+ (* 2 (sizeof db-data-len-t)) 10) node-data-1.size))
   (db-node-data->values type node-data-1 &values-2)
   (test-helper-assert "node-data->values type equal" (= values-1.type values-2.type))
-  (debug-log "%lu" (struct-get (array-get values-1.data 0) size))
-  (debug-log "%lu" (struct-get (array-get values-1.data 1) size))
-  (debug-log "%lu" (struct-get (array-get values-1.data 2) size))
-  (debug-log "%lu" (struct-get (array-get values-2.data 0) size))
-  (debug-log "%lu" (struct-get (array-get values-2.data 1) size))
-  (debug-log "%lu" (struct-get (array-get values-2.data 2) size))
   (test-helper-assert
     "node-data->values size equal"
     (and
@@ -263,17 +264,45 @@
       (=
         (struct-get (array-get values-1.data 1) size) (struct-get (array-get values-2.data 1) size))
       (=
-        (struct-get (array-get values-1.data 1) size) (struct-get (array-get values-2.data 1) size))))
+        (struct-get (array-get values-1.data 2) size) (struct-get (array-get values-2.data 2) size))
+      (=
+        (struct-get (array-get values-1.data 3) size) (struct-get (array-get values-2.data 3) size))))
   (test-helper-assert
-    "node-data->values data equal"
-    (= 0 (memcmp values-1.data values-2.data (* type:fields-len (sizeof db-node-value-t)))))
+    "node-data->values data equal 1"
+    (and
+      (= 0 (memcmp value-3 (struct-get (array-get values-1.data 2) data) 3))
+      (= 0 (memcmp value-4 (struct-get (array-get values-1.data 3) data) 5))))
+  (for ((set field-index 0) (< field-index type:fields-len) (set field-index (+ 1 field-index)))
+    (set
+      size-1 (struct-get (array-get values-1.data field-index) size)
+      size-2 (struct-get (array-get values-2.data field-index) size))
+    (test-helper-assert
+      "node-data->values data equal 2"
+      (=
+        0
+        (memcmp
+          (struct-get (array-get values-1.data field-index) data)
+          (struct-get (array-get values-2.data field-index) data)
+          (if* (< size-1 size-2) size-2
+            size-1)))))
   (db-node-values->data values-2 &node-data-2)
-  (debug-log "node-data sizes %lu %lu" node-data-1.size node-data-2.size)
   (test-helper-assert
     "node-values->data"
     (and
       (= node-data-1.size node-data-2.size)
-      (= 0 (memcmp node-data-1.data node-data-2.data node-data-1.size))))
+      (=
+        0
+        (memcmp
+          node-data-1.data
+          node-data-2.data
+          (if* (< node-data-1.size node-data-2.size) node-data-2.size
+            node-data-1.size)))))
+  (sc-comment "test node-data-ref")
+  (set field-data (db-node-data-ref type node-data-1 3))
+  (test-helper-assert
+    "node-data-ref-1"
+    (and (= 5 field-data.size) (= 0 (memcmp value-4 field-data.data field-data.size))))
+  (sc-comment "test actual node creation")
   (db-txn-write-begin txn)
   (status-require (db-node-create txn values-1 &id-1))
   (test-helper-assert "element id 1" (= 1 (db-id-element id-1)))
@@ -281,16 +310,23 @@
   (test-helper-assert "element id 2" (= 2 (db-id-element id-2)))
   (db-txn-commit txn)
   (db-txn-begin txn)
+  (sc-comment "test node-get")
   (status-require (db-node-get txn id-1 &node-data-1))
   (set field-data (db-node-data-ref type node-data-1 1))
   (test-helper-assert
-    "node-data-ref"
+    "node-data-ref-2"
     (and
       (= (sizeof i8) field-data.size) (= value-2 (pointer-get (convert-type field-data.data i8*)))))
-  ;(status-require (db-node-get txn id-2 &data &size))
-  ;(set status (db-node-get txn 9999 &data &size))
-  ;(debug-log "status id %d" status.id)
+  (set field-data (db-node-data-ref type node-data-1 3))
+  (test-helper-assert
+    "node-data-ref-3"
+    (and (= 5 field-data.size) (= 0 (memcmp value-4 field-data.data field-data.size))))
+  (status-require (db-node-get txn id-2 &node-data-1))
+  (set status (db-node-get txn 9999 &node-data-1))
+  (test-helper-assert "node-get non-existing" (= db-status-id-no-more-data status.id))
+  (set status.id status-id-success)
   (db-txn-abort txn)
+  (sc-comment "test node-select")
   #;(
   (db-node-select txn ids type offset matcher matcher-state result-state)
   (status-t db-txn-t db-ids-t* db-type-t* db-count-t db-node-matcher-t void* db-node-selection-t*)

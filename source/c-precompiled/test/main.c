@@ -216,6 +216,7 @@ void debug_display_array_ui8(ui8* a, size_t size) {
   for (i = 0; (i < size); i = (1 + i)) {
     printf("%lu ", (a[i]));
   };
+  printf("\n");
 };
 status_t test_node_create(db_env_t* env) {
   status_declare;
@@ -223,50 +224,66 @@ status_t test_node_create(db_env_t* env) {
   db_type_t* type;
   db_node_values_t values_1;
   db_node_values_t values_2;
+  db_fields_len_t field_index;
   ui8 value_1;
+  size_t size_1;
+  size_t size_2;
   i8 value_2;
   db_id_t id_1;
   db_id_t id_2;
   db_node_data_t node_data_1;
   db_node_data_t node_data_2;
   db_node_data_t field_data;
-  ui8* value_3 = "abc";
+  ui8* value_3 = ((ui8*)("abc"));
+  ui8* value_4 = ((ui8*)("abcde"));
   status_require(test_helper_create_type_1(env, (&type)));
-  /* prepare values */
+  /* prepare node values */
   status_require(db_node_values_new(type, (&values_1)));
   value_1 = 11;
   value_2 = -128;
   db_node_values_set((&values_1), 0, (&value_1), 0);
   db_node_values_set((&values_1), 1, (&value_2), 0);
-  db_node_values_set((&values_1), 2, (&value_3), 3);
-  /* node values/data conversion */
+  db_node_values_set((&values_1), 2, value_3, 3);
+  db_node_values_set((&values_1), 3, value_4, 5);
+  /* test node values/data conversion */
   db_node_values_to_data(values_1, (&node_data_1));
   test_helper_assert(("node-values->data size"),
-    ((sizeof(db_data_len_t) + 5) == node_data_1.size));
+    (((2 * sizeof(db_data_len_t)) + 10) == node_data_1.size));
   db_node_data_to_values(type, node_data_1, (&values_2));
   test_helper_assert(
     ("node-data->values type equal"), (values_1.type == values_2.type));
-  debug_log("%lu", (((values_1.data)[0]).size));
-  debug_log("%lu", (((values_1.data)[1]).size));
-  debug_log("%lu", (((values_1.data)[2]).size));
-  debug_log("%lu", (((values_2.data)[0]).size));
-  debug_log("%lu", (((values_2.data)[1]).size));
-  debug_log("%lu", (((values_2.data)[2]).size));
   test_helper_assert(("node-data->values size equal"),
     ((((values_1.data)[0]).size == ((values_2.data)[0]).size) &&
       (((values_1.data)[1]).size == ((values_2.data)[1]).size) &&
-      (((values_1.data)[1]).size == ((values_2.data)[1]).size)));
-  test_helper_assert(("node-data->values data equal"),
-    (0 ==
-      memcmp((values_1.data),
-        (values_2.data),
-        (type->fields_len * sizeof(db_node_value_t)))));
+      (((values_1.data)[2]).size == ((values_2.data)[2]).size) &&
+      (((values_1.data)[3]).size == ((values_2.data)[3]).size)));
+  test_helper_assert(("node-data->values data equal 1"),
+    ((0 == memcmp(value_3, (((values_1.data)[2]).data), 3)) &&
+      (0 == memcmp(value_4, (((values_1.data)[3]).data), 5))));
+  for (field_index = 0; (field_index < type->fields_len);
+       field_index = (1 + field_index)) {
+    size_1 = ((values_1.data)[field_index]).size;
+    size_2 = ((values_2.data)[field_index]).size;
+    test_helper_assert(("node-data->values data equal 2"),
+      (0 ==
+        memcmp((((values_1.data)[field_index]).data),
+          (((values_2.data)[field_index]).data),
+          ((size_1 < size_2) ? size_2 : size_1))));
+  };
   db_node_values_to_data(values_2, (&node_data_2));
-  debug_log("node-data sizes %lu %lu", (node_data_1.size), (node_data_2.size));
   test_helper_assert(("node-values->data"),
     ((node_data_1.size == node_data_2.size) &&
       (0 ==
-        memcmp((node_data_1.data), (node_data_2.data), (node_data_1.size)))));
+        memcmp((node_data_1.data),
+          (node_data_2.data),
+          ((node_data_1.size < node_data_2.size) ? node_data_2.size
+                                                 : node_data_1.size)))));
+  /* test node-data-ref */
+  field_data = db_node_data_ref(type, node_data_1, 3);
+  test_helper_assert("node-data-ref-1",
+    ((5 == field_data.size) &&
+      (0 == memcmp(value_4, (field_data.data), (field_data.size)))));
+  /* test actual node creation */
   db_txn_write_begin(txn);
   status_require(db_node_create(txn, values_1, (&id_1)));
   test_helper_assert("element id 1", (1 == db_id_element(id_1)));
@@ -274,27 +291,30 @@ status_t test_node_create(db_env_t* env) {
   test_helper_assert("element id 2", (2 == db_id_element(id_2)));
   db_txn_commit(txn);
   db_txn_begin(txn);
+  /* test node-get */
   status_require(db_node_get(txn, id_1, (&node_data_1)));
   field_data = db_node_data_ref(type, node_data_1, 1);
-  test_helper_assert("node-data-ref",
+  test_helper_assert("node-data-ref-2",
     ((sizeof(i8) == field_data.size) &&
       (value_2 == *((i8*)(field_data.data)))));
+  field_data = db_node_data_ref(type, node_data_1, 3);
+  test_helper_assert("node-data-ref-3",
+    ((5 == field_data.size) &&
+      (0 == memcmp(value_4, (field_data.data), (field_data.size)))));
+  status_require(db_node_get(txn, id_2, (&node_data_1)));
+  status = db_node_get(txn, 9999, (&node_data_1));
+  test_helper_assert(
+    "node-get non-existing", (db_status_id_no_more_data == status.id));
+  status.id = status_id_success;
   db_txn_abort(txn);
+/* test node-select */
 exit:
   db_txn_abort_if_active(txn);
   return (status);
 };
 int main() {
   test_helper_init(env);
-  test_helper_test_one(test_open_empty, env);
-  test_helper_test_one(test_statistics, env);
-  test_helper_test_one(test_id_construction, env);
-  test_helper_test_one(test_sequence, env);
-  test_helper_test_one(test_type_create_get_delete, env);
-  test_helper_test_one(test_type_create_many, env);
-  test_helper_test_one(test_open_nonempty, env);
-  test_helper_test_one(test_graph_read, env);
-  test_helper_test_one(test_graph_delete, env);
+  test_helper_test_one(test_node_create, env);
 exit:
   test_helper_report_status;
   return ((status.id));

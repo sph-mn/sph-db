@@ -122,18 +122,17 @@ db_node_data_ref(db_type_t* type, db_node_data_t data, db_fields_len_t field) {
     return (result);
   } else {
     /* variable length field */
-    offset = (type->fields_fixed_offsets)[(type->fields_fixed_count - 1)];
-    debug_log("offset %lu", offset);
+    offset = (type->fields_fixed_count
+        ? (type->fields_fixed_offsets)[type->fields_fixed_count]
+        : 0);
     if (offset < data.size) {
       data_temp = (offset + ((ui8*)(data.data)));
       end = (data.size + ((ui8*)(data.data)));
       i = type->fields_fixed_count;
-      debug_log("offset %lu", offset);
       /* variable length data is prefixed by its size */
       while (((i <= field) && (data_temp < end))) {
         size = *((db_data_len_t*)(data_temp));
         data_temp = (sizeof(db_data_len_t) + data_temp);
-        debug_log("size %lu", size);
         if (i == field) {
           result.data = data_temp;
           result.size = size;
