@@ -7,11 +7,11 @@ sph-db is a database as a shared library for storing records with relations like
 * license: lgpl3+
 
 # features
-* fully acid compliant, memory-mapped database that can grow to any size that fits on the local filesystem, unrestricted by available ram
+* acid compliant, memory-mapped database that can grow to any size that fits on the local filesystem, unrestricted by available ram
 * direct, high-speed interface using c data structures. no overhead from sql or similar query language parsing
-* nodes are records with identifiers for random access. they are of custom type, like tables in relational databases and indexable
-* relations are directed, labeled, ordered and small
-* read optimised design with full support for parallel database reads. database performance nearly matches the performance of lmdb. benchmarks for lmdb can be found [here](https://symas.com/lightning-memory-mapped-database/technical/).
+* nodes are records with identifiers for random access. they are of custom type, like tables in relational databases, and indexable
+* relations are directed, labeled, unidirectionally ordered and small
+* read-optimised design with full support for parallel database reads. database performance corresponds to the performance of lmdb. benchmarks for lmdb can be found [here](https://symas.com/lightning-memory-mapped-database/technical/).
 * written in c via [sc](https://github.com/sph-mn/sph-sc)
 
 # dependencies
@@ -51,7 +51,7 @@ the following examples assume this pattern of calling ``status_init`` beforehand
 
 ```c
 int main() {
-  status_init;
+  status_declare;
   // example code ...
 exit:
   return status.id;
@@ -62,45 +62,82 @@ exit:
 each database can only be open once per process. multiple processes can open the same database and multiple threads can generally use it.
 ```c
 dg_env_t env;
-status_require_x(db_open("/tmp/example", 0, &env));
+// database file will be created if not exists
+status_require(db_open("/tmp/example", 0, &env));
 // code that makes use of the database ...
 db_close(&env);
 ```
 
+## create node types
+```
+db_field_t fields[4];
+db_type_t* type;
+db_field_set(fields[0], db_field_type_int8, "test-field-1", 12);
+db_field_set(fields[1], db_field_type_int8, "test-field-2", 12);
+db_field_set(fields[2], db_field_type_string, "test-field-3", 12);
+db_field_set(fields[3], db_field_type_string, "test-field-4", 12);
+status_require(db_type_create(env, "test-type", fields, 4, 0, &type));
+```
+
+## create nodes
+db_txn_declare(env, txn);
+db_node_values_t values;
+db_id_t id;
+ui8 value_1;
+i8 value_2;
+ui8* value_3 = "abc";
+ui8* value_4 = "abcde";
+status_require(db_node_values_new(type, (&values)));
+value_1 = 11;
+value_2 = -128;
+db_node_values_set((&values_1), 0, &value_1, 0);
+db_node_values_set((&values_1), 1, &value_2, 0);
+db_node_values_set((&values_1), 2, value_3, 3);
+db_node_values_set((&values_1), 3, value_4, 5);
+db_txn_write_begin(txn);
+status_require(db_node_create(txn, values, &id));
+db_txn_commit();
+
+## read nodes
+```
+db_node_data_t node_data;
+db_node_data_t field_data;
+status_require(db_node_get(txn, id, &node_data));
+field_data = db_node_data_ref(type, node_data, 1);
+
+status_require(db_node_select(txn, ids_filter, type, offset, matcher, matcher_state, &state));
+status_require_read(db_node_next(state));
+field_data = db_node_ref(state, 0);
+```
+
 ## create relations
 ```c
-db_ids_t* ids_left = 0;
-db_ids_t* ids_right = 0;
-db_ids_t* ids_label = 0;
-db_txn_introduce;
+db_ids_t* left = 0;
+db_ids_t* right = 0;
+db_ids_t* label = 0;
+db_txn_declare(env txn);
+// store node-ids in left, right and label
 
-// create some nodes. node ids are needed to create relations.
-// in this example nodes of type "id" are created, which do not have data stored with them.
-// the second argument to db_id_create specifies how many new nodes should be created.
-db_txn_write_begin;
-status_require_x(db_id_create(db_txn, 1, &ids_left));
-status_require_x(db_id_create(db_txn, 1, &ids_right));
-// used as the labels of the relations. labels are ids of nodes
-status_require_x(db_id_create(db_txn, 1, &ids_label));
+db_txn_write_begin(txn);
 
 // create relations for each label between all the specified left and right nodes (relations = left * right * label)
-status_require_x(db_relation_ensure(db_txn, left, right, label, 0, 0));
-db_txn_commit;
+status_require(db_graph_ensure(txn, left, right, label, 0, 0));
+db_txn_commit(txn);
 
 exit:
-  if(db_txn) db_txn_abort;
+  if(db_txn_active(txn)) db_txn_abort(txn);
   // deallocate the id lists
-  db_ids_destroy(ids_left);
-  db_ids_destroy(ids_right);
-  db_ids_destroy(ids_label);
+  db_ids_destroy(left);
+  db_ids_destroy(right);
+  db_ids_destroy(label);
 ```
 
 ## read relations
 ```c
 db_ids_t* ids_left = 0;
 db_ids_t* ids_label = 0;
-db_relation_records_t* records = 0;
-db_relation_read_state_t state;
+db_graph_records_t* records = 0;
+db_graph_selection_t state;
 db_txn_introduce;
 
 // node ids to be used to filter
@@ -108,136 +145,36 @@ ids_left = db_ids_add(ids_left, 123);
 ids_label = db_ids_add(ids_label, 456);
 
 // select relations whose left side is in "ids_left" and label in "ids_label"
-status_require_x(db_relation_select(db_txn, ids_left, 0, ids_label, 0, 0, &state))
+status_require(db_graph_select(db_txn, ids_left, 0, ids_label, 0, 0, &state))
 
 // read 2 of the selected relations
-db_status_require_read_x(db_relation_read(&state, 2, &records));
+db_status_require_read(db_graph_read(&state, 2, &records));
 
 // read as many matching relations as there are left
-db_status_require_read_x(db_relation_read(&state, 0, &records));
+db_status_require_read(db_graph_read(&state, 0, &records));
 
-db_relation_selection_destroy(&state);
+db_graph_selection_destroy(&state);
 
 // display records. "ordinal" might not be set in the record unless the query uses a filter for a left value
 while(records) {
-  record = db_relation_records_first(records);
+  record = db_graph_records_first(records);
   printf("record: %lu %lu %lu %lu\n", record.left, record.label, record.ordinal, record.right);
-  records = db_relation_records_rest(records);
+  records = db_graph_records_rest(records);
 };
 
 exit:
   if(db_txn) db_txn_abort;
   db_ids_destroy(ids_left);
   db_ids_destroy(ids_label);
-  db_relation_records_destroy(records);
+  db_graph_records_destroy(records);
 ```
 
-## node type creation
-## node creation
-## relation creation
-## index creation
+## create indices
+## read nodes via indices
+index_select();
+node_index_select();
 
 # api
-*work in progress*
-
-## types
-```c
-db_id_t
-db_type_id_t
-db_ordinal_t
-db_txn_t
-status_i_t
-db_ordinal_t (*db_relation_ordinal_generator_t)(b0*)
-status_t (*db_relation_reader_t)(db_relation_read_state_t*,b32,db_relation_records_t**)
-status_t struct
-  status_i_t id;
-  uint8_t group;
-```
-
-## enum
-```c
-db_status_id_undefined, db_status_id_input_type, db_status_id_max_id,
-db_status_id_data_length, db_status_id_not_implemented, db_status_id_duplicate,
-db_status_id_memory, db_status_id_condition_unfulfilled, db_status_id_missing_argument_db_root,
-db_status_id_path_not_accessible_db_root, db_status_id_no_more_data, db_status_group_db,
-db_status_group_lmdb, db_status_group_libc
-```
-
-## routines
-```c
-db_ids_t* db_ids_add(db_ids_t* a, db_id_t value)
-db_ids_t* db_ids_drop(db_ids_t* a)
-db_open_options_t db_open_options_set_defaults(db_open_options_t* a)
-db_relation_records_t* db_relation_records_add(db_relation_records_t* a, db_relation_record_t value)
-db_relation_records_t* db_relation_records_drop(db_relation_records_t* a)
-size_t db_data_list_length(db_data_list_t* a)
-size_t db_data_records_length(db_data_records_t* a)
-size_t db_ids_length(db_ids_t* a)
-size_t db_relation_records_length(db_relation_records_t* a)
-status_t db_open(uint8_t* db_root_path, db_open_options_t* options)
-status_t db_node_read(db_node_read_state_t* state, uint32_t count, db_data_records_t** result)
-status_t db_node_select(db_txn_t* txn, uint8_t types, uint32_t offset, db_node_read_state_t* state)
-status_t db_relation_delete(db_txn_t* txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_match_data_t* ordinal)
-status_t db_relation_ensure(db_txn_t* txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_relation_ordinal_generator_t ordinal_generator, void* ordinal_generator_state)
-status_t db_relation_read(db_relation_read_state_t* state, uint32_t count, db_relation_records_t** result)
-status_t db_relation_select(db_txn_t* txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_match_data_t* ordinal, uint32_t offset, db_relation_read_state_t* result)
-status_t db_statistics(db_txn_t* txn, db_statistics_t* result)
-uint8_t* db_status_description(status_t a)
-uint8_t* db_status_group_id_to_name(status_i_t a)
-uint8_t* db_status_name(status_t a)
-void db_close(dg_env_t* env)
-void db_node_selection_destroy(db_node_read_state_t* state)
-void db_relation_selection_destroy(db_relation_read_state_t* state)
-```
-
-## macros
-```c
-db_data_list_first
-db_data_list_first_address
-db_data_list_rest
-db_data_records_first
-db_data_records_first_address
-db_data_records_rest
-db_id_compare(a, b)
-db_id_equal_p(a, b)
-db_ids_first
-db_ids_first_address
-db_ids_rest
-db_null
-db_ordinal_compare
-db_relation_records_first
-db_relation_records_first_address
-db_relation_records_rest
-db_status_require_read_x(expression)
-db_status_set_id_goto(status_id)
-db_status_success_if_mdb_notfound
-db_status_success_if_no_more_data
-db_txn_abort
-db_txn_begin
-db_txn_commit
-db_txn_write_begin
-status_failure_p
-status_goto
-status_group_undefined
-status_id_is_p(status_id)
-status_id_success
-status_init
-status_require
-status_require_x(expression)
-status_reset
-status_set_both(group_id, status_id)
-status_set_both_goto(group_id, status_id)
-status_set_group(group_id)
-status_set_group_goto(group_id)
-status_set_id(status_id)
-status_set_id_goto(status_id)
-status_success_p
-```
-
-## variables
-```c
-db_index_errors_relation_t db_index_errors_relation_null
-```
 
 # other language bindings
 * scheme: [sph-db-guile](https://github.com/sph-mn/sph-db-guile)
