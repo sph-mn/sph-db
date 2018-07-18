@@ -22,6 +22,11 @@
     db_node_values_set;
     db_node_create;
     db_node_delete;
+    db_node_select;
+    db_node_next;
+    db_node_skip;
+    db_node_exists;
+    db_node_selection_destroy;
     db_node_get;
     db_open;
     db_open_options_set_defaults;

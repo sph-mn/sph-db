@@ -237,12 +237,12 @@
       (data db-node-value-t*)
       (last db-fields-len-t)
       (type db-type-t*)))
-  db-node-matcher-t (type (function-pointer boolean db-id-t void* size-t))
   db-node-data-t
   (type
     (struct
       (data void*)
       (size size-t)))
+  db-node-matcher-t (type (function-pointer boolean db-id-t db-node-data-t void*))
   db-index-selection-t
   (type
     (struct
@@ -334,7 +334,13 @@
   (status-t db-txn-t db-id-t db-node-data-t*) (db-node-delete txn ids)
   (status-t db-txn-t db-ids-t*) (db-node-data-ref type data field)
   (db-node-data-t db-type-t* db-node-data-t db-fields-len-t) (db-node-ref state field)
-  (db-node-data-t db-node-selection-t* db-fields-len-t))
+  (db-node-data-t db-node-selection-t* db-fields-len-t) (db-node-exists txn ids result)
+  (status-t db-txn-t db-ids-t* boolean*)
+  (db-node-select txn ids type offset matcher matcher-state result-state)
+  (status-t db-txn-t db-ids-t* db-type-t* db-count-t db-node-matcher-t void* db-node-selection-t*)
+  (db-node-next state) (status-t db-node-selection-t*)
+  (db-node-skip state count) (status-t db-node-selection-t* db-count-t)
+  (db-node-selection-destroy state) (void db-node-selection-t*))
 
 (sc-include "main/lib/lmdb")
 

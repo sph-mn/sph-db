@@ -224,20 +224,21 @@
   ; todo: setting to big data for node value. add many nodes
   (db-txn-declare env txn)
   (declare
-    type db-type-t*
-    values-1 db-node-values-t
-    values-2 db-node-values-t
+    field-data db-node-data-t
     field-index db-fields-len-t
-    ;fields (array db-field-t 4)
-    value-1 ui8
-    size-1 size-t
-    size-2 size-t
-    value-2 i8
+    ids db-ids-t*
     id-1 db-id-t
     id-2 db-id-t
     node-data-1 db-node-data-t
     node-data-2 db-node-data-t
-    field-data db-node-data-t)
+    size-1 size-t
+    size-2 size-t
+    exists boolean
+    type db-type-t*
+    value-1 ui8
+    value-2 i8
+    values-1 db-node-values-t
+    values-2 db-node-values-t)
   (define value-3 ui8* (convert-type "abc" ui8*))
   (define value-4 ui8* (convert-type "abcde" ui8*))
   (status-require (test-helper-create-type-1 env &type))
@@ -325,17 +326,87 @@
   (set status (db-node-get txn 9999 &node-data-1))
   (test-helper-assert "node-get non-existing" (= db-status-id-no-more-data status.id))
   (set status.id status-id-success)
+  (sc-comment "test node-exists")
+  (set
+    ids (db-ids-add 0 id-1)
+    ids (db-ids-add ids id-2))
+  (status-require (db-node-exists txn ids &exists))
+  (test-helper-assert "node-exists exists" exists)
+  (set ids (db-ids-add ids 9999))
+  (status-require (db-node-exists txn ids &exists))
+  (test-helper-assert "node-exists does not exist" (not exists))
   (db-txn-abort txn)
-  (sc-comment "test node-select")
+  (label exit
+    (db-txn-abort-if-active txn)
+    (return status)))
+
+(define (node-matcher id data matcher-state) (boolean db-id-t db-node-data-t void*) (return #t))
+
+(define (test-node-select env) (status-t db-env-t*)
+  status-declare
+  (db-txn-declare env txn)
+  (declare
+    value-1 ui8
+    value-2 i8
+    matcher-state void*
+    node-ids (array db-id-t 4)
+    ids db-ids-t*
+    type db-type-t*
+    values-1 db-node-values-t
+    values-2 db-node-values-t
+    selection db-node-selection-t)
+  (define value-3 ui8* (convert-type "abc" ui8*))
+  (define value-4 ui8* (convert-type "abcde" ui8*))
+  (sc-comment "create nodes")
+  (status-require (test-helper-create-type-1 env &type))
+  (status-require (db-node-values-new type &values-1))
+  (status-require (db-node-values-new type &values-2))
+  (set
+    value-1 11
+    value-2 -128)
+  (db-node-values-set &values-1 0 &value-1 0)
+  (db-node-values-set &values-1 1 &value-2 0)
+  (db-node-values-set &values-1 2 value-3 3)
+  (db-node-values-set &values-1 3 value-4 5)
+  (db-node-values-set &values-2 0 &value-2 0)
+  (db-node-values-set &values-2 1 &value-1 0)
+  (db-node-values-set &values-2 2 value-3 3)
+  (db-txn-write-begin txn)
+  (status-require (db-node-create txn values-1 (address-of (array-get node-ids 0))))
+  (status-require (db-node-create txn values-1 (address-of (array-get node-ids 1))))
+  (status-require (db-node-create txn values-2 (address-of (array-get node-ids 2))))
+  (status-require (db-node-create txn values-2 (address-of (array-get node-ids 3))))
+  (db-txn-commit txn)
+  (db-txn-begin txn)
+  (sc-comment "type")
+  (status-require (db-node-select txn 0 type 0 0 0 &selection))
+  (db-node-selection-destroy &selection)
+  (sc-comment "ids")
+  (set
+    ids (db-ids-add 0 (array-get node-ids 0))
+    ids (db-ids-add ids 9999)
+    ids (db-ids-add ids (array-get node-ids 1))
+    ids (db-ids-add ids (array-get node-ids 2))
+    ids (db-ids-add ids (array-get node-ids 3)))
+  (status-require (db-node-select txn ids 0 0 0 0 &selection))
+  (db-node-selection-destroy &selection)
+  (sc-comment "matcher")
+  (set matcher-state 0)
+  (status-require (db-node-select txn 0 type 0 node-matcher matcher-state &selection))
+  (db-node-selection-destroy &selection)
+  (sc-comment "type and skip")
+  (status-require (db-node-select txn 0 type 0 0 0 &selection))
+  (status-require (db-node-skip &selection 2))
+  (db-node-selection-destroy &selection)
+  (db-txn-abort txn)
   #;(
-  (db-node-select txn ids type offset matcher matcher-state result-state)
   (status-t db-txn-t db-ids-t* db-type-t* db-count-t db-node-matcher-t void* db-node-selection-t*)
   (db-node-skip state count) (status-t db-node-selection-t* db-count-t)
   (db-node-next state) (status-t db-node-selection-t*)
   (db-node-delete txn ids) (status-t db-txn-t db-ids-t*)
   (db-node-update txn id values) (status-t db-txn-t db-id-t db-node-values-t)
   (db-node-selection-destroy state) (void db-node-selection-t*)
-  (db-node-exists txn ids result) (status-t db-txn-t db-ids-t* boolean*)
+  (db-node-exists txn ids result)(status-t db-txn-t db-ids-t* boolean*)
   )
   (label exit
     (db-txn-abort-if-active txn)
@@ -352,7 +423,8 @@
   ;(test-helper-test-one test-open-nonempty env)
   ;(test-helper-test-one test-graph-read env)
   ;(test-helper-test-one test-graph-delete env)
-  (test-helper-test-one test-node-create env)
+  ;(test-helper-test-one test-node-create env)
+  (test-helper-test-one test-node-select env)
   (label exit
     test-helper-report-status
     (return status.id)))

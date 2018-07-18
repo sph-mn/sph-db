@@ -186,9 +186,11 @@ status_t db_node_next(db_node_selection_t* state) {
   MDB_val val_data;
   db_node_matcher_t matcher;
   void* matcher_state;
+  db_node_data_t node_data;
   db_id_t id;
   db_ids_t* ids;
   boolean skip;
+  boolean match;
   db_type_id_t type_id;
   matcher = state->matcher;
   matcher_state = state->matcher_state;
@@ -203,14 +205,19 @@ status_t db_node_next(db_node_selection_t* state) {
       status.id =
         mdb_cursor_get((state->cursor), (&val_id), (&val_data), MDB_SET_KEY);
       if (db_mdb_status_is_success) {
-        if (!matcher ||
-          matcher(db_ids_first(ids), (val_data.mv_data), (val_data.mv_size))) {
+        if (matcher) {
+          node_data.data = val_data.mv_data;
+          node_data.size = val_data.mv_size;
+          match = matcher(db_ids_first(ids), node_data, matcher_state);
+        } else {
+          match = 1;
+        };
+        if (match) {
           if (!skip) {
             state->current.data = val_data.mv_data;
             state->current.size = val_data.mv_size;
             state->current_id = db_ids_first(ids);
           };
-        } else {
           count = (count - 1);
         };
       } else {
@@ -231,14 +238,19 @@ status_t db_node_next(db_node_selection_t* state) {
     };
     while ((db_mdb_status_is_success && count &&
       (type_id == db_id_type((db_pointer_to_id((val_id.mv_data))))))) {
-      if (!matcher ||
-        matcher(db_ids_first(ids), (val_data.mv_data), (val_data.mv_size))) {
+      if (matcher) {
+        node_data.data = val_data.mv_data;
+        node_data.size = val_data.mv_size;
+        match = matcher(db_ids_first(ids), node_data, matcher_state);
+      } else {
+        match = 1;
+      };
+      if (match) {
         if (!skip) {
           state->current.data = val_data.mv_data;
           state->current.size = val_data.mv_size;
           state->current_id = db_ids_first(ids);
         };
-      } else {
         count = (count - 1);
       };
       status.id =

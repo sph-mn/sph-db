@@ -188,9 +188,11 @@
     val-data MDB-val
     matcher db-node-matcher-t
     matcher-state void*
+    node-data db-node-data-t
     id db-id-t
     ids db-ids-t*
     skip boolean
+    match boolean
     type-id db-type-id-t)
   (set
     matcher state:matcher
@@ -207,13 +209,21 @@
           val-id.mv-data (db-ids-first-address ids)
           status.id (mdb-cursor-get state:cursor &val-id &val-data MDB-SET-KEY))
         (if db-mdb-status-is-success
-          (if (or (not matcher) (matcher (db-ids-first ids) val-data.mv-data val-data.mv-size))
-            (if (not skip)
+          (begin
+            (if matcher
               (set
-                state:current.data val-data.mv-data
-                state:current.size val-data.mv-size
-                state:current-id (db-ids-first ids)))
-            (set count (- count 1)))
+                node-data.data val-data.mv-data
+                node-data.size val-data.mv-size
+                match (matcher (db-ids-first ids) node-data matcher-state))
+              (set match #t))
+            (if match
+              (begin
+                (if (not skip)
+                  (set
+                    state:current.data val-data.mv-data
+                    state:current.size val-data.mv-size
+                    state:current-id (db-ids-first ids)))
+                (set count (- count 1)))))
           db-mdb-status-expect-notfound)
         (set ids (db-ids-rest ids)))
       (goto exit))
@@ -229,13 +239,20 @@
       (while
         (and
           db-mdb-status-is-success count (= type-id (db-id-type (db-pointer->id val-id.mv-data))))
-        (if (or (not matcher) (matcher (db-ids-first ids) val-data.mv-data val-data.mv-size))
-          (if (not skip)
-            (set
-              state:current.data val-data.mv-data
-              state:current.size val-data.mv-size
-              state:current-id (db-ids-first ids)))
-          (set count (- count 1)))
+        (if matcher
+          (set
+            node-data.data val-data.mv-data
+            node-data.size val-data.mv-size
+            match (matcher (db-ids-first ids) node-data matcher-state))
+          (set match #t))
+        (if match
+          (begin
+            (if (not skip)
+              (set
+                state:current.data val-data.mv-data
+                state:current.size val-data.mv-size
+                state:current-id (db-ids-first ids)))
+            (set count (- count 1))))
         (set status.id (mdb-cursor-get state:cursor &val-id &val-null MDB-NEXT-NODUP)))
       (if (not db-mdb-status-is-success) db-mdb-status-expect-notfound)))
   (label exit

@@ -221,19 +221,21 @@ void debug_display_array_ui8(ui8* a, size_t size) {
 status_t test_node_create(db_env_t* env) {
   status_declare;
   db_txn_declare(env, txn);
-  db_type_t* type;
-  db_node_values_t values_1;
-  db_node_values_t values_2;
+  db_node_data_t field_data;
   db_fields_len_t field_index;
-  ui8 value_1;
-  size_t size_1;
-  size_t size_2;
-  i8 value_2;
+  db_ids_t* ids;
   db_id_t id_1;
   db_id_t id_2;
   db_node_data_t node_data_1;
   db_node_data_t node_data_2;
-  db_node_data_t field_data;
+  size_t size_1;
+  size_t size_2;
+  boolean exists;
+  db_type_t* type;
+  ui8 value_1;
+  i8 value_2;
+  db_node_values_t values_1;
+  db_node_values_t values_2;
   ui8* value_3 = ((ui8*)("abc"));
   ui8* value_4 = ((ui8*)("abcde"));
   status_require(test_helper_create_type_1(env, (&type)));
@@ -306,15 +308,84 @@ status_t test_node_create(db_env_t* env) {
   test_helper_assert(
     "node-get non-existing", (db_status_id_no_more_data == status.id));
   status.id = status_id_success;
+  /* test node-exists */
+  ids = db_ids_add(0, id_1);
+  ids = db_ids_add(ids, id_2);
+  status_require(db_node_exists(txn, ids, (&exists)));
+  test_helper_assert("node-exists exists", exists);
+  ids = db_ids_add(ids, 9999);
+  status_require(db_node_exists(txn, ids, (&exists)));
+  test_helper_assert("node-exists does not exist", !exists);
   db_txn_abort(txn);
-/* test node-select */
+exit:
+  db_txn_abort_if_active(txn);
+  return (status);
+};
+boolean node_matcher(db_id_t id, db_node_data_t data, void* matcher_state) {
+  return (1);
+};
+status_t test_node_select(db_env_t* env) {
+  status_declare;
+  db_txn_declare(env, txn);
+  ui8 value_1;
+  i8 value_2;
+  void* matcher_state;
+  db_id_t node_ids[4];
+  db_ids_t* ids;
+  db_type_t* type;
+  db_node_values_t values_1;
+  db_node_values_t values_2;
+  db_node_selection_t selection;
+  ui8* value_3 = ((ui8*)("abc"));
+  ui8* value_4 = ((ui8*)("abcde"));
+  /* create nodes */
+  status_require(test_helper_create_type_1(env, (&type)));
+  status_require(db_node_values_new(type, (&values_1)));
+  status_require(db_node_values_new(type, (&values_2)));
+  value_1 = 11;
+  value_2 = -128;
+  db_node_values_set((&values_1), 0, (&value_1), 0);
+  db_node_values_set((&values_1), 1, (&value_2), 0);
+  db_node_values_set((&values_1), 2, value_3, 3);
+  db_node_values_set((&values_1), 3, value_4, 5);
+  db_node_values_set((&values_2), 0, (&value_2), 0);
+  db_node_values_set((&values_2), 1, (&value_1), 0);
+  db_node_values_set((&values_2), 2, value_3, 3);
+  db_txn_write_begin(txn);
+  status_require((db_node_create(txn, values_1, (&(node_ids[0])))));
+  status_require((db_node_create(txn, values_1, (&(node_ids[1])))));
+  status_require((db_node_create(txn, values_2, (&(node_ids[2])))));
+  status_require((db_node_create(txn, values_2, (&(node_ids[3])))));
+  db_txn_commit(txn);
+  db_txn_begin(txn);
+  /* type */
+  status_require(db_node_select(txn, 0, type, 0, 0, 0, (&selection)));
+  db_node_selection_destroy((&selection));
+  /* ids */
+  ids = db_ids_add(0, (node_ids[0]));
+  ids = db_ids_add(ids, 9999);
+  ids = db_ids_add(ids, (node_ids[1]));
+  ids = db_ids_add(ids, (node_ids[2]));
+  ids = db_ids_add(ids, (node_ids[3]));
+  status_require(db_node_select(txn, ids, 0, 0, 0, 0, (&selection)));
+  db_node_selection_destroy((&selection));
+  /* matcher */
+  matcher_state = 0;
+  status_require(
+    db_node_select(txn, 0, type, 0, node_matcher, matcher_state, (&selection)));
+  db_node_selection_destroy((&selection));
+  /* type and skip */
+  status_require(db_node_select(txn, 0, type, 0, 0, 0, (&selection)));
+  status_require(db_node_skip((&selection), 2));
+  db_node_selection_destroy((&selection));
+  db_txn_abort(txn);
 exit:
   db_txn_abort_if_active(txn);
   return (status);
 };
 int main() {
   test_helper_init(env);
-  test_helper_test_one(test_node_create, env);
+  test_helper_test_one(test_node_select, env);
 exit:
   test_helper_report_status;
   return ((status.id));

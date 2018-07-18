@@ -462,11 +462,11 @@ typedef struct {
   db_fields_len_t last;
   db_type_t* type;
 } db_node_values_t;
-typedef boolean (*db_node_matcher_t)(db_id_t, void*, size_t);
 typedef struct {
   void* data;
   size_t size;
 } db_node_data_t;
+typedef boolean (*db_node_matcher_t)(db_id_t, db_node_data_t, void*);
 typedef struct {
   db_id_t current;
   MDB_cursor* cursor;
@@ -580,6 +580,17 @@ status_t db_node_delete(db_txn_t txn, db_ids_t* ids);
 db_node_data_t
 db_node_data_ref(db_type_t* type, db_node_data_t data, db_fields_len_t field);
 db_node_data_t db_node_ref(db_node_selection_t* state, db_fields_len_t field);
+status_t db_node_exists(db_txn_t txn, db_ids_t* ids, boolean* result);
+status_t db_node_select(db_txn_t txn,
+  db_ids_t* ids,
+  db_type_t* type,
+  db_count_t offset,
+  db_node_matcher_t matcher,
+  void* matcher_state,
+  db_node_selection_t* result_state);
+status_t db_node_next(db_node_selection_t* state);
+status_t db_node_skip(db_node_selection_t* state, db_count_t count);
+void db_node_selection_destroy(db_node_selection_t* state);
 #include <string.h>
 /* lmdb helpers */
 #define db_mdb_status_is_notfound (MDB_NOTFOUND == status.id)
