@@ -181,7 +181,6 @@ exit:
 status_t db_node_next(db_node_selection_t* state) {
   status_declare;
   db_mdb_declare_val_id;
-  db_mdb_declare_val_null;
   db_count_t count;
   MDB_val val_data;
   db_node_matcher_t matcher;
@@ -194,12 +193,37 @@ status_t db_node_next(db_node_selection_t* state) {
   db_type_id_t type_id;
   matcher = state->matcher;
   matcher_state = state->matcher_state;
-  type_id = state->type->id;
-  ids = state->ids;
   skip = (state->options & db_selection_flag_skip);
   count = state->count;
-  if (ids) {
-    /* filter ids */
+  if (state->type) {
+    /* filter by type */
+    type_id = state->type->id;
+    db_mdb_status_require((mdb_cursor_get(
+      (state->cursor), (&val_id), (&val_data), MDB_GET_CURRENT)));
+    while ((db_mdb_status_is_success && count &&
+      (type_id == db_id_type((db_pointer_to_id((val_id.mv_data))))))) {
+      if (matcher) {
+        node_data.data = val_data.mv_data;
+        node_data.size = val_data.mv_size;
+        match = matcher(
+          (db_pointer_to_id((val_id.mv_data))), node_data, matcher_state);
+      } else {
+        match = 1;
+      };
+      if (match) {
+        if (!skip) {
+          state->current.data = val_data.mv_data;
+          state->current.size = val_data.mv_size;
+          state->current_id = db_pointer_to_id((val_id.mv_data));
+        };
+        count = (count - 1);
+      };
+      status.id =
+        mdb_cursor_get((state->cursor), (&val_id), (&val_data), MDB_NEXT_NODUP);
+    };
+  } else {
+    /* filter by ids */
+    ids = state->ids;
     while ((ids && count)) {
       val_id.mv_data = db_ids_first_address(ids);
       status.id =
@@ -214,9 +238,11 @@ status_t db_node_next(db_node_selection_t* state) {
         };
         if (match) {
           if (!skip) {
+            id = db_pointer_to_id((val_id.mv_data));
+            state->type = db_type_get_by_id((state->env), db_id_type(id));
             state->current.data = val_data.mv_data;
             state->current.size = val_data.mv_size;
-            state->current_id = db_ids_first(ids);
+            state->current_id = id;
           };
           count = (count - 1);
         };
@@ -225,44 +251,10 @@ status_t db_node_next(db_node_selection_t* state) {
       };
       ids = db_ids_rest(ids);
     };
-    goto exit;
-  } else {
-    /* filter type */
-    db_mdb_status_require((mdb_cursor_get(
-      (state->cursor), (&val_id), (&val_null), MDB_GET_CURRENT)));
-    if (!(type_id == db_id_type((db_pointer_to_id((val_id.mv_data)))))) {
-      id = db_id_add_type(0, type_id);
-      val_id.mv_data = &id;
-      status.id =
-        mdb_cursor_get((state->cursor), (&val_id), (&val_null), MDB_SET_RANGE);
-    };
-    while ((db_mdb_status_is_success && count &&
-      (type_id == db_id_type((db_pointer_to_id((val_id.mv_data))))))) {
-      if (matcher) {
-        node_data.data = val_data.mv_data;
-        node_data.size = val_data.mv_size;
-        match = matcher(db_ids_first(ids), node_data, matcher_state);
-      } else {
-        match = 1;
-      };
-      if (match) {
-        if (!skip) {
-          state->current.data = val_data.mv_data;
-          state->current.size = val_data.mv_size;
-          state->current_id = db_ids_first(ids);
-        };
-        count = (count - 1);
-      };
-      status.id =
-        mdb_cursor_get((state->cursor), (&val_id), (&val_null), MDB_NEXT_NODUP);
-    };
-    if (!db_mdb_status_is_success) {
-      db_mdb_status_expect_notfound;
-    };
+    state->ids = ids;
   };
 exit:
   db_mdb_status_no_more_data_if_notfound;
-  state->ids = ids;
   return (status);
 };
 /** read the next count matches and position state afterwards */
@@ -290,11 +282,24 @@ status_t db_node_select(db_txn_t txn,
   void* matcher_state,
   db_node_selection_t* result_state) {
   status_declare;
+  db_mdb_declare_val_id;
   db_mdb_declare_val_null;
   db_mdb_cursor_declare(nodes);
+  db_id_t id;
   db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
-  db_mdb_status_require(
-    mdb_cursor_get(nodes, (&val_null), (&val_null), MDB_FIRST));
+  /* if ids filter set just check if database is empty */
+  if (ids) {
+    db_mdb_status_require(
+      mdb_cursor_get(nodes, (&val_null), (&val_null), MDB_FIRST));
+  } else {
+    id = db_id_add_type(0, (type->id));
+    val_id.mv_data = &id;
+    db_mdb_status_require(
+      mdb_cursor_get(nodes, (&val_id), (&val_null), MDB_SET_RANGE));
+    if (!(type->id == db_id_type((db_pointer_to_id((val_id.mv_data)))))) {
+      status_set_id_goto(db_status_id_no_more_data);
+    };
+  };
   result_state->cursor = nodes;
   result_state->count = 1;
   result_state->ids = ids;
@@ -306,7 +311,7 @@ status_t db_node_select(db_txn_t txn,
     status = db_node_skip(result_state, offset);
   };
 exit:
-  if (!db_mdb_status_is_success) {
+  if (!status_is_success) {
     mdb_cursor_close(nodes);
     db_mdb_status_no_more_data_if_notfound;
   };

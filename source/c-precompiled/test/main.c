@@ -333,6 +333,7 @@ status_t test_node_select(db_env_t* env) {
   db_id_t node_ids[4];
   db_ids_t* ids;
   db_type_t* type;
+  db_node_data_t data;
   db_node_values_t values_1;
   db_node_values_t values_2;
   db_node_selection_t selection;
@@ -348,7 +349,7 @@ status_t test_node_select(db_env_t* env) {
   db_node_values_set((&values_1), 1, (&value_2), 0);
   db_node_values_set((&values_1), 2, value_3, 3);
   db_node_values_set((&values_1), 3, value_4, 5);
-  db_node_values_set((&values_2), 0, (&value_2), 0);
+  db_node_values_set((&values_2), 0, (&value_1), 0);
   db_node_values_set((&values_2), 1, (&value_1), 0);
   db_node_values_set((&values_2), 2, value_3, 3);
   db_txn_write_begin(txn);
@@ -360,6 +361,18 @@ status_t test_node_select(db_env_t* env) {
   db_txn_begin(txn);
   /* type */
   status_require(db_node_select(txn, 0, type, 0, 0, 0, (&selection)));
+  status_require(db_node_next((&selection)));
+  data = db_node_ref((&selection), 0);
+  test_helper_assert("node-ref size", (1 == data.size));
+  test_helper_assert("node-ref value", (value_1 == *((ui8*)(data.data))));
+  test_helper_assert("current id set", (db_id_element((selection.current_id))));
+  status_require(db_node_next((&selection)));
+  data = db_node_ref((&selection), 0);
+  status_require(db_node_next((&selection)));
+  status = db_node_next((&selection));
+  test_helper_assert(
+    "all type entries found", (db_status_id_no_more_data == status.id));
+  status.id = status_id_success;
   db_node_selection_destroy((&selection));
   /* ids */
   ids = db_ids_add(0, (node_ids[0]));
@@ -368,6 +381,8 @@ status_t test_node_select(db_env_t* env) {
   ids = db_ids_add(ids, (node_ids[2]));
   ids = db_ids_add(ids, (node_ids[3]));
   status_require(db_node_select(txn, ids, 0, 0, 0, 0, (&selection)));
+  status_require(db_node_next((&selection)));
+  data = db_node_ref((&selection), 3);
   db_node_selection_destroy((&selection));
   /* matcher */
   matcher_state = 0;

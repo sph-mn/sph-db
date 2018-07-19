@@ -265,6 +265,7 @@
       (current db-node-data-t)
       (current-id db-id-t)
       (cursor MDB-cursor*)
+      (env db-env-t*)
       (ids db-ids-t*)
       (matcher db-node-matcher-t)
       (matcher-state void*)

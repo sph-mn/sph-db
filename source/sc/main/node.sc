@@ -182,7 +182,6 @@
 (define (db-node-next state) (status-t db-node-selection-t*)
   status-declare
   db-mdb-declare-val-id
-  db-mdb-declare-val-null
   (declare
     count db-count-t
     val-data MDB-val
@@ -197,13 +196,34 @@
   (set
     matcher state:matcher
     matcher-state state:matcher-state
-    type-id state:type:id
-    ids state:ids
     skip (bit-and state:options db-selection-flag-skip)
     count state:count)
-  (if ids
+  (if state:type
     (begin
-      (sc-comment "filter ids")
+      (sc-comment "filter by type")
+      (set type-id state:type:id)
+      (db-mdb-status-require (mdb-cursor-get state:cursor &val-id &val-data MDB-GET-CURRENT))
+      (while
+        (and
+          db-mdb-status-is-success count (= type-id (db-id-type (db-pointer->id val-id.mv-data))))
+        (if matcher
+          (set
+            node-data.data val-data.mv-data
+            node-data.size val-data.mv-size
+            match (matcher (db-pointer->id val-id.mv-data) node-data matcher-state))
+          (set match #t))
+        (if match
+          (begin
+            (if (not skip)
+              (set
+                state:current.data val-data.mv-data
+                state:current.size val-data.mv-size
+                state:current-id (db-pointer->id val-id.mv-data)))
+            (set count (- count 1))))
+        (set status.id (mdb-cursor-get state:cursor &val-id &val-data MDB-NEXT-NODUP))))
+    (begin
+      (sc-comment "filter by ids")
+      (set ids state:ids)
       (while (and ids count)
         (set
           val-id.mv-data (db-ids-first-address ids)
@@ -220,44 +240,17 @@
               (begin
                 (if (not skip)
                   (set
+                    id (db-pointer->id val-id.mv-data)
+                    state:type (db-type-get-by-id state:env (db-id-type id))
                     state:current.data val-data.mv-data
                     state:current.size val-data.mv-size
-                    state:current-id (db-ids-first ids)))
+                    state:current-id id))
                 (set count (- count 1)))))
           db-mdb-status-expect-notfound)
         (set ids (db-ids-rest ids)))
-      (goto exit))
-    (begin
-      (sc-comment "filter type")
-      (db-mdb-status-require (mdb-cursor-get state:cursor &val-id &val-null MDB-GET-CURRENT))
-      (if (not (= type-id (db-id-type (db-pointer->id val-id.mv-data))))
-        (begin
-          (set
-            id (db-id-add-type 0 type-id)
-            val-id.mv-data &id)
-          (set status.id (mdb-cursor-get state:cursor &val-id &val-null MDB-SET-RANGE))))
-      (while
-        (and
-          db-mdb-status-is-success count (= type-id (db-id-type (db-pointer->id val-id.mv-data))))
-        (if matcher
-          (set
-            node-data.data val-data.mv-data
-            node-data.size val-data.mv-size
-            match (matcher (db-ids-first ids) node-data matcher-state))
-          (set match #t))
-        (if match
-          (begin
-            (if (not skip)
-              (set
-                state:current.data val-data.mv-data
-                state:current.size val-data.mv-size
-                state:current-id (db-ids-first ids)))
-            (set count (- count 1))))
-        (set status.id (mdb-cursor-get state:cursor &val-id &val-null MDB-NEXT-NODUP)))
-      (if (not db-mdb-status-is-success) db-mdb-status-expect-notfound)))
+      (set state:ids ids)))
   (label exit
     db-mdb-status-no-more-data-if-notfound
-    (set state:ids ids)
     (return status)))
 
 (define (db-node-skip state count) (status-t db-node-selection-t* db-count-t)
@@ -280,10 +273,20 @@
   matcher: zero if unused. a function that is called for each node after filtering by ids or type
   matcher-state: zero if unused. a pointer passed to each call of matcher"
   status-declare
+  db-mdb-declare-val-id
   db-mdb-declare-val-null
   (db-mdb-cursor-declare nodes)
+  (declare id db-id-t)
   (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
-  (db-mdb-status-require (mdb-cursor-get nodes &val-null &val-null MDB-FIRST))
+  (sc-comment "if ids filter set just check if database is empty")
+  (if ids (db-mdb-status-require (mdb-cursor-get nodes &val-null &val-null MDB-FIRST))
+    (begin
+      (set
+        id (db-id-add-type 0 type:id)
+        val-id.mv-data &id)
+      (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-null MDB-SET-RANGE))
+      (if (not (= type:id (db-id-type (db-pointer->id val-id.mv-data))))
+        (status-set-id-goto db-status-id-no-more-data))))
   (set
     result-state:cursor nodes
     result-state:count 1
@@ -294,7 +297,7 @@
     result-state:type type)
   (if offset (set status (db-node-skip result-state offset)))
   (label exit
-    (if (not db-mdb-status-is-success)
+    (if (not status-is-success)
       (begin
         (mdb-cursor-close nodes)
         db-mdb-status-no-more-data-if-notfound))

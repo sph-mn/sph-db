@@ -482,6 +482,7 @@ typedef struct {
   db_node_data_t current;
   db_id_t current_id;
   MDB_cursor* cursor;
+  db_env_t* env;
   db_ids_t* ids;
   db_node_matcher_t matcher;
   void* matcher_state;

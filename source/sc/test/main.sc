@@ -352,6 +352,7 @@
     node-ids (array db-id-t 4)
     ids db-ids-t*
     type db-type-t*
+    data db-node-data-t
     values-1 db-node-values-t
     values-2 db-node-values-t
     selection db-node-selection-t)
@@ -368,7 +369,7 @@
   (db-node-values-set &values-1 1 &value-2 0)
   (db-node-values-set &values-1 2 value-3 3)
   (db-node-values-set &values-1 3 value-4 5)
-  (db-node-values-set &values-2 0 &value-2 0)
+  (db-node-values-set &values-2 0 &value-1 0)
   (db-node-values-set &values-2 1 &value-1 0)
   (db-node-values-set &values-2 2 value-3 3)
   (db-txn-write-begin txn)
@@ -380,6 +381,17 @@
   (db-txn-begin txn)
   (sc-comment "type")
   (status-require (db-node-select txn 0 type 0 0 0 &selection))
+  (status-require (db-node-next &selection))
+  (set data (db-node-ref &selection 0))
+  (test-helper-assert "node-ref size" (= 1 data.size))
+  (test-helper-assert "node-ref value" (= value-1 (pointer-get (convert-type data.data ui8*))))
+  (test-helper-assert "current id set" (db-id-element selection.current-id))
+  (status-require (db-node-next &selection))
+  (set data (db-node-ref &selection 0))
+  (status-require (db-node-next &selection))
+  (set status (db-node-next &selection))
+  (test-helper-assert "all type entries found" (= db-status-id-no-more-data status.id))
+  (set status.id status-id-success)
   (db-node-selection-destroy &selection)
   (sc-comment "ids")
   (set
@@ -389,6 +401,8 @@
     ids (db-ids-add ids (array-get node-ids 2))
     ids (db-ids-add ids (array-get node-ids 3)))
   (status-require (db-node-select txn ids 0 0 0 0 &selection))
+  (status-require (db-node-next &selection))
+  (set data (db-node-ref &selection 3))
   (db-node-selection-destroy &selection)
   (sc-comment "matcher")
   (set matcher-state 0)
@@ -401,12 +415,9 @@
   (db-txn-abort txn)
   #;(
   (status-t db-txn-t db-ids-t* db-type-t* db-count-t db-node-matcher-t void* db-node-selection-t*)
-  (db-node-skip state count) (status-t db-node-selection-t* db-count-t)
   (db-node-next state) (status-t db-node-selection-t*)
   (db-node-delete txn ids) (status-t db-txn-t db-ids-t*)
   (db-node-update txn id values) (status-t db-txn-t db-id-t db-node-values-t)
-  (db-node-selection-destroy state) (void db-node-selection-t*)
-  (db-node-exists txn ids result)(status-t db-txn-t db-ids-t* boolean*)
   )
   (label exit
     (db-txn-abort-if-active txn)

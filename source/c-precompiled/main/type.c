@@ -1,4 +1,4 @@
-#define db_type_get_by_id(env, id) (id + env->types)
+#define db_type_get_by_id(env, type_id) (type_id + env->types)
 /** extend the size of the types array if type-id is an index out of bounds */
 status_t db_env_types_extend(db_env_t* env, db_type_id_t type_id) {
   status_declare;

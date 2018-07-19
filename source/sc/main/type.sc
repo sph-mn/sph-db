@@ -1,4 +1,4 @@
-(pre-define (db-type-get-by-id env id) (+ id env:types))
+(pre-define (db-type-get-by-id env type-id) (+ type-id env:types))
 
 (define (db-env-types-extend env type-id) (status-t db-env-t* db-type-id-t)
   "extend the size of the types array if type-id is an index out of bounds"
