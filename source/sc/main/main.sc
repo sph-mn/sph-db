@@ -1,4 +1,4 @@
-(pre-include "./sph-db.h" "../foreign/sph/one.c" "math.h")
+(pre-include "./sph-db.h" "../foreign/sph/one.c" "math.h" "./lib/lmdb.c")
 
 (pre-define
   (free-and-set-null a)
@@ -58,6 +58,29 @@
     (memcpy temp (array-get strings index) (strlen (array-get strings index))))
   (if result-size (set *result-size size))
   (return result))
+
+(define (db-txn-begin a) (status-t db-txn-t*)
+  status-declare
+  (db-mdb-status-require (mdb-txn-begin a:env:mdb-env 0 MDB-RDONLY &a:mdb-txn))
+  (label exit
+    (return status)))
+
+(define (db-txn-write-begin a) (status-t db-txn-t*)
+  status-declare
+  (db-mdb-status-require (mdb-txn-begin a:env:mdb-env 0 0 &a:mdb-txn))
+  (label exit
+    (return status)))
+
+(define (db-txn-abort a) (void db-txn-t*)
+  (mdb-txn-abort a:mdb-txn)
+  (set a:mdb-txn 0))
+
+(define (db-txn-commit a) (status-t db-txn-t*)
+  status-declare
+  (db-mdb-status-require (mdb-txn-commit a:mdb-txn))
+  (set a:mdb-txn 0)
+  (label exit
+    (return status)))
 
 (define (db-debug-log-ids a) (void db-ids-t*)
   "display an ids list"

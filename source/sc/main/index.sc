@@ -129,7 +129,7 @@
     type *index:type
     id (db-id-add-type 0 type.id)
     val-id.mv-data &id)
-  (db-txn-write-begin txn)
+  (status-require (db-txn-write-begin &txn))
   (db-mdb-status-require (mdb-cursor-open txn.mdb-txn index:dbi &index-cursor))
   (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
   (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-data MDB-SET-KEY))
@@ -146,7 +146,7 @@
     (db-free-node-values &values)
     (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-data MDB-NEXT-NODUP)))
   (if (not (or db-mdb-status-is-success db-mdb-status-is-notfound)) (goto exit))
-  (db-txn-commit txn)
+  (status-require (db-txn-commit &txn))
   (label exit
     (db-mdb-cursor-close-if-active index-cursor)
     (db-mdb-cursor-close-if-active nodes)
@@ -179,13 +179,13 @@
     (db-index-system-key type:id fields fields-len &val-data.mv-data &val-data.mv-size))
   (status-require (db-index-name type:id fields fields-len &name &name-len))
   (sc-comment "add to system btree")
-  (db-txn-write-begin txn)
+  (status-require (db-txn-write-begin &txn))
   (db-mdb-status-require (db-mdb-env-cursor-open txn system))
   (db-mdb-status-require (mdb-cursor-put system &val-data &val-null 0))
   (db-mdb-cursor-close system)
   (sc-comment "add data btree")
   (db-mdb-status-require (mdb-dbi-open txn.mdb-txn name MDB-CREATE &node-index.dbi))
-  (db-txn-commit txn)
+  (status-require (db-txn-commit &txn))
   (sc-comment "update cache")
   (db-realloc type:indices indices (+ (sizeof db-index-t) type:indices-len))
   (set node-index (array-get type:indices type:indices-len))
@@ -212,7 +212,7 @@
   (status-require
     (db-index-system-key
       index:type:id index:fields index:fields-len &val-data.mv-data &val-data.mv-size))
-  (db-txn-write-begin txn)
+  (status-require (db-txn-write-begin &txn))
   (sc-comment "remove data btree")
   (db-mdb-status-require (mdb-drop txn.mdb-txn index:dbi 1))
   (sc-comment "remove from system btree")
@@ -221,7 +221,7 @@
   (if db-mdb-status-is-success (db-mdb-status-require (mdb-cursor-del system 0))
     db-mdb-status-expect-notfound)
   (db-mdb-cursor-close system)
-  (db-txn-commit txn)
+  (status-require (db-txn-commit &txn))
   (sc-comment "update cache")
   (free index:fields)
   (set
@@ -243,10 +243,10 @@
     name-len size-t)
   (set name 0)
   (status-require (db-index-name index:type:id index:fields index:fields-len &name &name-len))
-  (db-txn-write-begin txn)
+  (status-require (db-txn-write-begin &txn))
   (db-mdb-status-require (mdb-drop txn.mdb-txn index:dbi 0))
   (db-mdb-status-require (mdb-dbi-open txn.mdb-txn name MDB-CREATE &index:dbi))
-  (db-txn-commit txn)
+  (status-require (db-txn-commit &txn))
   (label exit
     (free name)
     (return (db-index-build env index))))
@@ -330,7 +330,7 @@
     type *index:type
     id (db-id-add-type 0 type.id)
     val-id.mv-data &id)
-  (db-txn-write-begin txn)
+  (status-require (db-txn-write-begin &txn))
   (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
   (set status.id (mdb-cursor-get nodes &val-id &val-data MDB-SET-KEY))
   (while (and db-mdb-status-is-success (= type.id (db-id-type (db-pointer->id val-id.mv-data))))
@@ -342,7 +342,7 @@
     (db-free-node-values &values)
     (set status.id (mdb-cursor-get nodes &val-id &val-data MDB-NEXT-NODUP)))
   (if (not db-mdb-status-is-success) db-mdb-status-expect-notfound)
-  (db-txn-commit txn)
+  (status-require (db-txn-commit &txn))
   (label exit
     (db-mdb-cursor-close-if-active nodes)
     (db-txn-abort-if-active txn)

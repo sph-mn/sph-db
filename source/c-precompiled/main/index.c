@@ -135,7 +135,7 @@ status_t db_index_build(db_env_t* env, db_index_t* index) {
   type = *(index->type);
   id = db_id_add_type(0, (type.id));
   val_id.mv_data = &id;
-  db_txn_write_begin(txn);
+  status_require(db_txn_write_begin((&txn)));
   db_mdb_status_require(
     (mdb_cursor_open((txn.mdb_txn), (index->dbi), (&index_cursor))));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
@@ -160,7 +160,7 @@ status_t db_index_build(db_env_t* env, db_index_t* index) {
   if (!(db_mdb_status_is_success || db_mdb_status_is_notfound)) {
     goto exit;
   };
-  db_txn_commit(txn);
+  status_require(db_txn_commit((&txn)));
 exit:
   db_mdb_cursor_close_if_active(index_cursor);
   db_mdb_cursor_close_if_active(nodes);
@@ -201,14 +201,14 @@ status_t db_index_create(db_env_t* env,
   status_require(
     (db_index_name((type->id), fields, fields_len, (&name), (&name_len))));
   /* add to system btree */
-  db_txn_write_begin(txn);
+  status_require(db_txn_write_begin((&txn)));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, system));
   db_mdb_status_require(mdb_cursor_put(system, (&val_data), (&val_null), 0));
   db_mdb_cursor_close(system);
   /* add data btree */
   db_mdb_status_require(
     (mdb_dbi_open((txn.mdb_txn), name, MDB_CREATE, (&(node_index.dbi)))));
-  db_txn_commit(txn);
+  status_require(db_txn_commit((&txn)));
   /* update cache */
   db_realloc(
     (type->indices), indices, (sizeof(db_index_t) + type->indices_len));
@@ -237,7 +237,7 @@ status_t db_index_delete(db_env_t* env, db_index_t* index) {
     (index->fields_len),
     (&(val_data.mv_data)),
     (&(val_data.mv_size)))));
-  db_txn_write_begin(txn);
+  status_require(db_txn_write_begin((&txn)));
   /* remove data btree */
   db_mdb_status_require((mdb_drop((txn.mdb_txn), (index->dbi), 1)));
   /* remove from system btree */
@@ -250,7 +250,7 @@ status_t db_index_delete(db_env_t* env, db_index_t* index) {
     db_mdb_status_expect_notfound;
   };
   db_mdb_cursor_close(system);
-  db_txn_commit(txn);
+  status_require(db_txn_commit((&txn)));
   /* update cache */
   free((index->fields));
   index->dbi = 0;
@@ -274,11 +274,11 @@ status_t db_index_rebuild(db_env_t* env, db_index_t* index) {
     (index->fields_len),
     (&name),
     (&name_len))));
-  db_txn_write_begin(txn);
+  status_require(db_txn_write_begin((&txn)));
   db_mdb_status_require((mdb_drop((txn.mdb_txn), (index->dbi), 0)));
   db_mdb_status_require(
     (mdb_dbi_open((txn.mdb_txn), name, MDB_CREATE, (&(index->dbi)))));
-  db_txn_commit(txn);
+  status_require(db_txn_commit((&txn)));
 exit:
   free(name);
   return (db_index_build(env, index));
@@ -374,7 +374,7 @@ status_t db_indices_build(db_env_t* env, db_index_t* index) {
   type = *(index->type);
   id = db_id_add_type(0, (type.id));
   val_id.mv_data = &id;
-  db_txn_write_begin(txn);
+  status_require(db_txn_write_begin((&txn)));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
   status.id = mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_SET_KEY);
   while ((db_mdb_status_is_success &&
@@ -390,7 +390,7 @@ status_t db_indices_build(db_env_t* env, db_index_t* index) {
   if (!db_mdb_status_is_success) {
     db_mdb_status_expect_notfound;
   };
-  db_txn_commit(txn);
+  status_require(db_txn_commit((&txn)));
 exit:
   db_mdb_cursor_close_if_active(nodes);
   db_txn_abort_if_active(txn);

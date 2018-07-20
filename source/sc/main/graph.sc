@@ -114,11 +114,11 @@
     id-left db-id-t
     id-right db-id-t
     id-label db-id-t)
-  (db-txn-write-begin txn)
+  (status-require (db-txn-write-begin &txn))
   (db-mdb-status-require (mdb-drop txn.mdb-txn (: env dbi-graph-rl) 0))
   (db-mdb-status-require (mdb-drop txn.mdb-txn (: env dbi-graph-ll) 0))
-  (db-txn-commit txn)
-  (db-txn-write-begin txn)
+  (status-require (db-txn-commit &txn))
+  (status-require (db-txn-write-begin &txn))
   (db-mdb-status-require (db-mdb-env-cursor-open txn graph-lr))
   (db-mdb-status-require (db-mdb-env-cursor-open txn graph-rl))
   (db-mdb-status-require (db-mdb-env-cursor-open txn graph-ll))
@@ -143,7 +143,7 @@
         (set val-id-2.mv-data &id-label)
         (db-mdb-status-require (mdb-cursor-put graph-ll &val-id-2 &val-id 0))
         (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP)))))
-  (db-txn-commit txn)
+  (status-require (db-txn-commit &txn))
   (label exit
     (db-txn-abort-if-active txn)
     (return status)))

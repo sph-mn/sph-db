@@ -86,7 +86,7 @@
 (db-debug-define-graph-records-contains-at label)
 
 (define (test-helper-create-type-1 env result) (status-t db-env-t* db-type-t**)
-  "create a new type with three fields for testing"
+  "create a new type with four fields, fixed and variable length, for testing"
   status-declare
   (declare fields (array db-field-t 4))
   (db-field-set (array-get fields 0) db-field-type-uint8 "test-field-1" 12)
@@ -294,7 +294,7 @@
       existing-left-count common-label-count
       existing-right-count common-element-count
       existing-label-count common-label-count)
-    (db-txn-write-begin txn)
+    (status-require (db-txn-write-begin &txn))
     (test-helper-create-ids txn existing-left-count &existing-left)
     (test-helper-create-ids txn existing-right-count &existing-right)
     (test-helper-create-ids txn existing-label-count &existing-label)
@@ -436,14 +436,14 @@
       btree-count-deleted-expected
       (test-helper-estimate-graph-read-btree-entry-count
         existing-left-count existing-right-count existing-label-count ordinal))
-    (db-txn-write-begin txn)
+    (status-require (db-txn-write-begin &txn))
     (test-helper-create-ids txn existing-left-count &left)
     (test-helper-create-ids txn existing-right-count &right)
     (test-helper-create-ids txn existing-label-count &label)
     (db-debug-count-all-btree-entries txn &btree-count-before-create)
     (status-require (test-helper-create-relations txn left right label))
-    (db-txn-commit txn)
-    (db-txn-write-begin txn)
+    (status-require (db-txn-commit &txn))
+    (status-require (db-txn-write-begin &txn))
     (sc-comment "delete")
     (status-require
       (db-graph-delete
@@ -456,8 +456,8 @@
           0)
         (if* ordinal? ordinal
           0)))
-    (db-txn-commit txn)
-    (db-txn-begin txn)
+    (status-require (db-txn-commit &txn))
+    (status-require (db-txn-begin &txn))
     (db-debug-count-all-btree-entries txn &btree-count-after-delete)
     (db-status-require-read
       (db-graph-select
@@ -474,15 +474,15 @@
     (sc-comment "check that readers can handle empty selections")
     (db-status-require-read (db-graph-read &state 0 &records))
     (db-graph-selection-destroy &state)
-    (db-txn-abort txn)
+    (db-txn-abort &txn)
     (if (not (= 0 (db-graph-records-length records)))
       (begin
         (printf
           "\n    failed deletion. %lu relations not deleted\n" (db-graph-records-length records))
         (db-debug-display-graph-records records)
-        ;(db-txn-begin txn)
+        ;(status-require (db-txn-begin &txn))
         ;(test-helper-display-all-relations txn)
-        ;(db-txn-abort txn)
+        ;(db-txn-abort &txn)
         (status-set-id-goto 1)))
     (db-graph-records-destroy records)
     (set records 0)
@@ -493,14 +493,14 @@
         (printf
           "\n failed deletion. %lu btree entries not deleted\n"
           (- btree-count-after-delete btree-count-before-create))
-        (db-txn-begin txn)
+        (status-require (db-txn-begin &txn))
         (db-debug-display-btree-counts txn)
         (db-status-require-read (db-graph-select txn 0 0 0 0 0 &state))
         (db-status-require-read (db-graph-read &state 0 &records))
         (printf "all remaining ")
         (db-debug-display-graph-records records)
         (db-graph-selection-destroy &state)
-        (db-txn-abort txn)
+        (db-txn-abort &txn)
         (status-set-id-goto 1)))
     (db-ids-destroy left)
     (db-ids-destroy right)
@@ -553,9 +553,9 @@
     (set (pointer-get (convert-type (struct-get data-element data) db-id-t*)) (+ 123 count))
     (set data-list (db-data-list-add data-list data-element))
     (set count (- count 1)))
-  (db-txn-write-begin txn)
+  (status-require (db-txn-write-begin &txn))
   ;(status-require (db-intern-ensure db-txn data-list result))
-  (db-txn-commit txn)
+  (status-require (db-txn-commit &txn))
   (label exit
     (db-txn-abort-if-active txn)
     (return status)))

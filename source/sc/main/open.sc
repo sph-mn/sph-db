@@ -512,11 +512,11 @@
     (db-open-options-set-defaults &options))
   (status-require (db-open-root env &options path))
   (status-require (db-open-mdb-env env &options))
-  (db-txn-write-begin txn)
+  (status-require (db-txn-write-begin &txn))
   (status-require (db-open-nodes txn))
   (status-require (db-open-system txn))
   (status-require (db-open-graph txn))
-  (db-txn-commit txn)
+  (status-require (db-txn-commit &txn))
   (pthread-mutex-init &env:mutex 0)
   (set env:open #t)
   (label exit

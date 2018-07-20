@@ -94,7 +94,8 @@ exit:
 db_debug_define_graph_records_contains_at(left);
 db_debug_define_graph_records_contains_at(right);
 db_debug_define_graph_records_contains_at(label);
-/** create a new type with three fields for testing */
+/** create a new type with four fields, fixed and variable length, for testing
+ */
 status_t test_helper_create_type_1(db_env_t* env, db_type_t** result) {
   status_declare;
   db_field_t fields[4];
@@ -316,7 +317,7 @@ exit:
   existing_left_count = common_label_count; \
   existing_right_count = common_element_count; \
   existing_label_count = common_label_count; \
-  db_txn_write_begin(txn); \
+  status_require(db_txn_write_begin((&txn))); \
   test_helper_create_ids(txn, existing_left_count, (&existing_left)); \
   test_helper_create_ids(txn, existing_right_count, (&existing_right)); \
   test_helper_create_ids(txn, existing_label_count, (&existing_label)); \
@@ -447,22 +448,22 @@ ui32 test_helper_estimate_graph_read_btree_entry_count(ui32 existing_left_count,
       existing_right_count, \
       existing_label_count, \
       ordinal); \
-  db_txn_write_begin(txn); \
+  status_require(db_txn_write_begin((&txn))); \
   test_helper_create_ids(txn, existing_left_count, (&left)); \
   test_helper_create_ids(txn, existing_right_count, (&right)); \
   test_helper_create_ids(txn, existing_label_count, (&label)); \
   db_debug_count_all_btree_entries(txn, (&btree_count_before_create)); \
   status_require(test_helper_create_relations(txn, left, right, label)); \
-  db_txn_commit(txn); \
-  db_txn_write_begin(txn); \
+  status_require(db_txn_commit((&txn))); \
+  status_require(db_txn_write_begin((&txn))); \
   /* delete */ \
   status_require(db_graph_delete(txn, \
     (left_p ? left : 0), \
     (right_p ? right : 0), \
     (label_p ? label : 0), \
     (ordinal_p ? ordinal : 0))); \
-  db_txn_commit(txn); \
-  db_txn_begin(txn); \
+  status_require(db_txn_commit((&txn))); \
+  status_require(db_txn_begin((&txn))); \
   db_debug_count_all_btree_entries(txn, (&btree_count_after_delete)); \
   db_status_require_read(db_graph_select(txn, \
     (left_p ? left : 0), \
@@ -474,7 +475,7 @@ ui32 test_helper_estimate_graph_read_btree_entry_count(ui32 existing_left_count,
   /* check that readers can handle empty selections */ \
   db_status_require_read(db_graph_read((&state), 0, (&records))); \
   db_graph_selection_destroy((&state)); \
-  db_txn_abort(txn); \
+  db_txn_abort((&txn)); \
   if (!(0 == db_graph_records_length(records))) { \
     printf(("\n    failed deletion. %lu relations not deleted\n"), \
       db_graph_records_length(records)); \
@@ -489,14 +490,14 @@ ui32 test_helper_estimate_graph_read_btree_entry_count(ui32 existing_left_count,
         (btree_count_after_delete == btree_count_before_create))) { \
     printf(("\n failed deletion. %lu btree entries not deleted\n"), \
       (btree_count_after_delete - btree_count_before_create)); \
-    db_txn_begin(txn); \
+    status_require(db_txn_begin((&txn))); \
     db_debug_display_btree_counts(txn); \
     db_status_require_read(db_graph_select(txn, 0, 0, 0, 0, 0, (&state))); \
     db_status_require_read(db_graph_read((&state), 0, (&records))); \
     printf("all remaining "); \
     db_debug_display_graph_records(records); \
     db_graph_selection_destroy((&state)); \
-    db_txn_abort(txn); \
+    db_txn_abort((&txn)); \
     status_set_id_goto(1); \
   }; \
   db_ids_destroy(left); \

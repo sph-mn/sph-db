@@ -126,12 +126,7 @@
     (db-graph-data-set-ordinal ordinal)
     (db-graph-data-set-id id))
   (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
-  (db-txn-begin txn)
-  (db-mdb-status-require (mdb-txn-begin txn.env:mdb-env 0 MDB-RDONLY &txn.mdb-txn)) (db-txn-abort a)
-  (begin
-    (mdb-txn-abort a.mdb-txn)
-    (set a.mdb-txn 0))
-  (db-txn-abort-if-active a) (if a.mdb-txn (db-txn-abort a))
+  (db-txn-abort-if-active a) (if a.mdb-txn (db-txn-abort &a))
   (db-txn-is-active a)
   (if* a.mdb-txn #t
     #f))
@@ -341,13 +336,9 @@
   (status-t db-txn-t db-ids-t* db-type-t* db-count-t db-node-matcher-t void* db-node-selection-t*)
   (db-node-next state) (status-t db-node-selection-t*)
   (db-node-skip state count) (status-t db-node-selection-t* db-count-t)
-  (db-node-selection-destroy state) (void db-node-selection-t*))
-
-(sc-include "main/lib/lmdb")
-
-(pre-define
-  (db-txn-write-begin txn) (db-mdb-status-require (mdb-txn-begin txn.env:mdb-env 0 0 &txn.mdb-txn))
-  (db-txn-commit a)
-  (begin
-    (db-mdb-status-require (mdb-txn-commit a.mdb-txn))
-    (set a.mdb-txn 0)))
+  (db-node-selection-destroy state) (void db-node-selection-t*)
+  (db-node-update txn id values) (status-t db-txn-t db-id-t db-node-values-t)
+  (db-txn-write-begin a) (status-t db-txn-t*)
+  (db-txn-begin a) (status-t db-txn-t*)
+  (db-txn-commit a) (status-t db-txn-t*)
+  (db-txn-abort a) (void db-txn-t*))

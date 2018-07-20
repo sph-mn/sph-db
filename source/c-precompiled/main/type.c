@@ -115,7 +115,7 @@ status_t db_type_create(db_env_t* env,
   val_data.mv_data = data_start;
   val_data.mv_size = data_size;
   /* insert data */
-  db_txn_write_begin(txn);
+  status_require(db_txn_write_begin((&txn)));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, system));
   db_mdb_status_require(mdb_cursor_put(system, (&val_key), (&val_data), 0));
   db_mdb_cursor_close(system);
@@ -128,13 +128,13 @@ status_t db_type_create(db_env_t* env,
     nodes,
     (&type_pointer))));
   db_mdb_cursor_close(nodes);
-  db_txn_commit(txn);
+  status_require(db_txn_commit((&txn)));
   *result = type_pointer;
 exit:
   if (db_txn_is_active(txn)) {
     db_mdb_cursor_close_if_active(system);
     db_mdb_cursor_close_if_active(nodes);
-    db_txn_abort(txn);
+    db_txn_abort((&txn));
   };
   return (status);
 };
@@ -152,7 +152,7 @@ status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
   db_system_key_label(key) = db_system_label_type;
   db_system_key_id(key) = type_id;
   val_key.mv_data = key;
-  db_txn_write_begin(txn);
+  status_require(db_txn_write_begin((&txn)));
   /* system. continue even if not found */
   db_mdb_status_require(db_mdb_env_cursor_open(txn, system));
   status.id = mdb_cursor_get(system, (&val_key), (&val_null), MDB_SET);
@@ -187,9 +187,9 @@ exit:
   db_mdb_cursor_close_if_active(system);
   db_mdb_cursor_close_if_active(nodes);
   if (status_is_success) {
-    db_txn_commit(txn);
+    status_require(db_txn_commit((&txn)));
   } else {
-    db_txn_abort(txn);
+    db_txn_abort((&txn));
   };
   return (status);
 };

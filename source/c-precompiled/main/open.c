@@ -546,11 +546,11 @@ status_t db_open(ui8* path, db_open_options_t* options_pointer, db_env_t* env) {
   };
   status_require(db_open_root(env, (&options), path));
   status_require(db_open_mdb_env(env, (&options)));
-  db_txn_write_begin(txn);
+  status_require(db_txn_write_begin((&txn)));
   status_require(db_open_nodes(txn));
   status_require(db_open_system(txn));
   status_require(db_open_graph(txn));
-  db_txn_commit(txn);
+  status_require(db_txn_commit((&txn)));
   pthread_mutex_init((&(env->mutex)), 0);
   env->open = 1;
 exit:

@@ -126,11 +126,11 @@ status_t db_graph_index_rebuild(db_env_t* env) {
   db_id_t id_left;
   db_id_t id_right;
   db_id_t id_label;
-  db_txn_write_begin(txn);
+  status_require(db_txn_write_begin((&txn)));
   db_mdb_status_require((mdb_drop((txn.mdb_txn), (env->dbi_graph_rl), 0)));
   db_mdb_status_require((mdb_drop((txn.mdb_txn), (env->dbi_graph_ll), 0)));
-  db_txn_commit(txn);
-  db_txn_write_begin(txn);
+  status_require(db_txn_commit((&txn)));
+  status_require(db_txn_write_begin((&txn)));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, graph_lr));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, graph_rl));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, graph_ll));
@@ -154,7 +154,7 @@ status_t db_graph_index_rebuild(db_env_t* env) {
         graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_DUP);
     } while (db_mdb_status_is_success);
   }));
-  db_txn_commit(txn);
+  status_require(db_txn_commit((&txn)));
 exit:
   db_txn_abort_if_active(txn);
   return (status);

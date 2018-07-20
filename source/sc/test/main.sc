@@ -19,7 +19,7 @@
   status-declare
   (declare stat db-statistics-t)
   (db-txn-declare env txn)
-  (db-txn-begin txn)
+  (status-require (db-txn-begin &txn))
   (status-require (db-statistics txn (address-of stat)))
   (test-helper-assert "dbi-system contanis only one entry" (= 1 stat.system.ms_entries))
   (label exit
@@ -304,13 +304,13 @@
     "node-data-ref-1"
     (and (= 5 field-data.size) (= 0 (memcmp value-4 field-data.data field-data.size))))
   (sc-comment "test actual node creation")
-  (db-txn-write-begin txn)
+  (status-require (db-txn-write-begin &txn))
   (status-require (db-node-create txn values-1 &id-1))
   (test-helper-assert "element id 1" (= 1 (db-id-element id-1)))
   (status-require (db-node-create txn values-1 &id-2))
   (test-helper-assert "element id 2" (= 2 (db-id-element id-2)))
-  (db-txn-commit txn)
-  (db-txn-begin txn)
+  (status-require (db-txn-commit &txn))
+  (status-require (db-txn-begin &txn))
   (sc-comment "test node-get")
   (status-require (db-node-get txn id-1 &node-data-1))
   (set field-data (db-node-data-ref type node-data-1 1))
@@ -335,12 +335,63 @@
   (set ids (db-ids-add ids 9999))
   (status-require (db-node-exists txn ids &exists))
   (test-helper-assert "node-exists does not exist" (not exists))
-  (db-txn-abort txn)
+  (db-txn-abort &txn)
   (label exit
     (db-txn-abort-if-active txn)
     (return status)))
 
-(define (node-matcher id data matcher-state) (boolean db-id-t db-node-data-t void*) (return #t))
+(define (node-matcher id data matcher-state) (boolean db-id-t db-node-data-t void*)
+  (set (pointer-get (convert-type matcher-state ui8*)) 1)
+  (return #t))
+
+(define (test-helper-create-nodes-1 env type result-values result-ids result-len)
+  (status-t db-env-t* db-type-t* db-node-values-t*** db-id-t** ui32*)
+  "uses test type-1"
+  status-declare
+  (db-txn-declare env txn)
+  (declare
+    ids db-id-t*
+    value-1 ui8*
+    value-2 i8*
+    value-3 ui8*
+    value-4 ui8*
+    values db-node-values-t**)
+  (db-malloc ids (* 4 (sizeof db-id-t)))
+  (db-malloc value-1 1)
+  (db-malloc value-2 1)
+  (db-malloc values (* 2 (sizeof db-node-values-t*)))
+  (set
+    *value-1 11
+    *value-2 -128)
+  (db-malloc-string value-3 3)
+  (db-malloc-string value-4 5)
+  (memcpy value-3 (address-of "abc") 3)
+  (memcpy value-4 (address-of "abcde") 5)
+  (status-require (db-node-values-new type (array-get values 0)))
+  (status-require (db-node-values-new type (array-get values 1)))
+  (db-node-values-set (array-get values 0) 0 value-1 0)
+  (db-node-values-set (array-get values 0) 1 value-2 0)
+  (db-node-values-set (array-get values 0) 2 value-3 3)
+  (db-node-values-set (array-get values 0) 3 value-4 5)
+  (db-node-values-set (array-get values 1) 0 value-1 0)
+  (db-node-values-set (array-get values 1) 1 value-1 0)
+  (db-node-values-set (array-get values 1) 2 value-3 3)
+  (status-require (db-txn-write-begin &txn))
+  (status-require
+    (db-node-create txn (pointer-get (array-get values 0)) (address-of (array-get ids 0))))
+  (status-require
+    (db-node-create txn (pointer-get (array-get values 0)) (address-of (array-get ids 1))))
+  (status-require
+    (db-node-create txn (pointer-get (array-get values 1)) (address-of (array-get ids 2))))
+  (status-require
+    (db-node-create txn (pointer-get (array-get values 1)) (address-of (array-get ids 3))))
+  (status-require (db-txn-commit &txn))
+  (set
+    *result-ids ids
+    *result-len 4
+    *result-values values)
+  (label exit
+    (return status)))
 
 (define (test-node-select env) (status-t db-env-t*)
   status-declare
@@ -348,14 +399,16 @@
   (declare
     value-1 ui8
     value-2 i8
-    matcher-state void*
+    matcher-state ui8
     node-ids (array db-id-t 4)
     ids db-ids-t*
     type db-type-t*
     data db-node-data-t
     values-1 db-node-values-t
     values-2 db-node-values-t
-    selection db-node-selection-t)
+    selection db-node-selection-t
+    btree-size-before-delete ui32
+    btree-size-after-delete ui32)
   (define value-3 ui8* (convert-type "abc" ui8*))
   (define value-4 ui8* (convert-type "abcde" ui8*))
   (sc-comment "create nodes")
@@ -372,13 +425,13 @@
   (db-node-values-set &values-2 0 &value-1 0)
   (db-node-values-set &values-2 1 &value-1 0)
   (db-node-values-set &values-2 2 value-3 3)
-  (db-txn-write-begin txn)
+  (status-require (db-txn-write-begin &txn))
   (status-require (db-node-create txn values-1 (address-of (array-get node-ids 0))))
   (status-require (db-node-create txn values-1 (address-of (array-get node-ids 1))))
   (status-require (db-node-create txn values-2 (address-of (array-get node-ids 2))))
   (status-require (db-node-create txn values-2 (address-of (array-get node-ids 3))))
-  (db-txn-commit txn)
-  (db-txn-begin txn)
+  (status-require (db-txn-commit &txn))
+  (status-require (db-txn-begin &txn))
   (sc-comment "type")
   (status-require (db-node-select txn 0 type 0 0 0 &selection))
   (status-require (db-node-next &selection))
@@ -406,151 +459,68 @@
   (db-node-selection-destroy &selection)
   (sc-comment "matcher")
   (set matcher-state 0)
-  (status-require (db-node-select txn 0 type 0 node-matcher matcher-state &selection))
+  (status-require (db-node-select txn 0 type 0 node-matcher &matcher-state &selection))
+  (status-require (db-node-next &selection))
+  (set data (db-node-ref &selection 0))
+  (test-helper-assert "node-ref size" (= 1 data.size))
+  (test-helper-assert "matcher-state" (= 1 matcher-state))
   (db-node-selection-destroy &selection)
   (sc-comment "type and skip")
   (status-require (db-node-select txn 0 type 0 0 0 &selection))
   (status-require (db-node-skip &selection 2))
+  (status-require (db-node-next &selection))
+  (set status (db-node-next &selection))
+  (test-helper-assert "entries skipped" (= db-status-id-no-more-data status.id))
+  (set status.id status-id-success)
   (db-node-selection-destroy &selection)
-  (db-txn-abort txn)
-  #;(
-  (status-t db-txn-t db-ids-t* db-type-t* db-count-t db-node-matcher-t void* db-node-selection-t*)
-  (db-node-next state) (status-t db-node-selection-t*)
-  (db-node-delete txn ids) (status-t db-txn-t db-ids-t*)
-  (db-node-update txn id values) (status-t db-txn-t db-id-t db-node-values-t)
-  )
+  (db-txn-abort &txn)
+  (status-require (db-txn-write-begin &txn))
+  (db-debug-count-all-btree-entries txn &btree-size-before-delete)
+  (status-require (db-node-update txn (array-get node-ids 1) values-2))
+  (status-require (db-node-delete txn ids))
+  (status-require (db-txn-commit &txn))
+  (status-require (db-txn-begin &txn))
+  (db-debug-count-all-btree-entries txn &btree-size-after-delete)
+  (db-txn-abort &txn)
+  (test-helper-assert "after size" (= 4 (- btree-size-before-delete btree-size-after-delete)))
   (label exit
     (db-txn-abort-if-active txn)
     (return status)))
 
+#;(define (test-index env) (status-t db-env-t*)
+  status-declare
+  (declare
+    fields (array db-fields-len-t 2 1 2)
+    type db-type-t
+    index db-index-t*)
+  (status-require (test-helper-create-type-1 env &type))
+  (db-index-create env type fields 2)
+  (set index (db-index-get type fields 2))
+  #;(
+  (db-index-delete env index) (status-t db-env-t* db-index-t*)
+  (db-index-rebuild env index) (status-t db-env-t* db-index-t*)
+  (db-index-next state) (status-t db-index-selection-t*)
+  (db-index-selection-destroy state) (void db-index-selection-t*)
+  (db-index-select txn index values result)
+  (status-t db-txn-t db-index-t* db-node-values-t db-index-selection-t*)
+  )
+  (label exit
+    (return status)))
+
 (define (main) int
   (test-helper-init env)
-  ;(test-helper-test-one test-open-empty env)
-  ;(test-helper-test-one test-statistics env)
-  ;(test-helper-test-one test-id-construction env)
-  ;(test-helper-test-one test-sequence env)
-  ;(test-helper-test-one test-type-create-get-delete env)
-  ;(test-helper-test-one test-type-create-many env)
-  ;(test-helper-test-one test-open-nonempty env)
-  ;(test-helper-test-one test-graph-read env)
-  ;(test-helper-test-one test-graph-delete env)
-  ;(test-helper-test-one test-node-create env)
+  (test-helper-test-one test-open-empty env)
+  (test-helper-test-one test-statistics env)
+  (test-helper-test-one test-id-construction env)
+  (test-helper-test-one test-sequence env)
+  (test-helper-test-one test-type-create-get-delete env)
+  (test-helper-test-one test-type-create-many env)
+  (test-helper-test-one test-open-nonempty env)
+  (test-helper-test-one test-graph-read env)
+  (test-helper-test-one test-graph-delete env)
+  (test-helper-test-one test-node-create env)
   (test-helper-test-one test-node-select env)
+  ;(test-helper-test-one test-index env)
   (label exit
     test-helper-report-status
     (return status.id)))
-
-#;(
-(define (test-index) status-t
-  status-declare
-  (define ids db-ids-t*)
-  (db-define-ids-3 left right label)
-  (status-require
-    (test-helper-create-relations txn
-      common-label-count
-      common-element-count common-label-count &left &right &label))
-  (status-require (test-helper-create-interns common-element-count &ids))
-  db-txn-introduce
-  (status-require (db-index-recreate-intern))
-  (status-require (db-index-recreate-extern))
-  ;(status-require (db-index-recreate-graph))
-  (define index-errors-extern db-index-errors-extern-t)
-  (define index-errors-intern db-index-errors-intern-t)
-  (define index-errors-graph db-index-errors-graph-t)
-  db-txn-begin
-  (status-require (db-index-errors-intern db-txn &index-errors-intern))
-  (status-require (db-index-errors-extern db-txn &index-errors-extern))
-  (status-require (db-index-errors-graph db-txn &index-errors-graph))
-  (test-helper-assert "errors-intern?" (not (struct-get index-errors-intern errors?)))
-  (test-helper-assert "errors-extern?" (not (struct-get index-errors-extern errors?)))
-  (test-helper-assert "errors-graph?" (not (struct-get index-errors-graph errors?)))
-  (label exit
-    (if db-txn db-txn-abort)
-    (return status)))
-
-(define (test-node-read) status-t
-  status-declare
-  (define ids-intern db-ids-t* 0)
-  (define ids-id db-ids-t* 0)
-  (status-require (test-helper-create-interns common-element-count &ids-intern))
-  (status-require (test-helper-create-ids txn common-element-count &ids-id))
-  db-txn-introduce
-  db-txn-begin
-  (define state db-node-read-state-t)
-  (status-require (db-node-select db-txn 0 0 &state))
-  (define records db-data-records-t* 0)
-  (db-status-require-read! (db-node-read &state 0 &records))
-  (db-node-selection-destroy &state)
-  (test-helper-assert
-    "result length" (= (db-data-records-length records) (* 2 common-element-count)))
-  (db-data-records-destroy records)
-  ; with type filter
-  (set records 0)
-  (status-require (db-node-select db-txn 1 0 &state))
-  (db-status-require-read! (db-node-read &state 0 &records))
-  (db-node-selection-destroy &state)
-  (test-helper-assert
-    "result length with type filter" (= (db-data-records-length records) common-element-count))
-  (db-data-records-destroy records)
-  (label exit
-    (if db-txn db-txn-abort)
-    db-status-success-if-no-more-data
-    (return status)))
-
-(define (test-concurrent-write/read-thread status-pointer) (void* void*)
-  status-declare
-  (set status (pointer-get (convert-type status-pointer status-t*)))
-  (define state db-graph-read-state-t)
-  (define records db-graph-records-t* 0)
-  db-txn-introduce
-  db-txn-begin
-  (set records 0)
-  (status-require (db-graph-select db-txn 0 0 0 0 0 &state))
-  (db-status-require-read! (db-graph-read &state 2 &records))
-  (db-status-require-read! (db-graph-read &state 0 &records))
-  db-txn-abort
-  (label exit
-    db-status-success-if-no-more-data
-    (set (pointer-get (convert-type status-pointer status-t*)) status)))
-
-(define (test-concurrent-write/read) status-t
-  status-declare
-  (define
-    thread-two pthread_t
-    thread-three pthread_t)
-  (status-require (test-helper-db-reset #f))
-  (db-define-ids-3 left right label)
-  (status-require
-    (test-helper-create-relations txn
-      common-element-count
-      common-element-count common-label-count &left &right &label))
-  (define thread-two-result status-t (struct-literal 0 0))
-  (define thread-three-result status-t (struct-literal 0 0))
-  (if
-    (pthread-create
-      &thread-two 0 test-concurrent-write/read-thread &thread-two-result)
-    (begin
-      (printf "error creating thread")
-      (status-set-id-goto 1)))
-  (if
-    (pthread-create
-      &thread-three 0 test-concurrent-write/read-thread &thread-three-result)
-    (begin
-      (printf "error creating thread")
-      (status-set-id-goto 1)))
-  (test-concurrent-write/read-thread &status)
-  status-require
-  (if (pthread-join thread-two 0)
-    (begin
-      (printf "error joining thread")
-      (status-set-id-goto 2)))
-  (if (pthread-join thread-three 0)
-    (begin
-      (printf "error joining thread")
-      (status-set-id-goto 2)))
-  (set status thread-two-result)
-  status-require
-  (set status thread-three-result)
-  (label exit
-    (return status)))
-  )

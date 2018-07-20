@@ -1,6 +1,7 @@
 #include "./sph-db.h"
 #include "../foreign/sph/one.c"
 #include <math.h>
+#include "./lib/lmdb.c"
 #define free_and_set_null(a) \
   free(a); \
   a = 0
@@ -63,6 +64,31 @@ ui8* string_join(ui8** strings,
     *result_size = size;
   };
   return (result);
+};
+status_t db_txn_begin(db_txn_t* a) {
+  status_declare;
+  db_mdb_status_require(
+    (mdb_txn_begin((a->env->mdb_env), 0, MDB_RDONLY, (&(a->mdb_txn)))));
+exit:
+  return (status);
+};
+status_t db_txn_write_begin(db_txn_t* a) {
+  status_declare;
+  db_mdb_status_require(
+    (mdb_txn_begin((a->env->mdb_env), 0, 0, (&(a->mdb_txn)))));
+exit:
+  return (status);
+};
+void db_txn_abort(db_txn_t* a) {
+  mdb_txn_abort((a->mdb_txn));
+  a->mdb_txn = 0;
+};
+status_t db_txn_commit(db_txn_t* a) {
+  status_declare;
+  db_mdb_status_require((mdb_txn_commit((a->mdb_txn))));
+  a->mdb_txn = 0;
+exit:
+  return (status);
 };
 /** display an ids list */
 void db_debug_log_ids(db_ids_t* a) {

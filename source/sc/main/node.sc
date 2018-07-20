@@ -386,19 +386,15 @@
   (db-mdb-cursor-declare nodes)
   (declare
     val-data MDB-val
-    node-data db-node-data-t
-    ids db-ids-t*)
-  (set
-    node-data.data 0
-    ids (db-ids-add 0 id))
+    node-data db-node-data-t)
+  (set node-data.data 0)
   (status-require (db-node-values->data values &node-data))
-  ; todo: dont delete, update
-  (status-require (db-node-delete txn ids))
+  (set val-id.mv-data &id)
+  (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
+  (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-data MDB-SET))
   (set
     val-data.mv-data node-data.data
-    val-data.mv-size node-data.size
-    val-id.mv-data &id)
-  (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
+    val-data.mv-size node-data.size)
   (db-mdb-status-require (mdb-cursor-put nodes &val-id &val-data 0))
   (mdb-cursor-close nodes)
   (status-require (db-indices-entry-ensure txn values id))

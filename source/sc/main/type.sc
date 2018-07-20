@@ -113,7 +113,7 @@
     val-data.mv-data data-start
     val-data.mv-size data-size)
   (sc-comment "insert data")
-  (db-txn-write-begin txn)
+  (status-require (db-txn-write-begin &txn))
   (db-mdb-status-require (db-mdb-env-cursor-open txn system))
   (db-mdb-status-require (mdb-cursor-put system &val-key &val-data 0))
   (db-mdb-cursor-close system)
@@ -122,14 +122,14 @@
   (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
   (status-require (db-open-type val-key.mv-data val-data.mv-data txn.env:types nodes &type-pointer))
   (db-mdb-cursor-close nodes)
-  (db-txn-commit txn)
+  (status-require (db-txn-commit &txn))
   (set *result type-pointer)
   (label exit
     (if (db-txn-is-active txn)
       (begin
         (db-mdb-cursor-close-if-active system)
         (db-mdb-cursor-close-if-active nodes)
-        (db-txn-abort txn)))
+        (db-txn-abort &txn)))
     (return status)))
 
 (define (db-type-delete env type-id) (status-t db-env-t* db-type-id-t)
@@ -148,7 +148,7 @@
     (db-system-key-label key) db-system-label-type
     (db-system-key-id key) type-id
     val-key.mv-data key)
-  (db-txn-write-begin txn)
+  (status-require (db-txn-write-begin &txn))
   (sc-comment "system. continue even if not found")
   (db-mdb-status-require (db-mdb-env-cursor-open txn system))
   (set status.id (mdb-cursor-get system &val-key &val-null MDB-SET))
@@ -175,6 +175,6 @@
   (label exit
     (db-mdb-cursor-close-if-active system)
     (db-mdb-cursor-close-if-active nodes)
-    (if status-is-success (db-txn-commit txn)
-      (db-txn-abort txn))
+    (if status-is-success (status-require (db-txn-commit &txn))
+      (db-txn-abort &txn))
     (return status)))
