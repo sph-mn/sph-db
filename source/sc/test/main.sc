@@ -420,21 +420,28 @@
     (db-txn-abort-if-active txn)
     (return status)))
 
-#;(define (test-index env) (status-t db-env-t*)
+(define (test-index env) (status-t db-env-t*)
   status-declare
   (declare
     fields (array db-fields-len-t 2 1 2)
-    type db-type-t
-    index db-index-t*)
+    type db-type-t*
+    index db-index-t*
+    values db-node-values-t*
+    node-ids db-id-t*
+    node-ids-len ui32)
   (status-require (test-helper-create-type-1 env &type))
-  (db-index-create env type fields 2)
+  (sc-comment "test with no existing nodes")
+  (status-require (db-index-create env type fields 2))
   (set index (db-index-get type fields 2))
-  (db-index-delete env index) (status-t db-env-t* db-index-t*)
-  (db-index-rebuild env index) (status-t db-env-t* db-index-t*)
-  (db-index-next state) (status-t db-index-selection-t*)
-  (db-index-selection-destroy state) (void db-index-selection-t*)
-  (db-index-select txn index values result)
-  (status-t db-txn-t db-index-t* db-node-values-t db-index-selection-t*)
+  (test-helper-assert "index-get not null" index)
+  (sc-comment "test with existing nodes")
+  (status-require (test-helper-create-nodes-1 env type &values &node-ids &node-ids-len))
+  ;(db-index-delete env index) (status-t db-env-t* db-index-t*)
+  ;(db-index-rebuild env index) (status-t db-env-t* db-index-t*)
+  ;(db-index-next state) (status-t db-index-selection-t*)
+  ;(db-index-selection-destroy state) (void db-index-selection-t*)
+  ;(db-index-select txn index values result)
+  ;(status-t db-txn-t db-index-t* db-node-values-t db-index-selection-t*)
   (label exit
     (return status)))
 

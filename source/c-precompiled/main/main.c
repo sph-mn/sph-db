@@ -14,19 +14,19 @@
   }
 #define optional_count(count) ((0 == count) ? UINT32_MAX : count)
 #define db_size_system_key (1 + sizeof(db_type_id_t))
-uint8_t* uint_to_string(intmax_t a) {
-  size_t len;
-  uint8_t* result;
-  len = ((0 == a) ? 1 : (1 + log10(a)));
-  result = malloc((1 + len));
+ui8* uint_to_string(uintmax_t a, size_t* result_len) {
+  size_t size;
+  ui8* result;
+  size = (1 + ((0 == a) ? 1 : (1 + log10(a))));
+  result = malloc(size);
   if (!result) {
     return (0);
   };
-  if (snprintf(result, len, "%j", a) < 0) {
+  if (snprintf(result, size, "%ju", a) < 0) {
     free(result);
     return (0);
   } else {
-    result[len] = 0;
+    *result_len = (size - 1);
     return (result);
   };
 };
@@ -35,34 +35,38 @@ uint8_t* uint_to_string(intmax_t a) {
 ui8* string_join(ui8** strings,
   size_t strings_len,
   ui8* delimiter,
-  size_t* result_size) {
+  size_t* result_len) {
   ui8* result;
-  ui8* temp;
+  ui8* result_temp;
   size_t size;
-  size_t index;
+  size_t size_temp;
+  size_t i;
   size_t delimiter_len;
   if (!strings_len) {
     return (0);
   };
   delimiter_len = strlen(delimiter);
   size = (1 + (delimiter_len * (strings_len - 1)));
-  for (index = 0; (index < strings_len); index = (1 + index)) {
-    size = (size + strlen((strings[index])));
+  for (i = 0; (i < strings_len); i = (1 + i)) {
+    size = (size + strlen((strings[i])));
   };
   result = malloc(size);
   if (!result) {
     return (0);
   };
-  temp = result;
+  result_temp = result;
+  size_temp = strlen((strings[0]));
+  memcpy(result_temp, (strings[0]), size_temp);
+  result_temp = (size_temp + result_temp);
+  for (i = 1; (i < strings_len); i = (1 + i)) {
+    memcpy(result_temp, delimiter, delimiter_len);
+    result_temp = (delimiter_len + result_temp);
+    size_temp = strlen((strings[i]));
+    memcpy(result_temp, (strings[i]), size_temp);
+    result_temp = (size_temp + result_temp);
+  };
   result[(size - 1)] = 0;
-  memcpy(temp, (strings[0]), (strlen((strings[0]))));
-  for (index = 1; (index < strings_len); index = (1 + index)) {
-    memcpy(temp, delimiter, delimiter_len);
-    memcpy(temp, (strings[index]), (strlen((strings[index]))));
-  };
-  if (result_size) {
-    *result_size = size;
-  };
+  *result_len = (size - 1);
   return (result);
 };
 status_t db_txn_begin(db_txn_t* a) {
@@ -101,11 +105,11 @@ void db_debug_log_ids(db_ids_t* a) {
 };
 /** display an ids set */
 void db_debug_log_ids_set(imht_set_t a) {
-  ui32 index = 0;
+  ui32 i = 0;
   printf("id set (%lu):", (a.size));
-  while ((index < a.size)) {
-    printf(" %lu", ((a.content)[index]));
-    index = (1 + index);
+  while ((i < a.size)) {
+    printf(" %lu", ((a.content)[i]));
+    i = (1 + i);
   };
   printf("\n");
 };

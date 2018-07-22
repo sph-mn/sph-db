@@ -1,19 +1,18 @@
 {
   global:
     db_close;
-    db_debug_count_all_btree_entries;
-    db_debug_display_all_relations;
-    db_debug_display_btree_counts;
-    db_debug_display_content_graph_lr;
-    db_debug_display_content_graph_rl;
-    db_debug_display_graph_records;
-    db_debug_log_ids;
-    db_debug_log_ids_set;
     db_graph_delete;
     db_graph_ensure;
     db_graph_read;
     db_graph_select;
     db_graph_selection_destroy;
+    db_index_create;
+    db_index_delete;
+    db_index_get;
+    db_index_next;
+    db_index_rebuild;
+    db_index_select;
+    db_index_selection_destroy;
     db_node_create;
     db_node_data_ref;
     db_node_data_to_values;
@@ -48,5 +47,17 @@
     db_type_delete;
     db_type_field_get;
     db_type_get;
-  local: *;
+    db_debug_count_all_btree_entries;
+    db_debug_display_all_relations;
+    db_debug_display_btree_counts;
+    db_debug_display_content_graph_lr;
+    db_debug_display_content_graph_rl;
+    db_debug_display_graph_records;
+    db_debug_log_ids;
+    db_debug_log_ids_set;
+    db_index_indices_entry_delete;
+    db_index_key;
+    db_index_name;
+    db_indices_entry_ensure;
+local: *;
 };

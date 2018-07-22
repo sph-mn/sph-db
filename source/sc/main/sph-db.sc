@@ -298,7 +298,7 @@
   (db-status-description a) (ui8* status-t)
   (db-status-name a) (ui8* status-t)
   (db-status-group-id->name a) (ui8* status-id-t)
-  ; db-graph
+  ; graph
   (db-graph-selection-destroy state) (void db-graph-selection-t*)
   (db-graph-select txn left right label ordinal offset result)
   (status-t
@@ -312,15 +312,7 @@
   (db-graph-select txn left right label ordinal offset result)
   (status-t
     db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* db-count-t db-graph-selection-t*)
-  ; db-debug
-  (db-debug-log-ids a) (void db-ids-t*)
-  (db-debug-log-ids-set a) (void imht-set-t)
-  (db-debug-display-graph-records records) (void db-graph-records-t*)
-  (db-debug-count-all-btree-entries txn result) (status-t db-txn-t db-count-t*)
-  (db-debug-display-btree-counts txn) (status-t db-txn-t)
-  (db-debug-display-content-graph-lr txn) (status-t db-txn-t)
-  (db-debug-display-content-graph-rl txn) (status-t db-txn-t)
-  ; db-node
+  ; node
   (db-node-values-new type result) (status-t db-type-t* db-node-values-t*)
   (db-node-values-set values field-index data size)
   (void db-node-values-t* db-fields-len-t void* size-t) (db-node-values->data values result)
@@ -341,4 +333,28 @@
   (db-txn-write-begin a) (status-t db-txn-t*)
   (db-txn-begin a) (status-t db-txn-t*)
   (db-txn-commit a) (status-t db-txn-t*)
-  (db-txn-abort a) (void db-txn-t*))
+  (db-txn-abort a) (void db-txn-t*)
+  (db-index-get type fields fields-len) (db-index-t* db-type-t* db-fields-len-t* db-fields-len-t)
+  (db-index-create env type fields fields-len)
+  (status-t db-env-t* db-type-t* db-fields-len-t* db-fields-len-t) (db-index-delete env index)
+  (status-t db-env-t* db-index-t*) (db-index-rebuild env index)
+  (status-t db-env-t* db-index-t*) (db-index-next state)
+  (status-t db-index-selection-t*) (db-index-selection-destroy state)
+  (void db-index-selection-t*) (db-index-select txn index values result)
+  (status-t db-txn-t db-index-t* db-node-values-t db-index-selection-t*)
+  ; extra
+  ; -- db-debug
+  (db-debug-log-ids a) (void db-ids-t*)
+  (db-debug-log-ids-set a) (void imht-set-t)
+  (db-debug-display-graph-records records) (void db-graph-records-t*)
+  (db-debug-count-all-btree-entries txn result) (status-t db-txn-t db-count-t*)
+  (db-debug-display-btree-counts txn) (status-t db-txn-t)
+  (db-debug-display-content-graph-lr txn) (status-t db-txn-t)
+  (db-debug-display-content-graph-rl txn) (status-t db-txn-t)
+  ; -- index
+  (db-index-key env index values result-data result-size)
+  (status-t db-env-t* db-index-t db-node-values-t void** size-t*)
+  (db-indices-entry-ensure txn values id) (status-t db-txn-t db-node-values-t db-id-t)
+  (db-index-name type-id fields fields-len result result-size)
+  (status-t db-type-id-t db-fields-len-t* db-fields-len-t ui8** size-t*)
+  (db-indices-entry-delete txn values id) (status-t db-txn-t db-node-values-t db-id-t))

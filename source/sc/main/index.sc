@@ -1,27 +1,6 @@
-(pre-define (db-index-errors-data-log message type id)
-  (db-error-log "(groups index %s) (description %s) (id %lu)" type message id))
-
 (declare
   (db-node-data->values type data result) (status-t db-type-t* db-node-data-t db-node-values-t*)
   (db-free-node-values values) (void db-node-values-t*))
-
-(define (db-index-get type fields fields-len)
-  (db-index-t* db-type-t* db-fields-len-t* db-fields-len-t)
-  (declare
-    indices-len db-indices-len-t
-    index db-indices-len-t
-    indices db-index-t*)
-  (set
-    indices type:indices
-    indices-len type:indices-len)
-  (for ((set index 0) (< index indices-len) (set index (+ 1 index)))
-    (if
-      (=
-        0
-        (memcmp
-          (struct-get (array-get indices index) fields) fields (* (sizeof db-field-t) fields-len)))
-      (return (+ index indices))))
-  (return 0))
 
 (define (db-index-system-key type-id fields fields-len result-data result-size)
   (status-t db-type-id-t db-fields-len-t* db-fields-len-t void** size-t*)
@@ -43,46 +22,51 @@
       *result-size size)
     (return status)))
 
-(define (db-index-name type-id fields fields-len result result-size)
+(define (db-index-name type-id fields fields-len result result-len)
   (status-t db-type-id-t db-fields-len-t* db-fields-len-t ui8** size-t*)
-  "create a string name from type-id and field offsets"
+  "create a string name from type-id and field offsets.
+  i-{type-id}-{field-offset}-{field-offset}..."
   status-declare
   (declare
     i db-fields-len-t
     str ui8*
+    name-len size-t
+    str-len size-t
     strings ui8**
     strings-len int
     name ui8*)
+  (define prefix ui8* "i")
   (set
-    name 0
-    strings-len (+ 1 fields-len)
-    strings (calloc strings-len (sizeof ui8*)))
-  (if (not strings)
-    (begin
-      (status-set-both db-status-group-db db-status-id-memory)
-      (return status)))
+    strings 0
+    strings-len (+ 2 fields-len))
+  (db-calloc strings strings-len (sizeof ui8*))
   (sc-comment "type id")
-  (set str (uint->string type-id))
+  (set str (uint->string type-id &str-len))
   (if (not str)
     (begin
-      (free strings)
+      (free-and-set-null strings)
       (status-set-both db-status-group-db db-status-id-memory)
       (return status)))
-  (set *strings str)
+  (set
+    (array-get strings 0) prefix
+    (array-get strings 1) str)
   (sc-comment "field ids")
   (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
-    (set str (uint->string (array-get fields i)))
-    (if (not str) (goto exit))
-    (set (array-get strings (+ 1 i)) str))
-  (set name (string-join strings strings-len "-" result-size))
+    (set str (uint->string (array-get fields i) &str-len))
+    (db-status-memory-error-if-null str)
+    (set (array-get strings (+ 2 i)) str))
+  (set name (string-join strings strings-len "-" &name-len))
   (db-status-memory-error-if-null name)
+  (set
+    *result name
+    *result-len name-len)
   (label exit
-    (while i
-      (free (array-get strings i))
-      (set i (- i 1)))
-    (free (array-get strings 0))
-    (free strings)
-    (set *result name)
+    (if strings
+      (begin
+        (sc-comment "dont free the string[0] because it is the stack allocated prefix")
+        (for ((set i 1) (< i strings-len) (set i (+ 1 i)))
+          (free (array-get strings i)))
+        (free strings)))
     (return status)))
 
 (define (db-index-key env index values result-data result-size)
@@ -109,147 +93,6 @@
     *result-size size)
   (label exit
     (return status)))
-
-(define (db-index-build env index) (status-t db-env-t* db-index-t*)
-  "fill one index from existing data"
-  status-declare
-  db-mdb-declare-val-id
-  (db-txn-declare env txn)
-  (db-mdb-cursor-declare nodes)
-  (db-mdb-cursor-declare index-cursor)
-  (declare
-    val-data MDB-val
-    data void*
-    id db-id-t
-    type db-type-t
-    name ui8*
-    node-data db-node-data-t
-    values db-node-values-t)
-  (set
-    type *index:type
-    id (db-id-add-type 0 type.id)
-    val-id.mv-data &id)
-  (status-require (db-txn-write-begin &txn))
-  (db-mdb-status-require (mdb-cursor-open txn.mdb-txn index:dbi &index-cursor))
-  (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
-  (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-data MDB-SET-KEY))
-  (sc-comment "for each node of type")
-  (while (and db-mdb-status-is-success (= type.id (db-id-type (db-pointer->id val-id.mv-data))))
-    (set
-      node-data.data val-data.mv-data
-      node-data.size val-data.mv-size)
-    (status-require (db-node-data->values &type node-data &values))
-    (status-require (db-index-key env *index values &data &val-data.mv-size))
-    (set val-data.mv-data data)
-    (db-mdb-status-require (mdb-cursor-put index-cursor &val-data &val-id 0))
-    (free data)
-    (db-free-node-values &values)
-    (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-data MDB-NEXT-NODUP)))
-  (if (not (or db-mdb-status-is-success db-mdb-status-is-notfound)) (goto exit))
-  (status-require (db-txn-commit &txn))
-  (label exit
-    (db-mdb-cursor-close-if-active index-cursor)
-    (db-mdb-cursor-close-if-active nodes)
-    (if data (free data))
-    (free name)
-    (db-free-node-values &values)
-    (db-txn-abort-if-active txn)
-    (return status)))
-
-(define (db-index-create env type fields fields-len)
-  (status-t db-env-t* db-type-t* db-fields-len-t* db-fields-len-t)
-  status-declare
-  db-mdb-declare-val-null
-  (db-txn-declare env txn)
-  (db-mdb-cursor-declare system)
-  (declare
-    val-data MDB-val
-    name ui8*
-    name-len size-t
-    indices db-index-t*
-    node-index db-index-t)
-  (set
-    name 0
-    val-data.mv-data 0)
-  (sc-comment "check if already exists")
-  (set indices (db-index-get type fields fields-len))
-  (if indices (status-set-both-goto db-status-group-db db-status-id-duplicate))
-  (sc-comment "prepare data")
-  (status-require
-    (db-index-system-key type:id fields fields-len &val-data.mv-data &val-data.mv-size))
-  (status-require (db-index-name type:id fields fields-len &name &name-len))
-  (sc-comment "add to system btree")
-  (status-require (db-txn-write-begin &txn))
-  (db-mdb-status-require (db-mdb-env-cursor-open txn system))
-  (db-mdb-status-require (mdb-cursor-put system &val-data &val-null 0))
-  (db-mdb-cursor-close system)
-  (sc-comment "add data btree")
-  (db-mdb-status-require (mdb-dbi-open txn.mdb-txn name MDB-CREATE &node-index.dbi))
-  (status-require (db-txn-commit &txn))
-  (sc-comment "update cache")
-  (db-realloc type:indices indices (+ (sizeof db-index-t) type:indices-len))
-  (set node-index (array-get type:indices type:indices-len))
-  (struct-set node-index
-    fields fields
-    fields-len fields-len
-    type type)
-  (set type:indices-len (+ 1 type:indices-len))
-  (status-require (db-index-build env &node-index))
-  (label exit
-    (db-mdb-cursor-close-if-active system)
-    (db-txn-abort-if-active txn)
-    (free name)
-    (free val-data.mv-data)
-    (return status)))
-
-(define (db-index-delete env index) (status-t db-env-t* db-index-t*)
-  "index must be a pointer into env:types:indices"
-  status-declare
-  db-mdb-declare-val-null
-  (db-txn-declare env txn)
-  (db-mdb-cursor-declare system)
-  (declare val-data MDB-val)
-  (status-require
-    (db-index-system-key
-      index:type:id index:fields index:fields-len &val-data.mv-data &val-data.mv-size))
-  (status-require (db-txn-write-begin &txn))
-  (sc-comment "remove data btree")
-  (db-mdb-status-require (mdb-drop txn.mdb-txn index:dbi 1))
-  (sc-comment "remove from system btree")
-  (db-mdb-status-require (db-mdb-env-cursor-open txn system))
-  (db-mdb-status-require (mdb-cursor-get system &val-data &val-null MDB-SET))
-  (if db-mdb-status-is-success (db-mdb-status-require (mdb-cursor-del system 0))
-    db-mdb-status-expect-notfound)
-  (db-mdb-cursor-close system)
-  (status-require (db-txn-commit &txn))
-  (sc-comment "update cache")
-  (free index:fields)
-  (set
-    index:dbi 0
-    index:fields 0
-    index:fields-len 0
-    index:type 0)
-  (label exit
-    (db-mdb-cursor-close-if-active system)
-    (db-txn-abort-if-active txn)
-    (return status)))
-
-(define (db-index-rebuild env index) (status-t db-env-t* db-index-t*)
-  "clear index and fill with relevant data from existing nodes"
-  status-declare
-  (db-txn-declare env txn)
-  (declare
-    name ui8*
-    name-len size-t)
-  (set name 0)
-  (status-require (db-index-name index:type:id index:fields index:fields-len &name &name-len))
-  (status-require (db-txn-write-begin &txn))
-  (db-mdb-status-require (mdb-drop txn.mdb-txn index:dbi 0))
-  (db-mdb-status-require (mdb-dbi-open txn.mdb-txn name MDB-CREATE &index:dbi))
-  (status-require (db-txn-commit &txn))
-  (label exit
-    (free name)
-    (return (db-index-build env index))))
 
 (define (db-indices-entry-ensure txn values id) (status-t db-txn-t db-node-values-t db-id-t)
   "create entries in all indices of type for id and values.
@@ -314,6 +157,54 @@
     (if data (free data))
     (return status)))
 
+(define (db-index-build env index) (status-t db-env-t* db-index-t*)
+  "fill one index from existing data"
+  status-declare
+  db-mdb-declare-val-id
+  (db-txn-declare env txn)
+  (db-mdb-cursor-declare nodes)
+  (db-mdb-cursor-declare index-cursor)
+  (declare
+    val-data MDB-val
+    data void*
+    id db-id-t
+    type db-type-t
+    name ui8*
+    node-data db-node-data-t
+    values db-node-values-t)
+  (debug-log "%s" "index build called")
+  (set
+    type *index:type
+    id (db-id-add-type 0 type.id)
+    val-id.mv-data &id)
+  (status-require (db-txn-write-begin &txn))
+  (db-mdb-status-require (mdb-cursor-open txn.mdb-txn index:dbi &index-cursor))
+  (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
+  (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-data MDB-SET-KEY))
+  (debug-log "%s" "key is set")
+  (sc-comment "for each node of type")
+  (while (and db-mdb-status-is-success (= type.id (db-id-type (db-pointer->id val-id.mv-data))))
+    (set
+      node-data.data val-data.mv-data
+      node-data.size val-data.mv-size)
+    (status-require (db-node-data->values &type node-data &values))
+    (status-require (db-index-key env *index values &data &val-data.mv-size))
+    (set val-data.mv-data data)
+    (db-mdb-status-require (mdb-cursor-put index-cursor &val-data &val-id 0))
+    (free data)
+    (db-free-node-values &values)
+    (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-data MDB-NEXT-NODUP)))
+  (if (not (or db-mdb-status-is-success db-mdb-status-is-notfound)) (goto exit))
+  (status-require (db-txn-commit &txn))
+  (label exit
+    (db-mdb-cursor-close-if-active index-cursor)
+    (db-mdb-cursor-close-if-active nodes)
+    (if data (free data))
+    (free name)
+    (db-free-node-values &values)
+    (db-txn-abort-if-active txn)
+    (return status)))
+
 (define (db-indices-build env index) (status-t db-env-t* db-index-t*)
   "fill index with relevant data from existing nodes"
   status-declare
@@ -348,6 +239,128 @@
     (db-txn-abort-if-active txn)
     (db-free-node-values &values)
     (return status)))
+
+(define (db-index-get type fields fields-len)
+  (db-index-t* db-type-t* db-fields-len-t* db-fields-len-t)
+  (declare
+    indices-len db-indices-len-t
+    index db-indices-len-t
+    indices db-index-t*)
+  (set
+    indices type:indices
+    indices-len type:indices-len)
+  (for ((set index 0) (< index indices-len) (set index (+ 1 index)))
+    (if
+      (=
+        0
+        (memcmp
+          (struct-get (array-get indices index) fields) fields (* (sizeof db-field-t) fields-len)))
+      (return (+ index indices))))
+  (return 0))
+
+(define (db-index-create env type fields fields-len)
+  (status-t db-env-t* db-type-t* db-fields-len-t* db-fields-len-t)
+  status-declare
+  db-mdb-declare-val-null
+  (db-txn-declare env txn)
+  (db-mdb-cursor-declare system)
+  (declare
+    val-data MDB-val
+    data void*
+    size size-t
+    name ui8*
+    name-len size-t
+    indices db-index-t*
+    node-index db-index-t)
+  (set
+    name 0
+    data 0
+    size 0)
+  (sc-comment "check if already exists")
+  (set indices (db-index-get type fields fields-len))
+  (if indices (status-set-both-goto db-status-group-db db-status-id-duplicate))
+  (sc-comment "prepare data")
+  (status-require (db-index-system-key type:id fields fields-len &data &size))
+  (status-require (db-index-name type:id fields fields-len &name &name-len))
+  (debug-log "after index name, result %s, len %lu" name name-len)
+  (sc-comment "add to system btree")
+  (set
+    val-data.mv-data data
+    val-data.mv-size size)
+  (status-require (db-txn-write-begin &txn))
+  (db-mdb-status-require (db-mdb-env-cursor-open txn system))
+  (db-mdb-status-require (mdb-cursor-put system &val-data &val-null 0))
+  (db-mdb-cursor-close system)
+  (sc-comment "add data btree")
+  (db-mdb-status-require (mdb-dbi-open txn.mdb-txn name MDB-CREATE &node-index.dbi))
+  (status-require (db-txn-commit &txn))
+  (sc-comment "update cache")
+  (db-realloc type:indices indices (+ (sizeof db-index-t) type:indices-len))
+  (set node-index (array-get type:indices type:indices-len))
+  (struct-set node-index
+    fields fields
+    fields-len fields-len
+    type type)
+  (set type:indices-len (+ 1 type:indices-len))
+  (debug-log "%d" 1)
+  (status-require (db-index-build env &node-index))
+  (debug-log "%d" 2)
+  (label exit
+    (debug-log "exit %d" 3)
+    (db-mdb-cursor-close-if-active system)
+    (db-txn-abort-if-active txn)
+    (free name)
+    (free val-data.mv-data)
+    (return status)))
+
+(define (db-index-delete env index) (status-t db-env-t* db-index-t*)
+  "index must be a pointer into env:types:indices"
+  status-declare
+  db-mdb-declare-val-null
+  (db-txn-declare env txn)
+  (db-mdb-cursor-declare system)
+  (declare val-data MDB-val)
+  (status-require
+    (db-index-system-key
+      index:type:id index:fields index:fields-len &val-data.mv-data &val-data.mv-size))
+  (status-require (db-txn-write-begin &txn))
+  (sc-comment "remove data btree")
+  (db-mdb-status-require (mdb-drop txn.mdb-txn index:dbi 1))
+  (sc-comment "remove from system btree")
+  (db-mdb-status-require (db-mdb-env-cursor-open txn system))
+  (db-mdb-status-require (mdb-cursor-get system &val-data &val-null MDB-SET))
+  (if db-mdb-status-is-success (db-mdb-status-require (mdb-cursor-del system 0))
+    db-mdb-status-expect-notfound)
+  (db-mdb-cursor-close system)
+  (status-require (db-txn-commit &txn))
+  (sc-comment "update cache")
+  (free index:fields)
+  (set
+    index:dbi 0
+    index:fields 0
+    index:fields-len 0
+    index:type 0)
+  (label exit
+    (db-mdb-cursor-close-if-active system)
+    (db-txn-abort-if-active txn)
+    (return status)))
+
+(define (db-index-rebuild env index) (status-t db-env-t* db-index-t*)
+  "clear index and fill with relevant data from existing nodes"
+  status-declare
+  (db-txn-declare env txn)
+  (declare
+    name ui8*
+    name-len size-t)
+  (set name 0)
+  (status-require (db-index-name index:type:id index:fields index:fields-len &name &name-len))
+  (status-require (db-txn-write-begin &txn))
+  (db-mdb-status-require (mdb-drop txn.mdb-txn index:dbi 0))
+  (db-mdb-status-require (mdb-dbi-open txn.mdb-txn name MDB-CREATE &index:dbi))
+  (status-require (db-txn-commit &txn))
+  (label exit
+    (free name)
+    (return (db-index-build env index))))
 
 (define (db-index-next state) (status-t db-index-selection-t*)
   "assumes that state is positioned at a matching key"

@@ -14,49 +14,58 @@
     count)
   db-size-system-key (+ 1 (sizeof db-type-id-t)))
 
-(define (uint->string a) (uint8-t* intmax-t)
+(define (uint->string a result-len) (ui8* uintmax-t size-t*)
   (declare
-    len size-t
-    result uint8-t*)
+    size size-t
+    result ui8*)
   (set
-    len
-    (if* (= 0 a) 1
-      (+ 1 (log10 a)))
-    result (malloc (+ 1 len)))
+    size
+    (+ 1
+      (if* (= 0 a) 1
+        (+ 1 (log10 a))))
+    result (malloc size))
   (if (not result) (return 0))
-  (if (< (snprintf result len "%j" a) 0)
+  (if (< (snprintf result size "%ju" a) 0)
     (begin
       (free result)
       (return 0))
     (begin
-      (set (array-get result len) 0)
+      (set *result-len (- size 1))
       (return result))))
 
-(define (string-join strings strings-len delimiter result-size) (ui8* ui8** size-t ui8* size-t*)
+(define (string-join strings strings-len delimiter result-len) (ui8* ui8** size-t ui8* size-t*)
   "join strings into one string with each input string separated by delimiter.
   zero if strings-len is zero or memory could not be allocated"
   (declare
     result ui8*
-    temp ui8*
+    result-temp ui8*
     size size-t
-    index size-t
+    size-temp size-t
+    i size-t
     delimiter-len size-t)
   (if (not strings-len) (return 0))
   (set
     delimiter-len (strlen delimiter)
     size (+ 1 (* delimiter-len (- strings-len 1))))
-  (for ((set index 0) (< index strings-len) (set index (+ 1 index)))
-    (set size (+ size (strlen (array-get strings index)))))
+  (for ((set i 0) (< i strings-len) (set i (+ 1 i)))
+    (set size (+ size (strlen (array-get strings i)))))
   (set result (malloc size))
   (if (not result) (return 0))
   (set
-    temp result
-    (array-get result (- size 1)) 0)
-  (memcpy temp (array-get strings 0) (strlen (array-get strings 0)))
-  (for ((set index 1) (< index strings-len) (set index (+ 1 index)))
-    (memcpy temp delimiter delimiter-len)
-    (memcpy temp (array-get strings index) (strlen (array-get strings index))))
-  (if result-size (set *result-size size))
+    result-temp result
+    size-temp (strlen (array-get strings 0)))
+  (memcpy result-temp (array-get strings 0) size-temp)
+  (set result-temp (+ size-temp result-temp))
+  (for ((set i 1) (< i strings-len) (set i (+ 1 i)))
+    (memcpy result-temp delimiter delimiter-len)
+    (set
+      result-temp (+ delimiter-len result-temp)
+      size-temp (strlen (array-get strings i)))
+    (memcpy result-temp (array-get strings i) size-temp)
+    (set result-temp (+ size-temp result-temp)))
+  (set
+    (array-get result (- size 1)) 0
+    *result-len (- size 1))
   (return result))
 
 (define (db-txn-begin a) (status-t db-txn-t*)
@@ -92,11 +101,11 @@
 
 (define (db-debug-log-ids-set a) (void imht-set-t)
   "display an ids set"
-  (define index ui32 0)
+  (define i ui32 0)
   (printf "id set (%lu):" a.size)
-  (while (< index a.size)
-    (printf " %lu" (array-get a.content index))
-    (set index (+ 1 index)))
+  (while (< i a.size)
+    (printf " %lu" (array-get a.content i))
+    (set i (+ 1 i)))
   (printf "\n"))
 
 (define (db-debug-display-graph-records records) (void db-graph-records-t*)

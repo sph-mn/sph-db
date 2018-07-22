@@ -402,19 +402,28 @@ exit:
   db_txn_abort_if_active(txn);
   return (status);
 };
+status_t test_index(db_env_t* env) {
+  status_declare;
+  db_fields_len_t fields[2] = { 1, 2 };
+  db_type_t* type;
+  db_index_t* index;
+  db_node_values_t* values;
+  db_id_t* node_ids;
+  ui32 node_ids_len;
+  status_require(test_helper_create_type_1(env, (&type)));
+  /* test with no existing nodes */
+  status_require(db_index_create(env, type, fields, 2));
+  index = db_index_get(type, fields, 2);
+  test_helper_assert("index-get not null", index);
+  /* test with existing nodes */
+  status_require(test_helper_create_nodes_1(
+    env, type, (&values), (&node_ids), (&node_ids_len)));
+exit:
+  return (status);
+};
 int main() {
   test_helper_init(env);
-  test_helper_test_one(test_open_empty, env);
-  test_helper_test_one(test_statistics, env);
-  test_helper_test_one(test_id_construction, env);
-  test_helper_test_one(test_sequence, env);
-  test_helper_test_one(test_type_create_get_delete, env);
-  test_helper_test_one(test_type_create_many, env);
-  test_helper_test_one(test_open_nonempty, env);
-  test_helper_test_one(test_graph_read, env);
-  test_helper_test_one(test_graph_delete, env);
-  test_helper_test_one(test_node_create, env);
-  test_helper_test_one(test_node_select, env);
+  test_helper_test_one(test_index, env);
 exit:
   test_helper_report_status;
   return ((status.id));

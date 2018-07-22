@@ -552,13 +552,6 @@ status_t db_graph_select(db_txn_t txn,
   db_ordinal_condition_t* ordinal,
   db_count_t offset,
   db_graph_selection_t* result);
-void db_debug_log_ids(db_ids_t* a);
-void db_debug_log_ids_set(imht_set_t a);
-void db_debug_display_graph_records(db_graph_records_t* records);
-status_t db_debug_count_all_btree_entries(db_txn_t txn, db_count_t* result);
-status_t db_debug_display_btree_counts(db_txn_t txn);
-status_t db_debug_display_content_graph_lr(db_txn_t txn);
-status_t db_debug_display_content_graph_rl(db_txn_t txn);
 status_t db_node_values_new(db_type_t* type, db_node_values_t* result);
 void db_node_values_set(db_node_values_t* values,
   db_fields_len_t field_index,
@@ -591,3 +584,39 @@ status_t db_txn_write_begin(db_txn_t* a);
 status_t db_txn_begin(db_txn_t* a);
 status_t db_txn_commit(db_txn_t* a);
 void db_txn_abort(db_txn_t* a);
+db_index_t* db_index_get(db_type_t* type,
+  db_fields_len_t* fields,
+  db_fields_len_t fields_len);
+status_t db_index_create(db_env_t* env,
+  db_type_t* type,
+  db_fields_len_t* fields,
+  db_fields_len_t fields_len);
+status_t db_index_delete(db_env_t* env, db_index_t* index);
+status_t db_index_rebuild(db_env_t* env, db_index_t* index);
+status_t db_index_next(db_index_selection_t* state);
+void db_index_selection_destroy(db_index_selection_t* state);
+status_t db_index_select(db_txn_t txn,
+  db_index_t* index,
+  db_node_values_t values,
+  db_index_selection_t* result);
+void db_debug_log_ids(db_ids_t* a);
+void db_debug_log_ids_set(imht_set_t a);
+void db_debug_display_graph_records(db_graph_records_t* records);
+status_t db_debug_count_all_btree_entries(db_txn_t txn, db_count_t* result);
+status_t db_debug_display_btree_counts(db_txn_t txn);
+status_t db_debug_display_content_graph_lr(db_txn_t txn);
+status_t db_debug_display_content_graph_rl(db_txn_t txn);
+status_t db_index_key(db_env_t* env,
+  db_index_t index,
+  db_node_values_t values,
+  void** result_data,
+  size_t* result_size);
+status_t
+db_indices_entry_ensure(db_txn_t txn, db_node_values_t values, db_id_t id);
+status_t db_index_name(db_type_id_t type_id,
+  db_fields_len_t* fields,
+  db_fields_len_t fields_len,
+  ui8** result,
+  size_t* result_size);
+status_t
+db_indices_entry_delete(db_txn_t txn, db_node_values_t values, db_id_t id);
