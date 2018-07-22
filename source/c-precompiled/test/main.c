@@ -325,87 +325,25 @@ boolean node_matcher(db_id_t id, db_node_data_t data, void* matcher_state) {
   *((ui8*)(matcher_state)) = 1;
   return (1);
 };
-/** uses test type-1 */
-status_t test_helper_create_nodes_1(db_env_t* env,
-  db_type_t* type,
-  db_node_values_t*** result_values,
-  db_id_t** result_ids,
-  ui32* result_len) {
-  status_declare;
-  db_txn_declare(env, txn);
-  db_id_t* ids;
-  ui8* value_1;
-  i8* value_2;
-  ui8* value_3;
-  ui8* value_4;
-  db_node_values_t** values;
-  db_malloc(ids, (4 * sizeof(db_id_t)));
-  db_malloc(value_1, 1);
-  db_malloc(value_2, 1);
-  db_malloc(values, (2 * sizeof(db_node_values_t*)));
-  *value_1 = 11;
-  *value_2 = -128;
-  db_malloc_string(value_3, 3);
-  db_malloc_string(value_4, 5);
-  memcpy(value_3, (&"abc"), 3);
-  memcpy(value_4, (&"abcde"), 5);
-  status_require((db_node_values_new(type, (values[0]))));
-  status_require((db_node_values_new(type, (values[1]))));
-  db_node_values_set((values[0]), 0, value_1, 0);
-  db_node_values_set((values[0]), 1, value_2, 0);
-  db_node_values_set((values[0]), 2, value_3, 3);
-  db_node_values_set((values[0]), 3, value_4, 5);
-  db_node_values_set((values[1]), 0, value_1, 0);
-  db_node_values_set((values[1]), 1, value_1, 0);
-  db_node_values_set((values[1]), 2, value_3, 3);
-  status_require(db_txn_write_begin((&txn)));
-  status_require((db_node_create(txn, (*(values[0])), (&(ids[0])))));
-  status_require((db_node_create(txn, (*(values[0])), (&(ids[1])))));
-  status_require((db_node_create(txn, (*(values[1])), (&(ids[2])))));
-  status_require((db_node_create(txn, (*(values[1])), (&(ids[3])))));
-  status_require(db_txn_commit((&txn)));
-  *result_ids = ids;
-  *result_len = 4;
-  *result_values = values;
-exit:
-  return (status);
-};
 status_t test_node_select(db_env_t* env) {
   status_declare;
   db_txn_declare(env, txn);
   ui8 value_1;
-  i8 value_2;
   ui8 matcher_state;
-  db_id_t node_ids[4];
   db_ids_t* ids;
-  db_type_t* type;
   db_node_data_t data;
-  db_node_values_t values_1;
-  db_node_values_t values_2;
   db_node_selection_t selection;
   ui32 btree_size_before_delete;
   ui32 btree_size_after_delete;
-  ui8* value_3 = ((ui8*)("abc"));
-  ui8* value_4 = ((ui8*)("abcde"));
+  db_type_t* type;
+  db_node_values_t* values;
+  db_id_t* node_ids;
+  ui32 node_ids_len;
   /* create nodes */
   status_require(test_helper_create_type_1(env, (&type)));
-  status_require(db_node_values_new(type, (&values_1)));
-  status_require(db_node_values_new(type, (&values_2)));
-  value_1 = 11;
-  value_2 = -128;
-  db_node_values_set((&values_1), 0, (&value_1), 0);
-  db_node_values_set((&values_1), 1, (&value_2), 0);
-  db_node_values_set((&values_1), 2, value_3, 3);
-  db_node_values_set((&values_1), 3, value_4, 5);
-  db_node_values_set((&values_2), 0, (&value_1), 0);
-  db_node_values_set((&values_2), 1, (&value_1), 0);
-  db_node_values_set((&values_2), 2, value_3, 3);
-  status_require(db_txn_write_begin((&txn)));
-  status_require((db_node_create(txn, values_1, (&(node_ids[0])))));
-  status_require((db_node_create(txn, values_1, (&(node_ids[1])))));
-  status_require((db_node_create(txn, values_2, (&(node_ids[2])))));
-  status_require((db_node_create(txn, values_2, (&(node_ids[3])))));
-  status_require(db_txn_commit((&txn)));
+  status_require(test_helper_create_nodes_1(
+    env, type, (&values), (&node_ids), (&node_ids_len)));
+  value_1 = *((ui8*)((((values[0]).data)[0]).data));
   status_require(db_txn_begin((&txn)));
   /* type */
   status_require(db_node_select(txn, 0, type, 0, 0, 0, (&selection)));
@@ -415,7 +353,6 @@ status_t test_node_select(db_env_t* env) {
   test_helper_assert("node-ref value", (value_1 == *((ui8*)(data.data))));
   test_helper_assert("current id set", (db_id_element((selection.current_id))));
   status_require(db_node_next((&selection)));
-  data = db_node_ref((&selection), 0);
   status_require(db_node_next((&selection)));
   status = db_node_next((&selection));
   test_helper_assert(
@@ -453,7 +390,7 @@ status_t test_node_select(db_env_t* env) {
   db_txn_abort((&txn));
   status_require(db_txn_write_begin((&txn)));
   db_debug_count_all_btree_entries(txn, (&btree_size_before_delete));
-  status_require((db_node_update(txn, (node_ids[1]), values_2)));
+  status_require((db_node_update(txn, (node_ids[1]), (values[1]))));
   status_require(db_node_delete(txn, ids));
   status_require(db_txn_commit((&txn)));
   status_require(db_txn_begin((&txn)));

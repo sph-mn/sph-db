@@ -344,93 +344,27 @@
   (set (pointer-get (convert-type matcher-state ui8*)) 1)
   (return #t))
 
-(define (test-helper-create-nodes-1 env type result-values result-ids result-len)
-  (status-t db-env-t* db-type-t* db-node-values-t*** db-id-t** ui32*)
-  "uses test type-1"
-  status-declare
-  (db-txn-declare env txn)
-  (declare
-    ids db-id-t*
-    value-1 ui8*
-    value-2 i8*
-    value-3 ui8*
-    value-4 ui8*
-    values db-node-values-t**)
-  (db-malloc ids (* 4 (sizeof db-id-t)))
-  (db-malloc value-1 1)
-  (db-malloc value-2 1)
-  (db-malloc values (* 2 (sizeof db-node-values-t*)))
-  (set
-    *value-1 11
-    *value-2 -128)
-  (db-malloc-string value-3 3)
-  (db-malloc-string value-4 5)
-  (memcpy value-3 (address-of "abc") 3)
-  (memcpy value-4 (address-of "abcde") 5)
-  (status-require (db-node-values-new type (array-get values 0)))
-  (status-require (db-node-values-new type (array-get values 1)))
-  (db-node-values-set (array-get values 0) 0 value-1 0)
-  (db-node-values-set (array-get values 0) 1 value-2 0)
-  (db-node-values-set (array-get values 0) 2 value-3 3)
-  (db-node-values-set (array-get values 0) 3 value-4 5)
-  (db-node-values-set (array-get values 1) 0 value-1 0)
-  (db-node-values-set (array-get values 1) 1 value-1 0)
-  (db-node-values-set (array-get values 1) 2 value-3 3)
-  (status-require (db-txn-write-begin &txn))
-  (status-require
-    (db-node-create txn (pointer-get (array-get values 0)) (address-of (array-get ids 0))))
-  (status-require
-    (db-node-create txn (pointer-get (array-get values 0)) (address-of (array-get ids 1))))
-  (status-require
-    (db-node-create txn (pointer-get (array-get values 1)) (address-of (array-get ids 2))))
-  (status-require
-    (db-node-create txn (pointer-get (array-get values 1)) (address-of (array-get ids 3))))
-  (status-require (db-txn-commit &txn))
-  (set
-    *result-ids ids
-    *result-len 4
-    *result-values values)
-  (label exit
-    (return status)))
-
 (define (test-node-select env) (status-t db-env-t*)
   status-declare
   (db-txn-declare env txn)
   (declare
     value-1 ui8
-    value-2 i8
     matcher-state ui8
-    node-ids (array db-id-t 4)
     ids db-ids-t*
-    type db-type-t*
     data db-node-data-t
-    values-1 db-node-values-t
-    values-2 db-node-values-t
     selection db-node-selection-t
     btree-size-before-delete ui32
-    btree-size-after-delete ui32)
-  (define value-3 ui8* (convert-type "abc" ui8*))
-  (define value-4 ui8* (convert-type "abcde" ui8*))
+    btree-size-after-delete ui32
+    type db-type-t*
+    values db-node-values-t*
+    node-ids db-id-t*
+    node-ids-len ui32)
   (sc-comment "create nodes")
   (status-require (test-helper-create-type-1 env &type))
-  (status-require (db-node-values-new type &values-1))
-  (status-require (db-node-values-new type &values-2))
-  (set
-    value-1 11
-    value-2 -128)
-  (db-node-values-set &values-1 0 &value-1 0)
-  (db-node-values-set &values-1 1 &value-2 0)
-  (db-node-values-set &values-1 2 value-3 3)
-  (db-node-values-set &values-1 3 value-4 5)
-  (db-node-values-set &values-2 0 &value-1 0)
-  (db-node-values-set &values-2 1 &value-1 0)
-  (db-node-values-set &values-2 2 value-3 3)
-  (status-require (db-txn-write-begin &txn))
-  (status-require (db-node-create txn values-1 (address-of (array-get node-ids 0))))
-  (status-require (db-node-create txn values-1 (address-of (array-get node-ids 1))))
-  (status-require (db-node-create txn values-2 (address-of (array-get node-ids 2))))
-  (status-require (db-node-create txn values-2 (address-of (array-get node-ids 3))))
-  (status-require (db-txn-commit &txn))
+  (status-require (test-helper-create-nodes-1 env type &values &node-ids &node-ids-len))
+  (set value-1
+    (pointer-get
+      (convert-type (struct-get (array-get (struct-get (array-get values 0) data) 0) data) ui8*)))
   (status-require (db-txn-begin &txn))
   (sc-comment "type")
   (status-require (db-node-select txn 0 type 0 0 0 &selection))
@@ -440,7 +374,6 @@
   (test-helper-assert "node-ref value" (= value-1 (pointer-get (convert-type data.data ui8*))))
   (test-helper-assert "current id set" (db-id-element selection.current-id))
   (status-require (db-node-next &selection))
-  (set data (db-node-ref &selection 0))
   (status-require (db-node-next &selection))
   (set status (db-node-next &selection))
   (test-helper-assert "all type entries found" (= db-status-id-no-more-data status.id))
@@ -476,7 +409,7 @@
   (db-txn-abort &txn)
   (status-require (db-txn-write-begin &txn))
   (db-debug-count-all-btree-entries txn &btree-size-before-delete)
-  (status-require (db-node-update txn (array-get node-ids 1) values-2))
+  (status-require (db-node-update txn (array-get node-ids 1) (array-get values 1)))
   (status-require (db-node-delete txn ids))
   (status-require (db-txn-commit &txn))
   (status-require (db-txn-begin &txn))
@@ -496,31 +429,29 @@
   (status-require (test-helper-create-type-1 env &type))
   (db-index-create env type fields 2)
   (set index (db-index-get type fields 2))
-  #;(
   (db-index-delete env index) (status-t db-env-t* db-index-t*)
   (db-index-rebuild env index) (status-t db-env-t* db-index-t*)
   (db-index-next state) (status-t db-index-selection-t*)
   (db-index-selection-destroy state) (void db-index-selection-t*)
   (db-index-select txn index values result)
   (status-t db-txn-t db-index-t* db-node-values-t db-index-selection-t*)
-  )
   (label exit
     (return status)))
 
 (define (main) int
   (test-helper-init env)
-  (test-helper-test-one test-open-empty env)
-  (test-helper-test-one test-statistics env)
-  (test-helper-test-one test-id-construction env)
-  (test-helper-test-one test-sequence env)
-  (test-helper-test-one test-type-create-get-delete env)
-  (test-helper-test-one test-type-create-many env)
-  (test-helper-test-one test-open-nonempty env)
-  (test-helper-test-one test-graph-read env)
-  (test-helper-test-one test-graph-delete env)
-  (test-helper-test-one test-node-create env)
-  (test-helper-test-one test-node-select env)
-  ;(test-helper-test-one test-index env)
+  ;(test-helper-test-one test-open-empty env)
+  ;(test-helper-test-one test-statistics env)
+  ;(test-helper-test-one test-id-construction env)
+  ;(test-helper-test-one test-sequence env)
+  ;(test-helper-test-one test-type-create-get-delete env)
+  ;(test-helper-test-one test-type-create-many env)
+  ;(test-helper-test-one test-open-nonempty env)
+  ;(test-helper-test-one test-graph-read env)
+  ;(test-helper-test-one test-graph-delete env)
+  ;(test-helper-test-one test-node-create env)
+  ;(test-helper-test-one test-node-select env)
+  (test-helper-test-one test-index env)
   (label exit
     test-helper-report-status
     (return status.id)))

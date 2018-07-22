@@ -197,33 +197,11 @@
     matcher state:matcher
     matcher-state state:matcher-state
     skip (bit-and state:options db-selection-flag-skip)
-    count state:count)
-  (if state:type
-    (begin
-      (sc-comment "filter by type")
-      (set type-id state:type:id)
-      (db-mdb-status-require (mdb-cursor-get state:cursor &val-id &val-data MDB-GET-CURRENT))
-      (while
-        (and
-          db-mdb-status-is-success count (= type-id (db-id-type (db-pointer->id val-id.mv-data))))
-        (if matcher
-          (set
-            node-data.data val-data.mv-data
-            node-data.size val-data.mv-size
-            match (matcher (db-pointer->id val-id.mv-data) node-data matcher-state))
-          (set match #t))
-        (if match
-          (begin
-            (if (not skip)
-              (set
-                state:current.data val-data.mv-data
-                state:current.size val-data.mv-size
-                state:current-id (db-pointer->id val-id.mv-data)))
-            (set count (- count 1))))
-        (set status.id (mdb-cursor-get state:cursor &val-id &val-data MDB-NEXT-NODUP))))
+    count state:count
+    ids state:ids)
+  (if ids
     (begin
       (sc-comment "filter by ids")
-      (set ids state:ids)
       (while (and ids count)
         (set
           val-id.mv-data (db-ids-first-address ids)
@@ -248,7 +226,29 @@
                 (set count (- count 1)))))
           db-mdb-status-expect-notfound)
         (set ids (db-ids-rest ids)))
-      (set state:ids ids)))
+      (set state:ids ids))
+    (begin
+      (sc-comment "filter by type")
+      (set type-id state:type:id)
+      (db-mdb-status-require (mdb-cursor-get state:cursor &val-id &val-data MDB-GET-CURRENT))
+      (while
+        (and
+          db-mdb-status-is-success count (= type-id (db-id-type (db-pointer->id val-id.mv-data))))
+        (if matcher
+          (set
+            node-data.data val-data.mv-data
+            node-data.size val-data.mv-size
+            match (matcher (db-pointer->id val-id.mv-data) node-data matcher-state))
+          (set match #t))
+        (if match
+          (begin
+            (if (not skip)
+              (set
+                state:current.data val-data.mv-data
+                state:current.size val-data.mv-size
+                state:current-id (db-pointer->id val-id.mv-data)))
+            (set count (- count 1))))
+        (set status.id (mdb-cursor-get state:cursor &val-id &val-data MDB-NEXT-NODUP)))))
   (label exit
     db-mdb-status-no-more-data-if-notfound
     (return status)))
@@ -290,6 +290,7 @@
   (set
     result-state:cursor nodes
     result-state:count 1
+    result-state:env txn.env
     result-state:ids ids
     result-state:matcher matcher
     result-state:matcher-state matcher-state

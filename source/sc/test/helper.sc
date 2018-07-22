@@ -97,6 +97,51 @@
   (label exit
     (return status)))
 
+(define (test-helper-create-nodes-1 env type result-values result-ids result-len)
+  (status-t db-env-t* db-type-t* db-node-values-t** db-id-t** ui32*)
+  "for test-type-1"
+  status-declare
+  (db-txn-declare env txn)
+  (declare
+    ids db-id-t*
+    value-1 ui8*
+    value-2 i8*
+    value-3 ui8*
+    value-4 ui8*
+    values db-node-values-t*)
+  (db-malloc ids (* 4 (sizeof db-id-t)))
+  (db-malloc value-1 1)
+  (db-malloc value-2 1)
+  (db-malloc values (* 2 (sizeof db-node-values-t)))
+  (set
+    *value-1 11
+    *value-2 -128)
+  (db-malloc-string value-3 3)
+  (db-malloc-string value-4 5)
+  (memcpy value-3 (address-of "abc") 3)
+  (memcpy value-4 (address-of "abcde") 5)
+  (status-require (db-node-values-new type (+ 0 values)))
+  (status-require (db-node-values-new type (+ 1 values)))
+  (db-node-values-set (+ 0 values) 0 value-1 0)
+  (db-node-values-set (+ 0 values) 1 value-2 0)
+  (db-node-values-set (+ 0 values) 2 value-3 3)
+  (db-node-values-set (+ 0 values) 3 value-4 5)
+  (db-node-values-set (+ 1 values) 0 value-1 0)
+  (db-node-values-set (+ 1 values) 1 value-1 0)
+  (db-node-values-set (+ 1 values) 2 value-3 3)
+  (status-require (db-txn-write-begin &txn))
+  (status-require (db-node-create txn (array-get values 0) (+ 0 ids)))
+  (status-require (db-node-create txn (array-get values 0) (+ 1 ids)))
+  (status-require (db-node-create txn (array-get values 1) (+ 2 ids)))
+  (status-require (db-node-create txn (array-get values 1) (+ 3 ids)))
+  (status-require (db-txn-commit &txn))
+  (set
+    *result-ids ids
+    *result-len 4
+    *result-values values)
+  (label exit
+    (return status)))
+
 (define (test-helper-create-ids txn count result) (status-t db-txn-t ui32 db-ids-t**)
   "create only ids, without nodes. doesnt depend on node creation.
   dont reverse id list because it leads to more unorderly data which can expose bugs

@@ -195,35 +195,9 @@ status_t db_node_next(db_node_selection_t* state) {
   matcher_state = state->matcher_state;
   skip = (state->options & db_selection_flag_skip);
   count = state->count;
-  if (state->type) {
-    /* filter by type */
-    type_id = state->type->id;
-    db_mdb_status_require((mdb_cursor_get(
-      (state->cursor), (&val_id), (&val_data), MDB_GET_CURRENT)));
-    while ((db_mdb_status_is_success && count &&
-      (type_id == db_id_type((db_pointer_to_id((val_id.mv_data))))))) {
-      if (matcher) {
-        node_data.data = val_data.mv_data;
-        node_data.size = val_data.mv_size;
-        match = matcher(
-          (db_pointer_to_id((val_id.mv_data))), node_data, matcher_state);
-      } else {
-        match = 1;
-      };
-      if (match) {
-        if (!skip) {
-          state->current.data = val_data.mv_data;
-          state->current.size = val_data.mv_size;
-          state->current_id = db_pointer_to_id((val_id.mv_data));
-        };
-        count = (count - 1);
-      };
-      status.id =
-        mdb_cursor_get((state->cursor), (&val_id), (&val_data), MDB_NEXT_NODUP);
-    };
-  } else {
+  ids = state->ids;
+  if (ids) {
     /* filter by ids */
-    ids = state->ids;
     while ((ids && count)) {
       val_id.mv_data = db_ids_first_address(ids);
       status.id =
@@ -252,6 +226,32 @@ status_t db_node_next(db_node_selection_t* state) {
       ids = db_ids_rest(ids);
     };
     state->ids = ids;
+  } else {
+    /* filter by type */
+    type_id = state->type->id;
+    db_mdb_status_require((mdb_cursor_get(
+      (state->cursor), (&val_id), (&val_data), MDB_GET_CURRENT)));
+    while ((db_mdb_status_is_success && count &&
+      (type_id == db_id_type((db_pointer_to_id((val_id.mv_data))))))) {
+      if (matcher) {
+        node_data.data = val_data.mv_data;
+        node_data.size = val_data.mv_size;
+        match = matcher(
+          (db_pointer_to_id((val_id.mv_data))), node_data, matcher_state);
+      } else {
+        match = 1;
+      };
+      if (match) {
+        if (!skip) {
+          state->current.data = val_data.mv_data;
+          state->current.size = val_data.mv_size;
+          state->current_id = db_pointer_to_id((val_id.mv_data));
+        };
+        count = (count - 1);
+      };
+      status.id =
+        mdb_cursor_get((state->cursor), (&val_id), (&val_data), MDB_NEXT_NODUP);
+    };
   };
 exit:
   db_mdb_status_no_more_data_if_notfound;
@@ -302,6 +302,7 @@ status_t db_node_select(db_txn_t txn,
   };
   result_state->cursor = nodes;
   result_state->count = 1;
+  result_state->env = txn.env;
   result_state->ids = ids;
   result_state->matcher = matcher;
   result_state->matcher_state = matcher_state;

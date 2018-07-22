@@ -107,6 +107,51 @@ status_t test_helper_create_type_1(db_env_t* env, db_type_t** result) {
 exit:
   return (status);
 };
+/** for test-type-1 */
+status_t test_helper_create_nodes_1(db_env_t* env,
+  db_type_t* type,
+  db_node_values_t** result_values,
+  db_id_t** result_ids,
+  ui32* result_len) {
+  status_declare;
+  db_txn_declare(env, txn);
+  db_id_t* ids;
+  ui8* value_1;
+  i8* value_2;
+  ui8* value_3;
+  ui8* value_4;
+  db_node_values_t* values;
+  db_malloc(ids, (4 * sizeof(db_id_t)));
+  db_malloc(value_1, 1);
+  db_malloc(value_2, 1);
+  db_malloc(values, (2 * sizeof(db_node_values_t)));
+  *value_1 = 11;
+  *value_2 = -128;
+  db_malloc_string(value_3, 3);
+  db_malloc_string(value_4, 5);
+  memcpy(value_3, (&"abc"), 3);
+  memcpy(value_4, (&"abcde"), 5);
+  status_require(db_node_values_new(type, (0 + values)));
+  status_require(db_node_values_new(type, (1 + values)));
+  db_node_values_set((0 + values), 0, value_1, 0);
+  db_node_values_set((0 + values), 1, value_2, 0);
+  db_node_values_set((0 + values), 2, value_3, 3);
+  db_node_values_set((0 + values), 3, value_4, 5);
+  db_node_values_set((1 + values), 0, value_1, 0);
+  db_node_values_set((1 + values), 1, value_1, 0);
+  db_node_values_set((1 + values), 2, value_3, 3);
+  status_require(db_txn_write_begin((&txn)));
+  status_require((db_node_create(txn, (values[0]), (0 + ids))));
+  status_require((db_node_create(txn, (values[0]), (1 + ids))));
+  status_require((db_node_create(txn, (values[1]), (2 + ids))));
+  status_require((db_node_create(txn, (values[1]), (3 + ids))));
+  status_require(db_txn_commit((&txn)));
+  *result_ids = ids;
+  *result_len = 4;
+  *result_values = values;
+exit:
+  return (status);
+};
 /** create only ids, without nodes. doesnt depend on node creation.
   dont reverse id list because it leads to more unorderly data which can expose
   bugs especially with relation reading where order lead to lucky success
