@@ -529,6 +529,7 @@ exit:
 status_t db_open(ui8* path, db_open_options_t* options_pointer, db_env_t* env) {
   status_declare;
   db_open_options_t options;
+  debug_log("%d", 1);
   if (!(db_size_id > db_size_type_id)) {
     status_set_both_goto(db_status_group_db, db_status_id_max_type_id_size);
   };
@@ -550,10 +551,13 @@ status_t db_open(ui8* path, db_open_options_t* options_pointer, db_env_t* env) {
   status_require(db_open_nodes(txn));
   status_require(db_open_system(txn));
   status_require(db_open_graph(txn));
+  debug_log("%d", 2);
   status_require(db_txn_commit((&txn)));
+  debug_log("%d", 3);
   pthread_mutex_init((&(env->mutex)), 0);
   env->open = 1;
 exit:
+  debug_log("%d", 4);
   if (status_is_failure) {
     db_txn_abort_if_active(txn);
     db_close(env);

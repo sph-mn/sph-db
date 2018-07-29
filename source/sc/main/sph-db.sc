@@ -154,6 +154,7 @@
         (struct
           db-index-t*))
       (indices-len db-indices-len-t)
+      (indices-size size-t)
       (name ui8*)
       (sequence db-id-t)))
   db-index-t

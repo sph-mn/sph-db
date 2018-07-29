@@ -87,11 +87,14 @@ typedef struct {
   ui8 group;
 } status_t;
 enum {
+  db_status_id_success,
+  db_status_id_undefined,
   db_status_id_condition_unfulfilled,
   db_status_id_data_length,
   db_status_id_different_format,
   db_status_id_duplicate,
   db_status_id_input_type,
+  db_status_id_invalid_argument,
   db_status_id_max_element_id,
   db_status_id_max_type_id,
   db_status_id_max_type_id_size,
@@ -100,7 +103,6 @@ enum {
   db_status_id_no_more_data,
   db_status_id_not_implemented,
   db_status_id_path_not_accessible_db_root,
-  db_status_id_undefined,
   db_status_group_db,
   db_status_group_lmdb,
   db_status_group_libc,
@@ -133,8 +135,12 @@ ui8* db_status_group_id_to_name(status_id_t a) {
 /** get the description if available for a status */
 ui8* db_status_description(status_t a) {
   char* b;
-  if (db_status_group_db == a.group) {
-    if (db_status_id_input_type == a.id) {
+  if (db_status_group_lmdb == a.group) {
+    b = mdb_strerror((a.id));
+  } else {
+    if (db_status_id_invalid_argument == a.id) {
+      b = "input argument is of wrong type";
+    } else if (db_status_id_input_type == a.id) {
       b = "input argument is of wrong type";
     } else if (db_status_id_data_length == a.id) {
       b = "data too large";
@@ -168,18 +174,18 @@ ui8* db_status_description(status_t a) {
     } else {
       b = "";
     };
-  } else if (db_status_group_lmdb == a.group) {
-    b = mdb_strerror((a.id));
-  } else {
-    b = "";
   };
   return (((ui8*)(b)));
 };
 /** get the name if available for a status */
 ui8* db_status_name(status_t a) {
   char* b;
-  if (db_status_group_db == a.group) {
-    if (db_status_id_input_type == a.id) {
+  if (db_status_group_lmdb == a.group) {
+    b = mdb_strerror((a.id));
+  } else {
+    if (db_status_id_invalid_argument == a.id) {
+      b = "invalid-argument";
+    } else if (db_status_id_input_type == a.id) {
       b = "input-type";
     } else if (db_status_id_data_length == a.id) {
       b = "data-length";
@@ -210,10 +216,6 @@ ui8* db_status_name(status_t a) {
     } else {
       b = "unknown";
     };
-  } else if (db_status_group_lmdb == a.group) {
-    b = mdb_strerror((a.id));
-  } else {
-    b = "unknown";
   };
   return (((ui8*)(b)));
 };
@@ -388,6 +390,7 @@ typedef struct {
   db_type_id_t id;
   struct db_index_t* indices;
   db_indices_len_t indices_len;
+  size_t indices_size;
   ui8* name;
   db_id_t sequence;
 } db_type_t;

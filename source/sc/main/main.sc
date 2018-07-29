@@ -44,6 +44,7 @@
     i size-t
     delimiter-len size-t)
   (if (not strings-len) (return 0))
+  (sc-comment "size: string-null + delimiters + string-lengths")
   (set
     delimiter-len (strlen delimiter)
     size (+ 1 (* delimiter-len (- strings-len 1))))

@@ -45,6 +45,7 @@ ui8* string_join(ui8** strings,
   if (!strings_len) {
     return (0);
   };
+  /* size: string-null + delimiters + string-lengths */
   delimiter_len = strlen(delimiter);
   size = (1 + (delimiter_len * (strings_len - 1)));
   for (i = 0; (i < strings_len); i = (1 + i)) {

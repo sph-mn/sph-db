@@ -503,6 +503,7 @@
 (define (db-open path options-pointer env) (status-t ui8* db-open-options-t* db-env-t*)
   status-declare
   (declare options db-open-options-t)
+  (debug-log "%d" 1)
   (if (not (> db-size-id db-size-type-id))
     (status-set-both-goto db-status-group-db db-status-id-max-type-id-size))
   (db-txn-declare env txn)
@@ -516,10 +517,13 @@
   (status-require (db-open-nodes txn))
   (status-require (db-open-system txn))
   (status-require (db-open-graph txn))
+  (debug-log "%d" 2)
   (status-require (db-txn-commit &txn))
+  (debug-log "%d" 3)
   (pthread-mutex-init &env:mutex 0)
   (set env:open #t)
   (label exit
+    (debug-log "%d" 4)
     (if status-is-failure
       (begin
         (db-txn-abort-if-active txn)

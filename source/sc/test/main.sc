@@ -358,10 +358,12 @@
     type db-type-t*
     values db-node-values-t*
     node-ids db-id-t*
-    node-ids-len ui32)
+    node-ids-len ui32
+    values-len ui32)
   (sc-comment "create nodes")
   (status-require (test-helper-create-type-1 env &type))
-  (status-require (test-helper-create-nodes-1 env type &values &node-ids &node-ids-len))
+  (status-require (test-helper-create-values-1 env type &values &values-len))
+  (status-require (test-helper-create-nodes-1 env values &node-ids &node-ids-len))
   (set value-1
     (pointer-get
       (convert-type (struct-get (array-get (struct-get (array-get values 0) data) 0) data) ui8*)))
@@ -422,22 +424,50 @@
 
 (define (test-index env) (status-t db-env-t*)
   status-declare
+  (debug-log "%s" "test-index called")
   (declare
     fields (array db-fields-len-t 2 1 2)
+    fields-2 (array db-fields-len-t 2 0 1)
+    fields-len db-fields-len-t
     type db-type-t*
     index db-index-t*
+    index-name ui8*
+    index-name-len size-t
     values db-node-values-t*
+    values-len ui32
+    key-data void*
+    key-size size-t
     node-ids db-id-t*
     node-ids-len ui32)
+  (define index-name-expected ui8* "i-1-1-2")
+  (set fields-len 2)
   (status-require (test-helper-create-type-1 env &type))
+  (status-require (test-helper-create-values-1 env type &values &values-len))
   (sc-comment "test with no existing nodes")
-  (status-require (db-index-create env type fields 2))
-  (set index (db-index-get type fields 2))
+  (status-require (db-index-name type:id fields fields-len &index-name &index-name-len))
+  (test-helper-assert "index name" (= 0 (strcmp index-name-expected index-name)))
+  (status-require (db-index-create env type fields fields-len))
+  (set index (db-index-get type fields fields-len))
   (test-helper-assert "index-get not null" index)
-  (sc-comment "test with existing nodes")
-  (status-require (test-helper-create-nodes-1 env type &values &node-ids &node-ids-len))
-  ;(db-index-delete env index) (status-t db-env-t* db-index-t*)
-  ;(db-index-rebuild env index) (status-t db-env-t* db-index-t*)
+  (test-helper-assert "index-get fields-len" (= fields-len index:fields-len))
+  (test-helper-assert
+    "index-get fields set" (and (= 1 (array-get index:fields 0)) (= 2 (array-get index:fields 1))))
+  (status-require (db-index-key env *index (array-get values 0) &key-data &key-size))
+  (test-helper-assert "key size" (= 4 key-size))
+  (test-helper-assert "key memory ref" (array-get (convert-type key-data ui8*) 3))
+  (sc-comment "test node index update")
+  (status-require (test-helper-create-nodes-1 env values &node-ids &node-ids-len))
+  (sc-comment "test delete")
+  (status-require (db-index-delete env index))
+  (test-helper-assert "index-delete" (not (db-index-get type fields fields-len)))
+  (sc-comment "test create with existing nodes")
+  (status-require (db-index-create env type fields fields-len))
+  (sc-comment "this call exposed a memory error before")
+  (status-require (db-index-name type:id fields fields-len &index-name &index-name-len))
+  (set index (db-index-get type fields fields-len))
+  (test-helper-assert "index-get not null 2" index)
+  ;(status-require (db-index-rebuild env index))
+  (sc-comment "test index select")
   ;(db-index-next state) (status-t db-index-selection-t*)
   ;(db-index-selection-destroy state) (void db-index-selection-t*)
   ;(db-index-select txn index values result)
@@ -457,7 +487,7 @@
   ;(test-helper-test-one test-graph-read env)
   ;(test-helper-test-one test-graph-delete env)
   ;(test-helper-test-one test-node-create env)
-  ;(test-helper-test-one test-node-select env)
+  (test-helper-test-one test-node-select env)
   (test-helper-test-one test-index env)
   (label exit
     test-helper-report-status

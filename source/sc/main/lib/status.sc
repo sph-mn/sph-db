@@ -2,11 +2,14 @@
 (sc-include "foreign/sph/status")
 
 (enum
-  (db-status-id-condition-unfulfilled
+  (db-status-id-success
+    db-status-id-undefined
+    db-status-id-condition-unfulfilled
     db-status-id-data-length
     db-status-id-different-format
     db-status-id-duplicate
     db-status-id-input-type
+    db-status-id-invalid-argument
     db-status-id-max-element-id
     db-status-id-max-type-id
     db-status-id-max-type-id-size
@@ -15,7 +18,6 @@
     db-status-id-no-more-data
     db-status-id-not-implemented
     db-status-id-path-not-accessible-db-root
-    db-status-id-undefined
     db-status-group-db db-status-group-lmdb db-status-group-libc db-status-id-index-keysize))
 
 (pre-define
@@ -40,8 +42,10 @@
   "get the description if available for a status"
   (declare b char*)
   (case = a.group
-    (db-status-group-db
+    (db-status-group-lmdb (set b (mdb-strerror a.id)))
+    (else
       (case = a.id
+        (db-status-id-invalid-argument (set b "input argument is of wrong type"))
         (db-status-id-input-type (set b "input argument is of wrong type"))
         (db-status-id-data-length (set b "data too large"))
         (db-status-id-duplicate (set b "element already exists"))
@@ -60,17 +64,17 @@
         (db-status-id-different-format
           (set b "configured format differs from the format the database was created with"))
         (db-status-id-index-keysize (set b "index key to be inserted exceeds mdb maxkeysize"))
-        (else (set b ""))))
-    (db-status-group-lmdb (set b (mdb-strerror a.id)))
-    (else (set b "")))
+        (else (set b "")))))
   (return (convert-type b ui8*)))
 
 (define (db-status-name a) (ui8* status-t)
   "get the name if available for a status"
   (declare b char*)
   (case = a.group
-    (db-status-group-db
+    (db-status-group-lmdb (set b (mdb-strerror a.id)))
+    (else
       (case = a.id
+        (db-status-id-invalid-argument (set b "invalid-argument"))
         (db-status-id-input-type (set b "input-type"))
         (db-status-id-data-length (set b "data-length"))
         (db-status-id-duplicate (set b "duplicate"))
@@ -85,7 +89,5 @@
         (db-status-id-no-more-data (set b "no-more-data"))
         (db-status-id-different-format (set b "differing-db-format"))
         (db-status-id-index-keysize (set b "index-key-mdb-keysize"))
-        (else (set b "unknown"))))
-    (db-status-group-lmdb (set b (mdb-strerror a.id)))
-    (else (set b "unknown")))
+        (else (set b "unknown")))))
   (return (convert-type b ui8*)))

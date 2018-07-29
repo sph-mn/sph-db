@@ -339,10 +339,13 @@ status_t test_node_select(db_env_t* env) {
   db_node_values_t* values;
   db_id_t* node_ids;
   ui32 node_ids_len;
+  ui32 values_len;
   /* create nodes */
   status_require(test_helper_create_type_1(env, (&type)));
-  status_require(test_helper_create_nodes_1(
-    env, type, (&values), (&node_ids), (&node_ids_len)));
+  status_require(
+    test_helper_create_values_1(env, type, (&values), (&values_len)));
+  status_require(
+    test_helper_create_nodes_1(env, values, (&node_ids), (&node_ids_len)));
   value_1 = *((ui8*)((((values[0]).data)[0]).data));
   status_require(db_txn_begin((&txn)));
   /* type */
@@ -404,25 +407,60 @@ exit:
 };
 status_t test_index(db_env_t* env) {
   status_declare;
+  debug_log("%s", "test-index called");
   db_fields_len_t fields[2] = { 1, 2 };
+  db_fields_len_t fields_2[2] = { 0, 1 };
+  db_fields_len_t fields_len;
   db_type_t* type;
   db_index_t* index;
+  ui8* index_name;
+  size_t index_name_len;
   db_node_values_t* values;
+  ui32 values_len;
+  void* key_data;
+  size_t key_size;
   db_id_t* node_ids;
   ui32 node_ids_len;
+  ui8* index_name_expected = "i-1-1-2";
+  fields_len = 2;
   status_require(test_helper_create_type_1(env, (&type)));
+  status_require(
+    test_helper_create_values_1(env, type, (&values), (&values_len)));
   /* test with no existing nodes */
-  status_require(db_index_create(env, type, fields, 2));
-  index = db_index_get(type, fields, 2);
+  status_require((db_index_name(
+    (type->id), fields, fields_len, (&index_name), (&index_name_len))));
+  test_helper_assert(
+    "index name", (0 == strcmp(index_name_expected, index_name)));
+  status_require(db_index_create(env, type, fields, fields_len));
+  index = db_index_get(type, fields, fields_len);
   test_helper_assert("index-get not null", index);
-  /* test with existing nodes */
-  status_require(test_helper_create_nodes_1(
-    env, type, (&values), (&node_ids), (&node_ids_len)));
+  test_helper_assert("index-get fields-len", (fields_len == index->fields_len));
+  test_helper_assert("index-get fields set",
+    ((1 == (index->fields)[0]) && (2 == (index->fields)[1])));
+  status_require(
+    (db_index_key(env, (*index), (values[0]), (&key_data), (&key_size))));
+  test_helper_assert("key size", (4 == key_size));
+  test_helper_assert("key memory ref", (((ui8*)(key_data))[3]));
+  /* test node index update */
+  status_require(
+    test_helper_create_nodes_1(env, values, (&node_ids), (&node_ids_len)));
+  /* test delete */
+  status_require(db_index_delete(env, index));
+  test_helper_assert("index-delete", !db_index_get(type, fields, fields_len));
+  /* test create with existing nodes */
+  status_require(db_index_create(env, type, fields, fields_len));
+  /* this call exposed a memory error before */
+  status_require((db_index_name(
+    (type->id), fields, fields_len, (&index_name), (&index_name_len))));
+  index = db_index_get(type, fields, fields_len);
+  test_helper_assert("index-get not null 2", index);
+/* test index select */
 exit:
   return (status);
 };
 int main() {
   test_helper_init(env);
+  test_helper_test_one(test_node_select, env);
   test_helper_test_one(test_index, env);
 exit:
   test_helper_report_status;

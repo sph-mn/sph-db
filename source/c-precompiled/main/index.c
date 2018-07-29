@@ -2,6 +2,7 @@ status_t db_node_data_to_values(db_type_t* type,
   db_node_data_t data,
   db_node_values_t* result);
 void db_free_node_values(db_node_values_t* values);
+/** label-type type-id field ... */
 status_t db_index_system_key(db_type_id_t type_id,
   db_fields_len_t* fields,
   db_fields_len_t fields_len,
@@ -9,17 +10,19 @@ status_t db_index_system_key(db_type_id_t type_id,
   size_t* result_size) {
   status_declare;
   ui8* data;
+  ui8* data_temp;
   size_t size;
-  size = (db_size_type_id + (sizeof(db_fields_len_t) * fields_len));
+  /* system-label + type + fields */
+  size = (1 + sizeof(db_type_id_t) + (sizeof(db_fields_len_t) * fields_len));
   db_malloc(data, size);
   *data = db_system_label_index;
-  data = (1 + data);
-  *((db_type_id_t*)(data)) = type_id;
-  data = (sizeof(db_type_id_t) + data);
-  memcpy(data, fields, fields_len);
-exit:
+  data_temp = (1 + data);
+  *((db_type_id_t*)(data_temp)) = type_id;
+  data_temp = (sizeof(db_type_id_t) + data_temp);
+  memcpy(data_temp, fields, (sizeof(db_fields_len_t) * fields_len));
   *result_data = data;
   *result_size = size;
+exit:
   return (status);
 };
 /** create a string name from type-id and field offsets.
@@ -43,11 +46,7 @@ status_t db_index_name(db_type_id_t type_id,
   db_calloc(strings, strings_len, sizeof(ui8*));
   /* type id */
   str = uint_to_string(type_id, (&str_len));
-  if (!str) {
-    free_and_set_null(strings);
-    status_set_both(db_status_group_db, db_status_id_memory);
-    return (status);
-  };
+  db_status_memory_error_if_null(str);
   strings[0] = prefix;
   strings[1] = str;
   /* field ids */
@@ -62,7 +61,7 @@ status_t db_index_name(db_type_id_t type_id,
   *result_len = name_len;
 exit:
   if (strings) {
-    /* dont free the string[0] because it is the stack allocated prefix */
+    /* dont free string[0] because it is the stack allocated prefix */
     for (i = 1; (i < strings_len); i = (1 + i)) {
       free((strings[i]));
     };
@@ -78,10 +77,11 @@ status_t db_index_key(db_env_t* env,
   size_t* result_size) {
   status_declare;
   size_t value_size;
-  ui8* data;
+  void* data;
   db_fields_len_t i;
   size_t size;
-  void* data_temp;
+  ui8* data_temp;
+  size = 0;
   for (i = 0; (i < index.fields_len); i = (1 + i)) {
     size = (size + ((values.data)[(index.fields)[i]]).size);
   };
@@ -92,7 +92,7 @@ status_t db_index_key(db_env_t* env,
   data_temp = data;
   for (i = 0; (i < index.fields_len); i = (1 + i)) {
     value_size = ((values.data)[(index.fields)[i]]).size;
-    memcpy(data_temp, (((values.data)[i]).data), value_size);
+    memcpy(data_temp, (((values.data)[(index.fields)[i]]).data), value_size);
     data_temp = (value_size + data_temp);
   };
   *result_data = data;
@@ -119,6 +119,9 @@ db_indices_entry_ensure(db_txn_t txn, db_node_values_t values, db_id_t id) {
   node_indices = (values.type)->indices;
   for (i = 0; (i < node_indices_len); i = (1 + i)) {
     node_index = node_indices[i];
+    if (!node_index.fields_len) {
+      continue;
+    };
     status_require((db_index_key(
       (txn.env), node_index, values, (&data), (&(val_data.mv_size)))));
     val_data.mv_data = data;
@@ -130,9 +133,7 @@ db_indices_entry_ensure(db_txn_t txn, db_node_values_t values, db_id_t id) {
   };
 exit:
   db_mdb_cursor_close_if_active(node_index_cursor);
-  if (data) {
-    free(data);
-  };
+  free(data);
   return (status);
 };
 /** delete all entries from all indices of type for id and values */
@@ -153,6 +154,9 @@ db_indices_entry_delete(db_txn_t txn, db_node_values_t values, db_id_t id) {
   node_indices = (values.type)->indices;
   for (i = 0; (i < node_indices_len); i = (1 + i)) {
     node_index = node_indices[i];
+    if (!node_index.fields_len) {
+      continue;
+    };
     status_require((db_index_key((txn.env),
       node_index,
       values,
@@ -172,13 +176,11 @@ db_indices_entry_delete(db_txn_t txn, db_node_values_t values, db_id_t id) {
   };
 exit:
   db_mdb_cursor_close_if_active(node_index_cursor);
-  if (data) {
-    free(data);
-  };
+  free(data);
   return (status);
 };
 /** fill one index from existing data */
-status_t db_index_build(db_env_t* env, db_index_t* index) {
+status_t db_index_build(db_env_t* env, db_index_t index) {
   status_declare;
   db_mdb_declare_val_id;
   db_txn_declare(env, txn);
@@ -188,20 +190,19 @@ status_t db_index_build(db_env_t* env, db_index_t* index) {
   void* data;
   db_id_t id;
   db_type_t type;
-  ui8* name;
   db_node_data_t node_data;
   db_node_values_t values;
-  debug_log("%s", "index build called");
-  type = *(index->type);
+  values.data = 0;
+  data = 0;
+  type = *(index.type);
   id = db_id_add_type(0, (type.id));
   val_id.mv_data = &id;
   status_require(db_txn_write_begin((&txn)));
   db_mdb_status_require(
-    (mdb_cursor_open((txn.mdb_txn), (index->dbi), (&index_cursor))));
+    (mdb_cursor_open((txn.mdb_txn), (index.dbi), (&index_cursor))));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
   db_mdb_status_require(
     mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_SET_KEY));
-  debug_log("%s", "key is set");
   /* for each node of type */
   while ((db_mdb_status_is_success &&
     (type.id == db_id_type((db_pointer_to_id((val_id.mv_data))))))) {
@@ -209,67 +210,27 @@ status_t db_index_build(db_env_t* env, db_index_t* index) {
     node_data.size = val_data.mv_size;
     status_require(db_node_data_to_values((&type), node_data, (&values)));
     status_require(
-      (db_index_key(env, (*index), values, (&data), (&(val_data.mv_size)))));
+      (db_index_key(env, index, values, (&data), (&(val_data.mv_size)))));
+    db_free_node_values((&values));
     val_data.mv_data = data;
     db_mdb_status_require(
       mdb_cursor_put(index_cursor, (&val_data), (&val_id), 0));
-    free(data);
-    db_free_node_values((&values));
     db_mdb_status_require(
       mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_NEXT_NODUP));
   };
-  if (!(db_mdb_status_is_success || db_mdb_status_is_notfound)) {
-    goto exit;
-  };
+  db_mdb_status_expect_read;
   status_require(db_txn_commit((&txn)));
 exit:
   db_mdb_cursor_close_if_active(index_cursor);
   db_mdb_cursor_close_if_active(nodes);
-  if (data) {
-    free(data);
-  };
-  free(name);
-  db_free_node_values((&values));
-  db_txn_abort_if_active(txn);
-  return (status);
-};
-/** fill index with relevant data from existing nodes */
-status_t db_indices_build(db_env_t* env, db_index_t* index) {
-  status_declare;
-  db_mdb_declare_val_id;
-  db_txn_declare(env, txn);
-  db_mdb_cursor_declare(nodes);
-  db_node_data_t node_data;
-  MDB_val val_data;
-  db_id_t id;
-  db_type_t type;
-  db_node_values_t values;
-  type = *(index->type);
-  id = db_id_add_type(0, (type.id));
-  val_id.mv_data = &id;
-  status_require(db_txn_write_begin((&txn)));
-  db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
-  status.id = mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_SET_KEY);
-  while ((db_mdb_status_is_success &&
-    (type.id == db_id_type((db_pointer_to_id((val_id.mv_data))))))) {
-    node_data.data = val_data.mv_data;
-    node_data.size = val_data.mv_size;
-    status_require(db_node_data_to_values((&type), node_data, (&values)));
-    status_require((db_indices_entry_ensure(
-      txn, values, (db_pointer_to_id((val_id.mv_data))))));
-    db_free_node_values((&values));
-    status.id = mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_NEXT_NODUP);
-  };
-  if (!db_mdb_status_is_success) {
-    db_mdb_status_expect_notfound;
-  };
-  status_require(db_txn_commit((&txn)));
-exit:
-  db_mdb_cursor_close_if_active(nodes);
   db_txn_abort_if_active(txn);
   db_free_node_values((&values));
+  free(data);
+  db_mdb_status_success_if_notfound;
   return (status);
 };
+/** if found returns a pointer to an index struct in the cache array, zero
+ * otherwise */
 db_index_t* db_index_get(db_type_t* type,
   db_fields_len_t* fields,
   db_fields_len_t fields_len) {
@@ -279,13 +240,47 @@ db_index_t* db_index_get(db_type_t* type,
   indices = type->indices;
   indices_len = type->indices_len;
   for (index = 0; (index < indices_len); index = (1 + index)) {
-    if (0 ==
-      memcmp(
-        ((indices[index]).fields), fields, (sizeof(db_field_t) * fields_len))) {
+    if ((indices[index]).fields_len &&
+      (0 ==
+        memcmp(((indices[index]).fields),
+          fields,
+          (fields_len * sizeof(db_fields_len_t))))) {
       return ((index + indices));
     };
   };
   return (0);
+};
+/** eventually resize type:indices and add index to type:indices.
+  indices is extended and elements are set to zero on deletion.
+  indices is currently never downsized, but a re-open of the db-env
+  reallocates it in appropriate size (and invalidates all db-index-t pointers)
+*/
+status_t db_type_indices_add(db_type_t* type, db_index_t index) {
+  status_declare;
+  db_index_t* indices_temp;
+  db_indices_len_t indices_len;
+  db_index_t* indices;
+  db_indices_len_t i;
+  indices = type->indices;
+  indices_len = type->indices_len;
+  /* search unset index */
+  for (i = 0; (i < indices_len); i = (1 + i)) {
+    if (!(indices[i]).fields_len) {
+      break;
+    };
+  };
+  if (i < indices_len) {
+    indices[i] = index;
+    goto exit;
+  };
+  /* reallocate */
+  indices_len = (1 + indices_len);
+  db_realloc(indices, indices_temp, (indices_len * sizeof(db_index_t)));
+  indices[(indices_len - 1)] = index;
+  type->indices = indices;
+  type->indices_len = indices_len;
+exit:
+  return (status);
 };
 status_t db_index_create(db_env_t* env,
   db_type_t* type,
@@ -296,18 +291,24 @@ status_t db_index_create(db_env_t* env,
   db_txn_declare(env, txn);
   db_mdb_cursor_declare(system);
   MDB_val val_data;
+  db_fields_len_t* fields_copy;
   void* data;
   size_t size;
   ui8* name;
   size_t name_len;
-  db_index_t* indices;
+  db_index_t* indices_temp;
   db_index_t node_index;
+  if (!fields_len) {
+    status.id = db_status_id_invalid_argument;
+    return (status);
+  };
+  fields_copy = 0;
   name = 0;
   data = 0;
   size = 0;
   /* check if already exists */
-  indices = db_index_get(type, fields, fields_len);
-  if (indices) {
+  indices_temp = db_index_get(type, fields, fields_len);
+  if (indices_temp) {
     status_set_both_goto(db_status_group_db, db_status_id_duplicate);
   };
   /* prepare data */
@@ -315,7 +316,6 @@ status_t db_index_create(db_env_t* env,
     (db_index_system_key((type->id), fields, fields_len, (&data), (&size))));
   status_require(
     (db_index_name((type->id), fields, fields_len, (&name), (&name_len))));
-  debug_log("after index name, result %s, len %lu", name, name_len);
   /* add to system btree */
   val_data.mv_data = data;
   val_data.mv_size = size;
@@ -326,40 +326,44 @@ status_t db_index_create(db_env_t* env,
   /* add data btree */
   db_mdb_status_require(
     (mdb_dbi_open((txn.mdb_txn), name, MDB_CREATE, (&(node_index.dbi)))));
-  status_require(db_txn_commit((&txn)));
-  /* update cache */
-  db_realloc(
-    (type->indices), indices, (sizeof(db_index_t) + type->indices_len));
-  node_index = (type->indices)[type->indices_len];
-  node_index.fields = fields;
+  /* update cache. fields might be stack allocated */
+  db_malloc(fields_copy, (fields_len * sizeof(db_fields_len_t)));
+  memcpy(fields_copy, fields, (fields_len * sizeof(db_fields_len_t)));
+  node_index.fields = fields_copy;
   node_index.fields_len = fields_len;
   node_index.type = type;
-  type->indices_len = (1 + type->indices_len);
-  debug_log("%d", 1);
-  status_require(db_index_build(env, (&node_index)));
-  debug_log("%d", 2);
+  status_require(db_type_indices_add(type, node_index));
+  status_require(db_txn_commit((&txn)));
 exit:
-  debug_log("exit %d", 3);
   db_mdb_cursor_close_if_active(system);
   db_txn_abort_if_active(txn);
+  if (status_is_failure) {
+    free(fields_copy);
+  };
   free(name);
-  free((val_data.mv_data));
+  free(data);
   return (status);
 };
-/** index must be a pointer into env:types:indices */
+/** index must be a pointer into env:types:indices.
+  the cache entry struct has its fields set to zero */
 status_t db_index_delete(db_env_t* env, db_index_t* index) {
   status_declare;
   db_mdb_declare_val_null;
   db_txn_declare(env, txn);
   db_mdb_cursor_declare(system);
+  db_index_t* indices_temp;
+  void* key_data;
+  size_t key_size;
   MDB_val val_data;
   status_require((db_index_system_key((index->type->id),
     (index->fields),
     (index->fields_len),
-    (&(val_data.mv_data)),
-    (&(val_data.mv_size)))));
+    (&key_data),
+    (&key_size))));
+  val_data.mv_data = key_data;
+  val_data.mv_size = key_size;
   status_require(db_txn_write_begin((&txn)));
-  /* remove data btree */
+  /* remove data btree. closes the handle */
   db_mdb_status_require((mdb_drop((txn.mdb_txn), (index->dbi), 1)));
   /* remove from system btree */
   db_mdb_status_require(db_mdb_env_cursor_open(txn, system));
@@ -373,9 +377,7 @@ status_t db_index_delete(db_env_t* env, db_index_t* index) {
   db_mdb_cursor_close(system);
   status_require(db_txn_commit((&txn)));
   /* update cache */
-  free((index->fields));
-  index->dbi = 0;
-  index->fields = 0;
+  free_and_set_null((index->fields));
   index->fields_len = 0;
   index->type = 0;
 exit:
@@ -401,8 +403,9 @@ status_t db_index_rebuild(db_env_t* env, db_index_t* index) {
     (mdb_dbi_open((txn.mdb_txn), name, MDB_CREATE, (&(index->dbi)))));
   status_require(db_txn_commit((&txn)));
 exit:
+  db_txn_abort_if_active(txn);
   free(name);
-  return (db_index_build(env, index));
+  return (db_index_build(env, (*index)));
 };
 /** assumes that state is positioned at a matching key */
 status_t db_index_next(db_index_selection_t* state) {
