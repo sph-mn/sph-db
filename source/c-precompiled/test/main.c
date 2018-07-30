@@ -407,7 +407,6 @@ exit:
 };
 status_t test_index(db_env_t* env) {
   status_declare;
-  debug_log("%s", "test-index called");
   db_fields_len_t fields[2] = { 1, 2 };
   db_fields_len_t fields_2[2] = { 0, 1 };
   db_fields_len_t fields_len;
@@ -460,6 +459,16 @@ exit:
 };
 int main() {
   test_helper_init(env);
+  test_helper_test_one(test_open_empty, env);
+  test_helper_test_one(test_statistics, env);
+  test_helper_test_one(test_id_construction, env);
+  test_helper_test_one(test_sequence, env);
+  test_helper_test_one(test_type_create_get_delete, env);
+  test_helper_test_one(test_type_create_many, env);
+  test_helper_test_one(test_open_nonempty, env);
+  test_helper_test_one(test_graph_read, env);
+  test_helper_test_one(test_graph_delete, env);
+  test_helper_test_one(test_node_create, env);
   test_helper_test_one(test_node_select, env);
   test_helper_test_one(test_index, env);
 exit:

@@ -424,7 +424,6 @@
 
 (define (test-index env) (status-t db-env-t*)
   status-declare
-  (debug-log "%s" "test-index called")
   (declare
     fields (array db-fields-len-t 2 1 2)
     fields-2 (array db-fields-len-t 2 0 1)
@@ -477,16 +476,16 @@
 
 (define (main) int
   (test-helper-init env)
-  ;(test-helper-test-one test-open-empty env)
-  ;(test-helper-test-one test-statistics env)
-  ;(test-helper-test-one test-id-construction env)
-  ;(test-helper-test-one test-sequence env)
-  ;(test-helper-test-one test-type-create-get-delete env)
-  ;(test-helper-test-one test-type-create-many env)
-  ;(test-helper-test-one test-open-nonempty env)
-  ;(test-helper-test-one test-graph-read env)
-  ;(test-helper-test-one test-graph-delete env)
-  ;(test-helper-test-one test-node-create env)
+  (test-helper-test-one test-open-empty env)
+  (test-helper-test-one test-statistics env)
+  (test-helper-test-one test-id-construction env)
+  (test-helper-test-one test-sequence env)
+  (test-helper-test-one test-type-create-get-delete env)
+  (test-helper-test-one test-type-create-many env)
+  (test-helper-test-one test-open-nonempty env)
+  (test-helper-test-one test-graph-read env)
+  (test-helper-test-one test-graph-delete env)
+  (test-helper-test-one test-node-create env)
   (test-helper-test-one test-node-select env)
   (test-helper-test-one test-index env)
   (label exit

@@ -416,15 +416,15 @@ status_t db_node_update(db_txn_t txn, db_id_t id, db_node_values_t values) {
   db_mdb_cursor_declare(nodes);
   MDB_val val_data;
   db_node_data_t node_data;
+  val_id.mv_data = &id;
   node_data.data = 0;
   status_require(db_node_values_to_data(values, (&node_data)));
-  val_id.mv_data = &id;
   db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
   db_mdb_status_require(mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_SET));
   val_data.mv_data = node_data.data;
   val_data.mv_size = node_data.size;
   db_mdb_status_require(mdb_cursor_put(nodes, (&val_id), (&val_data), 0));
-  mdb_cursor_close(nodes);
+  db_mdb_cursor_close(nodes);
   status_require(db_indices_entry_ensure(txn, values, id));
 exit:
   db_mdb_cursor_close_if_active(nodes);
