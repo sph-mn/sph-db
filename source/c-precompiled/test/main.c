@@ -211,13 +211,6 @@ status_t test_graph_delete(db_env_t* env) {
   test_helper_graph_delete_one(1, 1, 1, 1);
   test_helper_graph_delete_footer;
 };
-void debug_display_array_ui8(ui8* a, size_t size) {
-  size_t i;
-  for (i = 0; (i < size); i = (1 + i)) {
-    printf("%lu ", (a[i]));
-  };
-  printf("\n");
-};
 status_t test_node_create(db_env_t* env) {
   status_declare;
   db_txn_declare(env, txn);
@@ -306,7 +299,7 @@ status_t test_node_create(db_env_t* env) {
   status_require(db_node_get(txn, id_2, (&node_data_1)));
   status = db_node_get(txn, 9999, (&node_data_1));
   test_helper_assert(
-    "node-get non-existing", (db_status_id_no_more_data == status.id));
+    "node-get non-existing", (db_status_id_notfound == status.id));
   status.id = status_id_success;
   /* test node-exists */
   ids = db_ids_add(0, id_1);
@@ -359,7 +352,7 @@ status_t test_node_select(db_env_t* env) {
   status_require(db_node_next((&selection)));
   status = db_node_next((&selection));
   test_helper_assert(
-    "all type entries found", (db_status_id_no_more_data == status.id));
+    "all type entries found", (db_status_id_notfound == status.id));
   status.id = status_id_success;
   db_node_selection_destroy((&selection));
   /* ids */
@@ -386,8 +379,7 @@ status_t test_node_select(db_env_t* env) {
   status_require(db_node_skip((&selection), 2));
   status_require(db_node_next((&selection)));
   status = db_node_next((&selection));
-  test_helper_assert(
-    "entries skipped", (db_status_id_no_more_data == status.id));
+  test_helper_assert("entries skipped", (db_status_id_notfound == status.id));
   status.id = status_id_success;
   db_node_selection_destroy((&selection));
   db_txn_abort((&txn));
@@ -405,8 +397,18 @@ exit:
   db_txn_abort_if_active(txn);
   return (status);
 };
+status_t
+test_helper_dbi_entry_count(db_txn_t txn, MDB_dbi dbi, size_t* result) {
+  status_declare;
+  MDB_stat stat;
+  db_mdb_status_require((mdb_stat((txn.mdb_txn), dbi, (&stat))));
+  *result = stat.ms_entries;
+exit:
+  return (status);
+};
 status_t test_index(db_env_t* env) {
   status_declare;
+  db_txn_declare(env, txn);
   db_fields_len_t fields[2] = { 1, 2 };
   db_fields_len_t fields_2[2] = { 0, 1 };
   db_fields_len_t fields_len;
@@ -420,6 +422,7 @@ status_t test_index(db_env_t* env) {
   size_t key_size;
   db_id_t* node_ids;
   ui32 node_ids_len;
+  db_index_selection_t selection;
   ui8* index_name_expected = "i-1-1-2";
   fields_len = 2;
   status_require(test_helper_create_type_1(env, (&type)));
@@ -446,30 +449,24 @@ status_t test_index(db_env_t* env) {
   /* test delete */
   status_require(db_index_delete(env, index));
   test_helper_assert("index-delete", !db_index_get(type, fields, fields_len));
-  /* test create with existing nodes */
+  /* test with existing nodes */
   status_require(db_index_create(env, type, fields, fields_len));
   /* this call exposed a memory error before */
   status_require((db_index_name(
     (type->id), fields, fields_len, (&index_name), (&index_name_len))));
   index = db_index_get(type, fields, fields_len);
   test_helper_assert("index-get not null 2", index);
-/* test index select */
+  /* test index select */
+  db_txn_begin((&txn));
+  status_require((db_index_select(txn, (*index), (values[1]), (&selection))));
+  db_index_selection_destroy((&selection));
+  db_txn_abort((&txn));
 exit:
+  db_txn_abort_if_active(txn);
   return (status);
 };
 int main() {
   test_helper_init(env);
-  test_helper_test_one(test_open_empty, env);
-  test_helper_test_one(test_statistics, env);
-  test_helper_test_one(test_id_construction, env);
-  test_helper_test_one(test_sequence, env);
-  test_helper_test_one(test_type_create_get_delete, env);
-  test_helper_test_one(test_type_create_many, env);
-  test_helper_test_one(test_open_nonempty, env);
-  test_helper_test_one(test_graph_read, env);
-  test_helper_test_one(test_graph_delete, env);
-  test_helper_test_one(test_node_create, env);
-  test_helper_test_one(test_node_select, env);
   test_helper_test_one(test_index, env);
 exit:
   test_helper_report_status;

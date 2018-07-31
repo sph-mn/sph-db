@@ -254,7 +254,7 @@ status_t db_node_next(db_node_selection_t* state) {
     };
   };
 exit:
-  db_mdb_status_no_more_data_if_notfound;
+  db_mdb_status_notfound_if_notfound;
   return (status);
 };
 /** read the next count matches and position state afterwards */
@@ -297,7 +297,7 @@ status_t db_node_select(db_txn_t txn,
     db_mdb_status_require(
       mdb_cursor_get(nodes, (&val_id), (&val_null), MDB_SET_RANGE));
     if (!(type->id == db_id_type((db_pointer_to_id((val_id.mv_data)))))) {
-      status_set_id_goto(db_status_id_no_more_data);
+      status_set_id_goto(db_status_id_notfound);
     };
   };
   result_state->cursor = nodes;
@@ -314,12 +314,12 @@ status_t db_node_select(db_txn_t txn,
 exit:
   if (!status_is_success) {
     mdb_cursor_close(nodes);
-    db_mdb_status_no_more_data_if_notfound;
+    db_mdb_status_notfound_if_notfound;
   };
   return (status);
 };
 /** get a reference to data for one node identified by id.
-  if node could not be found, status is status-id-no-more-data */
+  if node could not be found, status is status-id-notfound */
 status_t db_node_get(db_txn_t txn, db_id_t id, db_node_data_t* result) {
   status_declare;
   db_mdb_declare_val_id;
@@ -333,7 +333,7 @@ status_t db_node_get(db_txn_t txn, db_id_t id, db_node_data_t* result) {
     result->size = val_data.mv_size;
   } else {
     if (db_mdb_status_is_notfound) {
-      status.id = db_status_id_no_more_data;
+      status.id = db_status_id_notfound;
       status.group = db_status_group_db;
     };
   };

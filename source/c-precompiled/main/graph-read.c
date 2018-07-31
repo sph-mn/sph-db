@@ -1,12 +1,12 @@
-#define no_more_data_exit \
-  status_set_both_goto(db_status_group_db, db_status_id_no_more_data)
+#define notfound_exit \
+  status_set_both_goto(db_status_group_db, db_status_id_notfound)
 #define db_graph_select_cursor_initialise(name, state, state_field_name) \
   db_mdb_status_require(db_mdb_env_cursor_open(txn, name)); \
   db_mdb_status_require( \
     mdb_cursor_get(name, (&val_null), (&val_null), MDB_FIRST)); \
   if (!db_mdb_status_is_success) { \
     db_mdb_status_expect_notfound; \
-    status_set_both_goto(db_status_group_db, db_status_id_no_more_data); \
+    status_set_both_goto(db_status_group_db, db_status_id_notfound); \
   }; \
   state->state_field_name = name
 #define db_graph_select_initialise_set(name, state) \
@@ -66,7 +66,7 @@ status_t db_graph_read_1000(db_graph_selection_t* state,
       graph_key[0] = db_ids_first(left);
       goto set_range;
     } else {
-      no_more_data_exit;
+      notfound_exit;
     };
   };
 each_data:
@@ -136,7 +136,7 @@ status_t db_graph_read_1010(db_graph_selection_t* state,
         graph_key[1] = db_ids_first(label);
         goto set_key;
       } else {
-        no_more_data_exit;
+        notfound_exit;
       };
     };
   };
@@ -200,7 +200,7 @@ status_t db_graph_read_1100(db_graph_selection_t* state,
     if (right) {
       graph_key[0] = db_ids_first(right);
     } else {
-      no_more_data_exit;
+      notfound_exit;
     };
     goto set_range;
   };
@@ -289,7 +289,7 @@ next_query:
         graph_key[1] = db_ids_first(label);
         goto set_cursor;
       } else {
-        no_more_data_exit;
+        notfound_exit;
       };
     };
   };
@@ -328,7 +328,7 @@ status_t db_graph_read_1001_1101(db_graph_selection_t* state,
   if (left) {
     graph_key[0] = db_ids_first(left);
   } else {
-    no_more_data_exit;
+    notfound_exit;
   };
   if (db_id_equal(
         (db_pointer_to_id((val_graph_key.mv_data))), (graph_key[0]))) {
@@ -361,7 +361,7 @@ each_key:
   if (left) {
     graph_key[0] = db_ids_first(left);
   } else {
-    no_more_data_exit;
+    notfound_exit;
   };
   goto each_left;
 each_data:
@@ -443,7 +443,7 @@ status_t db_graph_read_1011_1111(db_graph_selection_t* state,
           left = left_first;
           graph_key[0] = db_ids_first(left);
         } else {
-          no_more_data_exit;
+          notfound_exit;
         };
       };
       goto set_key;
@@ -503,7 +503,7 @@ status_t db_graph_read_0010(db_graph_selection_t* state,
   if (label) {
     id_label = db_ids_first(label);
   } else {
-    no_more_data_exit;
+    notfound_exit;
   };
   if (db_id_equal(id_label, (db_pointer_to_id((val_id.mv_data))))) {
     graph_key[1] = id_label;
@@ -521,7 +521,7 @@ status_t db_graph_read_0010(db_graph_selection_t* state,
       if (label) {
         id_label = db_ids_first(label);
       } else {
-        no_more_data_exit;
+        notfound_exit;
       };
       goto set_label_key;
     };
@@ -565,7 +565,7 @@ each_left_data:
     if (label) {
       id_label = db_ids_first(label);
     } else {
-      no_more_data_exit;
+      notfound_exit;
     };
     goto set_label_key;
   };
@@ -613,7 +613,7 @@ status_t db_graph_read_0110(db_graph_selection_t* state,
           right = right_first;
           graph_key[0] = db_ids_first(right);
         } else {
-          no_more_data_exit;
+          notfound_exit;
         };
       };
       goto set_key;
@@ -673,7 +673,7 @@ status_t db_graph_read_0100(db_graph_selection_t* state,
     if (right) {
       graph_key[0] = db_ids_first(right);
     } else {
-      no_more_data_exit;
+      notfound_exit;
     };
     goto set_range;
   };
@@ -708,7 +708,7 @@ each_data:
   if (right) {
     graph_key[0] = db_ids_first(right);
   } else {
-    no_more_data_exit;
+    notfound_exit;
   };
   goto set_range;
 exit:
@@ -836,7 +836,7 @@ status_t db_graph_select(db_txn_t txn,
     state->options = (db_selection_flag_skip ^ state->options);
   };
 exit:
-  db_mdb_status_no_more_data_if_notfound;
+  db_mdb_status_notfound_if_notfound;
   state->status = status;
   return (status);
 };
@@ -848,7 +848,7 @@ status_t db_graph_read(db_graph_selection_t* state,
   status_require((state->status));
   status = ((db_graph_reader_t)(state->reader))(state, count, result);
 exit:
-  db_mdb_status_no_more_data_if_notfound;
+  db_mdb_status_notfound_if_notfound;
   return (status);
 };
 void db_graph_selection_destroy(db_graph_selection_t* state) {

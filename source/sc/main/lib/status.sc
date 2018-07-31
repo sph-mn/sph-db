@@ -15,7 +15,7 @@
     db-status-id-max-type-id-size
     db-status-id-memory
     db-status-id-missing-argument-db-root
-    db-status-id-no-more-data
+    db-status-id-notfound
     db-status-id-not-implemented
     db-status-id-path-not-accessible-db-root
     db-status-group-db db-status-group-lmdb db-status-group-libc db-status-id-index-keysize))
@@ -25,9 +25,9 @@
   (db-status-require-read expression)
   (begin
     (set status expression)
-    (if (not (or status-is-success (= status.id db-status-id-no-more-data))) status-goto))
-  db-status-success-if-no-more-data
-  (if (= status.id db-status-id-no-more-data) (set status.id status-id-success)))
+    (if (not (or status-is-success (= status.id db-status-id-notfound))) status-goto))
+  db-status-success-if-notfound
+  (if (= status.id db-status-id-notfound) (set status.id status-id-success)))
 
 (define (db-status-group-id->name a) (ui8* status-id-t)
   (declare b char*)
@@ -60,7 +60,7 @@
           (set b
             "type identifier size is either configured to be greater than 16 bit, which is currently not supported, or is not smaller than node id size"))
         (db-status-id-condition-unfulfilled (set b "condition unfulfilled"))
-        (db-status-id-no-more-data (set b "no more data to read"))
+        (db-status-id-notfound (set b "no more data to read"))
         (db-status-id-different-format
           (set b "configured format differs from the format the database was created with"))
         (db-status-id-index-keysize (set b "index key to be inserted exceeds mdb maxkeysize"))
@@ -86,7 +86,7 @@
         (db-status-id-max-type-id (set b "max-type-id-reached"))
         (db-status-id-max-type-id-size (set b "type-id-size-too-big"))
         (db-status-id-condition-unfulfilled (set b "condition-unfulfilled"))
-        (db-status-id-no-more-data (set b "no-more-data"))
+        (db-status-id-notfound (set b "notfound"))
         (db-status-id-different-format (set b "differing-db-format"))
         (db-status-id-index-keysize (set b "index-key-mdb-keysize"))
         (else (set b "unknown")))))

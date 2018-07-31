@@ -342,7 +342,7 @@
   (status-t db-env-t* db-index-t*) (db-index-next state)
   (status-t db-index-selection-t*) (db-index-selection-destroy state)
   (void db-index-selection-t*) (db-index-select txn index values result)
-  (status-t db-txn-t db-index-t* db-node-values-t db-index-selection-t*)
+  (status-t db-txn-t db-index-t db-node-values-t db-index-selection-t*)
   ; extra
   ; -- db-debug
   (db-debug-log-ids a) (void db-ids-t*)

@@ -183,7 +183,7 @@
   (status-require (db-txn-write-begin &txn))
   (db-mdb-status-require (mdb-cursor-open txn.mdb-txn index.dbi &index-cursor))
   (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
-  (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-data MDB-SET-KEY))
+  (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-data MDB-SET-RANGE))
   (sc-comment "for each node of type")
   (while (and db-mdb-status-is-success (= type.id (db-id-type (db-pointer->id val-id.mv-data))))
     (set
@@ -194,7 +194,7 @@
     (db-free-node-values &values)
     (set val-data.mv-data data)
     (db-mdb-status-require (mdb-cursor-put index-cursor &val-data &val-id 0))
-    (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-data MDB-NEXT-NODUP)))
+    (set status.id (mdb-cursor-get nodes &val-id &val-data MDB-NEXT-NODUP)))
   db-mdb-status-expect-read
   (status-require (db-txn-commit &txn))
   (label exit
@@ -308,7 +308,7 @@
     type type)
   (status-require (db-type-indices-add type node-index))
   (status-require (db-txn-commit &txn))
-  ;(status-require (db-index-build env node-index))
+  (status-require (db-index-build env node-index))
   (label exit
     (db-mdb-cursor-close-if-active system)
     (db-txn-abort-if-active txn)
@@ -368,27 +368,30 @@
   (db-mdb-status-require (mdb-dbi-open txn.mdb-txn name MDB-CREATE &index:dbi))
   (status-require (db-txn-commit &txn))
   (label exit
-    (db-txn-abort-if-active txn)
     (free name)
-    (return (db-index-build env *index))))
+    (if status-is-success (return (db-index-build env *index))
+      (db-txn-abort-if-active txn))))
 
 (define (db-index-next state) (status-t db-index-selection-t*)
-  "assumes that state is positioned at a matching key"
+  "position at the next index value.
+  if no value is found, status is db-notfound.
+  before call, state must be positioned at a matching key"
   status-declare
   db-mdb-declare-val-null
   db-mdb-declare-val-id
   (db-mdb-status-require (mdb-cursor-get state:cursor &val-null &val-id MDB-NEXT-DUP))
   (set state:current (db-pointer->id val-id.mv-data))
   (label exit
-    db-mdb-status-no-more-data-if-notfound
+    db-mdb-status-notfound-if-notfound
     (return status)))
 
 (define (db-index-selection-destroy state) (void db-index-selection-t*)
-  (if state:cursor (mdb-cursor-close state:cursor)))
+  (db-mdb-cursor-close-if-active state:cursor))
 
 (define (db-index-select txn index values result)
-  (status-t db-txn-t db-index-t* db-node-values-t db-index-selection-t*)
-  "prepare the read state and get the first matching element or set status to no-more-data"
+  (status-t db-txn-t db-index-t db-node-values-t db-index-selection-t*)
+  "open the cursor and set to the index key matching values.
+  if no match found status is db-notfound"
   status-declare
   db-mdb-declare-val-id
   (db-mdb-cursor-declare cursor)
@@ -396,9 +399,9 @@
     data void*
     val-data MDB-val)
   (set data 0)
-  (status-require (db-index-key txn.env *index values &data &val-data.mv-size))
+  (status-require (db-index-key txn.env index values &data &val-data.mv-size))
   (set val-data.mv-data data)
-  (db-mdb-status-require (mdb-cursor-open txn.mdb-txn index:dbi &cursor))
+  (db-mdb-status-require (mdb-cursor-open txn.mdb-txn index.dbi &cursor))
   (db-mdb-status-require (mdb-cursor-get cursor &val-data &val-id MDB-SET-KEY))
   (set
     result:current (db-pointer->id val-id.mv-data)
@@ -408,5 +411,5 @@
     (if status-is-failure
       (begin
         (db-mdb-cursor-close-if-active cursor)
-        db-mdb-status-no-more-data-if-notfound))
+        db-mdb-status-notfound-if-notfound))
     (return status)))

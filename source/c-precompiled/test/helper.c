@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include "../main/sph-db.h"
+#include "../main/lib/lmdb.c"
 #include "../foreign/sph/one.c"
 #define test_helper_db_root "/tmp/test-sph-db"
 #define test_helper_path_data test_helper_db_root "/data"
@@ -55,6 +56,13 @@ void test_helper_print_binary_ui64(ui64 a) {
     *(i + result) = (((((ui64)(1)) << i) & a) ? '1' : '0');
   };
   printf("%s\n", result);
+};
+void test_helper_display_array_ui8(ui8* a, size_t size) {
+  size_t i;
+  for (i = 0; (i < size); i = (1 + i)) {
+    printf("%lu ", (a[i]));
+  };
+  printf("\n");
 };
 boolean db_ids_contains(db_ids_t* ids, db_id_t id) {
   while (ids) {
@@ -312,7 +320,7 @@ exit:
     db_graph_select(txn, left, right, label, ordinal, offset, (&state))); \
   db_status_require_read(db_graph_read((&state), 2, (&records))); \
   db_status_require_read(db_graph_read((&state), 0, (&records))); \
-  if (status.id == db_status_id_no_more_data) { \
+  if (status.id == db_status_id_notfound) { \
     status.id = status_id_success; \
   } else { \
     printf( \
@@ -342,7 +350,7 @@ exit:
       existing_label, \
       ordinal)); \
   }; \
-  db_status_success_if_no_more_data; \
+  db_status_success_if_notfound; \
   db_graph_selection_destroy((&state)); \
   db_graph_records_destroy(records)
 #define test_helper_graph_read_header(env) \
@@ -383,7 +391,7 @@ exit:
   status_require(test_helper_ids_add_new_ids(txn, existing_label, (&label))); \
   printf(" ")
 #define test_helper_graph_read_footer \
-  db_status_success_if_no_more_data; \
+  db_status_success_if_notfound; \
   exit: \
   printf("\n"); \
   db_txn_abort_if_active(txn); \
@@ -557,7 +565,7 @@ ui32 test_helper_estimate_graph_read_btree_entry_count(ui32 existing_left_count,
   db_ids_destroy(left); \
   db_ids_destroy(right); \
   db_ids_destroy(label); \
-  db_status_success_if_no_more_data; \
+  db_status_success_if_notfound; \
   records = 0; \
   left = 0; \
   right = 0; \

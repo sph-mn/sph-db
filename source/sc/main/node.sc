@@ -250,7 +250,7 @@
             (set count (- count 1))))
         (set status.id (mdb-cursor-get state:cursor &val-id &val-data MDB-NEXT-NODUP)))))
   (label exit
-    db-mdb-status-no-more-data-if-notfound
+    db-mdb-status-notfound-if-notfound
     (return status)))
 
 (define (db-node-skip state count) (status-t db-node-selection-t* db-count-t)
@@ -286,7 +286,7 @@
         val-id.mv-data &id)
       (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-null MDB-SET-RANGE))
       (if (not (= type:id (db-id-type (db-pointer->id val-id.mv-data))))
-        (status-set-id-goto db-status-id-no-more-data))))
+        (status-set-id-goto db-status-id-notfound))))
   (set
     result-state:cursor nodes
     result-state:count 1
@@ -301,12 +301,12 @@
     (if (not status-is-success)
       (begin
         (mdb-cursor-close nodes)
-        db-mdb-status-no-more-data-if-notfound))
+        db-mdb-status-notfound-if-notfound))
     (return status)))
 
 (define (db-node-get txn id result) (status-t db-txn-t db-id-t db-node-data-t*)
   "get a reference to data for one node identified by id.
-  if node could not be found, status is status-id-no-more-data"
+  if node could not be found, status is status-id-notfound"
   status-declare
   db-mdb-declare-val-id
   (db-mdb-cursor-declare nodes)
@@ -320,7 +320,7 @@
       result:size val-data.mv-size)
     (if db-mdb-status-is-notfound
       (set
-        status.id db-status-id-no-more-data
+        status.id db-status-id-notfound
         status.group db-status-group-db)))
   (label exit
     (db-mdb-cursor-close-if-active nodes)

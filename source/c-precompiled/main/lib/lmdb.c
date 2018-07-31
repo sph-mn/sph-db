@@ -3,10 +3,10 @@
 #define db_mdb_status_is_notfound (MDB_NOTFOUND == status.id)
 #define db_mdb_status_is_success (MDB_SUCCESS == status.id)
 #define db_mdb_status_is_failure !db_mdb_status_is_success
-#define db_mdb_status_no_more_data_if_notfound \
+#define db_mdb_status_notfound_if_notfound \
   if (db_mdb_status_is_notfound) { \
     status.group = db_status_group_db; \
-    status.id = db_status_id_no_more_data; \
+    status.id = db_status_id_notfound; \
   }
 #define db_mdb_status_success_if_notfound \
   if (db_mdb_status_is_notfound) { \

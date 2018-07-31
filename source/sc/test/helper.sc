@@ -1,4 +1,4 @@
-(pre-include "stdio.h" "stdlib.h" "errno.h" "pthread.h" "../main/sph-db.h" "../foreign/sph/one.c")
+(pre-include "stdio.h" "stdlib.h" "errno.h" "pthread.h" "../main/sph-db.h" "../main/lib/lmdb.c" "../foreign/sph/one.c")
 
 (pre-define
   test-helper-db-root "/tmp/test-sph-db"
@@ -54,6 +54,12 @@
       (if* (bit-and (bit-shift-left (convert-type 1 ui64) i) a) #\1
         #\0)))
   (printf "%s\n" result))
+
+(define (test-helper-display-array-ui8 a size) (void ui8* size-t)
+  (declare i size-t)
+  (for ((set i 0) (< i size) (set i (+ 1 i)))
+    (printf "%lu " (array-get a i)))
+  (printf "\n"))
 
 (define (db-ids-contains ids id) (boolean db-ids-t* db-id-t)
   (while ids
@@ -290,7 +296,7 @@
     (status-require (db-graph-select txn left right label ordinal offset (address-of state)))
     (db-status-require-read (db-graph-read (address-of state) 2 (address-of records)))
     (db-status-require-read (db-graph-read (address-of state) 0 (address-of records)))
-    (if (= status.id db-status-id-no-more-data) (set status.id status-id-success)
+    (if (= status.id db-status-id-notfound) (set status.id status-id-success)
       (begin
         (printf "\n  final read result does not indicate that there is no more data")
         (status-set-id-goto 1)))
@@ -315,7 +321,7 @@
       (status-require
         (test-helper-graph-read-records-validate
           records left existing-left right existing-right label existing-label ordinal)))
-    db-status-success-if-no-more-data
+    db-status-success-if-notfound
     (db-graph-selection-destroy (address-of state))
     (db-graph-records-destroy records)))
 
@@ -361,7 +367,7 @@
 
 (pre-define test-helper-graph-read-footer
   (begin
-    db-status-success-if-no-more-data
+    db-status-success-if-notfound
     (label exit
       (printf "\n")
       (db-txn-abort-if-active txn)
@@ -559,7 +565,7 @@
     (db-ids-destroy left)
     (db-ids-destroy right)
     (db-ids-destroy label)
-    db-status-success-if-no-more-data
+    db-status-success-if-notfound
     (set
       records 0
       left 0

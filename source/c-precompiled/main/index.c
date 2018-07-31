@@ -202,7 +202,7 @@ status_t db_index_build(db_env_t* env, db_index_t index) {
     (mdb_cursor_open((txn.mdb_txn), (index.dbi), (&index_cursor))));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
   db_mdb_status_require(
-    mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_SET_KEY));
+    mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_SET_RANGE));
   /* for each node of type */
   while ((db_mdb_status_is_success &&
     (type.id == db_id_type((db_pointer_to_id((val_id.mv_data))))))) {
@@ -215,8 +215,7 @@ status_t db_index_build(db_env_t* env, db_index_t index) {
     val_data.mv_data = data;
     db_mdb_status_require(
       mdb_cursor_put(index_cursor, (&val_data), (&val_id), 0));
-    db_mdb_status_require(
-      mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_NEXT_NODUP));
+    status.id = mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_NEXT_NODUP);
   };
   db_mdb_status_expect_read;
   status_require(db_txn_commit((&txn)));
@@ -334,6 +333,7 @@ status_t db_index_create(db_env_t* env,
   node_index.type = type;
   status_require(db_type_indices_add(type, node_index));
   status_require(db_txn_commit((&txn)));
+  status_require(db_index_build(env, node_index));
 exit:
   db_mdb_cursor_close_if_active(system);
   db_txn_abort_if_active(txn);
@@ -403,11 +403,16 @@ status_t db_index_rebuild(db_env_t* env, db_index_t* index) {
     (mdb_dbi_open((txn.mdb_txn), name, MDB_CREATE, (&(index->dbi)))));
   status_require(db_txn_commit((&txn)));
 exit:
-  db_txn_abort_if_active(txn);
   free(name);
-  return (db_index_build(env, (*index)));
+  if (status_is_success) {
+    return (db_index_build(env, (*index)));
+  } else {
+    db_txn_abort_if_active(txn);
+  };
 };
-/** assumes that state is positioned at a matching key */
+/** position at the next index value.
+  if no value is found, status is db-notfound.
+  before call, state must be positioned at a matching key */
 status_t db_index_next(db_index_selection_t* state) {
   status_declare;
   db_mdb_declare_val_null;
@@ -416,18 +421,16 @@ status_t db_index_next(db_index_selection_t* state) {
     (mdb_cursor_get((state->cursor), (&val_null), (&val_id), MDB_NEXT_DUP)));
   state->current = db_pointer_to_id((val_id.mv_data));
 exit:
-  db_mdb_status_no_more_data_if_notfound;
+  db_mdb_status_notfound_if_notfound;
   return (status);
 };
 void db_index_selection_destroy(db_index_selection_t* state) {
-  if (state->cursor) {
-    mdb_cursor_close((state->cursor));
-  };
+  db_mdb_cursor_close_if_active((state->cursor));
 };
-/** prepare the read state and get the first matching element or set status to
- * no-more-data */
+/** open the cursor and set to the index key matching values.
+  if no match found status is db-notfound */
 status_t db_index_select(db_txn_t txn,
-  db_index_t* index,
+  db_index_t index,
   db_node_values_t values,
   db_index_selection_t* result) {
   status_declare;
@@ -436,11 +439,11 @@ status_t db_index_select(db_txn_t txn,
   void* data;
   MDB_val val_data;
   data = 0;
-  status_require((
-    db_index_key((txn.env), (*index), values, (&data), (&(val_data.mv_size)))));
+  status_require(
+    (db_index_key((txn.env), index, values, (&data), (&(val_data.mv_size)))));
   val_data.mv_data = data;
   db_mdb_status_require(
-    (mdb_cursor_open((txn.mdb_txn), (index->dbi), (&cursor))));
+    (mdb_cursor_open((txn.mdb_txn), (index.dbi), (&cursor))));
   db_mdb_status_require(
     mdb_cursor_get(cursor, (&val_data), (&val_id), MDB_SET_KEY));
   result->current = db_pointer_to_id((val_id.mv_data));
@@ -449,7 +452,7 @@ exit:
   free(data);
   if (status_is_failure) {
     db_mdb_cursor_close_if_active(cursor);
-    db_mdb_status_no_more_data_if_notfound;
+    db_mdb_status_notfound_if_notfound;
   };
   return (status);
 };

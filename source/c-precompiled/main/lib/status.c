@@ -61,7 +61,7 @@ enum {
   db_status_id_max_type_id_size,
   db_status_id_memory,
   db_status_id_missing_argument_db_root,
-  db_status_id_no_more_data,
+  db_status_id_notfound,
   db_status_id_not_implemented,
   db_status_id_path_not_accessible_db_root,
   db_status_group_db,
@@ -73,11 +73,11 @@ enum {
   status_set_both_goto(db_status_group_db, status_id)
 #define db_status_require_read(expression) \
   status = expression; \
-  if (!(status_is_success || (status.id == db_status_id_no_more_data))) { \
+  if (!(status_is_success || (status.id == db_status_id_notfound))) { \
     status_goto; \
   }
-#define db_status_success_if_no_more_data \
-  if (status.id == db_status_id_no_more_data) { \
+#define db_status_success_if_notfound \
+  if (status.id == db_status_id_notfound) { \
     status.id = status_id_success; \
   }
 ui8* db_status_group_id_to_name(status_id_t a) {
@@ -125,7 +125,7 @@ ui8* db_status_description(status_t a) {
         "which is currently not supported, or is not smaller than node id size";
     } else if (db_status_id_condition_unfulfilled == a.id) {
       b = "condition unfulfilled";
-    } else if (db_status_id_no_more_data == a.id) {
+    } else if (db_status_id_notfound == a.id) {
       b = "no more data to read";
     } else if (db_status_id_different_format == a.id) {
       b = "configured format differs from the format the database was created "
@@ -168,8 +168,8 @@ ui8* db_status_name(status_t a) {
       b = "type-id-size-too-big";
     } else if (db_status_id_condition_unfulfilled == a.id) {
       b = "condition-unfulfilled";
-    } else if (db_status_id_no_more_data == a.id) {
-      b = "no-more-data";
+    } else if (db_status_id_notfound == a.id) {
+      b = "notfound";
     } else if (db_status_id_different_format == a.id) {
       b = "differing-db-format";
     } else if (db_status_id_index_keysize == a.id) {

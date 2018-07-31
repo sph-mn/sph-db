@@ -213,12 +213,6 @@
   (test-helper-graph-delete-one 1 1 1 1)
   test-helper-graph-delete-footer)
 
-(define (debug-display-array-ui8 a size) (void ui8* size-t)
-  (declare i size-t)
-  (for ((set i 0) (< i size) (set i (+ 1 i)))
-    (printf "%lu " (array-get a i)))
-  (printf "\n"))
-
 (define (test-node-create env) (status-t db-env-t*)
   status-declare
   ; todo: setting to big data for node value. add many nodes
@@ -324,7 +318,7 @@
     (and (= 5 field-data.size) (= 0 (memcmp value-4 field-data.data field-data.size))))
   (status-require (db-node-get txn id-2 &node-data-1))
   (set status (db-node-get txn 9999 &node-data-1))
-  (test-helper-assert "node-get non-existing" (= db-status-id-no-more-data status.id))
+  (test-helper-assert "node-get non-existing" (= db-status-id-notfound status.id))
   (set status.id status-id-success)
   (sc-comment "test node-exists")
   (set
@@ -378,7 +372,7 @@
   (status-require (db-node-next &selection))
   (status-require (db-node-next &selection))
   (set status (db-node-next &selection))
-  (test-helper-assert "all type entries found" (= db-status-id-no-more-data status.id))
+  (test-helper-assert "all type entries found" (= db-status-id-notfound status.id))
   (set status.id status-id-success)
   (db-node-selection-destroy &selection)
   (sc-comment "ids")
@@ -405,7 +399,7 @@
   (status-require (db-node-skip &selection 2))
   (status-require (db-node-next &selection))
   (set status (db-node-next &selection))
-  (test-helper-assert "entries skipped" (= db-status-id-no-more-data status.id))
+  (test-helper-assert "entries skipped" (= db-status-id-notfound status.id))
   (set status.id status-id-success)
   (db-node-selection-destroy &selection)
   (db-txn-abort &txn)
@@ -422,8 +416,17 @@
     (db-txn-abort-if-active txn)
     (return status)))
 
+(define (test-helper-dbi-entry-count txn dbi result) (status-t db-txn-t MDB-dbi size-t*)
+  status-declare
+  (declare stat MDB-stat)
+  (db-mdb-status-require (mdb-stat txn.mdb-txn dbi &stat))
+  (set *result stat.ms_entries)
+  (label exit
+    (return status)))
+
 (define (test-index env) (status-t db-env-t*)
   status-declare
+  (db-txn-declare env txn)
   (declare
     fields (array db-fields-len-t 2 1 2)
     fields-2 (array db-fields-len-t 2 0 1)
@@ -437,7 +440,8 @@
     key-data void*
     key-size size-t
     node-ids db-id-t*
-    node-ids-len ui32)
+    node-ids-len ui32
+    selection db-index-selection-t)
   (define index-name-expected ui8* "i-1-1-2")
   (set fields-len 2)
   (status-require (test-helper-create-type-1 env &type))
@@ -459,34 +463,36 @@
   (sc-comment "test delete")
   (status-require (db-index-delete env index))
   (test-helper-assert "index-delete" (not (db-index-get type fields fields-len)))
-  (sc-comment "test create with existing nodes")
+  (sc-comment "test with existing nodes")
   (status-require (db-index-create env type fields fields-len))
   (sc-comment "this call exposed a memory error before")
   (status-require (db-index-name type:id fields fields-len &index-name &index-name-len))
   (set index (db-index-get type fields fields-len))
   (test-helper-assert "index-get not null 2" index)
-  ;(status-require (db-index-rebuild env index))
   (sc-comment "test index select")
-  ;(db-index-next state) (status-t db-index-selection-t*)
-  ;(db-index-selection-destroy state) (void db-index-selection-t*)
-  ;(db-index-select txn index values result)
-  ;(status-t db-txn-t db-index-t* db-node-values-t db-index-selection-t*)
+  (db-txn-begin &txn)
+  (status-require (db-index-select txn *index (array-get values 1) &selection))
+  (db-index-selection-destroy &selection)
+  (db-txn-abort &txn)
+  ;(status-require (db-index-next &selection))
+  ;(status-require (db-index-rebuild env index))
   (label exit
+    (db-txn-abort-if-active txn)
     (return status)))
 
 (define (main) int
   (test-helper-init env)
-  (test-helper-test-one test-open-empty env)
-  (test-helper-test-one test-statistics env)
-  (test-helper-test-one test-id-construction env)
-  (test-helper-test-one test-sequence env)
-  (test-helper-test-one test-type-create-get-delete env)
-  (test-helper-test-one test-type-create-many env)
-  (test-helper-test-one test-open-nonempty env)
-  (test-helper-test-one test-graph-read env)
-  (test-helper-test-one test-graph-delete env)
-  (test-helper-test-one test-node-create env)
-  (test-helper-test-one test-node-select env)
+  ;(test-helper-test-one test-open-empty env)
+  ;(test-helper-test-one test-statistics env)
+  ;(test-helper-test-one test-id-construction env)
+  ;(test-helper-test-one test-sequence env)
+  ;(test-helper-test-one test-type-create-get-delete env)
+  ;(test-helper-test-one test-type-create-many env)
+  ;(test-helper-test-one test-open-nonempty env)
+  ;(test-helper-test-one test-graph-read env)
+  ;(test-helper-test-one test-graph-delete env)
+  ;(test-helper-test-one test-node-create env)
+  ;(test-helper-test-one test-node-select env)
   (test-helper-test-one test-index env)
   (label exit
     test-helper-report-status

@@ -1,4 +1,4 @@
-(pre-define no-more-data-exit (status-set-both-goto db-status-group-db db-status-id-no-more-data))
+(pre-define notfound-exit (status-set-both-goto db-status-group-db db-status-id-notfound))
 
 (pre-define (db-graph-select-cursor-initialise name state state-field-name)
   (begin
@@ -7,7 +7,7 @@
     (if (not db-mdb-status-is-success)
       (begin
         db-mdb-status-expect-notfound
-        (status-set-both-goto db-status-group-db db-status-id-no-more-data)))
+        (status-set-both-goto db-status-group-db db-status-id-notfound)))
     (set state:state-field-name name)))
 
 (pre-define (db-graph-select-initialise-set name state)
@@ -70,7 +70,7 @@
           (begin
             (set (array-get graph-key 0) (db-ids-first left))
             (goto set-range))
-          no-more-data-exit))))
+          notfound-exit))))
   (label each-data
     stop-if-count-zero
     (if (not skip)
@@ -132,7 +132,7 @@
                   (array-get graph-key 0) (db-ids-first left)
                   (array-get graph-key 1) (db-ids-first label))
                 (goto set-key))
-              no-more-data-exit))))))
+              notfound-exit))))))
   (label each-data
     stop-if-count-zero
     (if (not skip)
@@ -181,7 +181,7 @@
           db-mdb-status-expect-notfound)
         (set right (db-ids-rest right))
         (if right (set (array-get graph-key 0) (db-ids-first right))
-          no-more-data-exit)
+          notfound-exit)
         (goto set-range))))
   (label each-left
     stop-if-count-zero
@@ -264,7 +264,7 @@
                   stop-if-count-zero
                   (set (array-get graph-key 1) (db-ids-first label))
                   (goto set-cursor))
-                no-more-data-exit)))))))
+                notfound-exit)))))))
   (label match
     (if (not skip)
       (begin
@@ -300,7 +300,7 @@
   (db-graph-data-set-ordinal graph-data ordinal-min)
   (db-mdb-status-require (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
   (if left (set (array-get graph-key 0) (db-ids-first left))
-    no-more-data-exit)
+    notfound-exit)
   (if (db-id-equal (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0)) (goto each-data))
   (label each-left
     (set val-graph-key.mv-data graph-key)
@@ -319,7 +319,7 @@
         db-mdb-status-expect-notfound)
       (set left (db-ids-rest left))
       (if left (set (array-get graph-key 0) (db-ids-first left))
-        no-more-data-exit)
+        notfound-exit)
       (goto each-left)))
   (label each-data
     stop-if-count-zero
@@ -393,7 +393,7 @@
                       (array-get graph-key 1) (db-ids-first label)
                       left left-first
                       (array-get graph-key 0) (db-ids-first left)))
-                  no-more-data-exit)))
+                  notfound-exit)))
             (goto set-key))))))
   (label each-data
     stop-if-count-zero
@@ -440,7 +440,7 @@
   (db-mdb-status-require (mdb-cursor-get graph-ll &val-id &val-id-2 MDB-GET-CURRENT))
   (db-mdb-status-require (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
   (if label (set id-label (db-ids-first label))
-    no-more-data-exit)
+    notfound-exit)
   (if (db-id-equal id-label (db-pointer->id val-id.mv-data))
     (begin
       (set (array-get graph-key 1) id-label)
@@ -456,7 +456,7 @@
           db-mdb-status-expect-notfound
           (set label (db-ids-rest label))
           (if label (set id-label (db-ids-first label))
-            no-more-data-exit)
+            notfound-exit)
           (goto set-label-key)))))
   (label each-label-data
     (set id-left (db-pointer->id val-id-2.mv-data))
@@ -485,7 +485,7 @@
       (begin
         (set label (db-ids-rest label))
         (if label (set id-label (db-ids-first label))
-          no-more-data-exit)
+          notfound-exit)
         (goto set-label-key))))
   (label exit
     (set
@@ -529,7 +529,7 @@
                     (array-get graph-key 1) (db-ids-first label)
                     right right-first
                     (array-get graph-key 0) (db-ids-first right)))
-                no-more-data-exit)))
+                notfound-exit)))
           (goto set-key)))))
   (label each-data
     stop-if-count-zero
@@ -573,7 +573,7 @@
         db-mdb-status-expect-notfound)
       (set right (db-ids-rest right))
       (if right (set (array-get graph-key 0) (db-ids-first right))
-        no-more-data-exit)
+        notfound-exit)
       (goto set-range)))
   (label each-key
     (label each-data
@@ -596,7 +596,7 @@
       db-mdb-status-expect-notfound)
     (set right (db-ids-rest right))
     (if right (set (array-get graph-key 0) (db-ids-first right))
-      no-more-data-exit)
+      notfound-exit)
     (goto set-range))
   (label exit
     (set
@@ -695,7 +695,7 @@
       (if (not db-mdb-status-is-success) db-mdb-status-expect-notfound)
       (set state:options (bit-xor db-selection-flag-skip state:options))))
   (label exit
-    db-mdb-status-no-more-data-if-notfound
+    db-mdb-status-notfound-if-notfound
     (set state:status status)
     (return status)))
 
@@ -706,7 +706,7 @@
   (status-require state:status)
   (set status ((convert-type state:reader db-graph-reader-t) state count result))
   (label exit
-    db-mdb-status-no-more-data-if-notfound
+    db-mdb-status-notfound-if-notfound
     (return status)))
 
 (define (db-graph-selection-destroy state) (void db-graph-selection-t*)

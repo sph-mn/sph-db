@@ -6,11 +6,11 @@
   db-mdb-status-is-notfound (= MDB-NOTFOUND status.id)
   db-mdb-status-is-success (= MDB-SUCCESS status.id)
   db-mdb-status-is-failure (not db-mdb-status-is-success)
-  db-mdb-status-no-more-data-if-notfound
+  db-mdb-status-notfound-if-notfound
   (if db-mdb-status-is-notfound
     (set
       status.group db-status-group-db
-      status.id db-status-id-no-more-data))
+      status.id db-status-id-notfound))
   db-mdb-status-success-if-notfound (if db-mdb-status-is-notfound (set status.id status-id-success))
   (db-mdb-status-set-id-goto id)
   (set
