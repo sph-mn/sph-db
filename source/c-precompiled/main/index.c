@@ -2,7 +2,8 @@ status_t db_node_data_to_values(db_type_t* type,
   db_node_data_t data,
   db_node_values_t* result);
 void db_free_node_values(db_node_values_t* values);
-/** label-type type-id field ... */
+/** create a key for an index to be used in the system btree.
+   key-format: system-label-type type-id indexed-field-offset ... */
 status_t db_index_system_key(db_type_id_t type_id,
   db_fields_len_t* fields,
   db_fields_len_t fields_len,
@@ -69,7 +70,8 @@ exit:
   };
   return (status);
 };
-/** calculate size and prepare data */
+/** create a key to be used in an index btree.
+  key-format: field-value ... */
 status_t db_index_key(db_env_t* env,
   db_index_t index,
   db_node_values_t values,
@@ -101,7 +103,7 @@ exit:
   return (status);
 };
 /** create entries in all indices of type for id and values.
-  index: field-data ... -> id */
+  index entry: field-value ... -> id */
 status_t
 db_indices_entry_ensure(db_txn_t txn, db_node_values_t values, db_id_t id) {
   status_declare;
@@ -385,7 +387,7 @@ exit:
   db_txn_abort_if_active(txn);
   return (status);
 };
-/** clear index and fill with relevant data from existing nodes */
+/** clear index and fill with data from existing nodes */
 status_t db_index_rebuild(db_env_t* env, db_index_t* index) {
   status_declare;
   db_txn_declare(env, txn);
@@ -413,13 +415,13 @@ exit:
 /** position at the next index value.
   if no value is found, status is db-notfound.
   before call, state must be positioned at a matching key */
-status_t db_index_next(db_index_selection_t* state) {
+status_t db_index_next(db_index_selection_t state) {
   status_declare;
   db_mdb_declare_val_null;
   db_mdb_declare_val_id;
   db_mdb_status_require(
-    (mdb_cursor_get((state->cursor), (&val_null), (&val_id), MDB_NEXT_DUP)));
-  state->current = db_pointer_to_id((val_id.mv_data));
+    (mdb_cursor_get((state.cursor), (&val_null), (&val_id), MDB_NEXT_DUP)));
+  state.current = db_pointer_to_id((val_id.mv_data));
 exit:
   db_mdb_status_notfound_if_notfound;
   return (status);
@@ -428,6 +430,7 @@ void db_index_selection_destroy(db_index_selection_t* state) {
   db_mdb_cursor_close_if_active((state->cursor));
 };
 /** open the cursor and set to the index key matching values.
+  state is set to the first match.
   if no match found status is db-notfound */
 status_t db_index_select(db_txn_t txn,
   db_index_t index,

@@ -19,6 +19,9 @@
     db_node_delete;
     db_node_exists;
     db_node_get;
+    db_node_index_next;
+    db_node_index_select;
+    db_node_index_selection_destroy;
     db_node_next;
     db_node_ref;
     db_node_select;

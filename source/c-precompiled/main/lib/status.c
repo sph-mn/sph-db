@@ -64,10 +64,10 @@ enum {
   db_status_id_notfound,
   db_status_id_not_implemented,
   db_status_id_path_not_accessible_db_root,
+  db_status_id_index_keysize,
   db_status_group_db,
   db_status_group_lmdb,
-  db_status_group_libc,
-  db_status_id_index_keysize
+  db_status_group_libc
 };
 #define db_status_set_id_goto(status_id) \
   status_set_both_goto(db_status_group_db, status_id)

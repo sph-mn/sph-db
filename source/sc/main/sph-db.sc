@@ -247,9 +247,10 @@
   db-node-index-selection-t
   (type
     (struct
-      (index-state db-index-selection-t*)
-      (nodes MDB-cursor*)
-      (current db-id-t))))
+      (current db-node-data-t)
+      (current-id db-id-t)
+      (index-selection db-index-selection-t)
+      (nodes MDB-cursor*))))
 
 (pre-include "./lib/data-structures.c")
 
@@ -340,9 +341,13 @@
   (status-t db-env-t* db-type-t* db-fields-len-t* db-fields-len-t) (db-index-delete env index)
   (status-t db-env-t* db-index-t*) (db-index-rebuild env index)
   (status-t db-env-t* db-index-t*) (db-index-next state)
-  (status-t db-index-selection-t*) (db-index-selection-destroy state)
+  (status-t db-index-selection-t) (db-index-selection-destroy state)
   (void db-index-selection-t*) (db-index-select txn index values result)
   (status-t db-txn-t db-index-t db-node-values-t db-index-selection-t*)
+  (db-node-index-next selection) (status-t db-node-index-selection-t)
+  (db-node-index-select txn index values result)
+  (status-t db-txn-t db-index-t db-node-values-t db-node-index-selection-t*)
+  (db-node-index-selection-destroy selection) (void db-node-index-selection-t*)
   ; extra
   ; -- db-debug
   (db-debug-log-ids a) (void db-ids-t*)

@@ -103,10 +103,10 @@ enum {
   db_status_id_notfound,
   db_status_id_not_implemented,
   db_status_id_path_not_accessible_db_root,
+  db_status_id_index_keysize,
   db_status_group_db,
   db_status_group_lmdb,
-  db_status_group_libc,
-  db_status_id_index_keysize
+  db_status_group_libc
 };
 #define db_status_set_id_goto(status_id) \
   status_set_both_goto(db_status_group_db, status_id)
@@ -469,9 +469,10 @@ typedef struct {
   MDB_cursor* cursor;
 } db_index_selection_t;
 typedef struct {
-  db_index_selection_t* index_state;
+  db_node_data_t current;
+  db_id_t current_id;
+  db_index_selection_t index_selection;
   MDB_cursor* nodes;
-  db_id_t current;
 } db_node_index_selection_t;
 #include "./lib/data-structures.c"
 typedef struct {
@@ -596,12 +597,18 @@ status_t db_index_create(db_env_t* env,
   db_fields_len_t fields_len);
 status_t db_index_delete(db_env_t* env, db_index_t* index);
 status_t db_index_rebuild(db_env_t* env, db_index_t* index);
-status_t db_index_next(db_index_selection_t* state);
+status_t db_index_next(db_index_selection_t state);
 void db_index_selection_destroy(db_index_selection_t* state);
 status_t db_index_select(db_txn_t txn,
   db_index_t index,
   db_node_values_t values,
   db_index_selection_t* result);
+status_t db_node_index_next(db_node_index_selection_t selection);
+status_t db_node_index_select(db_txn_t txn,
+  db_index_t index,
+  db_node_values_t values,
+  db_node_index_selection_t* result);
+void db_node_index_selection_destroy(db_node_index_selection_t* selection);
 void db_debug_log_ids(db_ids_t* a);
 void db_debug_log_ids_set(imht_set_t a);
 void db_debug_display_graph_records(db_graph_records_t* records);

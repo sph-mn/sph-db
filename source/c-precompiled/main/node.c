@@ -318,27 +318,37 @@ exit:
   };
   return (status);
 };
-/** get a reference to data for one node identified by id.
-  if node could not be found, status is status-id-notfound */
-status_t db_node_get(db_txn_t txn, db_id_t id, db_node_data_t* result) {
+/** used in node-get and node-index-get */
+status_t
+db_node_get_internal(MDB_cursor* nodes, db_id_t id, db_node_data_t* result) {
   status_declare;
   db_mdb_declare_val_id;
-  db_mdb_cursor_declare(nodes);
   MDB_val val_data;
   val_id.mv_data = &id;
-  db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
   status.id = mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_SET_KEY);
   if (db_mdb_status_is_success) {
     result->data = val_data.mv_data;
     result->size = val_data.mv_size;
   } else {
     if (db_mdb_status_is_notfound) {
-      status.id = db_status_id_notfound;
-      status.group = db_status_group_db;
+      db_mdb_status_notfound_if_notfound;
+    } else {
+      status.group = db_status_group_lmdb;
     };
   };
 exit:
-  db_mdb_cursor_close_if_active(nodes);
+  return (status);
+};
+/** get a reference to data for one node identified by id.
+  fields can be accessed with db-node-data-ref.
+  if node could not be found, status is status-id-notfound */
+status_t db_node_get(db_txn_t txn, db_id_t id, db_node_data_t* result) {
+  status_declare;
+  db_mdb_cursor_declare(nodes);
+  db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
+  status = db_node_get_internal(nodes, id, result);
+exit:
+  db_mdb_cursor_close(nodes);
   return (status);
 };
 /** declare because it is defined later */
@@ -403,10 +413,8 @@ exit:
   db_mdb_cursor_close_if_active(nodes);
   return (status);
 };
-void db_node_selection_destroy(db_node_selection_t* state) {
-  if (state->cursor) {
-    mdb_cursor_close((state->cursor));
-  };
+void db_node_selection_destroy(db_node_selection_t* a) {
+  db_mdb_cursor_close_if_active((a->cursor));
 };
 /** update node data. like node-delete followed by node-create but keeps the old
  * id */
@@ -455,5 +463,36 @@ status_t db_node_exists(db_txn_t txn, db_ids_t* ids, boolean* result) {
   *result = 1;
 exit:
   mdb_cursor_close(nodes);
+  return (status);
+};
+status_t db_node_index_next(db_node_index_selection_t selection) {
+  status_declare;
+  status_require((db_index_next((selection.index_selection))));
+  status_require((db_node_get_internal((selection.nodes),
+    (selection.index_selection.current),
+    (&(selection.current)))));
+  selection.current_id = selection.index_selection.current;
+exit:
+  return (status);
+};
+void db_node_index_selection_destroy(db_node_index_selection_t* selection) {
+  db_index_selection_destroy((&(selection->index_selection)));
+  db_mdb_cursor_close_if_active((selection->nodes));
+};
+status_t db_node_index_select(db_txn_t txn,
+  db_index_t index,
+  db_node_values_t values,
+  db_node_index_selection_t* result) {
+  status_declare;
+  db_mdb_cursor_declare(nodes);
+  db_index_selection_t index_selection;
+  status_require(db_index_select(txn, index, values, (&index_selection)));
+  db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
+  result->index_selection = index_selection;
+  result->nodes = nodes;
+exit:
+  if (status_is_failure) {
+    db_mdb_cursor_close_if_active(nodes);
+  };
   return (status);
 };

@@ -4,7 +4,8 @@
 
 (define (db-index-system-key type-id fields fields-len result-data result-size)
   (status-t db-type-id-t db-fields-len-t* db-fields-len-t void** size-t*)
-  "label-type type-id field ..."
+  "create a key for an index to be used in the system btree.
+   key-format: system-label-type type-id indexed-field-offset ..."
   status-declare
   (declare
     data ui8*
@@ -70,7 +71,8 @@
 
 (define (db-index-key env index values result-data result-size)
   (status-t db-env-t* db-index-t db-node-values-t void** size-t*)
-  "calculate size and prepare data"
+  "create a key to be used in an index btree.
+  key-format: field-value ..."
   status-declare
   (declare
     value-size size-t
@@ -97,7 +99,7 @@
 
 (define (db-indices-entry-ensure txn values id) (status-t db-txn-t db-node-values-t db-id-t)
   "create entries in all indices of type for id and values.
-  index: field-data ... -> id"
+  index entry: field-value ... -> id"
   status-declare
   db-mdb-declare-val-id
   (db-mdb-cursor-declare node-index-cursor)
@@ -355,7 +357,7 @@
     (return status)))
 
 (define (db-index-rebuild env index) (status-t db-env-t* db-index-t*)
-  "clear index and fill with relevant data from existing nodes"
+  "clear index and fill with data from existing nodes"
   status-declare
   (db-txn-declare env txn)
   (declare
@@ -372,15 +374,15 @@
     (if status-is-success (return (db-index-build env *index))
       (db-txn-abort-if-active txn))))
 
-(define (db-index-next state) (status-t db-index-selection-t*)
+(define (db-index-next state) (status-t db-index-selection-t)
   "position at the next index value.
   if no value is found, status is db-notfound.
   before call, state must be positioned at a matching key"
   status-declare
   db-mdb-declare-val-null
   db-mdb-declare-val-id
-  (db-mdb-status-require (mdb-cursor-get state:cursor &val-null &val-id MDB-NEXT-DUP))
-  (set state:current (db-pointer->id val-id.mv-data))
+  (db-mdb-status-require (mdb-cursor-get state.cursor &val-null &val-id MDB-NEXT-DUP))
+  (set state.current (db-pointer->id val-id.mv-data))
   (label exit
     db-mdb-status-notfound-if-notfound
     (return status)))
@@ -391,6 +393,7 @@
 (define (db-index-select txn index values result)
   (status-t db-txn-t db-index-t db-node-values-t db-index-selection-t*)
   "open the cursor and set to the index key matching values.
+  state is set to the first match.
   if no match found status is db-notfound"
   status-declare
   db-mdb-declare-val-id

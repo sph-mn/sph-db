@@ -459,7 +459,28 @@ status_t test_index(db_env_t* env) {
   /* test index select */
   db_txn_begin((&txn));
   status_require((db_index_select(txn, (*index), (values[1]), (&selection))));
+  test_helper_assert(
+    "index-select type-id 1", (type->id == db_id_type((selection.current))));
+  status_require(db_index_next(selection));
+  test_helper_assert(
+    "index-select type-id 2", (type->id == db_id_type((selection.current))));
+  status = db_index_next(selection);
+  test_helper_assert(
+    "index-select next end", (db_status_id_notfound == status.id));
+  status.id = status_id_success;
   db_index_selection_destroy((&selection));
+  db_txn_abort((&txn));
+  db_txn_begin((&txn));
+  status_require(db_index_rebuild(env, index));
+  status_require((db_index_select(txn, (*index), (values[0]), (&selection))));
+  test_helper_assert(
+    "index-select type-id 1", (type->id == db_id_type((selection.current))));
+  db_txn_abort((&txn));
+  db_txn_begin((&txn));
+  db_node_index_selection_t node_index_selection;
+  status_require((
+    db_node_index_select(txn, (*index), (values[0]), (&node_index_selection))));
+  db_node_index_selection_destroy((&node_index_selection));
   db_txn_abort((&txn));
 exit:
   db_txn_abort_if_active(txn);
@@ -467,6 +488,17 @@ exit:
 };
 int main() {
   test_helper_init(env);
+  test_helper_test_one(test_open_empty, env);
+  test_helper_test_one(test_statistics, env);
+  test_helper_test_one(test_id_construction, env);
+  test_helper_test_one(test_sequence, env);
+  test_helper_test_one(test_type_create_get_delete, env);
+  test_helper_test_one(test_type_create_many, env);
+  test_helper_test_one(test_open_nonempty, env);
+  test_helper_test_one(test_graph_read, env);
+  test_helper_test_one(test_graph_delete, env);
+  test_helper_test_one(test_node_create, env);
+  test_helper_test_one(test_node_select, env);
   test_helper_test_one(test_index, env);
 exit:
   test_helper_report_status;

@@ -304,26 +304,32 @@
         db-mdb-status-notfound-if-notfound))
     (return status)))
 
-(define (db-node-get txn id result) (status-t db-txn-t db-id-t db-node-data-t*)
-  "get a reference to data for one node identified by id.
-  if node could not be found, status is status-id-notfound"
+(define (db-node-get-internal nodes id result) (status-t MDB-cursor* db-id-t db-node-data-t*)
+  "used in node-get and node-index-get"
   status-declare
   db-mdb-declare-val-id
-  (db-mdb-cursor-declare nodes)
   (declare val-data MDB-val)
   (set val-id.mv-data &id)
-  (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
   (set status.id (mdb-cursor-get nodes &val-id &val-data MDB-SET-KEY))
   (if db-mdb-status-is-success
     (set
       result:data val-data.mv-data
       result:size val-data.mv-size)
-    (if db-mdb-status-is-notfound
-      (set
-        status.id db-status-id-notfound
-        status.group db-status-group-db)))
+    (if db-mdb-status-is-notfound db-mdb-status-notfound-if-notfound
+      (set status.group db-status-group-lmdb)))
   (label exit
-    (db-mdb-cursor-close-if-active nodes)
+    (return status)))
+
+(define (db-node-get txn id result) (status-t db-txn-t db-id-t db-node-data-t*)
+  "get a reference to data for one node identified by id.
+  fields can be accessed with db-node-data-ref.
+  if node could not be found, status is status-id-notfound"
+  status-declare
+  (db-mdb-cursor-declare nodes)
+  (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
+  (set status (db-node-get-internal nodes id result))
+  (label exit
+    (db-mdb-cursor-close nodes)
     (return status)))
 
 (define (db-graph-internal-delete left right label ordinal graph-lr graph-rl graph-ll)
@@ -377,8 +383,8 @@
     (db-mdb-cursor-close-if-active nodes)
     (return status)))
 
-(define (db-node-selection-destroy state) (void db-node-selection-t*)
-  (if state:cursor (mdb-cursor-close state:cursor)))
+(define (db-node-selection-destroy a) (void db-node-selection-t*)
+  (db-mdb-cursor-close-if-active a:cursor))
 
 (define (db-node-update txn id values) (status-t db-txn-t db-id-t db-node-values-t)
   "update node data. like node-delete followed by node-create but keeps the old id"
@@ -429,19 +435,28 @@
     (mdb-cursor-close nodes)
     (return status)))
 
-#;(define (db-node-index-next state) (status-t db-node-index-selection-t*)
-  (status-require (db-index-next state:index-state))
-  (status-require-read (db-node-get-internal node-cursor id)))
+(define (db-node-index-next selection) (status-t db-node-index-selection-t)
+  status-declare
+  (status-require (db-index-next selection.index-selection))
+  (status-require
+    (db-node-get-internal selection.nodes selection.index-selection.current &selection.current))
+  (set selection.current-id selection.index-selection.current)
+  (label exit
+    (return status)))
 
-#;(define (db-node-index-select txn index values result)
-  (status-t db-txn-t db-index-t* db-node-values-t db-node-index-selection-t*)
+(define (db-node-index-selection-destroy selection) (void db-node-index-selection-t*)
+  (db-index-selection-destroy &selection:index-selection)
+  (db-mdb-cursor-close-if-active selection:nodes))
+
+(define (db-node-index-select txn index values result)
+  (status-t db-txn-t db-index-t db-node-values-t db-node-index-selection-t*)
   status-declare
   (db-mdb-cursor-declare nodes)
-  (declare index-state db-index-selection-t)
-  (status-require (db-index-select txn index values index-state))
+  (declare index-selection db-index-selection-t)
+  (status-require (db-index-select txn index values &index-selection))
   (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
   (set
-    result:index-state &index-state
+    result:index-selection index-selection
     result:nodes nodes)
   (label exit
     (if status-is-failure (db-mdb-cursor-close-if-active nodes))
