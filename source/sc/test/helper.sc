@@ -1,4 +1,8 @@
-(pre-include "stdio.h" "stdlib.h" "errno.h" "pthread.h" "../main/sph-db.h" "../main/lib/lmdb.c" "../foreign/sph/one.c")
+(pre-include
+  "stdio.h"
+  "stdlib.h"
+  "errno.h"
+  "pthread.h" "../main/sph-db.h" "../main/sph-db-extra.h" "../main/lib/lmdb.c" "../foreign/sph/one.c")
 
 (pre-define
   test-helper-db-root "/tmp/test-sph-db"
@@ -61,21 +65,21 @@
     (printf "%lu " (array-get a i)))
   (printf "\n"))
 
-(define (db-ids-contains ids id) (boolean db-ids-t* db-id-t)
-  (while ids
-    (if (= id (db-ids-first ids)) (return #t))
-    (set ids (db-ids-rest ids)))
+(define (db-ids-contains ids id) (boolean db-ids-t db-id-t)
+  (while ids.current
+    (if (= id (i-array-get ids)) (return #t))
+    (i-array-forward ids))
   (return #f))
 
-(define (db-ids-reverse a result) (status-t db-ids-t* db-ids-t**)
+(define (db-ids-reverse a result) (status-t db-ids-t db-ids-t*)
   status-declare
-  (declare ids-temp db-ids-t*)
-  (set ids-temp 0)
-  (while a
-    (set ids-temp (db-ids-add ids-temp (db-ids-first a)))
-    (if (not ids-temp) (db-status-set-id-goto db-status-id-memory))
-    (set a (db-ids-rest a)))
-  (set *result ids-temp)
+  (declare temp db-ids-t)
+  (if (not (i-array-allocate-db-ids-t temp (i-array-length a)))
+    (status-set-id-goto db-status-id-memory))
+  (while a.current
+    (i-array-add temp (i-array-get a))
+    (i-array-forward a))
+  (set *result temp)
   (label exit
     (return status)))
 
@@ -157,74 +161,76 @@
   (label exit
     (return status)))
 
-(define (test-helper-create-ids txn count result) (status-t db-txn-t ui32 db-ids-t**)
+(define (test-helper-create-ids txn count result) (status-t db-txn-t ui32 db-ids-t*)
   "create only ids, without nodes. doesnt depend on node creation.
   dont reverse id list because it leads to more unorderly data which can expose bugs
   especially with relation reading where order lead to lucky success results"
   status-declare
-  (db-declare-ids ids-temp)
-  (declare id db-id-t)
+  (declare
+    id db-id-t
+    result-temp db-ids-t)
+  (set result-temp *result)
   (while count
-    (sc-comment
-      "use type id zero - normally not valid for nodes but it works"
-      " and for tests it keeps the ids small numbers")
+    (sc-comment "use type id zero to have small node ids for testing which are easier to debug")
     (status-require (db-sequence-next txn.env 0 &id))
-    (set ids-temp (db-ids-add ids-temp id))
-    (if (not ids-temp) (status-set-id-goto db-status-id-memory))
+    (i-array-add result-temp id)
     (set count (- count 1)))
-  ;(status-require (db-ids-reverse ids-temp result))
-  (set *result ids-temp)
+  (set *result result-temp)
   (label exit
     (return status)))
 
-(define (test-helper-ids-add-new-ids txn ids-old result) (status-t db-txn-t db-ids-t* db-ids-t**)
+(define (test-helper-ids-add-new-ids txn ids-old result) (status-t db-txn-t db-ids-t db-ids-t*)
   "add newly created ids to the list.
    create as many elements as there are in ids-old. add them with interleaved overlap at half of ids-old
    approximately like this: 1 1 1 1 + 2 2 2 2 -> 1 1 2 1 2 1 2 2"
   status-declare
-  (db-declare-ids ids-new)
+  (i-array-declare ids-new db-ids-t)
+  (i-array-declare ids-result db-ids-t)
   (declare
     target-count ui32
     start-mixed ui32
     start-new ui32
     count ui32)
-  (set *result 0)
-  (status-require (test-helper-create-ids txn (db-ids-length ids-old) (address-of ids-new)))
   (set
-    target-count (* 2 (db-ids-length ids-old))
+    target-count (* 2 (i-array-length ids-old))
     start-mixed (/ target-count 4)
     start-new (- target-count start-mixed))
+  (if
+    (not
+      (and
+        (i-array-allocate-db-ids-t ids-new (i-array-length ids-old))
+        (i-array-allocate-db-ids-t ids-result target-count)))
+    (status-set-id-goto db-status-id-memory))
   (for ((set count 0) (< count target-count) (set count (+ 1 count)))
     (if (< count start-mixed)
       (begin
-        (set
-          *result (db-ids-add *result (db-ids-first ids-old))
-          ids-old (db-ids-rest ids-old)))
+        (i-array-add ids-result (i-array-get ids-old))
+        (i-array-forward ids-old))
       (if (< count start-new)
         (if (bit-and 1 count)
           (begin
-            (set
-              *result (db-ids-add *result (db-ids-first ids-old))
-              ids-old (db-ids-rest ids-old)))
+            (i-array-add ids-result (i-array-get ids-old))
+            (i-array-forward ids-old))
           (begin
-            (set
-              *result (db-ids-add *result (db-ids-first ids-new))
-              ids-new (db-ids-rest ids-new))))
+            (i-array-add ids-result (i-array-get ids-new))
+            (i-array-forward ids-new)))
         (begin
-          (set
-            *result (db-ids-add *result (db-ids-first ids-new))
-            ids-new (db-ids-rest ids-new))))))
+          (i-array-add ids-result (i-array-get ids-new))
+          (i-array-forward ids-new)))))
+  (set *result ids-result)
   (label exit
+    (i-array-free ids-new)
+    (if status-is-failure (i-array-free ids-result))
     (return status)))
 
 (define (test-helper-calculate-relation-count left-count right-count label-count)
   (ui32 ui32 ui32 ui32) (return (* left-count right-count label-count)))
 
 (define (test-helper-calculate-relation-count-from-ids left right label)
-  (ui32 db-ids-t* db-ids-t* db-ids-t*)
+  (ui32 db-ids-t db-ids-t db-ids-t)
   (return
     (test-helper-calculate-relation-count
-      (db-ids-length left) (db-ids-length right) (db-ids-length label))))
+      (i-array-length left) (i-array-length right) (i-array-length label))))
 
 (pre-define (test-helper-graph-read-records-validate-one name)
   (begin
@@ -244,12 +250,12 @@
     (while ids-temp
       (if
         (not
-          ((pre-concat db-debug-graph-records-contains-at_ name _p) records (db-ids-first ids-temp)))
+          ((pre-concat db-debug-graph-records-contains-at_ name _p) records (i-array-get ids-temp)))
         (begin
           (printf "\n  %s result records do not contain all existing-ids\n" (pre-stringify name))
           (db-debug-display-graph-records records)
           (status-set-id-goto 2)))
-      (set ids-temp (db-ids-rest ids-temp)))))
+      (set ids-temp (i-array-forward ids-temp)))))
 
 (define
   (test-helper-graph-read-records-validate
@@ -274,7 +280,7 @@
   (return result))
 
 (define (test-helper-create-relations txn left right label)
-  (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t*)
+  (status-t db-txn-t db-ids-t db-ids-t db-ids-t)
   "create relations with linearly increasing ordinal starting from zero"
   status-declare
   (declare ordinal-state-value db-ordinal-t)
@@ -329,9 +335,13 @@
   (begin
     status-declare
     (db-txn-declare env txn)
-    (db-declare-ids-three existing-left existing-right existing-label)
-    (db-declare-ids-three left right label)
     (declare
+      existing-left db-ids-t
+      existing-right db-ids-t
+      existing-label db-ids-t
+      left db-ids-t
+      right db-ids-t
+      label db-ids-t
       state db-graph-selection-t
       ordinal-min ui32
       ordinal-max ui32
@@ -354,6 +364,13 @@
       existing-left-count common-label-count
       existing-right-count common-element-count
       existing-label-count common-label-count)
+    (if
+      (not
+        (and
+          (i-array-allocate-db-ids-t existing-left existing-left-count)
+          (i-array-allocate-db-ids-t existing-right existing-right-count)
+          (i-array-allocate-db-ids-t existing-label existing-label-count)))
+      (status-set-id-goto db-status-id-memory))
     (status-require (db-txn-write-begin &txn))
     (test-helper-create-ids txn existing-left-count &existing-left)
     (test-helper-create-ids txn existing-right-count &existing-right)
@@ -460,9 +477,11 @@
 (pre-define test-helper-graph-delete-header
   (begin
     status-declare
-    (db-declare-ids-three left right label)
     (db-txn-declare env txn)
     (declare
+      left db-ids-t
+      right db-ids-t
+      label db-ids-t
       state db-graph-selection-t
       read-count-before-expected ui32
       btree-count-after-delete ui32
@@ -562,9 +581,9 @@
         (db-graph-selection-destroy &state)
         (db-txn-abort &txn)
         (status-set-id-goto 1)))
-    (db-ids-destroy left)
-    (db-ids-destroy right)
-    (db-ids-destroy label)
+    (i-array-free left)
+    (i-array-free right)
+    (i-array-free label)
     db-status-success-if-notfound
     (set
       records 0
@@ -597,25 +616,3 @@
       #\0)
     4 0)
   (return result))
-
-#;(define (test-helper-create-interns count result) (status-t ui32 db-ids-t**)
-  status-declare
-  (db-txn-declare env txn)
-  (declare
-    data-element db-data-t
-    data-list db-data-list-t*)
-  (set
-    data-element (struct-literal (size db-size-id) (data 0))
-    data-list 0)
-  (while count
-    (struct-set data-element
-      data (calloc 1 (sizeof db-ids-t)))
-    (set (pointer-get (convert-type (struct-get data-element data) db-id-t*)) (+ 123 count))
-    (set data-list (db-data-list-add data-list data-element))
-    (set count (- count 1)))
-  (status-require (db-txn-write-begin &txn))
-  ;(status-require (db-intern-ensure db-txn data-list result))
-  (status-require (db-txn-commit &txn))
-  (label exit
-    (db-txn-abort-if-active txn)
-    (return status)))

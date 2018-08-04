@@ -327,7 +327,6 @@
   (db-txn-declare env txn)
   (db-mdb-cursor-declare system)
   (declare
-    indices-temp db-index-t*
     key-data void*
     key-size size-t
     val-data MDB-val)

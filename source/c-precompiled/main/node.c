@@ -187,7 +187,7 @@ status_t db_node_next(db_node_selection_t* state) {
   void* matcher_state;
   db_node_data_t node_data;
   db_id_t id;
-  db_ids_t* ids;
+  db_ids_t ids;
   boolean skip;
   boolean match;
   db_type_id_t type_id;
@@ -196,17 +196,17 @@ status_t db_node_next(db_node_selection_t* state) {
   skip = (state->options & db_selection_flag_skip);
   count = state->count;
   ids = state->ids;
-  if (ids) {
+  if (ids.current) {
     /* filter by ids */
-    while ((ids && count)) {
-      val_id.mv_data = db_ids_first_address(ids);
+    while ((ids.current && count)) {
+      val_id.mv_data = ids.current;
       status.id =
         mdb_cursor_get((state->cursor), (&val_id), (&val_data), MDB_SET_KEY);
       if (db_mdb_status_is_success) {
         if (matcher) {
           node_data.data = val_data.mv_data;
           node_data.size = val_data.mv_size;
-          match = matcher(db_ids_first(ids), node_data, matcher_state);
+          match = matcher(i_array_get(ids), node_data, matcher_state);
         } else {
           match = 1;
         };
@@ -223,7 +223,7 @@ status_t db_node_next(db_node_selection_t* state) {
       } else {
         db_mdb_status_expect_notfound;
       };
-      ids = db_ids_rest(ids);
+      i_array_forward(ids);
     };
     state->ids = ids;
   } else {
@@ -303,7 +303,7 @@ status_t db_node_select(db_txn_t txn,
   result_state->cursor = nodes;
   result_state->count = 1;
   result_state->env = txn.env;
-  result_state->ids = ids;
+  result_state->ids = *ids;
   result_state->matcher = matcher;
   result_state->matcher_state = matcher_state;
   result_state->options = 0;
@@ -336,7 +336,6 @@ db_node_get_internal(MDB_cursor* nodes, db_id_t id, db_node_data_t* result) {
       status.group = db_status_group_lmdb;
     };
   };
-exit:
   return (status);
 };
 /** get a reference to data for one node identified by id.
@@ -360,37 +359,40 @@ status_t db_graph_internal_delete(db_ids_t* left,
   MDB_cursor* graph_rl,
   MDB_cursor* graph_ll);
 /** delete a node and all its relations */
-status_t db_node_delete(db_txn_t txn, db_ids_t* ids) {
+status_t db_node_delete(db_txn_t txn, db_ids_t* ids_pointer) {
   status_declare;
   db_mdb_declare_val_id;
+  db_ids_t ids;
   db_id_t id;
   MDB_val val_data;
   db_node_values_t values;
   db_node_data_t node_data;
+  ids = *ids_pointer;
   db_mdb_cursor_declare(nodes);
   db_mdb_cursor_declare(graph_lr);
   db_mdb_cursor_declare(graph_rl);
   db_mdb_cursor_declare(graph_ll);
-  /* return if ids is zero because in db-graph-internal-delete it would mean
-   * non-filter and match all */
-  if (!ids) {
+  /* first delete references. return if ids-pointer is zero because in
+   * db-graph-internal-delete it would mean non-filter and match all. */
+  if (!ids_pointer) {
     return (status);
   };
   db_mdb_status_require(db_mdb_env_cursor_open(txn, graph_lr));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, graph_rl));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, graph_ll));
-  status_require(
-    db_graph_internal_delete(ids, 0, 0, 0, graph_lr, graph_rl, graph_ll));
-  status_require(
-    db_graph_internal_delete(0, ids, 0, 0, graph_lr, graph_rl, graph_ll));
-  status_require(
-    db_graph_internal_delete(0, 0, ids, 0, graph_lr, graph_rl, graph_ll));
+  status_require(db_graph_internal_delete(
+    ids_pointer, 0, 0, 0, graph_lr, graph_rl, graph_ll));
+  status_require(db_graph_internal_delete(
+    0, ids_pointer, 0, 0, graph_lr, graph_rl, graph_ll));
+  status_require(db_graph_internal_delete(
+    0, 0, ids_pointer, 0, graph_lr, graph_rl, graph_ll));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
-  while (ids) {
-    val_id.mv_data = db_ids_first_address(ids);
+  /* delete node and index btree entries */
+  while (ids.current) {
+    val_id.mv_data = ids.current;
     status.id = mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_SET_KEY);
     if (db_mdb_status_is_success) {
-      id = db_ids_first(ids);
+      id = i_array_get(ids);
       node_data.data = val_data.mv_data;
       node_data.size = val_data.mv_size;
       status_require((db_node_data_to_values(
@@ -404,7 +406,7 @@ status_t db_node_delete(db_txn_t txn, db_ids_t* ids) {
         status_set_group_goto(db_status_group_lmdb);
       };
     };
-    ids = db_ids_rest(ids);
+    i_array_forward(ids);
   };
 exit:
   db_mdb_cursor_close_if_active(graph_lr);
@@ -440,14 +442,14 @@ exit:
   return (status);
 };
 /** true if all given ids are ids of existing nodes, false otherwise */
-status_t db_node_exists(db_txn_t txn, db_ids_t* ids, boolean* result) {
+status_t db_node_exists(db_txn_t txn, db_ids_t ids, boolean* result) {
   status_declare;
   db_mdb_declare_val_id;
   db_mdb_declare_val_null;
   db_mdb_cursor_declare(nodes);
   db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
-  while (ids) {
-    val_id.mv_data = db_ids_first_address(ids);
+  while (ids.current) {
+    val_id.mv_data = ids.current;
     status.id = mdb_cursor_get(nodes, (&val_id), (&val_null), MDB_SET);
     if (db_mdb_status_is_notfound) {
       *result = 0;
@@ -458,7 +460,7 @@ status_t db_node_exists(db_txn_t txn, db_ids_t* ids, boolean* result) {
         status_goto;
       };
     };
-    ids = db_ids_rest(ids);
+    i_array_forward(ids);
   };
   *result = 1;
 exit:

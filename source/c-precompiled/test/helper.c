@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include "../main/sph-db.h"
+#include "../main/sph-db-extra.h"
 #include "../main/lib/lmdb.c"
 #include "../foreign/sph/one.c"
 #define test_helper_db_root "/tmp/test-sph-db"
@@ -64,27 +65,26 @@ void test_helper_display_array_ui8(ui8* a, size_t size) {
   };
   printf("\n");
 };
-boolean db_ids_contains(db_ids_t* ids, db_id_t id) {
-  while (ids) {
-    if (id == db_ids_first(ids)) {
+boolean db_ids_contains(db_ids_t ids, db_id_t id) {
+  while (ids.current) {
+    if (id == i_array_get(ids)) {
       return (1);
     };
-    ids = db_ids_rest(ids);
+    i_array_forward(ids);
   };
   return (0);
 };
-status_t db_ids_reverse(db_ids_t* a, db_ids_t** result) {
+status_t db_ids_reverse(db_ids_t a, db_ids_t* result) {
   status_declare;
-  db_ids_t* ids_temp;
-  ids_temp = 0;
-  while (a) {
-    ids_temp = db_ids_add(ids_temp, db_ids_first(a));
-    if (!ids_temp) {
-      db_status_set_id_goto(db_status_id_memory);
-    };
-    a = db_ids_rest(a);
+  db_ids_t temp;
+  if (!i_array_allocate_db_ids_t(temp, i_array_length(a))) {
+    status_set_id_goto(db_status_id_memory);
   };
-  *result = ids_temp;
+  while (a.current) {
+    i_array_add(temp, i_array_get(a));
+    i_array_forward(a);
+  };
+  *result = temp;
 exit:
   return (status);
 };
@@ -173,21 +173,19 @@ exit:
   dont reverse id list because it leads to more unorderly data which can expose
   bugs especially with relation reading where order lead to lucky success
   results */
-status_t test_helper_create_ids(db_txn_t txn, ui32 count, db_ids_t** result) {
+status_t test_helper_create_ids(db_txn_t txn, ui32 count, db_ids_t* result) {
   status_declare;
-  db_declare_ids(ids_temp);
   db_id_t id;
+  db_ids_t result_temp;
+  result_temp = *result;
   while (count) {
-    /* use type id zero - normally not valid for nodes but it works  and for
-     * tests it keeps the ids small numbers */
+    /* use type id zero to have small node ids for testing which are easier to
+     * debug */
     status_require((db_sequence_next((txn.env), 0, (&id))));
-    ids_temp = db_ids_add(ids_temp, id);
-    if (!ids_temp) {
-      status_set_id_goto(db_status_id_memory);
-    };
+    i_array_add(result_temp, id);
     count = (count - 1);
   };
-  *result = ids_temp;
+  *result = result_temp;
 exit:
   return (status);
 };
@@ -195,41 +193,47 @@ exit:
    create as many elements as there are in ids-old. add them with interleaved
    overlap at half of ids-old
    approximately like this: 1 1 1 1 + 2 2 2 2 -> 1 1 2 1 2 1 2 2 */
-status_t test_helper_ids_add_new_ids(db_txn_t txn,
-  db_ids_t* ids_old,
-  db_ids_t** result) {
+status_t
+test_helper_ids_add_new_ids(db_txn_t txn, db_ids_t ids_old, db_ids_t* result) {
   status_declare;
-  db_declare_ids(ids_new);
+  i_array_declare(ids_new, db_ids_t);
+  i_array_declare(ids_result, db_ids_t);
   ui32 target_count;
   ui32 start_mixed;
   ui32 start_new;
   ui32 count;
-  *result = 0;
-  status_require(
-    test_helper_create_ids(txn, db_ids_length(ids_old), (&ids_new)));
-  target_count = (2 * db_ids_length(ids_old));
+  target_count = (2 * i_array_length(ids_old));
   start_mixed = (target_count / 4);
   start_new = (target_count - start_mixed);
+  if (!(i_array_allocate_db_ids_t(ids_new, i_array_length(ids_old)) &&
+        i_array_allocate_db_ids_t(ids_result, target_count))) {
+    status_set_id_goto(db_status_id_memory);
+  };
   for (count = 0; (count < target_count); count = (1 + count)) {
     if (count < start_mixed) {
-      *result = db_ids_add((*result), db_ids_first(ids_old));
-      ids_old = db_ids_rest(ids_old);
+      i_array_add(ids_result, i_array_get(ids_old));
+      i_array_forward(ids_old);
     } else {
       if (count < start_new) {
         if (1 & count) {
-          *result = db_ids_add((*result), db_ids_first(ids_old));
-          ids_old = db_ids_rest(ids_old);
+          i_array_add(ids_result, i_array_get(ids_old));
+          i_array_forward(ids_old);
         } else {
-          *result = db_ids_add((*result), db_ids_first(ids_new));
-          ids_new = db_ids_rest(ids_new);
+          i_array_add(ids_result, i_array_get(ids_new));
+          i_array_forward(ids_new);
         };
       } else {
-        *result = db_ids_add((*result), db_ids_first(ids_new));
-        ids_new = db_ids_rest(ids_new);
+        i_array_add(ids_result, i_array_get(ids_new));
+        i_array_forward(ids_new);
       };
     };
   };
+  *result = ids_result;
 exit:
+  i_array_free(ids_new);
+  if (status_is_failure) {
+    i_array_free(ids_result);
+  };
   return (status);
 };
 ui32 test_helper_calculate_relation_count(ui32 left_count,
@@ -237,11 +241,11 @@ ui32 test_helper_calculate_relation_count(ui32 left_count,
   ui32 label_count) {
   return ((left_count * right_count * label_count));
 };
-ui32 test_helper_calculate_relation_count_from_ids(db_ids_t* left,
-  db_ids_t* right,
-  db_ids_t* label) {
+ui32 test_helper_calculate_relation_count_from_ids(db_ids_t left,
+  db_ids_t right,
+  db_ids_t label) {
   return (test_helper_calculate_relation_count(
-    db_ids_length(left), db_ids_length(right), db_ids_length(label)));
+    i_array_length(left), i_array_length(right), i_array_length(label)));
 };
 /** test that the result records contain all filter-ids, and the filter-ids
  * contain all result record values for field "name". */
@@ -259,13 +263,13 @@ ui32 test_helper_calculate_relation_count_from_ids(db_ids_t* left,
   ids_temp = existing_##name; \
   while (ids_temp) { \
     if (!db_debug_graph_records_contains_at_##name##_p( \
-          records, db_ids_first(ids_temp))) { \
+          records, i_array_get(ids_temp))) { \
       printf( \
         "\n  %s result records do not contain all existing-ids\n", #name); \
       db_debug_display_graph_records(records); \
       status_set_id_goto(2); \
     }; \
-    ids_temp = db_ids_rest(ids_temp); \
+    ids_temp = i_array_forward(ids_temp); \
   }
 ;
 status_t test_helper_graph_read_records_validate(db_graph_records_t* records,
@@ -293,9 +297,9 @@ db_ordinal_t test_helper_default_ordinal_generator(void* state) {
 };
 /** create relations with linearly increasing ordinal starting from zero */
 status_t test_helper_create_relations(db_txn_t txn,
-  db_ids_t* left,
-  db_ids_t* right,
-  db_ids_t* label) {
+  db_ids_t left,
+  db_ids_t right,
+  db_ids_t label) {
   status_declare;
   db_ordinal_t ordinal_state_value;
   ordinal_state_value = 0;
@@ -356,8 +360,12 @@ exit:
 #define test_helper_graph_read_header(env) \
   status_declare; \
   db_txn_declare(env, txn); \
-  db_declare_ids_three(existing_left, existing_right, existing_label); \
-  db_declare_ids_three(left, right, label); \
+  db_ids_t existing_left; \
+  db_ids_t existing_right; \
+  db_ids_t existing_label; \
+  db_ids_t left; \
+  db_ids_t right; \
+  db_ids_t label; \
   db_graph_selection_t state; \
   ui32 ordinal_min; \
   ui32 ordinal_max; \
@@ -379,6 +387,11 @@ exit:
   existing_left_count = common_label_count; \
   existing_right_count = common_element_count; \
   existing_label_count = common_label_count; \
+  if (!(i_array_allocate_db_ids_t(existing_left, existing_left_count) && \
+        i_array_allocate_db_ids_t(existing_right, existing_right_count) && \
+        i_array_allocate_db_ids_t(existing_label, existing_label_count))) { \
+    status_set_id_goto(db_status_id_memory); \
+  }; \
   status_require(db_txn_write_begin((&txn))); \
   test_helper_create_ids(txn, existing_left_count, (&existing_left)); \
   test_helper_create_ids(txn, existing_right_count, (&existing_right)); \
@@ -477,8 +490,10 @@ ui32 test_helper_estimate_graph_read_btree_entry_count(ui32 existing_left_count,
 };
 #define test_helper_graph_delete_header \
   status_declare; \
-  db_declare_ids_three(left, right, label); \
   db_txn_declare(env, txn); \
+  db_ids_t left; \
+  db_ids_t right; \
+  db_ids_t label; \
   db_graph_selection_t state; \
   ui32 read_count_before_expected; \
   ui32 btree_count_after_delete; \
@@ -562,9 +577,9 @@ ui32 test_helper_estimate_graph_read_btree_entry_count(ui32 existing_left_count,
     db_txn_abort((&txn)); \
     status_set_id_goto(1); \
   }; \
-  db_ids_destroy(left); \
-  db_ids_destroy(right); \
-  db_ids_destroy(label); \
+  i_array_free(left); \
+  i_array_free(right); \
+  i_array_free(label); \
   db_status_success_if_notfound; \
   records = 0; \
   left = 0; \

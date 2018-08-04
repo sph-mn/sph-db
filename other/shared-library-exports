@@ -1,6 +1,7 @@
 {
   global:
     db_close;
+    db_env_new;
     db_graph_delete;
     db_graph_ensure;
     db_graph_read;

@@ -1,4 +1,5 @@
 #include "./sph-db.h"
+#include "./sph-db-extra.h"
 #include "../foreign/sph/one.c"
 #include <math.h>
 #include "./lib/lmdb.c"
@@ -95,12 +96,12 @@ status_t db_txn_commit(db_txn_t* a) {
 exit:
   return (status);
 };
-/** display an ids list */
-void db_debug_log_ids(db_ids_t* a) {
-  printf("ids (%lu):", db_ids_length(a));
-  while (a) {
-    printf(" %lu", db_ids_first(a));
-    a = db_ids_rest(a);
+/** display an ids array */
+void db_debug_log_ids(db_ids_t a) {
+  printf("ids (%lu):", i_array_length(a));
+  while (a.current) {
+    printf(" %lu", i_array_get(a));
+    i_array_forward(a);
   };
   printf("\n");
 };
@@ -114,17 +115,14 @@ void db_debug_log_ids_set(imht_set_t a) {
   };
   printf("\n");
 };
-void db_debug_display_graph_records(db_graph_records_t* records) {
-  db_graph_record_t record;
+void db_debug_display_graph_records(db_graph_records_t a) {
+  db_graph_record_t b;
   printf(("graph records (ll -> or)\n"));
-  while (records) {
-    record = db_graph_records_first(records);
-    printf(("  %lu %lu -> %lu %lu\n"),
-      (record.left),
-      (record.label),
-      (record.ordinal),
-      (record.right));
-    records = db_graph_records_rest(records);
+  while (a.current) {
+    b = i_array_get(a);
+    printf(
+      ("  %lu %lu -> %lu %lu\n"), (b.left), (b.label), (b.ordinal), (b.right));
+    i_array_forward(a);
   };
 };
 status_t db_debug_display_btree_counts(db_txn_t txn) {
@@ -170,14 +168,12 @@ ui8 db_field_type_size(ui8 a) {
     return (0);
   };
 };
-status_t db_ids_to_set(db_ids_t* a, imht_set_t** result) {
+status_t db_ids_to_set(db_ids_t a, imht_set_t** result) {
   status_declare;
-  if (!imht_set_create(db_ids_length(a), result)) {
-    db_status_set_id_goto(db_status_id_memory);
-  };
-  while (a) {
-    imht_set_add((*result), db_ids_first(a));
-    a = db_ids_rest(a);
+  db_status_memory_error_if_null(imht_set_create(i_array_length(a), result));
+  while (a.current) {
+    imht_set_add((*result), i_array_get(a));
+    i_array_forward(a);
   };
 exit:
   return (status);
@@ -294,6 +290,15 @@ void db_free_env_types(db_type_t** types, db_type_id_t types_len) {
     db_free_env_type((i + *types));
   };
   free_and_set_null((*types));
+};
+/** caller has to free result if not needed anymore */
+status_t db_env_new(db_env_t** result) {
+  status_declare;
+  db_env_t* a;
+  db_calloc(a, 1, sizeof(db_env_t));
+  *result = a;
+exit:
+  return (status);
 };
 void db_close(db_env_t* env) {
   MDB_env* mdb_env = env->mdb_env;

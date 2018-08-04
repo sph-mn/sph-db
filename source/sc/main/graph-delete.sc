@@ -47,19 +47,17 @@
 
 (pre-define db-graph-internal-delete-0010
   (begin
-    (declare
-      id-label db-id-t
-      id-left db-id-t)
+    (set label *label-pointer)
     (label set-key-0010
       (set
-        id-label (db-ids-first label)
+        id-label (i-array-get label)
         val-id.mv-data &id-label)
       (set status.id (mdb-cursor-get graph-ll &val-id &val-id-2 MDB-SET-KEY))
       (if db-mdb-status-is-success (goto each-data-0010)
         db-mdb-status-expect-notfound)
       (label each-key-0010
-        (set label (db-ids-rest label))
-        (if label (goto set-key-0010)
+        (i-array-forward label)
+        (if label.current (goto set-key-0010)
           (goto exit))))
     (label each-data-0010
       (set
@@ -87,16 +85,13 @@
 
 (pre-define db-graph-internal-delete-0110
   (begin
-    (declare
-      id-right db-id-t
-      id-left db-id-t
-      id-label db-id-t
-      right-pointer db-ids-t*)
-    (set right-pointer right)
+    (set
+      label *label-pointer
+      right *right-pointer)
     (label set-key-0110
       (set
-        id-right (db-ids-first right-pointer)
-        id-label (db-ids-first label)
+        id-right (i-array-get right)
+        id-label (i-array-get label)
         (array-get graph-key 0) id-right
         (array-get graph-key 1) id-label
         val-graph-key.mv-data graph-key)
@@ -104,13 +99,13 @@
       (if db-mdb-status-is-success (goto each-data-0110)
         db-mdb-status-expect-notfound)
       (label each-key-0110
-        (set right-pointer (db-ids-rest right-pointer))
-        (if right-pointer (goto set-key-0110)
+        (i-array-forward right)
+        (if right.current (goto set-key-0110)
           (begin
-            (set label (db-ids-rest label))
-            (if label
+            (i-array-forward label)
+            (if label.current
               (begin
-                (set right-pointer right)
+                (i-array-rewind right)
                 (goto set-key-0110))
               (goto exit))))))
     (label each-data-0110
@@ -136,17 +131,14 @@
 
 (pre-define db-graph-internal-delete-1010
   (begin
-    (declare
-      id-label db-id-t
-      id-left db-id-t
-      label-pointer db-ids-t*)
-    (while left
-      (set
-        id-left (db-ids-first left)
-        label-pointer label)
-      (while label-pointer
+    (set
+      left *left-pointer
+      label *label-pointer)
+    (while left.current
+      (set id-left (i-array-get left))
+      (while label.current
         (set
-          id-label (db-ids-first label-pointer)
+          id-label (i-array-get label)
           (array-get graph-key 0) id-left
           (array-get graph-key 1) id-label
           val-graph-key.mv-data graph-key)
@@ -170,8 +162,9 @@
               (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-KEY))
             (db-mdb-status-require (mdb-cursor-del graph-lr MDB-NODUPDATA)))
           db-mdb-status-expect-notfound)
-        (set label-pointer (db-ids-rest label-pointer)))
-      (set left (db-ids-rest left)))))
+        (i-array-forward label))
+      (i-array-rewind label)
+      (i-array-forward left))))
 
 (pre-define db-graph-internal-delete-0100
   (begin
@@ -179,9 +172,10 @@
       id-left db-id-t
       id-right db-id-t
       id-label db-id-t)
+    (set right *right-pointer)
     (label set-range-0100
       (set
-        id-right (db-ids-first right)
+        id-right (i-array-get right)
         (array-get graph-key 0) id-right
         (array-get graph-key 1) 0
         val-graph-key.mv-data graph-key)
@@ -192,8 +186,8 @@
             (set id-label (db-pointer->id-at val-graph-key.mv-data 1))
             (goto each-data-0100)))
         db-mdb-status-expect-notfound)
-      (set right (db-ids-rest right))
-      (if right (goto set-range-0100)
+      (i-array-forward right)
+      (if right.current (goto set-range-0100)
         (goto exit)))
     (label each-data-0100
       (set
@@ -219,13 +213,10 @@
 
 (pre-define db-graph-internal-delete-1000
   (begin
-    (declare
-      id-left db-id-t
-      id-label db-id-t
-      id-right db-id-t)
+    (set left *left-pointer)
     (label set-range-1000
       (set
-        id-left (db-ids-first left)
+        id-left (i-array-get left)
         (array-get graph-key 0) id-left
         (array-get graph-key 1) 0
         val-graph-key.mv-data graph-key
@@ -237,8 +228,8 @@
               (set id-label (db-pointer->id-at val-graph-key.mv-data 1))
               (goto each-data-1000)))
           db-mdb-status-expect-notfound)
-        (set left (db-ids-rest left))
-        (if left (goto set-range-1000)
+        (i-array-forward left)
+        (if left.current (goto set-range-1000)
           (goto exit))))
     (label each-data-1000
       (set id-right (db-graph-data->id val-graph-data.mv-data))
@@ -257,16 +248,13 @@
 
 (pre-define db-graph-internal-delete-1100
   (begin
-    (declare
-      id-left db-id-t
-      id-right db-id-t
-      id-label db-id-t
-      right-set imht-set-t*)
-    (status-require (db-ids->set right &right-set))
-    (set (array-get graph-key 1) 0)
+    (status-require (db-ids->set *right-pointer &right-set))
+    (set
+      left *left-pointer
+      (array-get graph-key 1) 0)
     (label set-range-1100
       (set
-        id-left (db-ids-first left)
+        id-left (i-array-get left)
         (array-get graph-key 0) id-left
         val-graph-key.mv-data graph-key
         status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-RANGE))
@@ -277,8 +265,8 @@
               (set id-label (db-pointer->id-at val-graph-key.mv-data 1))
               (goto each-data-1100)))
           db-mdb-status-expect-notfound)
-        (set left (db-ids-rest left))
-        (if left
+        (i-array-forward left)
+        (if left.current
           (begin
             (set (array-get graph-key 1) 0)
             (goto set-range-1100))
@@ -309,18 +297,15 @@
 
 (pre-define db-graph-internal-delete-1110
   (begin
-    (declare
-      id-left db-id-t
-      id-label db-id-t
-      right-set imht-set-t*
-      id-right db-id-t)
-    (define label-first db-ids-t* label)
-    (status-require (db-ids->set right &right-set))
-    (while left
-      (set id-left (db-ids-first left))
-      (while label
+    (status-require (db-ids->set *right-pointer &right-set))
+    (set
+      left *left-pointer
+      label *label-pointer)
+    (while left.current
+      (set id-left (i-array-get left))
+      (while label.current
         (set
-          id-label (db-ids-first label)
+          id-label (i-array-get label)
           (array-get graph-key 0) id-left
           (array-get graph-key 1) id-label
           val-graph-key.mv-data graph-key)
@@ -336,10 +321,9 @@
         (set status
           (db-graph-internal-delete-graph-ll-conditional graph-lr graph-ll id-label id-left))
         db-mdb-status-expect-read
-        (set label (db-ids-rest label)))
-      (set
-        label label-first
-        left (db-ids-rest left)))))
+        (i-array-forward label))
+      (i-array-rewind label)
+      (i-array-forward left))))
 
 (pre-define (db-graph-internal-delete-get-ordinal-data ordinal)
   (begin
@@ -348,19 +332,15 @@
 
 (pre-define db-graph-internal-delete-1001-1101
   (begin
-    (declare
-      id-left db-id-t
-      id-right db-id-t
-      id-label db-id-t
-      right-set imht-set-t*)
     (db-graph-internal-delete-get-ordinal-data ordinal)
     (set
+      left *left-pointer
       (array-get graph-data 0) ordinal-min
       (array-get graph-key 1) 0)
-    (if right (status-require (db-ids->set right &right-set)))
+    (if right.current (status-require (db-ids->set right &right-set)))
     (label set-range-1001-1101
       (set
-        id-left (db-ids-first left)
+        id-left (i-array-get left)
         (array-get graph-key 0) id-left
         val-graph-key.mv-data graph-key)
       (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-RANGE))
@@ -380,8 +360,8 @@
                 (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-NODUP))
               (goto each-key-1001-1101)))
           db-mdb-status-expect-notfound)
-        (set left (db-ids-rest left))
-        (if left
+        (i-array-forward left)
+        (if left.current
           (begin
             (set (array-get graph-key 1) 0)
             (goto set-range-1001-1101))
@@ -416,21 +396,16 @@
 
 (pre-define db-graph-internal-delete-1011-1111
   (begin
-    (declare
-      id-left db-id-t
-      id-label db-id-t
-      right-set imht-set-t*
-      id-right db-id-t
-      left-pointer db-ids-t*)
     (db-graph-internal-delete-get-ordinal-data ordinal)
-    (if right (status-require (db-ids->set right &right-set)))
+    (if right-pointer (status-require (db-ids->set *right-pointer &right-set)))
     (set
-      left-pointer left
+      left *left-pointer
+      label *label-pointer
       (array-get graph-data 0) ordinal-min
-      id-label (db-ids-first label))
+      id-label (i-array-get label))
     (label set-key-1011-1111
       (set
-        id-left (db-ids-first left-pointer)
+        id-left (i-array-get left)
         (array-get graph-key 0) id-left
         (array-get graph-key 1) id-label
         val-graph-key.mv-data graph-key
@@ -438,15 +413,14 @@
       (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-BOTH-RANGE))
       (if db-mdb-status-is-success (goto each-data-1011-1111)
         (label each-key-1011-1111
-          (set left-pointer (db-ids-rest left-pointer))
-          (if left-pointer (goto set-key-1011-1111)
+          (i-array-forward left)
+          (if left.current (goto set-key-1011-1111)
             (begin
-              (set label (db-ids-rest label))
-              (if label
+              (i-array-forward label)
+              (if label.current
                 (begin
-                  (set
-                    left-pointer left
-                    id-label (db-ids-first label))
+                  (set id-label (i-array-get label))
+                  (i-array-rewind left)
                   (goto set-key-1011-1111))
                 (goto exit)))))))
     (label each-data-1011-1111
@@ -469,7 +443,9 @@
     db-mdb-status-expect-read
     (goto each-key-1011-1111)))
 
-(define (db-graph-internal-delete left right label ordinal graph-lr graph-rl graph-ll)
+(define
+  (db-graph-internal-delete
+    left-pointer right-pointer label-pointer ordinal graph-lr graph-rl graph-ll)
   (status-t
     db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* MDB-cursor* MDB-cursor* MDB-cursor*)
   "db-graph-internal-delete does not open/close cursors.
@@ -479,25 +455,33 @@
      example: (debug-log \"each-key-1100 %lu %lu\" id-left id-right)
    db-graph-internal-delete-* macros are allowed to leave status on MDB-NOTFOUND"
   status-declare
+  (declare
+    id-left db-id-t
+    id-right db-id-t
+    id-label db-id-t
+    left db-ids-t
+    right db-ids-t
+    label db-ids-t
+    right-set imht-set-t*)
   db-mdb-declare-val-graph-key
   db-mdb-declare-val-graph-data
   db-mdb-declare-val-id
   db-mdb-declare-val-id-2
   (db-declare-graph-key graph-key)
   (db-declare-graph-data graph-data)
-  (if left
+  (if left-pointer
     (if ordinal
-      (if label db-graph-internal-delete-1011-1111
+      (if label-pointer db-graph-internal-delete-1011-1111
         db-graph-internal-delete-1001-1101)
-      (if label
-        (if right db-graph-internal-delete-1110
+      (if label-pointer
+        (if right-pointer db-graph-internal-delete-1110
           db-graph-internal-delete-1010)
-        (if right db-graph-internal-delete-1100
+        (if right-pointer db-graph-internal-delete-1100
           db-graph-internal-delete-1000)))
-    (if right
-      (if label db-graph-internal-delete-0110
+    (if right-pointer
+      (if label-pointer db-graph-internal-delete-0110
         db-graph-internal-delete-0100)
-      (if label db-graph-internal-delete-0010
+      (if label-pointer db-graph-internal-delete-0010
         (db-status-set-id-goto db-status-id-not-implemented))))
   (label exit
     db-mdb-status-success-if-notfound

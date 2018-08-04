@@ -160,7 +160,7 @@
   (sc-comment "nodes")
   (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
   (set
-    val-key.mv-size db-size-id
+    val-key.mv-size (sizeof db-id-t)
     id (db-id-add-type 0 type-id)
     val-key.mv-data &id)
   (set status.id (mdb-cursor-get nodes &val-key &val-null MDB-SET-RANGE))

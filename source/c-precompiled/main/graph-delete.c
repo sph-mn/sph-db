@@ -55,10 +55,9 @@ exit:
   return (status);
 };
 #define db_graph_internal_delete_0010 \
-  db_id_t id_label; \
-  db_id_t id_left; \
+  label = *label_pointer; \
   set_key_0010: \
-  id_label = db_ids_first(label); \
+  id_label = i_array_get(label); \
   val_id.mv_data = &id_label; \
   status.id = mdb_cursor_get(graph_ll, (&val_id), (&val_id_2), MDB_SET_KEY); \
   if (db_mdb_status_is_success) { \
@@ -67,8 +66,8 @@ exit:
     db_mdb_status_expect_notfound; \
   }; \
   each_key_0010: \
-  label = db_ids_rest(label); \
-  if (label) { \
+  i_array_forward(label); \
+  if (label.current) { \
     goto set_key_0010; \
   } else { \
     goto exit; \
@@ -107,14 +106,11 @@ exit:
   }; \
   goto each_key_0010;
 #define db_graph_internal_delete_0110 \
-  db_id_t id_right; \
-  db_id_t id_left; \
-  db_id_t id_label; \
-  db_ids_t* right_pointer; \
-  right_pointer = right; \
+  label = *label_pointer; \
+  right = *right_pointer; \
   set_key_0110: \
-  id_right = db_ids_first(right_pointer); \
-  id_label = db_ids_first(label); \
+  id_right = i_array_get(right); \
+  id_label = i_array_get(label); \
   graph_key[0] = id_right; \
   graph_key[1] = id_label; \
   val_graph_key.mv_data = graph_key; \
@@ -126,13 +122,13 @@ exit:
     db_mdb_status_expect_notfound; \
   }; \
   each_key_0110: \
-  right_pointer = db_ids_rest(right_pointer); \
-  if (right_pointer) { \
+  i_array_forward(right); \
+  if (right.current) { \
     goto set_key_0110; \
   } else { \
-    label = db_ids_rest(label); \
-    if (label) { \
-      right_pointer = right; \
+    i_array_forward(label); \
+    if (label.current) { \
+      i_array_rewind(right); \
       goto set_key_0110; \
     } else { \
       goto exit; \
@@ -167,14 +163,12 @@ exit:
   }; \
   goto each_key_0110;
 #define db_graph_internal_delete_1010 \
-  db_id_t id_label; \
-  db_id_t id_left; \
-  db_ids_t* label_pointer; \
-  while (left) { \
-    id_left = db_ids_first(left); \
-    label_pointer = label; \
-    while (label_pointer) { \
-      id_label = db_ids_first(label_pointer); \
+  left = *left_pointer; \
+  label = *label_pointer; \
+  while (left.current) { \
+    id_left = i_array_get(left); \
+    while (label.current) { \
+      id_label = i_array_get(label); \
       graph_key[0] = id_left; \
       graph_key[1] = id_label; \
       val_graph_key.mv_data = graph_key; \
@@ -203,16 +197,18 @@ exit:
       } else { \
         db_mdb_status_expect_notfound; \
       }; \
-      label_pointer = db_ids_rest(label_pointer); \
+      i_array_forward(label); \
     }; \
-    left = db_ids_rest(left); \
+    i_array_rewind(label); \
+    i_array_forward(left); \
   };
 #define db_graph_internal_delete_0100 \
   db_id_t id_left; \
   db_id_t id_right; \
   db_id_t id_label; \
+  right = *right_pointer; \
   set_range_0100: \
-  id_right = db_ids_first(right); \
+  id_right = i_array_get(right); \
   graph_key[0] = id_right; \
   graph_key[1] = 0; \
   val_graph_key.mv_data = graph_key; \
@@ -226,8 +222,8 @@ exit:
   } else { \
     db_mdb_status_expect_notfound; \
   }; \
-  right = db_ids_rest(right); \
-  if (right) { \
+  i_array_forward(right); \
+  if (right.current) { \
     goto set_range_0100; \
   } else { \
     goto exit; \
@@ -262,11 +258,9 @@ exit:
   }; \
   goto set_range_0100;
 #define db_graph_internal_delete_1000 \
-  db_id_t id_left; \
-  db_id_t id_label; \
-  db_id_t id_right; \
+  left = *left_pointer; \
   set_range_1000: \
-  id_left = db_ids_first(left); \
+  id_left = i_array_get(left); \
   graph_key[0] = id_left; \
   graph_key[1] = 0; \
   val_graph_key.mv_data = graph_key; \
@@ -281,8 +275,8 @@ exit:
   } else { \
     db_mdb_status_expect_notfound; \
   }; \
-  left = db_ids_rest(left); \
-  if (left) { \
+  i_array_forward(left); \
+  if (left.current) { \
     goto set_range_1000; \
   } else { \
     goto exit; \
@@ -310,14 +304,11 @@ exit:
     graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_NODUP); \
   goto each_key_1000;
 #define db_graph_internal_delete_1100 \
-  db_id_t id_left; \
-  db_id_t id_right; \
-  db_id_t id_label; \
-  imht_set_t* right_set; \
-  status_require(db_ids_to_set(right, (&right_set))); \
+  status_require(db_ids_to_set((*right_pointer), (&right_set))); \
+  left = *left_pointer; \
   graph_key[1] = 0; \
   set_range_1100: \
-  id_left = db_ids_first(left); \
+  id_left = i_array_get(left); \
   graph_key[0] = id_left; \
   val_graph_key.mv_data = graph_key; \
   status.id = mdb_cursor_get( \
@@ -331,8 +322,8 @@ exit:
   } else { \
     db_mdb_status_expect_notfound; \
   }; \
-  left = db_ids_rest(left); \
-  if (left) { \
+  i_array_forward(left); \
+  if (left.current) { \
     graph_key[1] = 0; \
     goto set_range_1100; \
   } else { \
@@ -371,16 +362,13 @@ exit:
     status_set_group_goto(db_status_group_lmdb); \
   };
 #define db_graph_internal_delete_1110 \
-  db_id_t id_left; \
-  db_id_t id_label; \
-  imht_set_t* right_set; \
-  db_id_t id_right; \
-  db_ids_t* label_first = label; \
-  status_require(db_ids_to_set(right, (&right_set))); \
-  while (left) { \
-    id_left = db_ids_first(left); \
-    while (label) { \
-      id_label = db_ids_first(label); \
+  status_require(db_ids_to_set((*right_pointer), (&right_set))); \
+  left = *left_pointer; \
+  label = *label_pointer; \
+  while (left.current) { \
+    id_left = i_array_get(left); \
+    while (label.current) { \
+      id_label = i_array_get(label); \
       graph_key[0] = id_left; \
       graph_key[1] = id_label; \
       val_graph_key.mv_data = graph_key; \
@@ -401,27 +389,24 @@ exit:
       status = db_graph_internal_delete_graph_ll_conditional( \
         graph_lr, graph_ll, id_label, id_left); \
       db_mdb_status_expect_read; \
-      label = db_ids_rest(label); \
+      i_array_forward(label); \
     }; \
-    label = label_first; \
-    left = db_ids_rest(left); \
+    i_array_rewind(label); \
+    i_array_forward(left); \
   };
 #define db_graph_internal_delete_get_ordinal_data(ordinal) \
   db_ordinal_t ordinal_min = ordinal->min; \
   db_ordinal_t ordinal_max = ordinal->max
 #define db_graph_internal_delete_1001_1101 \
-  db_id_t id_left; \
-  db_id_t id_right; \
-  db_id_t id_label; \
-  imht_set_t* right_set; \
   db_graph_internal_delete_get_ordinal_data(ordinal); \
+  left = *left_pointer; \
   graph_data[0] = ordinal_min; \
   graph_key[1] = 0; \
-  if (right) { \
+  if (right.current) { \
     status_require(db_ids_to_set(right, (&right_set))); \
   }; \
   set_range_1001_1101: \
-  id_left = db_ids_first(left); \
+  id_left = i_array_get(left); \
   graph_key[0] = id_left; \
   val_graph_key.mv_data = graph_key; \
   status.id = mdb_cursor_get( \
@@ -445,8 +430,8 @@ exit:
   } else { \
     db_mdb_status_expect_notfound; \
   }; \
-  left = db_ids_rest(left); \
-  if (left) { \
+  i_array_forward(left); \
+  if (left.current) { \
     graph_key[1] = 0; \
     goto set_range_1001_1101; \
   } else { \
@@ -491,20 +476,16 @@ exit:
     status_set_group_goto(db_status_group_lmdb); \
   };
 #define db_graph_internal_delete_1011_1111 \
-  db_id_t id_left; \
-  db_id_t id_label; \
-  imht_set_t* right_set; \
-  db_id_t id_right; \
-  db_ids_t* left_pointer; \
   db_graph_internal_delete_get_ordinal_data(ordinal); \
-  if (right) { \
-    status_require(db_ids_to_set(right, (&right_set))); \
+  if (right_pointer) { \
+    status_require(db_ids_to_set((*right_pointer), (&right_set))); \
   }; \
-  left_pointer = left; \
+  left = *left_pointer; \
+  label = *label_pointer; \
   graph_data[0] = ordinal_min; \
-  id_label = db_ids_first(label); \
+  id_label = i_array_get(label); \
   set_key_1011_1111: \
-  id_left = db_ids_first(left_pointer); \
+  id_left = i_array_get(left); \
   graph_key[0] = id_left; \
   graph_key[1] = id_label; \
   val_graph_key.mv_data = graph_key; \
@@ -515,14 +496,14 @@ exit:
     goto each_data_1011_1111; \
   } else { \
   each_key_1011_1111: \
-    left_pointer = db_ids_rest(left_pointer); \
-    if (left_pointer) { \
+    i_array_forward(left); \
+    if (left.current) { \
       goto set_key_1011_1111; \
     } else { \
-      label = db_ids_rest(label); \
-      if (label) { \
-        left_pointer = left; \
-        id_label = db_ids_first(label); \
+      i_array_forward(label); \
+      if (label.current) { \
+        id_label = i_array_get(label); \
+        i_array_rewind(left); \
         goto set_key_1011_1111; \
       } else { \
         goto exit; \
@@ -560,36 +541,43 @@ exit:
    the beginning of goto labels before cursor operations. example: (debug-log
    "each-key-1100 %lu %lu" id-left id-right) db-graph-internal-delete-* macros
    are allowed to leave status on MDB-NOTFOUND */
-status_t db_graph_internal_delete(db_ids_t* left,
-  db_ids_t* right,
-  db_ids_t* label,
+status_t db_graph_internal_delete(db_ids_t* left_pointer,
+  db_ids_t* right_pointer,
+  db_ids_t* label_pointer,
   db_ordinal_condition_t* ordinal,
   MDB_cursor* graph_lr,
   MDB_cursor* graph_rl,
   MDB_cursor* graph_ll) {
   status_declare;
+  db_id_t id_left;
+  db_id_t id_right;
+  db_id_t id_label;
+  db_ids_t left;
+  db_ids_t right;
+  db_ids_t label;
+  imht_set_t* right_set;
   db_mdb_declare_val_graph_key;
   db_mdb_declare_val_graph_data;
   db_mdb_declare_val_id;
   db_mdb_declare_val_id_2;
   db_declare_graph_key(graph_key);
   db_declare_graph_data(graph_data);
-  if (left) {
+  if (left_pointer) {
     if (ordinal) {
-      if (label) {
+      if (label_pointer) {
         db_graph_internal_delete_1011_1111;
       } else {
         db_graph_internal_delete_1001_1101;
       };
     } else {
-      if (label) {
-        if (right) {
+      if (label_pointer) {
+        if (right_pointer) {
           db_graph_internal_delete_1110;
         } else {
           db_graph_internal_delete_1010;
         };
       } else {
-        if (right) {
+        if (right_pointer) {
           db_graph_internal_delete_1100;
         } else {
           db_graph_internal_delete_1000;
@@ -597,14 +585,14 @@ status_t db_graph_internal_delete(db_ids_t* left,
       };
     };
   } else {
-    if (right) {
-      if (label) {
+    if (right_pointer) {
+      if (label_pointer) {
         db_graph_internal_delete_0110;
       } else {
         db_graph_internal_delete_0100;
       };
     } else {
-      if (label) {
+      if (label_pointer) {
         db_graph_internal_delete_0010;
       } else {
         db_status_set_id_goto(db_status_id_not_implemented);

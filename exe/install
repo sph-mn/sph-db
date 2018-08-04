@@ -4,11 +4,11 @@
 
 prefix="$1"
 a="temp/libsph-db.so"
-b="source/c-precompiled/sph-db.c"
+b="source/c-precompiled/sph-db.h"
 a_dest="$prefix/usr/lib"
 b_dest="$prefix/usr/include"
 
 mkdir -p "$a_dest" "$b_dest" &&
 cp -t "$a_dest" "$a" &&
-cp -t "$b_dest" $b &&
-chmod 644 "$a_dest/libsph-db.so" "$b_dest/sph-db.c"
+cp -t "$b_dest" "$b" &&
+chmod 644 "$a_dest/libsph-db.so" "$b_dest/sph-db.h"

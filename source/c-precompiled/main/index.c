@@ -353,7 +353,6 @@ status_t db_index_delete(db_env_t* env, db_index_t* index) {
   db_mdb_declare_val_null;
   db_txn_declare(env, txn);
   db_mdb_cursor_declare(system);
-  db_index_t* indices_temp;
   void* key_data;
   size_t key_size;
   MDB_val val_data;

@@ -189,7 +189,7 @@
     matcher-state void*
     node-data db-node-data-t
     id db-id-t
-    ids db-ids-t*
+    ids db-ids-t
     skip boolean
     match boolean
     type-id db-type-id-t)
@@ -199,12 +199,12 @@
     skip (bit-and state:options db-selection-flag-skip)
     count state:count
     ids state:ids)
-  (if ids
+  (if ids.current
     (begin
       (sc-comment "filter by ids")
-      (while (and ids count)
+      (while (and ids.current count)
         (set
-          val-id.mv-data (db-ids-first-address ids)
+          val-id.mv-data ids.current
           status.id (mdb-cursor-get state:cursor &val-id &val-data MDB-SET-KEY))
         (if db-mdb-status-is-success
           (begin
@@ -212,7 +212,7 @@
               (set
                 node-data.data val-data.mv-data
                 node-data.size val-data.mv-size
-                match (matcher (db-ids-first ids) node-data matcher-state))
+                match (matcher (i-array-get ids) node-data matcher-state))
               (set match #t))
             (if match
               (begin
@@ -225,7 +225,7 @@
                     state:current-id id))
                 (set count (- count 1)))))
           db-mdb-status-expect-notfound)
-        (set ids (db-ids-rest ids)))
+        (i-array-forward ids))
       (set state:ids ids))
     (begin
       (sc-comment "filter by type")
@@ -291,7 +291,7 @@
     result-state:cursor nodes
     result-state:count 1
     result-state:env txn.env
-    result-state:ids ids
+    result-state:ids *ids
     result-state:matcher matcher
     result-state:matcher-state matcher-state
     result-state:options 0
@@ -317,8 +317,7 @@
       result:size val-data.mv-size)
     (if db-mdb-status-is-notfound db-mdb-status-notfound-if-notfound
       (set status.group db-status-group-lmdb)))
-  (label exit
-    (return status)))
+  (return status))
 
 (define (db-node-get txn id result) (status-t db-txn-t db-id-t db-node-data-t*)
   "get a reference to data for one node identified by id.
@@ -337,36 +336,40 @@
     db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* MDB-cursor* MDB-cursor* MDB-cursor*)
   "declare because it is defined later")
 
-(define (db-node-delete txn ids) (status-t db-txn-t db-ids-t*)
+(define (db-node-delete txn ids-pointer) (status-t db-txn-t db-ids-t*)
   "delete a node and all its relations"
   status-declare
   db-mdb-declare-val-id
   (declare
+    ids db-ids-t
     id db-id-t
     val-data MDB-val
     values db-node-values-t
     node-data db-node-data-t)
+  (set ids *ids-pointer)
   (db-mdb-cursor-declare nodes)
   (db-mdb-cursor-declare graph-lr)
   (db-mdb-cursor-declare graph-rl)
   (db-mdb-cursor-declare graph-ll)
   (sc-comment
-    "return if ids is zero because in db-graph-internal-delete it would mean non-filter and match all")
-  (if (not ids) (return status))
+    "first delete references."
+    "return if ids-pointer is zero because in db-graph-internal-delete it would mean non-filter and match all.")
+  (if (not ids-pointer) (return status))
   (db-mdb-status-require (db-mdb-env-cursor-open txn graph-lr))
   (db-mdb-status-require (db-mdb-env-cursor-open txn graph-rl))
   (db-mdb-status-require (db-mdb-env-cursor-open txn graph-ll))
-  (status-require (db-graph-internal-delete ids 0 0 0 graph-lr graph-rl graph-ll))
-  (status-require (db-graph-internal-delete 0 ids 0 0 graph-lr graph-rl graph-ll))
-  (status-require (db-graph-internal-delete 0 0 ids 0 graph-lr graph-rl graph-ll))
+  (status-require (db-graph-internal-delete ids-pointer 0 0 0 graph-lr graph-rl graph-ll))
+  (status-require (db-graph-internal-delete 0 ids-pointer 0 0 graph-lr graph-rl graph-ll))
+  (status-require (db-graph-internal-delete 0 0 ids-pointer 0 graph-lr graph-rl graph-ll))
   (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
-  (while ids
-    (set val-id.mv-data (db-ids-first-address ids))
+  (sc-comment "delete node and index btree entries")
+  (while ids.current
+    (set val-id.mv-data ids.current)
     (set status.id (mdb-cursor-get nodes &val-id &val-data MDB-SET-KEY))
     (if db-mdb-status-is-success
       (begin
         (set
-          id (db-ids-first ids)
+          id (i-array-get ids)
           node-data.data val-data.mv-data
           node-data.size val-data.mv-size)
         (status-require
@@ -375,7 +378,7 @@
         (db-mdb-status-require (mdb-cursor-del nodes 0)))
       (if db-mdb-status-is-notfound (set status.id status-id-success)
         (status-set-group-goto db-status-group-lmdb)))
-    (set ids (db-ids-rest ids)))
+    (i-array-forward ids))
   (label exit
     (db-mdb-cursor-close-if-active graph-lr)
     (db-mdb-cursor-close-if-active graph-rl)
@@ -411,16 +414,16 @@
     (free node-data.data)
     (return status)))
 
-(define (db-node-exists txn ids result) (status-t db-txn-t db-ids-t* boolean*)
+(define (db-node-exists txn ids result) (status-t db-txn-t db-ids-t boolean*)
   "true if all given ids are ids of existing nodes, false otherwise"
   status-declare
   db-mdb-declare-val-id
   db-mdb-declare-val-null
   (db-mdb-cursor-declare nodes)
   (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
-  (while ids
+  (while ids.current
     (set
-      val-id.mv-data (db-ids-first-address ids)
+      val-id.mv-data ids.current
       status.id (mdb-cursor-get nodes &val-id &val-null MDB-SET))
     (if db-mdb-status-is-notfound
       (begin
@@ -429,7 +432,7 @@
           status.id status-id-success)
         (goto exit))
       (if (not status-is-success) status-goto))
-    (set ids (db-ids-rest ids)))
+    (i-array-forward ids))
   (set *result #t)
   (label exit
     (mdb-cursor-close nodes)

@@ -1,11 +1,14 @@
-(pre-define db-id-t ui64
+(pre-define
+  db-count-t ui32
+  db-fields-len-t ui8
+  db-field-type-t ui8
+  db-id-mask UINT64_MAX
+  db-id-t ui64
+  db-index-len-t ui8
+  db-name-len-max UINT8_MAX
+  db-name-len-t ui8
+  db-data-len-t ui32
+  db-data-len-max UINT32_MAX
   db-ordinal-t ui32
-  db-id-max UINT64_MAX
-  ;data can not be greater than lmdb max keysize, which is 511 by lmdb default but can be adjusted with recompiling lmdb
-  db-size-data-max 511
-  db-size-data-min 1
-  db-size-id (sizeof db-id-t) db-size-ordinal (sizeof db-ordinal-t))
-
-(pre-define (db-id-equal? a b) (= a b))
-(pre-define (db-id-compare a b) (if* (< a b) -1 (> a b)))
-(pre-define (db-pointer->id a index) (pointer-get (+ index (convert-type a db-id-t*))))
+  db-type-id-mask UINT16_MAX
+  db-type-id-t ui16)

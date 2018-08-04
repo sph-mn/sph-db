@@ -8,11 +8,9 @@
   (db-declare-graph-key name) (declare name (array db-id-t 2 0 0))
   (db-declare-graph-data name)
   (begin
-    (declare graph-data (array ui8 ((+ db-size-ordinal db-size-id))))
-    (memset graph-data 0 (+ db-size-ordinal db-size-id)))
-  (db-declare-graph-record name) (define name db-graph-record-t (struct-literal 0 0 0 0))
-  (db-graph-records-add! target record target-temp)
-  (db-pointer-allocation-set target (db-graph-records-add target record) target-temp))
+    (declare graph-data (array ui8 ((+ (sizeof db-ordinal-t) (sizeof db-id-t)))))
+    (memset graph-data 0 (+ (sizeof db-ordinal-t) (sizeof db-id-t))))
+  (db-declare-graph-record name) (define name db-graph-record-t (struct-literal 0 0 0 0)))
 
 (define (db-mdb-graph-lr-seek-right graph-lr id-right) (status-t MDB-cursor* db-id-t)
   "search data until the given id-right has been found"
@@ -31,7 +29,7 @@
     (return status)))
 
 (define (db-graph-ensure txn left right label ordinal-generator ordinal-generator-state)
-  (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-graph-ordinal-generator-t void*)
+  (status-t db-txn-t db-ids-t db-ids-t db-ids-t db-graph-ordinal-generator-t void*)
   "check if a relation exists and create it if not"
   status-declare
   db-mdb-declare-val-id
@@ -47,9 +45,7 @@
     id-label db-id-t
     id-left db-id-t
     id-right db-id-t
-    label-pointer db-ids-t*
-    ordinal db-ordinal-t
-    right-pointer db-ids-t*)
+    ordinal db-ordinal-t)
   (db-mdb-status-require (db-mdb-env-cursor-open txn graph-lr))
   (db-mdb-status-require (db-mdb-env-cursor-open txn graph-rl))
   (db-mdb-status-require (db-mdb-env-cursor-open txn graph-ll))
@@ -57,18 +53,15 @@
     (if* (and (not ordinal-generator) ordinal-generator-state)
       (set ordinal (pointer-get (convert-type ordinal-generator-state db-ordinal-t*)))
       0))
-  (while left
-    (set
-      id-left (db-ids-first left)
-      label-pointer label)
-    (while label-pointer
+  (while left.current
+    (set id-left (i-array-get left))
+    (while label.current
       (set
-        id-label (db-ids-first label-pointer)
-        right-pointer right
+        id-label (i-array-get label)
         val-id-2.mv-data &id-label)
-      (while right-pointer
+      (while right.current
         (set
-          id-right (db-ids-first right-pointer)
+          id-right (i-array-get right)
           (array-get graph-key 0) id-right
           (array-get graph-key 1) id-label
           val-graph-key.mv-data graph-key
@@ -88,9 +81,11 @@
             (set val-graph-data.mv-data graph-data)
             (db-mdb-status-require (mdb-cursor-put graph-lr &val-graph-key &val-graph-data 0)))
           (if (not db-mdb-status-is-success) (status-set-group-goto db-status-group-lmdb)))
-        (set right-pointer (db-ids-rest right-pointer)))
-      (set label-pointer (db-ids-rest label-pointer)))
-    (set left (db-ids-rest left)))
+        (i-array-forward right))
+      (i-array-rewind right)
+      (i-array-forward label))
+    (i-array-rewind label)
+    (i-array-forward left))
   (label exit
     (db-mdb-cursor-close-if-active graph-lr)
     (db-mdb-cursor-close-if-active graph-rl)

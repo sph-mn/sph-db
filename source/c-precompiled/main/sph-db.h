@@ -219,6 +219,50 @@ ui8* db_status_name(status_t a) {
   };
   return (((ui8*)(b)));
 };
+/* array type for linked-list like usage with the main features get, next, add,
+ * variable used range and easy iteration. an array struct that tracks pointers
+ * to start, end, end of used range and current element. when using add, the
+ * array is filled from left to right. declarations of temporary indices and for
+ * loops arent necessary to iterate. example: (while (db-ids-next a) (db-ids-get
+ * a)). type declaration: declare new i-array types with i-array-declare-type,
+ * then use it with the generic i-array-* macros */
+#include <stdlib.h>
+#define i_array_declare_type(name, element_type) \
+  typedef struct { \
+    element_type* current; \
+    element_type* used; \
+    element_type* end; \
+    element_type* start; \
+  } name; \
+  boolean i_array_allocate##name(name* a, size_t length) { \
+    element_type* temp; \
+    temp = malloc((length * sizeof(element_type))); \
+    if (!temp) { \
+      return (0); \
+    }; \
+    a->start = temp; \
+    a->current = temp; \
+    a->used = temp; \
+    a->end = (length + temp); \
+    return (1); \
+  }
+#define i_array_get(a) *(a.current)
+#define i_array_next(a) ((a.current < a.used) ? (1 + a.current) : 0)
+#define i_array_forward(a) a.current = i_array_next(a)
+#define i_array_rewind(a) a.current = a.start
+#define i_array_add(a, value) \
+  ((a.current < a.end) ? (a.current = (1 + a.current), \
+                           *(a.current) = value, \
+                           a.used = a.current) \
+                       : 0)
+#define i_array_remove(a) \
+  if (a.used > a.start) { \
+    a.used = (a.used - 1); \
+  }
+#define i_array_length(a) (a.used - a.start)
+#define i_array_max_length(a) (a.end - a.start)
+#define i_array_declare(a, type) type a = { 0, 0, 0, 0 }
+#define i_array_free(a) free((a.start))
 #define db_count_t ui32
 #define db_fields_len_t ui8
 #define db_field_type_t ui8
@@ -271,26 +315,11 @@ ui8* db_status_name(status_t a) {
 #ifndef db_id_compare
 #define db_id_compare(a, b) ((a < b) ? -1 : (a > b))
 #endif
-#define db_size_id sizeof(db_id_t)
-#define db_size_type_id sizeof(db_type_id_t)
-#define db_size_ordinal sizeof(db_ordinal_t)
 #define db_ordinal_compare db_id_compare
-#define db_size_graph_data (db_size_ordinal + db_size_id)
-#define db_size_graph_key (2 * db_size_id)
-#define db_selection_flag_skip 1
-#define db_graph_selection_flag_is_set_left 2
-#define db_graph_selection_flag_is_set_right 4
+#define db_size_graph_data (sizeof(db_ordinal_t) + sizeof(db_id_t))
+#define db_size_graph_key (2 * sizeof(db_id_t))
 #define db_null 0
-#define db_type_id_limit db_type_id_mask
 #define db_size_element_id (sizeof(db_id_t) - sizeof(db_type_id_t))
-#define db_id_type_mask \
-  (((db_id_t)(db_type_id_mask)) << (8 * db_size_element_id))
-#define db_id_element_mask ~db_id_type_mask
-#define db_element_id_limit db_id_element_mask
-#define db_type_flag_virtual 1
-#define db_system_label_format 0
-#define db_system_label_type 1
-#define db_system_label_index 2
 #define db_field_type_float32 4
 #define db_field_type_float64 6
 #define db_field_type_binary 1
@@ -307,42 +336,12 @@ ui8* db_status_name(status_t a) {
 #define db_field_type_char16 66
 #define db_field_type_char32 98
 #define db_field_type_char64 130
-#define db_env_types_extra_count 20
-#define db_size_type_id_max 16
-#define db_size_system_label 1
 #define db_id_add_type(id, type_id) \
   (id | (((db_id_t)(type_id)) << (8 * db_size_element_id)))
 /** get the type id part from a node id. a node id without element id */
 #define db_id_type(id) (id >> (8 * db_size_element_id))
 /** get the element id part from a node id. a node id without type id */
 #define db_id_element(id) (db_id_element_mask & id)
-#define db_pointer_to_id_at(a, index) *(index + ((db_id_t*)(a)))
-#define db_pointer_to_id(a) *((db_id_t*)(a))
-#define db_field_type_is_fixed(a) !(1 & a)
-#define db_system_key_label(a) *((ui8*)(a))
-#define db_system_key_id(a) \
-  *((db_type_id_t*)((db_size_system_label + ((ui8*)(a)))))
-#define db_status_memory_error_if_null(variable) \
-  if (!variable) { \
-    status_set_both_goto(db_status_group_db, db_status_id_memory); \
-  }
-#define db_malloc(variable, size) \
-  variable = malloc(size); \
-  db_status_memory_error_if_null(variable)
-/** allocate memory for a string with size and one extra last null element */
-#define db_malloc_string(variable, len) \
-  db_malloc(variable, (1 + len)); \
-  *(len + variable) = 0
-#define db_calloc(variable, count, size) \
-  variable = calloc(count, size); \
-  db_status_memory_error_if_null(variable)
-#define db_realloc(variable, variable_temp, size) \
-  variable_temp = realloc(variable, size); \
-  db_status_memory_error_if_null(variable_temp); \
-  variable = variable_temp
-#define db_env_define(name) \
-  db_env_t* name; \
-  db_calloc(name, 1, sizeof(db_env_t))
 /** db-id-t -> db-id-t */
 #define db_node_virtual_to_data(id) (id >> 2)
 #define db_pointer_allocation_set(result, expression, result_temp) \
@@ -352,28 +351,20 @@ ui8* db_status_name(status_t a) {
   } else { \
     db_status_set_id_goto(db_status_id_memory); \
   }
-#define db_ids_add_require(target, source, ids_temp) \
-  db_pointer_allocation_set(target, db_ids_add(target, source), ids_temp)
-#define db_declare_ids(name) db_ids_t* name = 0
-#define db_declare_ids_two(name_1, name_2) \
-  db_declare_ids(name_1); \
-  db_declare_ids(name_2)
-#define db_declare_ids_three(name_1, name_2, name_3) \
-  db_declare_ids_two(name_1, name_2); \
-  db_declare_ids(name_3)
-#define db_graph_data_to_id(a) db_pointer_to_id((1 + ((db_ordinal_t*)(a))))
-#define db_graph_data_to_ordinal(a) *((db_ordinal_t*)(a))
-#define db_graph_data_set_id(a, value) db_graph_data_to_id(a) = value
-#define db_graph_data_set_ordinal(a, value) db_graph_data_to_ordinal(a) = value
-#define db_graph_data_set_both(a, ordinal, id) \
-  db_graph_data_set_ordinal(ordinal); \
-  db_graph_data_set_id(id)
 #define db_txn_declare(env, name) db_txn_t name = { 0, env }
 #define db_txn_abort_if_active(a) \
   if (a.mdb_txn) { \
     db_txn_abort((&a)); \
   }
 #define db_txn_is_active(a) (a.mdb_txn ? 1 : 0)
+typedef struct {
+  db_id_t left;
+  db_id_t right;
+  db_id_t label;
+  db_ordinal_t ordinal;
+} db_graph_record_t;
+i_array_declare_type(db_ids_t, db_id_t);
+i_array_declare_type(db_graph_records_t, db_graph_record_t);
 typedef struct {
   ui8* name;
   db_name_len_t name_len;
@@ -415,11 +406,6 @@ typedef struct {
   db_type_id_t types_len;
 } db_env_t;
 typedef struct {
-  db_id_t id;
-  size_t size;
-  void* data;
-} db_data_record_t;
-typedef struct {
   MDB_txn* mdb_txn;
   db_env_t* env;
 } db_txn_t;
@@ -439,12 +425,6 @@ typedef struct {
   ui32_least env_open_flags;
   ui16 file_permissions;
 } db_open_options_t;
-typedef struct {
-  db_id_t left;
-  db_id_t right;
-  db_id_t label;
-  db_ordinal_t ordinal;
-} db_graph_record_t;
 typedef db_ordinal_t (*db_graph_ordinal_generator_t)(void*);
 typedef struct {
   db_ordinal_t min;
@@ -474,14 +454,13 @@ typedef struct {
   db_index_selection_t index_selection;
   MDB_cursor* nodes;
 } db_node_index_selection_t;
-#include "./lib/data-structures.c"
 typedef struct {
   db_count_t count;
   db_node_data_t current;
   db_id_t current_id;
   MDB_cursor* cursor;
   db_env_t* env;
-  db_ids_t* ids;
+  db_ids_t ids;
   db_node_matcher_t matcher;
   void* matcher_state;
   ui8 options;
@@ -491,17 +470,17 @@ typedef struct {
   status_t status;
   MDB_cursor* restrict cursor;
   MDB_cursor* restrict cursor_2;
-  void* left;
-  void* right;
-  void* label;
-  db_ids_t* left_first;
-  db_ids_t* right_first;
+  db_ids_t left;
+  db_ids_t right;
+  db_ids_t label;
+  void* ids_set;
   db_ordinal_condition_t* ordinal;
   ui8 options;
   void* reader;
 } db_graph_selection_t;
 typedef status_t (
-  *db_graph_reader_t)(db_graph_selection_t*, db_count_t, db_graph_records_t**);
+  *db_graph_reader_t)(db_graph_selection_t*, db_count_t, db_graph_records_t*);
+status_t db_env_new(db_env_t** result);
 status_t db_statistics(db_txn_t txn, db_statistics_t* result);
 void db_close(db_env_t* env);
 status_t db_open(ui8* root, db_open_options_t* options, db_env_t* env);
@@ -517,12 +496,6 @@ status_t db_type_delete(db_env_t* env, db_type_id_t id);
 status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result);
 status_t db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result);
 ui8 db_field_type_size(ui8 a);
-status_t db_graph_ensure(db_txn_t txn,
-  db_ids_t* left,
-  db_ids_t* right,
-  db_ids_t* label,
-  db_graph_ordinal_generator_t ordinal_generator,
-  void* ordinal_generator_state);
 ui8* db_status_description(status_t a);
 ui8* db_status_name(status_t a);
 ui8* db_status_group_id_to_name(status_id_t a);
@@ -536,11 +509,11 @@ status_t db_graph_select(db_txn_t txn,
   db_graph_selection_t* result);
 status_t db_graph_read(db_graph_selection_t* state,
   db_count_t count,
-  db_graph_records_t** result);
+  db_graph_records_t* result);
 status_t db_graph_ensure(db_txn_t txn,
-  db_ids_t* left,
-  db_ids_t* right,
-  db_ids_t* label,
+  db_ids_t left,
+  db_ids_t right,
+  db_ids_t label,
   db_graph_ordinal_generator_t ordinal_generator,
   void* ordinal_generator_state);
 void db_graph_selection_destroy(db_graph_selection_t* state);
@@ -572,7 +545,7 @@ status_t db_node_delete(db_txn_t txn, db_ids_t* ids);
 db_node_data_t
 db_node_data_ref(db_type_t* type, db_node_data_t data, db_fields_len_t field);
 db_node_data_t db_node_ref(db_node_selection_t* state, db_fields_len_t field);
-status_t db_node_exists(db_txn_t txn, db_ids_t* ids, boolean* result);
+status_t db_node_exists(db_txn_t txn, db_ids_t ids, boolean* result);
 status_t db_node_select(db_txn_t txn,
   db_ids_t* ids,
   db_type_t* type,
@@ -609,24 +582,3 @@ status_t db_node_index_select(db_txn_t txn,
   db_node_values_t values,
   db_node_index_selection_t* result);
 void db_node_index_selection_destroy(db_node_index_selection_t* selection);
-void db_debug_log_ids(db_ids_t* a);
-void db_debug_log_ids_set(imht_set_t a);
-void db_debug_display_graph_records(db_graph_records_t* records);
-status_t db_debug_count_all_btree_entries(db_txn_t txn, db_count_t* result);
-status_t db_debug_display_btree_counts(db_txn_t txn);
-status_t db_debug_display_content_graph_lr(db_txn_t txn);
-status_t db_debug_display_content_graph_rl(db_txn_t txn);
-status_t db_index_key(db_env_t* env,
-  db_index_t index,
-  db_node_values_t values,
-  void** result_data,
-  size_t* result_size);
-status_t
-db_indices_entry_ensure(db_txn_t txn, db_node_values_t values, db_id_t id);
-status_t db_index_name(db_type_id_t type_id,
-  db_fields_len_t* fields,
-  db_fields_len_t fields_len,
-  ui8** result,
-  size_t* result_size);
-status_t
-db_indices_entry_delete(db_txn_t txn, db_node_values_t values, db_id_t id);

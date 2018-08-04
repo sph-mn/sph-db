@@ -2,6 +2,7 @@
      type-label id -> 8b:name-len name db-field-len-t:field-len (ui8:field-type
    ui8:name-len name) ... index-label db-type-id-t:type-id
    db-field-len-t:field-offset ... -> () */
+#define db_env_types_extra_count 20
 /** prepare the database filesystem root path.
   create the full directory path if it does not exist */
 status_t db_open_root(db_env_t* env, db_open_options_t* options, ui8* path) {
@@ -68,7 +69,9 @@ status_t db_open_format(MDB_cursor* system, db_txn_t txn) {
   status_declare;
   ui8* data;
   ui8 label;
-  ui8 format[3] = { db_size_id, db_size_type_id, db_size_ordinal };
+  ui8 format[3] = {
+    sizeof(db_id_t), sizeof(db_type_id_t), sizeof(db_ordinal_t)
+  };
   MDB_val val_key;
   MDB_val val_data;
   MDB_stat stat_info;
@@ -529,7 +532,7 @@ exit:
 status_t db_open(ui8* path, db_open_options_t* options_pointer, db_env_t* env) {
   status_declare;
   db_open_options_t options;
-  if (!(db_size_id > db_size_type_id)) {
+  if (!(sizeof(db_id_t) > sizeof(db_type_id_t))) {
     status_set_both_goto(db_status_group_db, db_status_id_max_type_id_size);
   };
   db_txn_declare(env, txn);

@@ -1,0 +1,7 @@
+#!/bin/sh
+# list all bindings from sph-db.h.
+# depends on sc-documentor from sph-sc.
+
+extra="$PWD/other/sc-documentor-config.scm"
+cd source/sc/main &&
+sc-documentor sph-db.sc lib/status.sc config.sc --config="$extra"

@@ -4,8 +4,7 @@
 ; offers more installation options.
 ; depends on "sph-lib".
 ; see "./exe/install-extended --help"
-
 (import (sph install))
 
 (install-cli-guile ("/usr/lib" 493 "temp/libsph-db.so")
-  ("/usr/include" 493 "source/c-precompiled/sph-db.c"))
+  ("/usr/include" 493 "source/c-precompiled/sph-db.h"))

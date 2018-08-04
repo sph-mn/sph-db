@@ -1,4 +1,4 @@
-(pre-include "./sph-db.h" "../foreign/sph/one.c" "math.h" "./lib/lmdb.c")
+(pre-include "./sph-db.h" "./sph-db-extra.h" "../foreign/sph/one.c" "math.h" "./lib/lmdb.c")
 
 (pre-define
   (free-and-set-null a)
@@ -92,12 +92,12 @@
   (label exit
     (return status)))
 
-(define (db-debug-log-ids a) (void db-ids-t*)
-  "display an ids list"
-  (printf "ids (%lu):" (db-ids-length a))
-  (while a
-    (printf " %lu" (db-ids-first a))
-    (set a (db-ids-rest a)))
+(define (db-debug-log-ids a) (void db-ids-t)
+  "display an ids array"
+  (printf "ids (%lu):" (i-array-length a))
+  (while a.current
+    (printf " %lu" (i-array-get a))
+    (i-array-forward a))
   (printf "\n"))
 
 (define (db-debug-log-ids-set a) (void imht-set-t)
@@ -109,13 +109,13 @@
     (set i (+ 1 i)))
   (printf "\n"))
 
-(define (db-debug-display-graph-records records) (void db-graph-records-t*)
-  (declare record db-graph-record-t)
+(define (db-debug-display-graph-records a) (void db-graph-records-t)
+  (declare b db-graph-record-t)
   (printf "graph records (ll -> or)\n")
-  (while records
-    (set record (db-graph-records-first records))
-    (printf "  %lu %lu -> %lu %lu\n" record.left record.label record.ordinal record.right)
-    (set records (db-graph-records-rest records))))
+  (while a.current
+    (set b (i-array-get a))
+    (printf "  %lu %lu -> %lu %lu\n" b.left b.label b.ordinal b.right)
+    (i-array-forward a)))
 
 (define (db-debug-display-btree-counts txn) (status-t db-txn-t)
   status-declare
@@ -152,12 +152,12 @@
     ((db-field-type-int8 db-field-type-uint8 db-field-type-char8) (return 1))
     (else (return 0))))
 
-(define (db-ids->set a result) (status-t db-ids-t* imht-set-t**)
+(define (db-ids->set a result) (status-t db-ids-t imht-set-t**)
   status-declare
-  (if (not (imht-set-create (db-ids-length a) result)) (db-status-set-id-goto db-status-id-memory))
-  (while a
-    (imht-set-add *result (db-ids-first a))
-    (set a (db-ids-rest a)))
+  (db-status-memory-error-if-null (imht-set-create (i-array-length a) result))
+  (while a.current
+    (imht-set-add *result (i-array-get a))
+    (i-array-forward a))
   (label exit
     (return status)))
 
@@ -258,6 +258,15 @@
   (for ((set i 0) (< i types-len) (set i (+ 1 i)))
     (db-free-env-type (+ i *types)))
   (free-and-set-null *types))
+
+(define (db-env-new result) (status-t db-env-t**)
+  "caller has to free result if not needed anymore"
+  status-declare
+  (declare a db-env-t*)
+  (db-calloc a 1 (sizeof db-env-t))
+  (set *result a)
+  (label exit
+    (return status)))
 
 (define (db-close env) (void db-env-t*)
   (define mdb-env MDB-env* env:mdb-env)

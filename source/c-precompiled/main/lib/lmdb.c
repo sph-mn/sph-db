@@ -54,10 +54,10 @@
 #define db_mdb_val_to_graph_key(a) ((db_id_t*)(a.mv_data))
 #define db_mdb_declare_val_id \
   MDB_val val_id; \
-  val_id.mv_size = db_size_id;
+  val_id.mv_size = sizeof(db_id_t);
 #define db_mdb_declare_val_id_2 \
   MDB_val val_id_2; \
-  val_id_2.mv_size = db_size_id;
+  val_id_2.mv_size = sizeof(db_id_t);
 #define db_mdb_declare_val_null \
   MDB_val val_null; \
   val_null.mv_size = 0;

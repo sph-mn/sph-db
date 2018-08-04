@@ -41,6 +41,7 @@ compile_sc() {
   cd "$root" &&
   find "$c" -type f -exec ./exe/format-c -i '{}' \; &&
   mv "$c/main/sph-db.c" "$c/main/sph-db.h"
+  mv "$c/main/sph-db-extra.c" "$c/main/sph-db-extra.h"
 }
 
 mkdir -p "$c" &&

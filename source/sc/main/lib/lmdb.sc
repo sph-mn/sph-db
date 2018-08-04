@@ -50,11 +50,11 @@
   db-mdb-declare-val-id
   (begin
     (declare val-id MDB-val)
-    (set val-id.mv-size db-size-id))
+    (set val-id.mv-size (sizeof db-id-t)))
   db-mdb-declare-val-id-2
   (begin
     (declare val-id-2 MDB-val)
-    (set val-id-2.mv-size db-size-id))
+    (set val-id-2.mv-size (sizeof db-id-t)))
   db-mdb-declare-val-null
   (begin
     (declare val-null MDB-val)

@@ -7,6 +7,7 @@
 
 (define common-element-count ui32 3)
 (define common-label-count ui32 3)
+(pre-define db-env-types-extra-count 20)
 
 (define (test-open-empty env) (status-t db-env-t*)
   status-declare
@@ -168,7 +169,7 @@
   (declare type-id db-type-id-t)
   (set type-id (/ db-type-id-limit 2))
   (test-helper-assert
-    "type-id-size + element-id-size = id-size" (= db-size-id (+ db-size-type-id db-size-element-id)))
+    "type-id-size + element-id-size = id-size" (= (sizeof db-id-t) (+ (sizeof db-type-id-t) db-size-element-id)))
   (test-helper-assert
     "type and element masks not conflicting" (not (bit-and db-id-type-mask db-id-element-mask)))
   (test-helper-assert
@@ -429,7 +430,6 @@
   (db-txn-declare env txn)
   (declare
     fields (array db-fields-len-t 2 1 2)
-    fields-2 (array db-fields-len-t 2 0 1)
     fields-len db-fields-len-t
     type db-type-t*
     index db-index-t*

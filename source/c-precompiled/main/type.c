@@ -165,7 +165,7 @@ status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
   db_mdb_cursor_close(system);
   /* nodes */
   db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
-  val_key.mv_size = db_size_id;
+  val_key.mv_size = sizeof(db_id_t);
   id = db_id_add_type(0, type_id);
   val_key.mv_data = &id;
   status.id = mdb_cursor_get(nodes, (&val_key), (&val_null), MDB_SET_RANGE);

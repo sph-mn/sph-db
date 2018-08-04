@@ -3,6 +3,8 @@
      type-label id -> 8b:name-len name db-field-len-t:field-len (ui8:field-type ui8:name-len name) ...
      index-label db-type-id-t:type-id db-field-len-t:field-offset ... -> ()")
 
+(pre-define db-env-types-extra-count 20)
+
 (define (db-open-root env options path) (status-t db-env-t* db-open-options-t* ui8*)
   "prepare the database filesystem root path.
   create the full directory path if it does not exist"
@@ -61,7 +63,7 @@
   (declare
     data ui8*
     label ui8
-    format (array ui8 (3) db-size-id db-size-type-id db-size-ordinal)
+    format (array ui8 (3) (sizeof db-id-t) (sizeof db-type-id-t) (sizeof db-ordinal-t))
     val-key MDB-val
     val-data MDB-val
     stat-info MDB-stat)
@@ -503,7 +505,7 @@
 (define (db-open path options-pointer env) (status-t ui8* db-open-options-t* db-env-t*)
   status-declare
   (declare options db-open-options-t)
-  (if (not (> db-size-id db-size-type-id))
+  (if (not (> (sizeof db-id-t) (sizeof db-type-id-t)))
     (status-set-both-goto db-status-group-db db-status-id-max-type-id-size))
   (db-txn-declare env txn)
   (if env:open (return status))

@@ -1,8 +1,0 @@
-#!/bin/sh
-# list all bindings available after including sph-db.c.
-# depends on sc-documentor from sph-sc.
-# prefer define-type to just pre-define for types, add generated binding names here
-
-extra="$PWD/other/list-bindings-extra.scm"
-cd source/sc/main &&
-sc-documentor sph-db.sc lib/status.sc config.sc ../foreign/sph/status.sc --extra="$extra"

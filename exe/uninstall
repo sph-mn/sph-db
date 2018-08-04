@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# usage: ./exe/uninstall [path-prefix]
+
+prefix="$1"
+a_dest="$prefix/usr/lib"
+b_dest="$prefix/usr/include"
+
+rm "$a_dest/libsph-db.so"
+rm "$b_dest/sph-db.h"

@@ -6,12 +6,9 @@
   ((db_id_t*)((1 + ((db_ordinal_t*)(graph_data)))))[0] = value
 #define db_declare_graph_key(name) db_id_t name[2] = { 0, 0 }
 #define db_declare_graph_data(name) \
-  ui8 graph_data[(db_size_ordinal + db_size_id)]; \
-  memset(graph_data, 0, (db_size_ordinal + db_size_id))
+  ui8 graph_data[(sizeof(db_ordinal_t) + sizeof(db_id_t))]; \
+  memset(graph_data, 0, (sizeof(db_ordinal_t) + sizeof(db_id_t)))
 #define db_declare_graph_record(name) db_graph_record_t name = { 0, 0, 0, 0 }
-#define db_graph_records_add_x(target, record, target_temp) \
-  db_pointer_allocation_set( \
-    target, db_graph_records_add(target, record), target_temp)
 /** search data until the given id-right has been found */
 status_t db_mdb_graph_lr_seek_right(MDB_cursor* graph_lr, db_id_t id_right) {
   status_declare;
@@ -36,9 +33,9 @@ exit:
 };
 /** check if a relation exists and create it if not */
 status_t db_graph_ensure(db_txn_t txn,
-  db_ids_t* left,
-  db_ids_t* right,
-  db_ids_t* label,
+  db_ids_t left,
+  db_ids_t right,
+  db_ids_t label,
   db_graph_ordinal_generator_t ordinal_generator,
   void* ordinal_generator_state) {
   status_declare;
@@ -54,24 +51,20 @@ status_t db_graph_ensure(db_txn_t txn,
   db_id_t id_label;
   db_id_t id_left;
   db_id_t id_right;
-  db_ids_t* label_pointer;
   db_ordinal_t ordinal;
-  db_ids_t* right_pointer;
   db_mdb_status_require(db_mdb_env_cursor_open(txn, graph_lr));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, graph_rl));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, graph_ll));
   ordinal = ((!ordinal_generator && ordinal_generator_state)
       ? (ordinal = *((db_ordinal_t*)(ordinal_generator_state)))
       : 0);
-  while (left) {
-    id_left = db_ids_first(left);
-    label_pointer = label;
-    while (label_pointer) {
-      id_label = db_ids_first(label_pointer);
-      right_pointer = right;
+  while (left.current) {
+    id_left = i_array_get(left);
+    while (label.current) {
+      id_label = i_array_get(label);
       val_id_2.mv_data = &id_label;
-      while (right_pointer) {
-        id_right = db_ids_first(right_pointer);
+      while (right.current) {
+        id_right = i_array_get(right);
         graph_key[0] = id_right;
         graph_key[1] = id_label;
         val_graph_key.mv_data = graph_key;
@@ -98,11 +91,13 @@ status_t db_graph_ensure(db_txn_t txn,
             status_set_group_goto(db_status_group_lmdb);
           };
         };
-        right_pointer = db_ids_rest(right_pointer);
+        i_array_forward(right);
       };
-      label_pointer = db_ids_rest(label_pointer);
+      i_array_rewind(right);
+      i_array_forward(label);
     };
-    left = db_ids_rest(left);
+    i_array_rewind(label);
+    i_array_forward(left);
   };
 exit:
   db_mdb_cursor_close_if_active(graph_lr);

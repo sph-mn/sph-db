@@ -5,6 +5,7 @@
    tip: reduce when debugging to make tests run faster */
 ui32 common_element_count = 3;
 ui32 common_label_count = 3;
+#define db_env_types_extra_count 20
 status_t test_open_empty(db_env_t* env) {
   status_declare;
   test_helper_assert(("env.open is true"), (1 == env->open));
@@ -166,7 +167,7 @@ status_t test_id_construction(db_env_t* env) {
   db_type_id_t type_id;
   type_id = (db_type_id_limit / 2);
   test_helper_assert("type-id-size + element-id-size = id-size",
-    (db_size_id == (db_size_type_id + db_size_element_id)));
+    (sizeof(db_id_t) == (sizeof(db_type_id_t) + db_size_element_id)));
   test_helper_assert("type and element masks not conflicting",
     !(db_id_type_mask & db_id_element_mask));
   test_helper_assert("type-id-mask | element-id-mask = id-mask",
@@ -410,7 +411,6 @@ status_t test_index(db_env_t* env) {
   status_declare;
   db_txn_declare(env, txn);
   db_fields_len_t fields[2] = { 1, 2 };
-  db_fields_len_t fields_2[2] = { 0, 1 };
   db_fields_len_t fields_len;
   db_type_t* type;
   db_index_t* index;
