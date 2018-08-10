@@ -4,26 +4,21 @@
   "errno.h"
   "pthread.h" "../main/sph-db.h" "../main/sph-db-extra.h" "../main/lib/lmdb.c" "../foreign/sph/one.c")
 
+(pre-define (db-field-set a a-type a-name a-name-len)
+  (set
+    a.type a-type
+    a.name a-name
+    a.name-len a-name-len))
+
 (pre-define
   test-helper-db-root "/tmp/test-sph-db"
-  test-helper-path-data (pre-string-concat test-helper-db-root "/data")
-  (set-plus-one a) (set a (+ 1 a))
-  (set-minus-one a) (set a (- a 1)))
+  test-helper-path-data (pre-string-concat test-helper-db-root "/data"))
 
-(pre-define (test-helper-init env-name)
+(pre-define (test-helper-test-one f env)
   (begin
-    status-declare
-    (db-env-new &env-name)))
-
-(pre-define test-helper-report-status
-  (if status-is-success (printf "--\ntests finished successfully.\n")
-    (printf "\ntests failed. %d %s\n" status.id (db-status-description status))))
-
-(pre-define (test-helper-test-one func env)
-  (begin
-    (printf "%s\n" (pre-stringify func))
+    (printf "%s\n" (pre-stringify f))
     (status-require (test-helper-reset env #f))
-    (status-require (func env))))
+    (status-require (f env))))
 
 (pre-define (test-helper-assert description expression)
   (if (not expression)
@@ -31,13 +26,7 @@
       (printf "%s failed\n" description)
       (status-set-id-goto 1))))
 
-(pre-define (db-field-set a a-type a-name a-name-len)
-  (set
-    a.type a-type
-    a.name a-name
-    a.name-len a-name-len))
-
-(pre-define (db-debug-define-graph-records-contains-at field-name)
+(pre-define (test-helper-define-graph-records-contains-at field-name)
   (begin
     "define a function that searches for an id in an array of records at field"
     (define ((pre-concat db-debug-graph-records-contains-at_ field-name) records id)
@@ -55,126 +44,6 @@
     (define ((pre-concat test-helper-graph-record-get_ field-name) record)
       (db-id-t db-graph-record-t) (return record.field-name))))
 
-(pre-define test-helper-graph-delete-header
-  (begin
-    status-declare
-    (db-txn-declare env txn)
-    (declare
-      left db-ids-t
-      right db-ids-t
-      label db-ids-t
-      state db-graph-selection-t
-      read-count-before-expected ui32
-      btree-count-after-delete ui32
-      btree-count-before-create ui32
-      btree-count-deleted-expected ui32
-      records db-graph-records-t
-      ordinal db-ordinal-condition-t*
-      existing-left-count ui32
-      existing-right-count ui32
-      existing-label-count ui32)
-    (define ordinal-condition db-ordinal-condition-t (struct-literal 2 5))
-    (set
-      ordinal &ordinal-condition
-      existing-left-count common-label-count
-      existing-right-count common-element-count
-      existing-label-count common-label-count)
-    (printf " ")))
-
-(pre-define (test-helper-graph-delete-one left? right? label? ordinal?)
-  (begin
-    "for any given argument permutation:
-     * checks btree entry count difference
-     * checks read result count after deletion, using the same search query
-    relations are assumed to be created with linearly incremented ordinals starting with 1"
-    (printf " %d%d%d%d" left? right? label? ordinal?)
-    (set
-      read-count-before-expected
-      (test-helper-estimate-graph-read-result-count
-        existing-left-count existing-right-count existing-label-count ordinal)
-      btree-count-deleted-expected
-      (test-helper-estimate-graph-read-btree-entry-count
-        existing-left-count existing-right-count existing-label-count ordinal))
-    (status-require (db-txn-write-begin &txn))
-    (test-helper-create-ids txn existing-left-count &left)
-    (test-helper-create-ids txn existing-right-count &right)
-    (test-helper-create-ids txn existing-label-count &label)
-    (db-debug-count-all-btree-entries txn &btree-count-before-create)
-    (status-require (test-helper-create-relations txn left right label))
-    (status-require (db-txn-commit &txn))
-    (status-require (db-txn-write-begin &txn))
-    (sc-comment "delete")
-    (status-require
-      (db-graph-delete
-        txn
-        (if* left? &left
-          0)
-        (if* right? &right
-          0)
-        (if* label? &label
-          0)
-        (if* ordinal? ordinal
-          0)))
-    (status-require (db-txn-commit &txn))
-    (status-require (db-txn-begin &txn))
-    (db-debug-count-all-btree-entries txn &btree-count-after-delete)
-    (db-status-require-read
-      (db-graph-select
-        txn
-        (if* left? &left
-          0)
-        (if* right? &right
-          0)
-        (if* label? &label
-          0)
-        (if* ordinal? ordinal
-          0)
-        0 &state))
-    (sc-comment "check that readers can handle empty selections")
-    (db-status-require-read (db-graph-read &state 0 &records))
-    (db-graph-selection-destroy &state)
-    (db-txn-abort &txn)
-    (if (not (= 0 (i-array-length records)))
-      (begin
-        (printf "\n    failed deletion. %lu relations not deleted\n" (i-array-length records))
-        (db-debug-log-graph-records records)
-        ;(status-require (db-txn-begin &txn))
-        ;(test-helper-display-all-relations txn common-element-count common-element-count common-label-count)
-        ;(db-txn-abort &txn)
-        (status-set-id-goto 1)))
-    (i-array-clear records)
-    (sc-comment
-      "test only if not using ordinal condition because the expected counts arent estimated")
-    (if (not (or ordinal? (= btree-count-after-delete btree-count-before-create)))
-      (begin
-        (printf
-          "\n failed deletion. %lu btree entries not deleted\n"
-          (- btree-count-after-delete btree-count-before-create))
-        (status-require (db-txn-begin &txn))
-        (db-debug-log-btree-counts txn)
-        (db-status-require-read (db-graph-select txn 0 0 0 0 0 &state))
-        (db-status-require-read (db-graph-read &state 0 &records))
-        (printf "all remaining ")
-        (db-debug-log-graph-records records)
-        (db-graph-selection-destroy &state)
-        (db-txn-abort &txn)
-        (status-set-id-goto 1)))
-    (i-array-free left)
-    (i-array-free right)
-    (i-array-free label)
-    (i-array-free records)
-    db-status-success-if-notfound
-    (i-array-clear records)
-    (i-array-clear left)
-    (i-array-clear right)
-    (i-array-clear label)))
-
-(pre-define test-helper-graph-delete-footer
-  (label exit
-    (db-txn-abort-if-active txn)
-    (printf "\n")
-    (return status)))
-
 (declare test-helper-graph-read-data-t
   (type
     (struct
@@ -189,6 +58,52 @@
       (left db-ids-t)
       (right db-ids-t)
       (label db-ids-t))))
+
+(declare test-helper-graph-delete-data-t
+  (type
+    (struct
+      (env db-env-t*)
+      (e-left-count ui32)
+      (e-right-count ui32)
+      (e-label-count ui32))))
+
+(define
+  (test-helper-estimate-graph-read-btree-entry-count
+    e-left-count e-right-count e-label-count ordinal)
+  (ui32 ui32 ui32 ui32 db-ordinal-condition-t*)
+  "calculates the number of btree entries affected by a relation read or delete.
+   assumes linearly incremented ordinal integers starting at 1 and queries for all or no ids"
+  (define ordinal-min ui32 0)
+  (define ordinal-max ui32 0)
+  (if ordinal
+    (set
+      ordinal-min (struct-pointer-get ordinal min)
+      ordinal-max (struct-pointer-get ordinal max)))
+  (define label-left-count ui32 0)
+  (define left-right-count ui32 0)
+  (define right-left-count ui32 0)
+  ; test-relation-ordinals currently start at one
+  (define ordinal-value ui32 1)
+  (define left-count ui32 0)
+  (define right-count ui32 0)
+  (define label-count ui32 0)
+  (sc-comment
+    "the number of relations is not proportional to the number of entries in graph-ll.
+    use a process similar to relation creation to correctly calculate graph-ll and ordinal dependent entries")
+  (while (< label-count e-label-count)
+    (while (< left-count e-left-count)
+      (if (and (<= ordinal-value ordinal-max) (>= ordinal-value ordinal-min))
+        (set label-left-count (+ 1 label-left-count)))
+      (while (< right-count e-right-count)
+        (if (and (<= ordinal-value ordinal-max) (>= ordinal-value ordinal-min))
+          (begin
+            (set ordinal-value (+ 1 ordinal-value))
+            (set left-right-count (+ 1 left-right-count))
+            (set right-left-count (+ 1 right-left-count))))
+        (set right-count (+ 1 right-count)))
+      (set left-count (+ 1 left-count)))
+    (set label-count (+ 1 label-count)))
+  (return (+ left-right-count right-left-count label-left-count)))
 
 (define (test-helper-display-all-relations txn left-count right-count label-count)
   (status-t db-txn-t ui32 ui32 ui32)
@@ -226,9 +141,9 @@
     4 0)
   (return result))
 
-(db-debug-define-graph-records-contains-at left)
-(db-debug-define-graph-records-contains-at right)
-(db-debug-define-graph-records-contains-at label)
+(test-helper-define-graph-records-contains-at left)
+(test-helper-define-graph-records-contains-at right)
+(test-helper-define-graph-records-contains-at label)
 (test-helper-define-graph-record-get left)
 (test-helper-define-graph-record-get right)
 (test-helper-define-graph-record-get label)
@@ -614,40 +529,124 @@
   (label exit
     (return status)))
 
-(define
-  (test-helper-estimate-graph-read-btree-entry-count
-    existing-left-count existing-right-count existing-label-count ordinal)
-  (ui32 ui32 ui32 ui32 db-ordinal-condition-t*)
-  "calculates the number of btree entries affected by a relation read or delete.
-   assumes linearly incremented ordinal integers starting at 1 and queries for all or no ids"
-  (define ordinal-min ui32 0)
-  (define ordinal-max ui32 0)
-  (if ordinal
+(define (test-helper-graph-delete-setup env e-left-count e-right-count e-label-count r)
+  (status-t db-env-t* ui32 ui32 ui32 test-helper-graph-delete-data-t*)
+  status-declare
+  (set
+    r:env env
+    r:e-left-count e-left-count
+    r:e-right-count e-right-count
+    r:e-label-count e-label-count)
+  (return status))
+
+(define (test-helper-graph-delete-one data use-left use-right use-label use-ordinal)
+  (status-t test-helper-graph-delete-data-t boolean boolean boolean boolean)
+  (begin
+    "for any given argument permutation:
+     * checks btree entry count difference
+     * checks read result count after deletion, using the same search query
+    relations are assumed to be created with linearly incremented ordinals starting with 1"
+    status-declare
+    (db-txn-declare data.env txn)
+    (declare
+      left db-ids-t
+      right db-ids-t
+      label db-ids-t
+      state db-graph-selection-t
+      read-count-before-expected ui32
+      btree-count-after-delete ui32
+      btree-count-before-create ui32
+      btree-count-deleted-expected ui32
+      records db-graph-records-t
+      ordinal db-ordinal-condition-t*)
+    (define ordinal-condition db-ordinal-condition-t (struct-literal 2 5))
+    (printf "  %d%d%d%d" use-left use-right use-label use-ordinal)
     (set
-      ordinal-min (struct-pointer-get ordinal min)
-      ordinal-max (struct-pointer-get ordinal max)))
-  (define label-left-count ui32 0)
-  (define left-right-count ui32 0)
-  (define right-left-count ui32 0)
-  ;test relation ordinals currently start at one
-  (define ordinal-value ui32 1)
-  (define left-count ui32 0)
-  (define right-count ui32 0)
-  (define label-count ui32 0)
-  (sc-comment
-    "the number of relations is not proportional to the number of entries in graph-ll.
-    use a process similar to relation creation to correctly calculate graph-ll and ordinal dependent entries")
-  (while (< label-count existing-label-count)
-    (while (< left-count existing-left-count)
-      (if (and (<= ordinal-value ordinal-max) (>= ordinal-value ordinal-min))
-        (set-plus-one label-left-count))
-      (while (< right-count existing-right-count)
-        (if (and (<= ordinal-value ordinal-max) (>= ordinal-value ordinal-min))
-          (begin
-            (set-plus-one ordinal-value)
-            (set-plus-one left-right-count)
-            (set-plus-one right-left-count)))
-        (set-plus-one right-count))
-      (set-plus-one left-count))
-    (set-plus-one label-count))
-  (return (+ left-right-count right-left-count label-left-count)))
+      ordinal &ordinal-condition
+      read-count-before-expected
+      (test-helper-estimate-graph-read-result-count
+        data.e-left-count data.e-right-count data.e-label-count ordinal)
+      btree-count-deleted-expected
+      (test-helper-estimate-graph-read-btree-entry-count
+        data.e-left-count data.e-right-count data.e-label-count ordinal))
+    (i-array-allocate-db-ids-t &left data.e-left-count)
+    (i-array-allocate-db-ids-t &right data.e-right-count)
+    (i-array-allocate-db-ids-t &label data.e-label-count)
+    (status-require (db-txn-write-begin &txn))
+    (test-helper-create-ids txn data.e-left-count &left)
+    (test-helper-create-ids txn data.e-right-count &right)
+    (test-helper-create-ids txn data.e-label-count &label)
+    (db-debug-count-all-btree-entries txn &btree-count-before-create)
+    (status-require (test-helper-create-relations txn left right label))
+    (status-require (db-txn-commit &txn))
+    (status-require (db-txn-write-begin &txn))
+    (sc-comment "delete")
+    (status-require
+      (db-graph-delete
+        txn
+        (if* use-left &left
+          0)
+        (if* use-right &right
+          0)
+        (if* use-label &label
+          0)
+        (if* use-ordinal ordinal
+          0)))
+    (status-require (db-txn-commit &txn))
+    #;(
+    (status-require (db-txn-begin &txn))
+    (db-debug-count-all-btree-entries txn &btree-count-after-delete)
+    (db-status-require-read
+      (db-graph-select
+        txn
+        (if* use-left &left
+          0)
+        (if* use-right &right
+          0)
+        (if* use-label &label
+          0)
+        (if* use-ordinal ordinal
+          0)
+        0 &state))
+    (sc-comment "check that readers can handle empty selections")
+    (db-status-require-read (db-graph-read &state 0 &records))
+    (db-graph-selection-destroy &state)
+    (db-txn-abort &txn)
+    (if (not (= 0 (i-array-length records)))
+      (begin
+        (printf "\n    failed deletion. %lu relations not deleted\n" (i-array-length records))
+        (db-debug-log-graph-records records)
+        ;(status-require (db-txn-begin &txn))
+        ;(test-helper-display-all-relations txn common-element-count common-element-count common-label-count)
+        ;(db-txn-abort &txn)
+        (status-set-id-goto 1)))
+    (i-array-clear records)
+    (sc-comment
+      "test only if not using ordinal condition because the expected counts arent estimated")
+    (if (not (or use-ordinal (= btree-count-after-delete btree-count-before-create)))
+      (begin
+        (printf
+          "\n failed deletion. %lu btree entries not deleted\n"
+          (- btree-count-after-delete btree-count-before-create))
+        (status-require (db-txn-begin &txn))
+        (db-debug-log-btree-counts txn)
+        (db-status-require-read (db-graph-select txn 0 0 0 0 0 &state))
+        (db-status-require-read (db-graph-read &state 0 &records))
+        (printf "all remaining ")
+        (db-debug-log-graph-records records)
+        (db-graph-selection-destroy &state)
+        (db-txn-abort &txn)
+        (status-set-id-goto 1)))
+    (i-array-free left)
+    (i-array-free right)
+    (i-array-free label)
+    (i-array-free records)
+    db-status-success-if-notfound
+    (i-array-clear records)
+    (i-array-clear left)
+    (i-array-clear right)
+    (i-array-clear label)
+    )
+    (label exit
+      (printf "\n")
+      (return status))))

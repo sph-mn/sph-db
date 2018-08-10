@@ -184,11 +184,11 @@ status_t test_graph_read(db_env_t* env) {
   status_declare;
   db_txn_declare(env, txn);
   test_helper_graph_read_data_t data;
-  test_helper_graph_read_setup(env,
+  status_require(test_helper_graph_read_setup(env,
     common_element_count,
     common_element_count,
     common_label_count,
-    (&data));
+    (&data)));
   db_txn_begin((&txn));
   status_require(test_helper_graph_read_one(txn, data, 0, 0, 0, 0, 0));
   status_require(test_helper_graph_read_one(txn, data, 1, 0, 0, 0, 0));
@@ -208,19 +208,26 @@ exit:
 };
 /** some assertions depend on the correctness of graph-read */
 status_t test_graph_delete(db_env_t* env) {
-  test_helper_graph_delete_header;
-  test_helper_graph_delete_one(1, 0, 0, 0);
-  test_helper_graph_delete_one(1, 0, 1, 0);
-  test_helper_graph_delete_one(1, 1, 0, 0);
-  test_helper_graph_delete_one(1, 1, 1, 0);
-  test_helper_graph_delete_one(0, 0, 1, 0);
-  test_helper_graph_delete_one(0, 1, 0, 0);
-  test_helper_graph_delete_one(0, 1, 1, 0);
-  test_helper_graph_delete_one(1, 0, 0, 1);
-  test_helper_graph_delete_one(1, 0, 1, 1);
-  test_helper_graph_delete_one(1, 1, 0, 1);
-  test_helper_graph_delete_one(1, 1, 1, 1);
-  test_helper_graph_delete_footer;
+  status_declare;
+  test_helper_graph_delete_data_t data;
+  status_require(test_helper_graph_delete_setup(env,
+    common_element_count,
+    common_element_count,
+    common_label_count,
+    (&data)));
+  status_require(test_helper_graph_delete_one(data, 1, 0, 0, 0));
+  status_require(test_helper_graph_delete_one(data, 1, 0, 1, 0));
+  status_require(test_helper_graph_delete_one(data, 1, 1, 0, 0));
+  status_require(test_helper_graph_delete_one(data, 1, 1, 1, 0));
+  status_require(test_helper_graph_delete_one(data, 0, 0, 1, 0));
+  status_require(test_helper_graph_delete_one(data, 0, 1, 0, 0));
+  status_require(test_helper_graph_delete_one(data, 0, 1, 1, 0));
+  status_require(test_helper_graph_delete_one(data, 1, 0, 0, 1));
+  status_require(test_helper_graph_delete_one(data, 1, 0, 1, 1));
+  status_require(test_helper_graph_delete_one(data, 1, 1, 0, 1));
+  status_require(test_helper_graph_delete_one(data, 1, 1, 1, 1));
+exit:
+  return (status);
 };
 status_t test_node_create(db_env_t* env) {
   status_declare;
@@ -503,9 +510,15 @@ exit:
 };
 int main() {
   db_env_t* env;
-  test_helper_init(env);
-  test_helper_test_one(test_graph_delete, env);
+  status_declare;
+  db_env_new((&env));
+  test_helper_test_one(test_node_create, env);
 exit:
-  test_helper_report_status;
+  if (status_is_success) {
+    printf(("--\ntests finished successfully.\n"));
+  } else {
+    printf(
+      ("\ntests failed. %d %s\n"), (status.id), db_status_description(status));
+  };
   return ((status.id));
 };

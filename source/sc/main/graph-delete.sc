@@ -57,7 +57,7 @@
         db-mdb-status-expect-notfound)
       (label each-key-0010
         (i-array-forward label)
-        (if label.current (goto set-key-0010)
+        (if (i-array-in-range label) (goto set-key-0010)
           (goto exit))))
     (label each-data-0010
       (set
@@ -100,10 +100,10 @@
         db-mdb-status-expect-notfound)
       (label each-key-0110
         (i-array-forward right)
-        (if right.current (goto set-key-0110)
+        (if (i-array-in-range right) (goto set-key-0110)
           (begin
             (i-array-forward label)
-            (if label.current
+            (if (i-array-in-range label)
               (begin
                 (i-array-rewind right)
                 (goto set-key-0110))
@@ -134,9 +134,9 @@
     (set
       left *left-pointer
       label *label-pointer)
-    (while left.current
+    (while (i-array-in-range left)
       (set id-left (i-array-get left))
-      (while label.current
+      (while (i-array-in-range label)
         (set
           id-label (i-array-get label)
           (array-get graph-key 0) id-left
@@ -187,7 +187,7 @@
             (goto each-data-0100)))
         db-mdb-status-expect-notfound)
       (i-array-forward right)
-      (if right.current (goto set-range-0100)
+      (if (i-array-in-range right) (goto set-range-0100)
         (goto exit)))
     (label each-data-0100
       (set
@@ -229,7 +229,7 @@
               (goto each-data-1000)))
           db-mdb-status-expect-notfound)
         (i-array-forward left)
-        (if left.current (goto set-range-1000)
+        (if (i-array-in-range left) (goto set-range-1000)
           (goto exit))))
     (label each-data-1000
       (set id-right (db-graph-data->id val-graph-data.mv-data))
@@ -266,7 +266,7 @@
               (goto each-data-1100)))
           db-mdb-status-expect-notfound)
         (i-array-forward left)
-        (if left.current
+        (if (i-array-in-range left)
           (begin
             (set (array-get graph-key 1) 0)
             (goto set-range-1100))
@@ -301,9 +301,9 @@
     (set
       left *left-pointer
       label *label-pointer)
-    (while left.current
+    (while (i-array-in-range left)
       (set id-left (i-array-get left))
-      (while label.current
+      (while (i-array-in-range label)
         (set
           id-label (i-array-get label)
           (array-get graph-key 0) id-left
@@ -337,7 +337,7 @@
       left *left-pointer
       (array-get graph-data 0) ordinal-min
       (array-get graph-key 1) 0)
-    (if right.current (status-require (db-ids->set right &right-set)))
+    (if right-pointer (status-require (db-ids->set right &right-set)))
     (label set-range-1001-1101
       (set
         id-left (i-array-get left)
@@ -361,7 +361,7 @@
               (goto each-key-1001-1101)))
           db-mdb-status-expect-notfound)
         (i-array-forward left)
-        (if left.current
+        (if (i-array-in-range left)
           (begin
             (set (array-get graph-key 1) 0)
             (goto set-range-1001-1101))
@@ -414,10 +414,10 @@
       (if db-mdb-status-is-success (goto each-data-1011-1111)
         (label each-key-1011-1111
           (i-array-forward left)
-          (if left.current (goto set-key-1011-1111)
+          (if (i-array-in-range left) (goto set-key-1011-1111)
             (begin
               (i-array-forward label)
-              (if label.current
+              (if (i-array-in-range label)
                 (begin
                   (set id-label (i-array-get label))
                   (i-array-rewind left)
@@ -460,10 +460,10 @@
     id-left db-id-t
     id-right db-id-t
     id-label db-id-t
-    left db-ids-t
-    right db-ids-t
-    label db-ids-t
     right-set imht-set-t*)
+  (i-array-declare left db-ids-t)
+  (i-array-declare right db-ids-t)
+  (i-array-declare label db-ids-t)
   db-mdb-declare-val-graph-key
   db-mdb-declare-val-graph-data
   db-mdb-declare-val-id

@@ -67,7 +67,7 @@ exit:
   }; \
   each_key_0010: \
   i_array_forward(label); \
-  if (label.current) { \
+  if (i_array_in_range(label)) { \
     goto set_key_0010; \
   } else { \
     goto exit; \
@@ -123,11 +123,11 @@ exit:
   }; \
   each_key_0110: \
   i_array_forward(right); \
-  if (right.current) { \
+  if (i_array_in_range(right)) { \
     goto set_key_0110; \
   } else { \
     i_array_forward(label); \
-    if (label.current) { \
+    if (i_array_in_range(label)) { \
       i_array_rewind(right); \
       goto set_key_0110; \
     } else { \
@@ -165,9 +165,9 @@ exit:
 #define db_graph_internal_delete_1010 \
   left = *left_pointer; \
   label = *label_pointer; \
-  while (left.current) { \
+  while (i_array_in_range(left)) { \
     id_left = i_array_get(left); \
-    while (label.current) { \
+    while (i_array_in_range(label)) { \
       id_label = i_array_get(label); \
       graph_key[0] = id_left; \
       graph_key[1] = id_label; \
@@ -223,7 +223,7 @@ exit:
     db_mdb_status_expect_notfound; \
   }; \
   i_array_forward(right); \
-  if (right.current) { \
+  if (i_array_in_range(right)) { \
     goto set_range_0100; \
   } else { \
     goto exit; \
@@ -276,7 +276,7 @@ exit:
     db_mdb_status_expect_notfound; \
   }; \
   i_array_forward(left); \
-  if (left.current) { \
+  if (i_array_in_range(left)) { \
     goto set_range_1000; \
   } else { \
     goto exit; \
@@ -323,7 +323,7 @@ exit:
     db_mdb_status_expect_notfound; \
   }; \
   i_array_forward(left); \
-  if (left.current) { \
+  if (i_array_in_range(left)) { \
     graph_key[1] = 0; \
     goto set_range_1100; \
   } else { \
@@ -365,9 +365,9 @@ exit:
   status_require(db_ids_to_set((*right_pointer), (&right_set))); \
   left = *left_pointer; \
   label = *label_pointer; \
-  while (left.current) { \
+  while (i_array_in_range(left)) { \
     id_left = i_array_get(left); \
-    while (label.current) { \
+    while (i_array_in_range(label)) { \
       id_label = i_array_get(label); \
       graph_key[0] = id_left; \
       graph_key[1] = id_label; \
@@ -402,7 +402,7 @@ exit:
   left = *left_pointer; \
   graph_data[0] = ordinal_min; \
   graph_key[1] = 0; \
-  if (right.current) { \
+  if (right_pointer) { \
     status_require(db_ids_to_set(right, (&right_set))); \
   }; \
   set_range_1001_1101: \
@@ -431,7 +431,7 @@ exit:
     db_mdb_status_expect_notfound; \
   }; \
   i_array_forward(left); \
-  if (left.current) { \
+  if (i_array_in_range(left)) { \
     graph_key[1] = 0; \
     goto set_range_1001_1101; \
   } else { \
@@ -497,11 +497,11 @@ exit:
   } else { \
   each_key_1011_1111: \
     i_array_forward(left); \
-    if (left.current) { \
+    if (i_array_in_range(left)) { \
       goto set_key_1011_1111; \
     } else { \
       i_array_forward(label); \
-      if (label.current) { \
+      if (i_array_in_range(label)) { \
         id_label = i_array_get(label); \
         i_array_rewind(left); \
         goto set_key_1011_1111; \
@@ -552,10 +552,10 @@ status_t db_graph_internal_delete(db_ids_t* left_pointer,
   db_id_t id_left;
   db_id_t id_right;
   db_id_t id_label;
-  db_ids_t left;
-  db_ids_t right;
-  db_ids_t label;
   imht_set_t* right_set;
+  i_array_declare(left, db_ids_t);
+  i_array_declare(right, db_ids_t);
+  i_array_declare(label, db_ids_t);
   db_mdb_declare_val_graph_key;
   db_mdb_declare_val_graph_data;
   db_mdb_declare_val_id;

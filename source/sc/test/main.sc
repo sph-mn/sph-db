@@ -187,8 +187,9 @@
   status-declare
   (db-txn-declare env txn)
   (declare data test-helper-graph-read-data-t)
-  (test-helper-graph-read-setup
-    env common-element-count common-element-count common-label-count &data)
+  (status-require
+    (test-helper-graph-read-setup
+      env common-element-count common-element-count common-label-count &data))
   (db-txn-begin &txn)
   (status-require (test-helper-graph-read-one txn data 0 0 0 0 0))
   (status-require (test-helper-graph-read-one txn data 1 0 0 0 0))
@@ -208,19 +209,24 @@
 
 (define (test-graph-delete env) (status-t db-env-t*)
   "some assertions depend on the correctness of graph-read"
-  test-helper-graph-delete-header
-  (test-helper-graph-delete-one 1 0 0 0)
-  (test-helper-graph-delete-one 1 0 1 0)
-  (test-helper-graph-delete-one 1 1 0 0)
-  (test-helper-graph-delete-one 1 1 1 0)
-  (test-helper-graph-delete-one 0 0 1 0)
-  (test-helper-graph-delete-one 0 1 0 0)
-  (test-helper-graph-delete-one 0 1 1 0)
-  (test-helper-graph-delete-one 1 0 0 1)
-  (test-helper-graph-delete-one 1 0 1 1)
-  (test-helper-graph-delete-one 1 1 0 1)
-  (test-helper-graph-delete-one 1 1 1 1)
-  test-helper-graph-delete-footer)
+  status-declare
+  (declare data test-helper-graph-delete-data-t)
+  (status-require
+    (test-helper-graph-delete-setup
+      env common-element-count common-element-count common-label-count &data))
+  (status-require (test-helper-graph-delete-one data 1 0 0 0))
+  (status-require (test-helper-graph-delete-one data 1 0 1 0))
+  (status-require (test-helper-graph-delete-one data 1 1 0 0))
+  (status-require (test-helper-graph-delete-one data 1 1 1 0))
+  (status-require (test-helper-graph-delete-one data 0 0 1 0))
+  (status-require (test-helper-graph-delete-one data 0 1 0 0))
+  (status-require (test-helper-graph-delete-one data 0 1 1 0))
+  (status-require (test-helper-graph-delete-one data 1 0 0 1))
+  (status-require (test-helper-graph-delete-one data 1 0 1 1))
+  (status-require (test-helper-graph-delete-one data 1 1 0 1))
+  (status-require (test-helper-graph-delete-one data 1 1 1 1))
+  (label exit
+    (return status)))
 
 (define (test-node-create env) (status-t db-env-t*)
   status-declare
@@ -505,7 +511,8 @@
 
 (define (main) int
   (declare env db-env-t*)
-  (test-helper-init env)
+  status-declare
+  (db-env-new &env)
   ;(test-helper-test-one test-open-empty env)
   ;(test-helper-test-one test-statistics env)
   ;(test-helper-test-one test-id-construction env)
@@ -514,10 +521,11 @@
   ;(test-helper-test-one test-type-create-many env)
   ;(test-helper-test-one test-open-nonempty env)
   ;(test-helper-test-one test-graph-read env)
-  (test-helper-test-one test-graph-delete env)
-  ;(test-helper-test-one test-node-create env)
+  ;(test-helper-test-one test-graph-delete env)
+  (test-helper-test-one test-node-create env)
   ;(test-helper-test-one test-node-select env)
   ;(test-helper-test-one test-index env)
   (label exit
-    test-helper-report-status
+    (if status-is-success (printf "--\ntests finished successfully.\n")
+      (printf "\ntests failed. %d %s\n" status.id (db-status-description status)))
     (return status.id)))
