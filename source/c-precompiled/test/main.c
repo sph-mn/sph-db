@@ -190,16 +190,18 @@ status_t test_graph_read(db_env_t* env) {
     common_label_count,
     (&data));
   db_txn_begin((&txn));
-  db_debug_log_ids((data.left));
-  db_debug_log_ids((data.right));
-  db_debug_log_ids((data.label));
-  db_debug_log_ids((data.e_left));
-  db_debug_log_ids((data.e_right));
-  db_debug_log_ids((data.e_label));
-  debug_log("counts %lu %lu %lu",
-    (data.e_left_count),
-    (data.e_right_count),
-    (data.e_label_count));
+  status_require(test_helper_graph_read_one(txn, data, 0, 0, 0, 0, 0));
+  status_require(test_helper_graph_read_one(txn, data, 1, 0, 0, 0, 0));
+  status_require(test_helper_graph_read_one(txn, data, 0, 1, 0, 0, 0));
+  status_require(test_helper_graph_read_one(txn, data, 1, 1, 0, 0, 0));
+  status_require(test_helper_graph_read_one(txn, data, 0, 0, 1, 0, 0));
+  status_require(test_helper_graph_read_one(txn, data, 1, 0, 1, 0, 0));
+  status_require(test_helper_graph_read_one(txn, data, 0, 1, 1, 0, 0));
+  status_require(test_helper_graph_read_one(txn, data, 1, 1, 1, 0, 0));
+  status_require(test_helper_graph_read_one(txn, data, 1, 0, 0, 1, 0));
+  status_require(test_helper_graph_read_one(txn, data, 1, 1, 0, 1, 0));
+  status_require(test_helper_graph_read_one(txn, data, 1, 0, 1, 1, 0));
+  status_require(test_helper_graph_read_one(txn, data, 1, 1, 1, 1, 0));
 exit:
   db_txn_abort_if_active(txn);
   return (status);
@@ -502,7 +504,7 @@ exit:
 int main() {
   db_env_t* env;
   test_helper_init(env);
-  test_helper_test_one(test_graph_read, env);
+  test_helper_test_one(test_graph_delete, env);
 exit:
   test_helper_report_status;
   return ((status.id));

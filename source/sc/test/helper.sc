@@ -139,7 +139,7 @@
         (printf "\n    failed deletion. %lu relations not deleted\n" (i-array-length records))
         (db-debug-log-graph-records records)
         ;(status-require (db-txn-begin &txn))
-        ;(test-helper-display-all-relations txn)
+        ;(test-helper-display-all-relations txn common-element-count common-element-count common-label-count)
         ;(db-txn-abort &txn)
         (status-set-id-goto 1)))
     (i-array-clear records)
@@ -189,6 +189,22 @@
       (left db-ids-t)
       (right db-ids-t)
       (label db-ids-t))))
+
+(define (test-helper-display-all-relations txn left-count right-count label-count)
+  (status-t db-txn-t ui32 ui32 ui32)
+  status-declare
+  (declare
+    records db-graph-records-t
+    state db-graph-selection-t)
+  (i-array-allocate-db-graph-records-t &records (* left-count right-count label-count))
+  (db-status-require-read (db-graph-select txn 0 0 0 0 0 &state))
+  (db-status-require-read (db-graph-read &state 0 &records))
+  (printf "all ")
+  (db-graph-selection-destroy &state)
+  (db-debug-log-graph-records records)
+  (i-array-free records)
+  (label exit
+    (return status)))
 
 (define (test-helper-reader-suffix-integer->string a) (ui8* ui8)
   "1101 -> \"1101\""
@@ -423,6 +439,7 @@
         ;(db-debug-log-graph-records records)
         (status-set-id-goto 1)))
     (i-array-forward records))
+  (i-array-rewind records)
   (while (i-array-in-range e-ids)
     (if (not (contains-at records (i-array-get e-ids)))
       (begin
@@ -433,12 +450,11 @@
   (label exit
     (return status)))
 
-(define (test-helper-graph-read-records-validate data records)
-  (status-t test-helper-graph-read-data-t db-graph-records-t)
+(define (test-helper-graph-read-records-validate data) (status-t test-helper-graph-read-data-t)
   status-declare
-  (status-require (test-helper-graph-read-records-validate-one "left" data.left records))
-  (status-require (test-helper-graph-read-records-validate-one "right" data.right records))
-  (status-require (test-helper-graph-read-records-validate-one "label" data.label records))
+  (status-require (test-helper-graph-read-records-validate-one "left" data.e-left data.records))
+  (status-require (test-helper-graph-read-records-validate-one "right" data.e-right data.records))
+  (status-require (test-helper-graph-read-records-validate-one "label" data.e-label data.records))
   (label exit
     (return status)))
 
@@ -492,7 +508,6 @@
     ordinal-max ui32
     ordinal-condition db-ordinal-condition-t
     ordinal db-ordinal-condition-t*
-    records db-graph-records-t
     expected-count ui32
     reader-suffix ui8
     reader-suffix-string ui8*)
@@ -527,7 +542,7 @@
     expected-count
     (test-helper-estimate-graph-read-result-count
       data.e-left-count data.e-right-count data.e-label-count ordinal))
-  (printf " %s" reader-suffix-string)
+  (printf "  %s" reader-suffix-string)
   (free reader-suffix-string)
   (status-require
     (db-graph-select txn left-pointer right-pointer label-pointer ordinal offset &state))
@@ -537,23 +552,25 @@
     (begin
       (printf "\n  final read result does not indicate that there is no more data")
       (status-set-id-goto 1)))
-  (if (not (= (i-array-length records) expected-count))
+  (if (not (= (i-array-length data.records) expected-count))
     (begin
       (printf
         "\n  expected %lu read %lu. ordinal min %d max %d\n"
         expected-count
-        (i-array-length records)
+        (i-array-length data.records)
         (if* ordinal ordinal-min
           0)
         (if* ordinal ordinal-max
           0))
       (printf "read ")
-      (db-debug-log-graph-records records)
-      ;(test-helper-display-all-relations txn)
+      (db-debug-log-graph-records data.records)
+      (test-helper-display-all-relations
+        txn data.e-left-count data.e-right-count data.e-label-count)
       (status-set-id-goto 1)))
-  (if (not ordinal) (status-require (test-helper-graph-read-records-validate data records)))
+  (if (not ordinal) (status-require (test-helper-graph-read-records-validate data)))
   (db-graph-selection-destroy &state)
   db-status-success-if-notfound
+  (i-array-rewind data.records)
   (label exit
     (printf "\n")
     (return status)))
@@ -594,21 +611,6 @@
     r:e-left-count e-left-count
     r:e-right-count e-right-count
     r:e-label-count e-label-count)
-  (printf " ")
-  (label exit
-    (return status)))
-
-(define (test-helper-display-all-relations txn) (status-t db-txn-t)
-  status-declare
-  (declare
-    records db-graph-records-t
-    state db-graph-selection-t)
-  (db-status-require-read (db-graph-select txn 0 0 0 0 0 &state))
-  (db-status-require-read (db-graph-read &state 0 &records))
-  (printf "all ")
-  (db-graph-selection-destroy &state)
-  (db-debug-log-graph-records records)
-  (i-array-free records)
   (label exit
     (return status)))
 
@@ -617,7 +619,7 @@
     existing-left-count existing-right-count existing-label-count ordinal)
   (ui32 ui32 ui32 ui32 db-ordinal-condition-t*)
   "calculates the number of btree entries affected by a relation read or delete.
-   assumes linearly set-plus-oneed ordinal integers starting at 1 and queries for all or no ids"
+   assumes linearly incremented ordinal integers starting at 1 and queries for all or no ids"
   (define ordinal-min ui32 0)
   (define ordinal-max ui32 0)
   (if ordinal

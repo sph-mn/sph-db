@@ -27,7 +27,7 @@
     (declare skip boolean)
     (set skip (bit-and db-selection-flag-skip state:options))))
 
-(pre-define (db-graph-reader-get-ordinal-data state)
+(pre-define (db-graph-reader-define-ordinal-variables state)
   (begin
     (define ordinal-min db-ordinal-t state:ordinal:min)
     (define ordinal-max db-ordinal-t state:ordinal:max)))
@@ -276,12 +276,12 @@
     graph-lr state:cursor
     left state:left
     right state:ids-set)
-  (db-graph-reader-get-ordinal-data state)
+  (db-graph-reader-define-ordinal-variables state)
   (db-graph-data-set-ordinal graph-data ordinal-min)
   (db-mdb-status-require (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
   (if (i-array-in-range left) (set (array-get graph-key 0) (i-array-get left))
     notfound-exit)
-  (if (db-id-equal (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0)) (goto each-data))
+  (if (db-id-equal (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0)) (goto each-key))
   (label each-left
     (set val-graph-key.mv-data graph-key)
     (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-RANGE))
@@ -289,9 +289,9 @@
       (if db-mdb-status-is-success
         (if (db-id-equal (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0))
           (begin
-            (set val-graph-data.mv-data graph-data)
-            (set status.id
-              (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-BOTH-RANGE))
+            (set
+              val-graph-data.mv-data graph-data
+              status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-BOTH-RANGE))
             (if db-mdb-status-is-success (goto each-data)
               db-mdb-status-expect-notfound)
             (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-NODUP))
@@ -345,36 +345,38 @@
     left state:left
     label state:label
     right state:ids-set)
-  (db-graph-reader-get-ordinal-data state)
+  (db-graph-reader-define-ordinal-variables state)
   (db-graph-data-set-ordinal graph-data ordinal-min)
   (db-mdb-status-require (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
   (set
     (array-get graph-key 0) (i-array-get left)
     (array-get graph-key 1) (i-array-get label))
-  (if (db-graph-key-equal graph-key (db-mdb-val->graph-key val-graph-key)) (goto each-data)
-    (label set-key
-      (set
-        val-graph-key.mv-data graph-key
-        val-graph-data.mv-data graph-data)
-      (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-BOTH-RANGE))
-      (if db-mdb-status-is-success (goto each-data)
-        (begin
-          db-mdb-status-expect-notfound
-          (label each-key
-            (i-array-forward left)
-            (if (i-array-in-range left) (set (array-get graph-key 0) (i-array-get left))
-              (begin
-                (i-array-forward label)
-                (if (i-array-in-range label)
-                  (begin
-                    (set (array-get graph-key 1) (i-array-get label))
-                    (i-array-rewind left)
-                    (set (array-get graph-key 0) (i-array-get left)))
-                  notfound-exit)))
-            (goto set-key))))))
+  (label set-key
+    (set
+      val-graph-key.mv-data graph-key
+      val-graph-data.mv-data graph-data)
+    (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-BOTH-RANGE))
+    (if db-mdb-status-is-success (goto each-data)
+      (begin
+        db-mdb-status-expect-notfound
+        (label each-key
+          (i-array-forward left)
+          (if (i-array-in-range left) (set (array-get graph-key 0) (i-array-get left))
+            (begin
+              (i-array-forward label)
+              (if (i-array-in-range label)
+                (begin
+                  (set (array-get graph-key 1) (i-array-get label))
+                  (i-array-rewind left)
+                  (set (array-get graph-key 0) (i-array-get left)))
+                notfound-exit)))
+          (goto set-key)))))
   (label each-data
     stop-if-count-zero
-    (if (or (not ordinal-max) (<= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-max))
+    (if
+      (and
+        (or (not ordinal-min) (>= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-min))
+        (or (not ordinal-max) (<= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-max)))
       (begin
         (if (or (not right) (imht-set-contains right (db-graph-data->id val-graph-data.mv-data)))
           (begin
@@ -619,6 +621,7 @@
   internally in the selection if unset i-array-in-range and i-array-length is zero"
   status-declare
   db-mdb-declare-val-null
+  (declare right-set imht-set-t*)
   (db-mdb-cursor-declare graph-lr)
   (db-mdb-cursor-declare graph-rl)
   (db-mdb-cursor-declare graph-ll)
@@ -640,7 +643,6 @@
       (begin
         (if right
           (begin
-            (declare right-set imht-set-t*)
             (status-require (db-ids->set *right &right-set))
             (set
               state:ids-set right-set
@@ -685,10 +687,15 @@
 
 (define (db-graph-read state count result)
   (status-t db-graph-selection-t* db-count-t db-graph-records-t*)
+  "result memory is to be allocated by the caller"
   status-declare
-  (set count (optional-count count))
   (status-require state:status)
-  (set status ((convert-type state:reader db-graph-reader-t) state count result))
+  (set status
+    ( (convert-type state:reader db-graph-reader-t)
+      state
+      (if* (not count) (i-array-max-length *result)
+        count)
+      result))
   (label exit
     db-mdb-status-notfound-if-notfound
     (return status)))
@@ -698,5 +705,5 @@
   (db-mdb-cursor-close state:cursor-2)
   (if (bit-and db-graph-selection-flag-is-set-right state:options)
     (begin
-      (imht-set-destroy (convert-type state:ids-set imht-set-t*))
+      (imht-set-destroy state:ids-set)
       (set state:ids-set 0))))

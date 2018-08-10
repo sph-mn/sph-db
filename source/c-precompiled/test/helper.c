@@ -172,6 +172,24 @@ typedef struct {
   db_ids_t right;
   db_ids_t label;
 } test_helper_graph_read_data_t;
+status_t test_helper_display_all_relations(db_txn_t txn,
+  ui32 left_count,
+  ui32 right_count,
+  ui32 label_count) {
+  status_declare;
+  db_graph_records_t records;
+  db_graph_selection_t state;
+  i_array_allocate_db_graph_records_t(
+    (&records), (left_count * right_count * label_count));
+  db_status_require_read(db_graph_select(txn, 0, 0, 0, 0, 0, (&state)));
+  db_status_require_read(db_graph_read((&state), 0, (&records)));
+  printf("all ");
+  db_graph_selection_destroy((&state));
+  db_debug_log_graph_records(records);
+  i_array_free(records);
+exit:
+  return (status);
+};
 /** 1101 -> "1101" */
 ui8* test_helper_reader_suffix_integer_to_string(ui8 a) {
   ui8* result = malloc(40);
@@ -411,6 +429,7 @@ status_t test_helper_graph_read_records_validate_one(ui8* name,
     };
     i_array_forward(records);
   };
+  i_array_rewind(records);
   while (i_array_in_range(e_ids)) {
     if (!contains_at(records, i_array_get(e_ids))) {
       printf("\n  %s result records do not contain all existing-ids\n", name);
@@ -422,15 +441,14 @@ exit:
   return (status);
 };
 status_t
-test_helper_graph_read_records_validate(test_helper_graph_read_data_t data,
-  db_graph_records_t records) {
+test_helper_graph_read_records_validate(test_helper_graph_read_data_t data) {
   status_declare;
-  status_require((
-    test_helper_graph_read_records_validate_one("left", (data.left), records)));
   status_require((test_helper_graph_read_records_validate_one(
-    "right", (data.right), records)));
+    "left", (data.e_left), (data.records))));
   status_require((test_helper_graph_read_records_validate_one(
-    "label", (data.label), records)));
+    "right", (data.e_right), (data.records))));
+  status_require((test_helper_graph_read_records_validate_one(
+    "label", (data.e_label), (data.records))));
 exit:
   return (status);
 };
@@ -492,7 +510,6 @@ status_t test_helper_graph_read_one(db_txn_t txn,
   ui32 ordinal_max;
   db_ordinal_condition_t ordinal_condition;
   db_ordinal_condition_t* ordinal;
-  db_graph_records_t records;
   ui32 expected_count;
   ui8 reader_suffix;
   ui8* reader_suffix_string;
@@ -510,7 +527,7 @@ status_t test_helper_graph_read_one(db_txn_t txn,
     test_helper_reader_suffix_integer_to_string(reader_suffix);
   expected_count = test_helper_estimate_graph_read_result_count(
     (data.e_left_count), (data.e_right_count), (data.e_label_count), ordinal);
-  printf(" %s", reader_suffix_string);
+  printf("  %s", reader_suffix_string);
   free(reader_suffix_string);
   status_require(db_graph_select(txn,
     left_pointer,
@@ -528,21 +545,24 @@ status_t test_helper_graph_read_one(db_txn_t txn,
       "\n  final read result does not indicate that there is no more data");
     status_set_id_goto(1);
   };
-  if (!(i_array_length(records) == expected_count)) {
+  if (!(i_array_length((data.records)) == expected_count)) {
     printf(("\n  expected %lu read %lu. ordinal min %d max %d\n"),
       expected_count,
-      i_array_length(records),
+      (i_array_length((data.records))),
       (ordinal ? ordinal_min : 0),
       (ordinal ? ordinal_max : 0));
     printf("read ");
-    db_debug_log_graph_records(records);
+    db_debug_log_graph_records((data.records));
+    test_helper_display_all_relations(
+      txn, (data.e_left_count), (data.e_right_count), (data.e_label_count));
     status_set_id_goto(1);
   };
   if (!ordinal) {
-    status_require(test_helper_graph_read_records_validate(data, records));
+    status_require(test_helper_graph_read_records_validate(data));
   };
   db_graph_selection_destroy((&state));
   db_status_success_if_notfound;
+  i_array_rewind((data.records));
 exit:
   printf("\n");
   return (status);
@@ -587,25 +607,11 @@ status_t test_helper_graph_read_setup(db_env_t* env,
   r->e_left_count = e_left_count;
   r->e_right_count = e_right_count;
   r->e_label_count = e_label_count;
-  printf(" ");
-exit:
-  return (status);
-};
-status_t test_helper_display_all_relations(db_txn_t txn) {
-  status_declare;
-  db_graph_records_t records;
-  db_graph_selection_t state;
-  db_status_require_read(db_graph_select(txn, 0, 0, 0, 0, 0, (&state)));
-  db_status_require_read(db_graph_read((&state), 0, (&records)));
-  printf("all ");
-  db_graph_selection_destroy((&state));
-  db_debug_log_graph_records(records);
-  i_array_free(records);
 exit:
   return (status);
 };
 /** calculates the number of btree entries affected by a relation read or
-   delete. assumes linearly set-plus-oneed ordinal integers starting at 1 and
+   delete. assumes linearly incremented ordinal integers starting at 1 and
    queries for all or no ids */
 ui32 test_helper_estimate_graph_read_btree_entry_count(ui32 existing_left_count,
   ui32 existing_right_count,

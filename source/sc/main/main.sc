@@ -9,9 +9,6 @@
   (fprintf stderr (pre-string-concat "%s:%d error: " pattern "\n") __func__ __LINE__ __VA_ARGS__)
   reduce-count (set count (- count 1))
   stop-if-count-zero (if (= 0 count) (goto exit))
-  (optional-count count)
-  (if* (= 0 count) UINT32_MAX
-    count)
   db-size-system-key (+ 1 (sizeof db-type-id-t)))
 
 (define (uint->string a result-len) (ui8* uintmax-t size-t*)

@@ -13,7 +13,6 @@
   if (0 == count) { \
     goto exit; \
   }
-#define optional_count(count) ((0 == count) ? UINT32_MAX : count)
 #define db_size_system_key (1 + sizeof(db_type_id_t))
 ui8* uint_to_string(uintmax_t a, size_t* result_len) {
   size_t size;
