@@ -199,10 +199,10 @@
     skip (bit-and state:options db-selection-flag-skip)
     count state:count
     ids state:ids)
-  (if ids.current
+  (if (i-array-in-range ids)
     (begin
       (sc-comment "filter by ids")
-      (while (and ids.current count)
+      (while (and (i-array-in-range ids) count)
         (set
           val-id.mv-data ids.current
           status.id (mdb-cursor-get state:cursor &val-id &val-data MDB-SET-KEY))
@@ -279,11 +279,15 @@
   (declare id db-id-t)
   (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
   (sc-comment "if ids filter set just check if database is empty")
-  (if ids (db-mdb-status-require (mdb-cursor-get nodes &val-null &val-null MDB-FIRST))
+  (if ids
+    (begin
+      (db-mdb-status-require (mdb-cursor-get nodes &val-null &val-null MDB-FIRST))
+      (set result-state:ids *ids))
     (begin
       (set
         id (db-id-add-type 0 type:id)
         val-id.mv-data &id)
+      (i-array-set-null result-state:ids)
       (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-null MDB-SET-RANGE))
       (if (not (= type:id (db-id-type (db-pointer->id val-id.mv-data))))
         (status-set-id-goto db-status-id-notfound))))
@@ -291,7 +295,6 @@
     result-state:cursor nodes
     result-state:count 1
     result-state:env txn.env
-    result-state:ids *ids
     result-state:matcher matcher
     result-state:matcher-state matcher-state
     result-state:options 0
@@ -363,7 +366,7 @@
   (status-require (db-graph-internal-delete 0 0 ids-pointer 0 graph-lr graph-rl graph-ll))
   (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
   (sc-comment "delete node and index btree entries")
-  (while ids.current
+  (while (i-array-in-range ids)
     (set val-id.mv-data ids.current)
     (set status.id (mdb-cursor-get nodes &val-id &val-data MDB-SET-KEY))
     (if db-mdb-status-is-success
@@ -421,7 +424,7 @@
   db-mdb-declare-val-null
   (db-mdb-cursor-declare nodes)
   (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
-  (while ids.current
+  (while (i-array-in-range ids)
     (set
       val-id.mv-data ids.current
       status.id (mdb-cursor-get nodes &val-id &val-null MDB-SET))

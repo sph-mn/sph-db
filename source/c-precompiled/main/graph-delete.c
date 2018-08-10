@@ -441,7 +441,7 @@ exit:
   if (!ordinal_max || \
     (db_graph_data_to_ordinal((val_graph_data.mv_data)) <= ordinal_max)) { \
     id_right = db_graph_data_to_id((val_graph_data.mv_data)); \
-    if (!right || imht_set_contains(right_set, id_right)) { \
+    if (!right_pointer || imht_set_contains(right_set, id_right)) { \
       status = db_graph_internal_delete_graph_rl( \
         graph_rl, id_left, id_right, id_label); \
       db_mdb_status_expect_read; \
@@ -513,7 +513,7 @@ exit:
   each_data_1011_1111: \
   if (!ordinal_max || \
     (db_graph_data_to_ordinal((val_graph_data.mv_data)) <= ordinal_max)) { \
-    if (!right || \
+    if (!right_pointer || \
       imht_set_contains( \
         right_set, (db_graph_data_to_id((val_graph_data.mv_data))))) { \
       /* delete graph-rl */ \

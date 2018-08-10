@@ -95,7 +95,7 @@
 (define (db-debug-log-ids a) (void db-ids-t)
   "display an ids array"
   (printf "ids (%lu):" (i-array-length a))
-  (while a.current
+  (while (i-array-in-range a)
     (printf " %lu" (i-array-get a))
     (i-array-forward a))
   (printf "\n"))
@@ -109,15 +109,15 @@
     (set i (+ 1 i)))
   (printf "\n"))
 
-(define (db-debug-display-graph-records a) (void db-graph-records-t)
+(define (db-debug-log-graph-records a) (void db-graph-records-t)
   (declare b db-graph-record-t)
   (printf "graph records (ll -> or)\n")
-  (while a.current
+  (while (i-array-in-range a)
     (set b (i-array-get a))
     (printf "  %lu %lu -> %lu %lu\n" b.left b.label b.ordinal b.right)
     (i-array-forward a)))
 
-(define (db-debug-display-btree-counts txn) (status-t db-txn-t)
+(define (db-debug-log-btree-counts txn) (status-t db-txn-t)
   status-declare
   (declare stat db-statistics-t)
   (status-require (db-statistics txn &stat))
@@ -155,7 +155,7 @@
 (define (db-ids->set a result) (status-t db-ids-t imht-set-t**)
   status-declare
   (db-status-memory-error-if-null (imht-set-create (i-array-length a) result))
-  (while a.current
+  (while (i-array-in-range a)
     (imht-set-add *result (i-array-get a))
     (i-array-forward a))
   (label exit
@@ -260,7 +260,8 @@
   (free-and-set-null *types))
 
 (define (db-env-new result) (status-t db-env-t**)
-  "caller has to free result if not needed anymore"
+  "caller has to free result when not needed anymore.
+  this routine makes sure that .is-open is zero"
   status-declare
   (declare a db-env-t*)
   (db-calloc a 1 (sizeof db-env-t))

@@ -56,11 +56,9 @@
   ; db-debug
   (db-debug-log-ids a) (void db-ids-t)
   (db-debug-log-ids-set a) (void imht-set-t)
-  (db-debug-display-graph-records records) (void db-graph-records-t)
+  (db-debug-log-graph-records records) (void db-graph-records-t)
+  (db-debug-log-btree-counts txn) (status-t db-txn-t)
   (db-debug-count-all-btree-entries txn result) (status-t db-txn-t db-count-t*)
-  (db-debug-display-btree-counts txn) (status-t db-txn-t)
-  (db-debug-display-content-graph-lr txn) (status-t db-txn-t)
-  (db-debug-display-content-graph-rl txn) (status-t db-txn-t)
   ; index
   (db-index-key env index values result-data result-size)
   (status-t db-env-t* db-index-t db-node-values-t void** size-t*)

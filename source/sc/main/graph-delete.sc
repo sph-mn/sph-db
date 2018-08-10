@@ -370,7 +370,7 @@
       (if (or (not ordinal-max) (<= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-max))
         (begin
           (set id-right (db-graph-data->id val-graph-data.mv-data))
-          (if (or (not right) (imht-set-contains right-set id-right))
+          (if (or (not right-pointer) (imht-set-contains right-set id-right))
             (begin
               (set status (db-graph-internal-delete-graph-rl graph-rl id-left id-right id-label))
               db-mdb-status-expect-read
@@ -428,7 +428,8 @@
         (begin
           (if
             (or
-              (not right) (imht-set-contains right-set (db-graph-data->id val-graph-data.mv-data)))
+              (not right-pointer)
+              (imht-set-contains right-set (db-graph-data->id val-graph-data.mv-data)))
             (begin
               (sc-comment "delete graph-rl")
               (set

@@ -45,8 +45,8 @@ gcc example.c -o example-executable -llmdb -lsph-db
 ```
 
 ## error handling
-db routines return a "status_t" object that contains a status and a status-group identifier (error code and source library identifier). bindings to work with this small object are included with the main header "sph-db.h". sph-db usually uses a goto label named "exit" per routine where undesired return status ids are handled.
-the following examples assume this pattern of calling ``status_init`` beforehand and having a label named ``exit``
+db routines return a "status_t" object that contains a status and a status-group identifier (error code and source library identifier). bindings to work with this small object are included with the main header "sph-db.h". sph-db usually uses a goto label named "exit" per routine where undesired return status ids are handled. ``status_require`` goes to exit on any failure status.
+the following examples assume this pattern of calling ``status_declare`` beforehand and having a label named ``exit``
 
 ```c
 int main() {

@@ -53,13 +53,13 @@
     (if* (and (not ordinal-generator) ordinal-generator-state)
       (set ordinal (pointer-get (convert-type ordinal-generator-state db-ordinal-t*)))
       0))
-  (while left.current
+  (while (i-array-in-range left)
     (set id-left (i-array-get left))
-    (while label.current
+    (while (i-array-in-range label)
       (set
         id-label (i-array-get label)
         val-id-2.mv-data &id-label)
-      (while right.current
+      (while (i-array-in-range right)
         (set
           id-right (i-array-get right)
           (array-get graph-key 0) id-right

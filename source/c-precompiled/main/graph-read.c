@@ -55,7 +55,7 @@ status_t db_graph_read_1000(db_graph_selection_t* state,
       db_mdb_status_expect_notfound;
     };
     i_array_forward(left);
-    if (left.current) {
+    if (i_array_in_range(left)) {
       graph_key[0] = i_array_get(left);
       goto set_range;
     } else {
@@ -116,12 +116,12 @@ status_t db_graph_read_1010(db_graph_selection_t* state,
     };
   next_key:
     i_array_forward(left);
-    if (left.current) {
+    if (i_array_in_range(left)) {
       graph_key[0] = i_array_get(left);
       goto set_key;
     } else {
       i_array_forward(label);
-      if (label.current) {
+      if (i_array_in_range(label)) {
         i_array_rewind(left);
         graph_key[0] = i_array_get(left);
         graph_key[1] = i_array_get(label);
@@ -186,7 +186,7 @@ status_t db_graph_read_1100(db_graph_selection_t* state,
       db_mdb_status_expect_notfound;
     };
     i_array_forward(right);
-    if (right.current) {
+    if (i_array_in_range(right)) {
       graph_key[0] = i_array_get(right);
     } else {
       notfound_exit;
@@ -210,7 +210,7 @@ each_left:
     db_mdb_status_expect_notfound;
   };
   i_array_forward(left);
-  if (left.current) {
+  if (i_array_in_range(left)) {
     goto each_left;
   } else {
     i_array_rewind(left);
@@ -253,7 +253,7 @@ set_cursor:
   };
 next_query:
   i_array_forward(right);
-  if (right.current) {
+  if (i_array_in_range(right)) {
     stop_if_count_zero;
     graph_key[0] = i_array_get(right);
     goto set_cursor;
@@ -261,7 +261,7 @@ next_query:
     i_array_rewind(right);
     graph_key[0] = i_array_get(right);
     i_array_forward(left);
-    if (left.current) {
+    if (i_array_in_range(left)) {
       stop_if_count_zero;
       id_left = i_array_get(left);
       goto set_cursor;
@@ -269,7 +269,7 @@ next_query:
       i_array_rewind(left);
       id_left = i_array_get(left);
       i_array_forward(label);
-      if (label.current) {
+      if (i_array_in_range(label)) {
         stop_if_count_zero;
         graph_key[1] = i_array_get(label);
         goto set_cursor;
@@ -310,7 +310,7 @@ status_t db_graph_read_1001_1101(db_graph_selection_t* state,
   db_graph_data_set_ordinal(graph_data, ordinal_min);
   db_mdb_status_require(mdb_cursor_get(
     graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
-  if (left.current) {
+  if (i_array_in_range(left)) {
     graph_key[0] = i_array_get(left);
   } else {
     notfound_exit;
@@ -343,7 +343,7 @@ each_key:
     db_mdb_status_expect_notfound;
   };
   i_array_forward(left);
-  if (left.current) {
+  if (i_array_in_range(left)) {
     graph_key[0] = i_array_get(left);
   } else {
     notfound_exit;
@@ -417,11 +417,11 @@ status_t db_graph_read_1011_1111(db_graph_selection_t* state,
       db_mdb_status_expect_notfound;
     each_key:
       i_array_forward(left);
-      if (left.current) {
+      if (i_array_in_range(left)) {
         graph_key[0] = i_array_get(left);
       } else {
         i_array_forward(label);
-        if (label.current) {
+        if (i_array_in_range(label)) {
           graph_key[1] = i_array_get(label);
           i_array_rewind(left);
           graph_key[0] = i_array_get(left);
@@ -483,7 +483,7 @@ status_t db_graph_read_0010(db_graph_selection_t* state,
     mdb_cursor_get(graph_ll, (&val_id), (&val_id_2), MDB_GET_CURRENT));
   db_mdb_status_require(mdb_cursor_get(
     graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
-  if (label.current) {
+  if (i_array_in_range(label)) {
     id_label = i_array_get(label);
   } else {
     notfound_exit;
@@ -501,7 +501,7 @@ status_t db_graph_read_0010(db_graph_selection_t* state,
     } else {
       db_mdb_status_expect_notfound;
       i_array_forward(label);
-      if (label.current) {
+      if (i_array_in_range(label)) {
         id_label = i_array_get(label);
       } else {
         notfound_exit;
@@ -545,7 +545,7 @@ each_left_data:
     goto each_label_data;
   } else {
     i_array_forward(label);
-    if (label.current) {
+    if (i_array_in_range(label)) {
       id_label = i_array_get(label);
     } else {
       notfound_exit;
@@ -585,11 +585,11 @@ status_t db_graph_read_0110(db_graph_selection_t* state,
     each_key:
       db_mdb_status_expect_notfound;
       i_array_forward(right);
-      if (right.current) {
+      if (i_array_in_range(right)) {
         graph_key[0] = i_array_get(right);
       } else {
         i_array_forward(label);
-        if (label.current) {
+        if (i_array_in_range(label)) {
           graph_key[1] = i_array_get(label);
           i_array_rewind(right);
           graph_key[0] = i_array_get(right);
@@ -651,7 +651,7 @@ status_t db_graph_read_0100(db_graph_selection_t* state,
       db_mdb_status_expect_notfound;
     };
     i_array_forward(right);
-    if (right.current) {
+    if (i_array_in_range(right)) {
       graph_key[0] = i_array_get(right);
     } else {
       notfound_exit;
@@ -686,7 +686,7 @@ each_data:
     db_mdb_status_expect_notfound;
   };
   i_array_forward(right);
-  if (right.current) {
+  if (i_array_in_range(right)) {
     graph_key[0] = i_array_get(right);
   } else {
     notfound_exit;
@@ -742,7 +742,8 @@ exit:
   stands for not given. order is left, right, label, ordinal. readers always
   leave cursors at a valid entry, usually the next entry unless the results have
   been exhausted. left/right/label ids pointer can be zero which means they are
-  unused. internally in the selection if unset db-ids-t.current is zero */
+  unused. internally in the selection if unset i-array-in-range and
+  i-array-length is zero */
 status_t db_graph_select(db_txn_t txn,
   db_ids_t* left,
   db_ids_t* right,
@@ -758,17 +759,17 @@ status_t db_graph_select(db_txn_t txn,
   if (left) {
     state->left = *left;
   } else {
-    state->left.current = 0;
+    i_array_set_null((state->left));
   };
   if (right) {
     state->right = *right;
   } else {
-    state->right.current = 0;
+    i_array_set_null((state->right));
   };
   if (label) {
     state->label = *label;
   } else {
-    state->label.current = 0;
+    i_array_set_null((state->label));
   };
   state->ids_set = 0;
   state->status = status;

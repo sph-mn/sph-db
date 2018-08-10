@@ -54,7 +54,7 @@
             (goto each-data))
           db-mdb-status-expect-notfound)
         (i-array-forward left)
-        (if left.current
+        (if (i-array-in-range left)
           (begin
             (set (array-get graph-key 0) (i-array-get left))
             (goto set-range))
@@ -105,13 +105,13 @@
         db-mdb-status-expect-notfound)
       (label next-key
         (i-array-forward left)
-        (if left.current
+        (if (i-array-in-range left)
           (begin
             (set (array-get graph-key 0) (i-array-get left))
             (goto set-key))
           (begin
             (i-array-forward label)
-            (if label.current
+            (if (i-array-in-range label)
               (begin
                 (i-array-rewind left)
                 (set
@@ -164,7 +164,7 @@
             (goto each-left))
           db-mdb-status-expect-notfound)
         (i-array-forward right)
-        (if right.current (set (array-get graph-key 0) (i-array-get right))
+        (if (i-array-in-range right) (set (array-get graph-key 0) (i-array-get right))
           notfound-exit)
         (goto set-range))))
   (label each-left
@@ -183,7 +183,7 @@
             reduce-count)))
       db-mdb-status-expect-notfound)
     (i-array-forward left)
-    (if left.current (goto each-left)
+    (if (i-array-in-range left) (goto each-left)
       (i-array-rewind left)))
   (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-NEXT-NODUP))
   (goto each-right)
@@ -221,7 +221,7 @@
       db-mdb-status-expect-notfound)
     (label next-query
       (i-array-forward right)
-      (if right.current
+      (if (i-array-in-range right)
         (begin
           stop-if-count-zero
           (set (array-get graph-key 0) (i-array-get right))
@@ -230,7 +230,7 @@
           (i-array-rewind right)
           (set (array-get graph-key 0) (i-array-get right))
           (i-array-forward left)
-          (if left.current
+          (if (i-array-in-range left)
             (begin
               stop-if-count-zero
               (set id-left (i-array-get left))
@@ -239,7 +239,7 @@
               (i-array-rewind left)
               (set id-left (i-array-get left))
               (i-array-forward label)
-              (if label.current
+              (if (i-array-in-range label)
                 (begin
                   stop-if-count-zero
                   (set (array-get graph-key 1) (i-array-get label))
@@ -279,7 +279,7 @@
   (db-graph-reader-get-ordinal-data state)
   (db-graph-data-set-ordinal graph-data ordinal-min)
   (db-mdb-status-require (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
-  (if left.current (set (array-get graph-key 0) (i-array-get left))
+  (if (i-array-in-range left) (set (array-get graph-key 0) (i-array-get left))
     notfound-exit)
   (if (db-id-equal (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0)) (goto each-data))
   (label each-left
@@ -298,7 +298,7 @@
             (goto each-key)))
         db-mdb-status-expect-notfound)
       (i-array-forward left)
-      (if left.current (set (array-get graph-key 0) (i-array-get left))
+      (if (i-array-in-range left) (set (array-get graph-key 0) (i-array-get left))
         notfound-exit)
       (goto each-left)))
   (label each-data
@@ -362,10 +362,10 @@
           db-mdb-status-expect-notfound
           (label each-key
             (i-array-forward left)
-            (if left.current (set (array-get graph-key 0) (i-array-get left))
+            (if (i-array-in-range left) (set (array-get graph-key 0) (i-array-get left))
               (begin
                 (i-array-forward label)
-                (if label.current
+                (if (i-array-in-range label)
                   (begin
                     (set (array-get graph-key 1) (i-array-get label))
                     (i-array-rewind left)
@@ -416,7 +416,7 @@
     label state:label)
   (db-mdb-status-require (mdb-cursor-get graph-ll &val-id &val-id-2 MDB-GET-CURRENT))
   (db-mdb-status-require (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
-  (if label.current (set id-label (i-array-get label))
+  (if (i-array-in-range label) (set id-label (i-array-get label))
     notfound-exit)
   (if (db-id-equal id-label (db-pointer->id val-id.mv-data))
     (begin
@@ -432,7 +432,7 @@
         (begin
           db-mdb-status-expect-notfound
           (i-array-forward label)
-          (if label.current (set id-label (i-array-get label))
+          (if (i-array-in-range label) (set id-label (i-array-get label))
             notfound-exit)
           (goto set-label-key)))))
   (label each-label-data
@@ -461,7 +461,7 @@
     (if db-mdb-status-is-success (goto each-label-data)
       (begin
         (i-array-forward label)
-        (if label.current (set id-label (i-array-get label))
+        (if (i-array-in-range label) (set id-label (i-array-get label))
           notfound-exit)
         (goto set-label-key))))
   (label exit
@@ -495,10 +495,10 @@
         (label each-key
           db-mdb-status-expect-notfound
           (i-array-forward right)
-          (if right.current (set (array-get graph-key 0) (i-array-get right))
+          (if (i-array-in-range right) (set (array-get graph-key 0) (i-array-get right))
             (begin
               (i-array-forward label)
-              (if label.current
+              (if (i-array-in-range label)
                 (begin
                   (set (array-get graph-key 1) (i-array-get label))
                   (i-array-rewind right)
@@ -546,7 +546,7 @@
           (goto each-key))
         db-mdb-status-expect-notfound)
       (i-array-forward right)
-      (if right.current (set (array-get graph-key 0) (i-array-get right))
+      (if (i-array-in-range right) (set (array-get graph-key 0) (i-array-get right))
         notfound-exit)
       (goto set-range)))
   (label each-key
@@ -569,7 +569,7 @@
         (goto each-key))
       db-mdb-status-expect-notfound)
     (i-array-forward right)
-    (if right.current (set (array-get graph-key 0) (i-array-get right))
+    (if (i-array-in-range right) (set (array-get graph-key 0) (i-array-get right))
       notfound-exit)
     (goto set-range))
   (label exit
@@ -616,18 +616,18 @@
   1 stands for filter given, 0 stands for not given. order is left, right, label, ordinal.
   readers always leave cursors at a valid entry, usually the next entry unless the results have been exhausted.
   left/right/label ids pointer can be zero which means they are unused.
-  internally in the selection if unset db-ids-t.current is zero"
+  internally in the selection if unset i-array-in-range and i-array-length is zero"
   status-declare
   db-mdb-declare-val-null
   (db-mdb-cursor-declare graph-lr)
   (db-mdb-cursor-declare graph-rl)
   (db-mdb-cursor-declare graph-ll)
   (if left (set state:left *left)
-    (set state:left.current 0))
+    (i-array-set-null state:left))
   (if right (set state:right *right)
-    (set state:right.current 0))
+    (i-array-set-null state:right))
   (if label (set state:label *label)
-    (set state:label.current 0))
+    (i-array-set-null state:label))
   (set
     state:ids-set 0
     state:status status

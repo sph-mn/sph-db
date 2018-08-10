@@ -181,20 +181,28 @@ exit:
   return (status);
 };
 status_t test_graph_read(db_env_t* env) {
-  test_helper_graph_read_header(env);
-  test_helper_graph_read_one(txn, left, 0, 0, 0, 0);
-  test_helper_graph_read_one(txn, left, 0, label, 0, 0);
-  test_helper_graph_read_one(txn, left, right, 0, 0, 0);
-  test_helper_graph_read_one(txn, left, right, label, 0, 0);
-  test_helper_graph_read_one(txn, 0, 0, 0, 0, 0);
-  test_helper_graph_read_one(txn, 0, 0, label, 0, 0);
-  test_helper_graph_read_one(txn, 0, right, 0, 0, 0);
-  test_helper_graph_read_one(txn, 0, right, label, 0, 0);
-  test_helper_graph_read_one(txn, left, 0, 0, ordinal, 0);
-  test_helper_graph_read_one(txn, left, 0, label, ordinal, 0);
-  test_helper_graph_read_one(txn, left, right, 0, ordinal, 0);
-  test_helper_graph_read_one(txn, left, right, label, ordinal, 0);
-  test_helper_graph_read_footer;
+  status_declare;
+  db_txn_declare(env, txn);
+  test_helper_graph_read_data_t data;
+  test_helper_graph_read_setup(env,
+    common_element_count,
+    common_element_count,
+    common_label_count,
+    (&data));
+  db_txn_begin((&txn));
+  db_debug_log_ids((data.left));
+  db_debug_log_ids((data.right));
+  db_debug_log_ids((data.label));
+  db_debug_log_ids((data.e_left));
+  db_debug_log_ids((data.e_right));
+  db_debug_log_ids((data.e_label));
+  debug_log("counts %lu %lu %lu",
+    (data.e_left_count),
+    (data.e_right_count),
+    (data.e_label_count));
+exit:
+  db_txn_abort_if_active(txn);
+  return (status);
 };
 /** some assertions depend on the correctness of graph-read */
 status_t test_graph_delete(db_env_t* env) {
@@ -217,7 +225,7 @@ status_t test_node_create(db_env_t* env) {
   db_txn_declare(env, txn);
   db_node_data_t field_data;
   db_fields_len_t field_index;
-  db_ids_t* ids;
+  db_ids_t ids;
   db_id_t id_1;
   db_id_t id_2;
   db_node_data_t node_data_1;
@@ -303,11 +311,12 @@ status_t test_node_create(db_env_t* env) {
     "node-get non-existing", (db_status_id_notfound == status.id));
   status.id = status_id_success;
   /* test node-exists */
-  ids = db_ids_add(0, id_1);
-  ids = db_ids_add(ids, id_2);
+  i_array_allocate_db_ids_t((&ids), 3);
+  i_array_add(ids, id_1);
+  i_array_add(ids, id_2);
   status_require(db_node_exists(txn, ids, (&exists)));
   test_helper_assert("node-exists exists", exists);
-  ids = db_ids_add(ids, 9999);
+  i_array_add(ids, 9999);
   status_require(db_node_exists(txn, ids, (&exists)));
   test_helper_assert("node-exists does not exist", !exists);
   db_txn_abort((&txn));
@@ -322,9 +331,9 @@ boolean node_matcher(db_id_t id, db_node_data_t data, void* matcher_state) {
 status_t test_node_select(db_env_t* env) {
   status_declare;
   db_txn_declare(env, txn);
+  i_array_declare(ids, db_ids_t);
   ui8 value_1;
   ui8 matcher_state;
-  db_ids_t* ids;
   db_node_data_t data;
   db_node_selection_t selection;
   ui32 btree_size_before_delete;
@@ -357,12 +366,15 @@ status_t test_node_select(db_env_t* env) {
   status.id = status_id_success;
   db_node_selection_destroy((&selection));
   /* ids */
-  ids = db_ids_add(0, (node_ids[0]));
-  ids = db_ids_add(ids, 9999);
-  ids = db_ids_add(ids, (node_ids[1]));
-  ids = db_ids_add(ids, (node_ids[2]));
-  ids = db_ids_add(ids, (node_ids[3]));
-  status_require(db_node_select(txn, ids, 0, 0, 0, 0, (&selection)));
+  if (!i_array_allocate_db_ids_t((&ids), 5)) {
+    status_set_id_goto(db_status_id_memory);
+  };
+  i_array_add(ids, (node_ids[0]));
+  i_array_add(ids, 9999);
+  i_array_add(ids, (node_ids[1]));
+  i_array_add(ids, (node_ids[2]));
+  i_array_add(ids, (node_ids[3]));
+  status_require(db_node_select(txn, (&ids), 0, 0, 0, 0, (&selection)));
   status_require(db_node_next((&selection)));
   data = db_node_ref((&selection), 3);
   db_node_selection_destroy((&selection));
@@ -387,7 +399,7 @@ status_t test_node_select(db_env_t* env) {
   status_require(db_txn_write_begin((&txn)));
   db_debug_count_all_btree_entries(txn, (&btree_size_before_delete));
   status_require((db_node_update(txn, (node_ids[1]), (values[1]))));
-  status_require(db_node_delete(txn, ids));
+  status_require(db_node_delete(txn, (&ids)));
   status_require(db_txn_commit((&txn)));
   status_require(db_txn_begin((&txn)));
   db_debug_count_all_btree_entries(txn, (&btree_size_after_delete));
@@ -395,6 +407,7 @@ status_t test_node_select(db_env_t* env) {
   test_helper_assert(
     "after size", (4 == (btree_size_before_delete - btree_size_after_delete)));
 exit:
+  i_array_free(ids);
   db_txn_abort_if_active(txn);
   return (status);
 };
@@ -487,19 +500,9 @@ exit:
   return (status);
 };
 int main() {
+  db_env_t* env;
   test_helper_init(env);
-  test_helper_test_one(test_open_empty, env);
-  test_helper_test_one(test_statistics, env);
-  test_helper_test_one(test_id_construction, env);
-  test_helper_test_one(test_sequence, env);
-  test_helper_test_one(test_type_create_get_delete, env);
-  test_helper_test_one(test_type_create_many, env);
-  test_helper_test_one(test_open_nonempty, env);
   test_helper_test_one(test_graph_read, env);
-  test_helper_test_one(test_graph_delete, env);
-  test_helper_test_one(test_node_create, env);
-  test_helper_test_one(test_node_select, env);
-  test_helper_test_one(test_index, env);
 exit:
   test_helper_report_status;
   return ((status.id));

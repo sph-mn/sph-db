@@ -58,12 +58,12 @@ status_t db_graph_ensure(db_txn_t txn,
   ordinal = ((!ordinal_generator && ordinal_generator_state)
       ? (ordinal = *((db_ordinal_t*)(ordinal_generator_state)))
       : 0);
-  while (left.current) {
+  while (i_array_in_range(left)) {
     id_left = i_array_get(left);
-    while (label.current) {
+    while (i_array_in_range(label)) {
       id_label = i_array_get(label);
       val_id_2.mv_data = &id_label;
-      while (right.current) {
+      while (i_array_in_range(right)) {
         id_right = i_array_get(right);
         graph_key[0] = id_right;
         graph_key[1] = id_label;

@@ -99,7 +99,7 @@ exit:
 /** display an ids array */
 void db_debug_log_ids(db_ids_t a) {
   printf("ids (%lu):", i_array_length(a));
-  while (a.current) {
+  while (i_array_in_range(a)) {
     printf(" %lu", i_array_get(a));
     i_array_forward(a);
   };
@@ -115,17 +115,17 @@ void db_debug_log_ids_set(imht_set_t a) {
   };
   printf("\n");
 };
-void db_debug_display_graph_records(db_graph_records_t a) {
+void db_debug_log_graph_records(db_graph_records_t a) {
   db_graph_record_t b;
   printf(("graph records (ll -> or)\n"));
-  while (a.current) {
+  while (i_array_in_range(a)) {
     b = i_array_get(a);
     printf(
       ("  %lu %lu -> %lu %lu\n"), (b.left), (b.label), (b.ordinal), (b.right));
     i_array_forward(a);
   };
 };
-status_t db_debug_display_btree_counts(db_txn_t txn) {
+status_t db_debug_log_btree_counts(db_txn_t txn) {
   status_declare;
   db_statistics_t stat;
   status_require(db_statistics(txn, (&stat)));
@@ -171,7 +171,7 @@ ui8 db_field_type_size(ui8 a) {
 status_t db_ids_to_set(db_ids_t a, imht_set_t** result) {
   status_declare;
   db_status_memory_error_if_null(imht_set_create(i_array_length(a), result));
-  while (a.current) {
+  while (i_array_in_range(a)) {
     imht_set_add((*result), i_array_get(a));
     i_array_forward(a);
   };
@@ -291,7 +291,8 @@ void db_free_env_types(db_type_t** types, db_type_id_t types_len) {
   };
   free_and_set_null((*types));
 };
-/** caller has to free result if not needed anymore */
+/** caller has to free result when not needed anymore.
+  this routine makes sure that .is-open is zero */
 status_t db_env_new(db_env_t** result) {
   status_declare;
   db_env_t* a;

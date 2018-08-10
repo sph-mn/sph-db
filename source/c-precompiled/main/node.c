@@ -196,9 +196,9 @@ status_t db_node_next(db_node_selection_t* state) {
   skip = (state->options & db_selection_flag_skip);
   count = state->count;
   ids = state->ids;
-  if (ids.current) {
+  if (i_array_in_range(ids)) {
     /* filter by ids */
-    while ((ids.current && count)) {
+    while ((i_array_in_range(ids) && count)) {
       val_id.mv_data = ids.current;
       status.id =
         mdb_cursor_get((state->cursor), (&val_id), (&val_data), MDB_SET_KEY);
@@ -291,9 +291,11 @@ status_t db_node_select(db_txn_t txn,
   if (ids) {
     db_mdb_status_require(
       mdb_cursor_get(nodes, (&val_null), (&val_null), MDB_FIRST));
+    result_state->ids = *ids;
   } else {
     id = db_id_add_type(0, (type->id));
     val_id.mv_data = &id;
+    i_array_set_null((result_state->ids));
     db_mdb_status_require(
       mdb_cursor_get(nodes, (&val_id), (&val_null), MDB_SET_RANGE));
     if (!(type->id == db_id_type((db_pointer_to_id((val_id.mv_data)))))) {
@@ -303,7 +305,6 @@ status_t db_node_select(db_txn_t txn,
   result_state->cursor = nodes;
   result_state->count = 1;
   result_state->env = txn.env;
-  result_state->ids = *ids;
   result_state->matcher = matcher;
   result_state->matcher_state = matcher_state;
   result_state->options = 0;
@@ -388,7 +389,7 @@ status_t db_node_delete(db_txn_t txn, db_ids_t* ids_pointer) {
     0, 0, ids_pointer, 0, graph_lr, graph_rl, graph_ll));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
   /* delete node and index btree entries */
-  while (ids.current) {
+  while (i_array_in_range(ids)) {
     val_id.mv_data = ids.current;
     status.id = mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_SET_KEY);
     if (db_mdb_status_is_success) {
@@ -448,7 +449,7 @@ status_t db_node_exists(db_txn_t txn, db_ids_t ids, boolean* result) {
   db_mdb_declare_val_null;
   db_mdb_cursor_declare(nodes);
   db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
-  while (ids.current) {
+  while (i_array_in_range(ids)) {
     val_id.mv_data = ids.current;
     status.id = mdb_cursor_get(nodes, (&val_id), (&val_null), MDB_SET);
     if (db_mdb_status_is_notfound) {

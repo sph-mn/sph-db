@@ -169,7 +169,8 @@
   (declare type-id db-type-id-t)
   (set type-id (/ db-type-id-limit 2))
   (test-helper-assert
-    "type-id-size + element-id-size = id-size" (= (sizeof db-id-t) (+ (sizeof db-type-id-t) db-size-element-id)))
+    "type-id-size + element-id-size = id-size"
+    (= (sizeof db-id-t) (+ (sizeof db-type-id-t) db-size-element-id)))
   (test-helper-assert
     "type and element masks not conflicting" (not (bit-and db-id-type-mask db-id-element-mask)))
   (test-helper-assert
@@ -183,20 +184,34 @@
     (return status)))
 
 (define (test-graph-read env) (status-t db-env-t*)
-  (test-helper-graph-read-header env)
-  (test-helper-graph-read-one txn left 0 0 0 0)
-  (test-helper-graph-read-one txn left 0 label 0 0)
-  (test-helper-graph-read-one txn left right 0 0 0)
-  (test-helper-graph-read-one txn left right label 0 0)
-  (test-helper-graph-read-one txn 0 0 0 0 0)
-  (test-helper-graph-read-one txn 0 0 label 0 0)
-  (test-helper-graph-read-one txn 0 right 0 0 0)
-  (test-helper-graph-read-one txn 0 right label 0 0)
-  (test-helper-graph-read-one txn left 0 0 ordinal 0)
-  (test-helper-graph-read-one txn left 0 label ordinal 0)
-  (test-helper-graph-read-one txn left right 0 ordinal 0)
-  (test-helper-graph-read-one txn left right label ordinal 0)
-  test-helper-graph-read-footer)
+  status-declare
+  (db-txn-declare env txn)
+  (declare data test-helper-graph-read-data-t)
+  (test-helper-graph-read-setup
+    env common-element-count common-element-count common-label-count &data)
+  (db-txn-begin &txn)
+  (db-debug-log-ids data.left)
+  (db-debug-log-ids data.right)
+  (db-debug-log-ids data.label)
+  (db-debug-log-ids data.e-left)
+  (db-debug-log-ids data.e-right)
+  (db-debug-log-ids data.e-label)
+  (debug-log "counts %lu %lu %lu" data.e-left-count data.e-right-count data.e-label-count)
+  ;(status-require (test-helper-graph-read-one txn &left 0 0 0 0))
+  ;(test-helper-graph-read-one txn &left 0 &label 0 0)
+  ;(test-helper-graph-read-one txn &left &right 0 0 0)
+  ;(test-helper-graph-read-one txn &left &right &label 0 0)
+  ;(test-helper-graph-read-one txn 0 0 0 0 0)
+  ;(test-helper-graph-read-one txn 0 0 &label 0 0)
+  ;(test-helper-graph-read-one txn 0 &right 0 0 0)
+  ;(test-helper-graph-read-one txn 0 &right &label 0 0)
+  ;(test-helper-graph-read-one txn &left 0 0 ordinal 0)
+  ;(test-helper-graph-read-one txn &left 0 &label ordinal 0)
+  ;(test-helper-graph-read-one txn &left &right 0 ordinal 0)
+  ;(test-helper-graph-read-one txn &left &right &label ordinal 0)
+  (label exit
+    (db-txn-abort-if-active txn)
+    (return status)))
 
 (define (test-graph-delete env) (status-t db-env-t*)
   "some assertions depend on the correctness of graph-read"
@@ -221,7 +236,7 @@
   (declare
     field-data db-node-data-t
     field-index db-fields-len-t
-    ids db-ids-t*
+    ids db-ids-t
     id-1 db-id-t
     id-2 db-id-t
     node-data-1 db-node-data-t
@@ -322,12 +337,12 @@
   (test-helper-assert "node-get non-existing" (= db-status-id-notfound status.id))
   (set status.id status-id-success)
   (sc-comment "test node-exists")
-  (set
-    ids (db-ids-add 0 id-1)
-    ids (db-ids-add ids id-2))
+  (i-array-allocate-db-ids-t &ids 3)
+  (i-array-add ids id-1)
+  (i-array-add ids id-2)
   (status-require (db-node-exists txn ids &exists))
   (test-helper-assert "node-exists exists" exists)
-  (set ids (db-ids-add ids 9999))
+  (i-array-add ids 9999)
   (status-require (db-node-exists txn ids &exists))
   (test-helper-assert "node-exists does not exist" (not exists))
   (db-txn-abort &txn)
@@ -342,10 +357,10 @@
 (define (test-node-select env) (status-t db-env-t*)
   status-declare
   (db-txn-declare env txn)
+  (i-array-declare ids db-ids-t)
   (declare
     value-1 ui8
     matcher-state ui8
-    ids db-ids-t*
     data db-node-data-t
     selection db-node-selection-t
     btree-size-before-delete ui32
@@ -377,13 +392,13 @@
   (set status.id status-id-success)
   (db-node-selection-destroy &selection)
   (sc-comment "ids")
-  (set
-    ids (db-ids-add 0 (array-get node-ids 0))
-    ids (db-ids-add ids 9999)
-    ids (db-ids-add ids (array-get node-ids 1))
-    ids (db-ids-add ids (array-get node-ids 2))
-    ids (db-ids-add ids (array-get node-ids 3)))
-  (status-require (db-node-select txn ids 0 0 0 0 &selection))
+  (if (not (i-array-allocate-db-ids-t &ids 5)) (status-set-id-goto db-status-id-memory))
+  (i-array-add ids (array-get node-ids 0))
+  (i-array-add ids 9999)
+  (i-array-add ids (array-get node-ids 1))
+  (i-array-add ids (array-get node-ids 2))
+  (i-array-add ids (array-get node-ids 3))
+  (status-require (db-node-select txn &ids 0 0 0 0 &selection))
   (status-require (db-node-next &selection))
   (set data (db-node-ref &selection 3))
   (db-node-selection-destroy &selection)
@@ -407,13 +422,14 @@
   (status-require (db-txn-write-begin &txn))
   (db-debug-count-all-btree-entries txn &btree-size-before-delete)
   (status-require (db-node-update txn (array-get node-ids 1) (array-get values 1)))
-  (status-require (db-node-delete txn ids))
+  (status-require (db-node-delete txn &ids))
   (status-require (db-txn-commit &txn))
   (status-require (db-txn-begin &txn))
   (db-debug-count-all-btree-entries txn &btree-size-after-delete)
   (db-txn-abort &txn)
   (test-helper-assert "after size" (= 4 (- btree-size-before-delete btree-size-after-delete)))
   (label exit
+    (i-array-free ids)
     (db-txn-abort-if-active txn)
     (return status)))
 
@@ -495,19 +511,20 @@
     (return status)))
 
 (define (main) int
+  (declare env db-env-t*)
   (test-helper-init env)
-  (test-helper-test-one test-open-empty env)
-  (test-helper-test-one test-statistics env)
-  (test-helper-test-one test-id-construction env)
-  (test-helper-test-one test-sequence env)
-  (test-helper-test-one test-type-create-get-delete env)
-  (test-helper-test-one test-type-create-many env)
-  (test-helper-test-one test-open-nonempty env)
+  ;(test-helper-test-one test-open-empty env)
+  ;(test-helper-test-one test-statistics env)
+  ;(test-helper-test-one test-id-construction env)
+  ;(test-helper-test-one test-sequence env)
+  ;(test-helper-test-one test-type-create-get-delete env)
+  ;(test-helper-test-one test-type-create-many env)
+  ;(test-helper-test-one test-open-nonempty env)
   (test-helper-test-one test-graph-read env)
-  (test-helper-test-one test-graph-delete env)
-  (test-helper-test-one test-node-create env)
-  (test-helper-test-one test-node-select env)
-  (test-helper-test-one test-index env)
+  ;(test-helper-test-one test-graph-delete env)
+  ;(test-helper-test-one test-node-create env)
+  ;(test-helper-test-one test-node-select env)
+  ;(test-helper-test-one test-index env)
   (label exit
     test-helper-report-status
     (return status.id)))
