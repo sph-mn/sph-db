@@ -511,9 +511,9 @@ status_t test_helper_graph_read_setup(db_env_t* env,
   test_helper_graph_read_data_t* r) {
   status_declare;
   db_txn_declare(env, txn);
-  db_ids_t ne_left;
-  db_ids_t ne_right;
-  db_ids_t ne_label;
+  i_array_declare(ne_left, db_ids_t);
+  i_array_declare(ne_right, db_ids_t);
+  i_array_declare(ne_label, db_ids_t);
   if (!(i_array_allocate_db_graph_records_t(
           (&(r->records)), (e_left_count * e_right_count * e_label_count)) &&
         i_array_allocate_db_ids_t((&(r->e_left)), e_left_count) &&
@@ -542,7 +542,19 @@ status_t test_helper_graph_read_setup(db_env_t* env,
   r->e_right_count = e_right_count;
   r->e_label_count = e_label_count;
 exit:
+  i_array_free(ne_left);
+  i_array_free(ne_right);
+  i_array_free(ne_label);
   return (status);
+};
+void test_helper_graph_read_teardown(test_helper_graph_read_data_t* data) {
+  i_array_free((data->records));
+  i_array_free((data->e_left));
+  i_array_free((data->e_right));
+  i_array_free((data->e_label));
+  i_array_free((data->left));
+  i_array_free((data->right));
+  i_array_free((data->label));
 };
 status_t test_helper_graph_delete_setup(db_env_t* env,
   ui32 e_left_count,
@@ -567,15 +579,15 @@ status_t test_helper_graph_delete_one(test_helper_graph_delete_data_t data,
   "incremented ordinals starting with 1";
   status_declare;
   db_txn_declare((data.env), txn);
-  db_ids_t left;
-  db_ids_t right;
-  db_ids_t label;
+  i_array_declare(left, db_ids_t);
+  i_array_declare(right, db_ids_t);
+  i_array_declare(label, db_ids_t);
+  i_array_declare(records, db_graph_records_t);
   db_graph_selection_t state;
   ui32 read_count_before_expected;
   ui32 btree_count_after_delete;
   ui32 btree_count_before_create;
   ui32 btree_count_deleted_expected;
-  db_graph_records_t records;
   db_ordinal_condition_t* ordinal;
   db_ordinal_condition_t ordinal_condition = { 2, 5 };
   printf("  %d%d%d%d", use_left, use_right, use_label, use_ordinal);
@@ -588,6 +600,8 @@ status_t test_helper_graph_delete_one(test_helper_graph_delete_data_t data,
   i_array_allocate_db_ids_t((&left), (data.e_left_count));
   i_array_allocate_db_ids_t((&right), (data.e_right_count));
   i_array_allocate_db_ids_t((&label), (data.e_label_count));
+  i_array_allocate_db_graph_records_t(
+    (&records), (data.e_left_count * data.e_right_count * data.e_label_count));
   status_require(db_txn_write_begin((&txn)));
   test_helper_create_ids(txn, (data.e_left_count), (&left));
   test_helper_create_ids(txn, (data.e_right_count), (&right));
@@ -603,7 +617,48 @@ status_t test_helper_graph_delete_one(test_helper_graph_delete_data_t data,
     (use_label ? &label : 0),
     (use_ordinal ? ordinal : 0)));
   status_require(db_txn_commit((&txn)));
+  status_require(db_txn_begin((&txn)));
+  db_debug_count_all_btree_entries(txn, (&btree_count_after_delete));
+  db_status_require_read(db_graph_select(txn,
+    (use_left ? &left : 0),
+    (use_right ? &right : 0),
+    (use_label ? &label : 0),
+    (use_ordinal ? ordinal : 0),
+    0,
+    (&state)));
+  /* check that readers can handle empty selections */
+  db_status_require_read(db_graph_read((&state), 0, (&records)));
+  db_graph_selection_destroy((&state));
+  db_txn_abort((&txn));
+  if (!(0 == i_array_length(records))) {
+    printf(("\n    failed deletion. %lu relations not deleted\n"),
+      i_array_length(records));
+    db_debug_log_graph_records(records);
+    status_set_id_goto(1);
+  };
+  i_array_clear(records);
+  /* test only if not using ordinal condition because the expected counts arent
+   * estimated */
+  if (!(use_ordinal ||
+        (btree_count_after_delete == btree_count_before_create))) {
+    printf(("\n failed deletion. %lu btree entries not deleted\n"),
+      (btree_count_after_delete - btree_count_before_create));
+    status_require(db_txn_begin((&txn)));
+    db_debug_log_btree_counts(txn);
+    db_status_require_read(db_graph_select(txn, 0, 0, 0, 0, 0, (&state)));
+    db_status_require_read(db_graph_read((&state), 0, (&records)));
+    printf("all remaining ");
+    db_debug_log_graph_records(records);
+    db_graph_selection_destroy((&state));
+    db_txn_abort((&txn));
+    status_set_id_goto(1);
+  };
+  db_status_success_if_notfound;
 exit:
   printf("\n");
+  i_array_free(left);
+  i_array_free(right);
+  i_array_free(label);
+  i_array_free(records);
   return (status);
 };

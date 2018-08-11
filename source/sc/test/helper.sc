@@ -496,10 +496,9 @@
   (ne, non-existing) and with both partly interleaved (left, right, label)"
   status-declare
   (db-txn-declare env txn)
-  (declare
-    ne-left db-ids-t
-    ne-right db-ids-t
-    ne-label db-ids-t)
+  (i-array-declare ne-left db-ids-t)
+  (i-array-declare ne-right db-ids-t)
+  (i-array-declare ne-label db-ids-t)
   (if
     (not
       (and
@@ -527,7 +526,19 @@
     r:e-right-count e-right-count
     r:e-label-count e-label-count)
   (label exit
+    (i-array-free ne-left)
+    (i-array-free ne-right)
+    (i-array-free ne-label)
     (return status)))
+
+(define (test-helper-graph-read-teardown data) (void test-helper-graph-read-data-t*)
+  (i-array-free data:records)
+  (i-array-free data:e-left)
+  (i-array-free data:e-right)
+  (i-array-free data:e-label)
+  (i-array-free data:left)
+  (i-array-free data:right)
+  (i-array-free data:label))
 
 (define (test-helper-graph-delete-setup env e-left-count e-right-count e-label-count r)
   (status-t db-env-t* ui32 ui32 ui32 test-helper-graph-delete-data-t*)
@@ -548,16 +559,16 @@
     relations are assumed to be created with linearly incremented ordinals starting with 1"
     status-declare
     (db-txn-declare data.env txn)
+    (i-array-declare left db-ids-t)
+    (i-array-declare right db-ids-t)
+    (i-array-declare label db-ids-t)
+    (i-array-declare records db-graph-records-t)
     (declare
-      left db-ids-t
-      right db-ids-t
-      label db-ids-t
       state db-graph-selection-t
       read-count-before-expected ui32
       btree-count-after-delete ui32
       btree-count-before-create ui32
       btree-count-deleted-expected ui32
-      records db-graph-records-t
       ordinal db-ordinal-condition-t*)
     (define ordinal-condition db-ordinal-condition-t (struct-literal 2 5))
     (printf "  %d%d%d%d" use-left use-right use-label use-ordinal)
@@ -572,6 +583,8 @@
     (i-array-allocate-db-ids-t &left data.e-left-count)
     (i-array-allocate-db-ids-t &right data.e-right-count)
     (i-array-allocate-db-ids-t &label data.e-label-count)
+    (i-array-allocate-db-graph-records-t
+      &records (* data.e-left-count data.e-right-count data.e-label-count))
     (status-require (db-txn-write-begin &txn))
     (test-helper-create-ids txn data.e-left-count &left)
     (test-helper-create-ids txn data.e-right-count &right)
@@ -593,7 +606,6 @@
         (if* use-ordinal ordinal
           0)))
     (status-require (db-txn-commit &txn))
-    #;(
     (status-require (db-txn-begin &txn))
     (db-debug-count-all-btree-entries txn &btree-count-after-delete)
     (db-status-require-read
@@ -637,16 +649,11 @@
         (db-graph-selection-destroy &state)
         (db-txn-abort &txn)
         (status-set-id-goto 1)))
-    (i-array-free left)
-    (i-array-free right)
-    (i-array-free label)
-    (i-array-free records)
     db-status-success-if-notfound
-    (i-array-clear records)
-    (i-array-clear left)
-    (i-array-clear right)
-    (i-array-clear label)
-    )
     (label exit
       (printf "\n")
+      (i-array-free left)
+      (i-array-free right)
+      (i-array-free label)
+      (i-array-free records)
       (return status))))

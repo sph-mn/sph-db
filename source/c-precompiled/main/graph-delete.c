@@ -394,16 +394,14 @@ exit:
     i_array_rewind(label); \
     i_array_forward(left); \
   };
-#define db_graph_internal_delete_get_ordinal_data(ordinal) \
-  db_ordinal_t ordinal_min = ordinal->min; \
-  db_ordinal_t ordinal_max = ordinal->max
 #define db_graph_internal_delete_1001_1101 \
-  db_graph_internal_delete_get_ordinal_data(ordinal); \
+  ordinal_min = ordinal->min; \
+  ordinal_max = ordinal->max; \
   left = *left_pointer; \
   graph_data[0] = ordinal_min; \
   graph_key[1] = 0; \
   if (right_pointer) { \
-    status_require(db_ids_to_set(right, (&right_set))); \
+    status_require(db_ids_to_set((*right_pointer), (&right_set))); \
   }; \
   set_range_1001_1101: \
   id_left = i_array_get(left); \
@@ -438,6 +436,7 @@ exit:
     goto exit; \
   }; \
   each_data_1001_1101: \
+  /* get-both-range should have positioned cursor at >= ordinal-min */ \
   if (!ordinal_max || \
     (db_graph_data_to_ordinal((val_graph_data.mv_data)) <= ordinal_max)) { \
     id_right = db_graph_data_to_id((val_graph_data.mv_data)); \
@@ -476,10 +475,11 @@ exit:
     status_set_group_goto(db_status_group_lmdb); \
   };
 #define db_graph_internal_delete_1011_1111 \
-  db_graph_internal_delete_get_ordinal_data(ordinal); \
   if (right_pointer) { \
     status_require(db_ids_to_set((*right_pointer), (&right_set))); \
   }; \
+  ordinal_min = ordinal->min; \
+  ordinal_max = ordinal->max; \
   left = *left_pointer; \
   label = *label_pointer; \
   graph_data[0] = ordinal_min; \
@@ -538,9 +538,10 @@ exit:
 /** db-graph-internal-delete does not open/close cursors.
    1111 / left-right-label-ordinal.
    tip: the code is nice to debug if current state information is displayed near
-   the beginning of goto labels before cursor operations. example: (debug-log
-   "each-key-1100 %lu %lu" id-left id-right) db-graph-internal-delete-* macros
-   are allowed to leave status on MDB-NOTFOUND */
+  the beginning of goto labels before cursor operations. example: (debug-log
+  "each-key-1100 %lu %lu" id-left id-right) db-graph-internal-delete-* macros
+  are allowed to leave status on MDB-NOTFOUND.
+  the inner internal-delete macros should probably be converted to functions */
 status_t db_graph_internal_delete(db_ids_t* left_pointer,
   db_ids_t* right_pointer,
   db_ids_t* label_pointer,
@@ -549,6 +550,8 @@ status_t db_graph_internal_delete(db_ids_t* left_pointer,
   MDB_cursor* graph_rl,
   MDB_cursor* graph_ll) {
   status_declare;
+  db_ordinal_t ordinal_min;
+  db_ordinal_t ordinal_max;
   db_id_t id_left;
   db_id_t id_right;
   db_id_t id_label;

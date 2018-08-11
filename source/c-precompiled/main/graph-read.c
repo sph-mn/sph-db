@@ -351,6 +351,8 @@ each_key:
   goto each_left;
 each_data:
   stop_if_count_zero;
+  /* check ordinal-min for if the first element, which graph-select initialises
+   * to, matches */
   if ((!ordinal_min ||
         (db_graph_data_to_ordinal((val_graph_data.mv_data)) >= ordinal_min)) &&
     (!ordinal_max ||

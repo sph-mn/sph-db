@@ -303,6 +303,8 @@
       (goto each-left)))
   (label each-data
     stop-if-count-zero
+    (sc-comment
+      "check ordinal-min for if the first element, which graph-select initialises to, matches")
     (if
       (and
         (or (not ordinal-min) (>= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-min))

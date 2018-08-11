@@ -325,19 +325,15 @@
       (i-array-rewind label)
       (i-array-forward left))))
 
-(pre-define (db-graph-internal-delete-get-ordinal-data ordinal)
-  (begin
-    (define ordinal-min db-ordinal-t ordinal:min)
-    (define ordinal-max db-ordinal-t ordinal:max)))
-
 (pre-define db-graph-internal-delete-1001-1101
   (begin
-    (db-graph-internal-delete-get-ordinal-data ordinal)
     (set
+      ordinal-min ordinal:min
+      ordinal-max ordinal:max
       left *left-pointer
       (array-get graph-data 0) ordinal-min
       (array-get graph-key 1) 0)
-    (if right-pointer (status-require (db-ids->set right &right-set)))
+    (if right-pointer (status-require (db-ids->set *right-pointer &right-set)))
     (label set-range-1001-1101
       (set
         id-left (i-array-get left)
@@ -348,9 +344,9 @@
         (if db-mdb-status-is-success
           (if (= id-left (db-pointer->id val-graph-key.mv-data))
             (begin
-              (set val-graph-data.mv-data graph-data)
-              (set status.id
-                (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-BOTH-RANGE))
+              (set
+                val-graph-data.mv-data graph-data
+                status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-BOTH-RANGE))
               (if db-mdb-status-is-success
                 (begin
                   (set id-label (db-pointer->id-at val-graph-key.mv-data 1))
@@ -367,6 +363,7 @@
             (goto set-range-1001-1101))
           (goto exit))))
     (label each-data-1001-1101
+      (sc-comment "get-both-range should have positioned cursor at >= ordinal-min")
       (if (or (not ordinal-max) (<= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-max))
         (begin
           (set id-right (db-graph-data->id val-graph-data.mv-data))
@@ -396,9 +393,10 @@
 
 (pre-define db-graph-internal-delete-1011-1111
   (begin
-    (db-graph-internal-delete-get-ordinal-data ordinal)
     (if right-pointer (status-require (db-ids->set *right-pointer &right-set)))
     (set
+      ordinal-min ordinal:min
+      ordinal-max ordinal:max
       left *left-pointer
       label *label-pointer
       (array-get graph-data 0) ordinal-min
@@ -454,9 +452,12 @@
    tip: the code is nice to debug if current state information is displayed near the
      beginning of goto labels before cursor operations.
      example: (debug-log \"each-key-1100 %lu %lu\" id-left id-right)
-   db-graph-internal-delete-* macros are allowed to leave status on MDB-NOTFOUND"
+   db-graph-internal-delete-* macros are allowed to leave status on MDB-NOTFOUND.
+  the inner internal-delete macros should probably be converted to functions"
   status-declare
   (declare
+    ordinal-min db-ordinal-t
+    ordinal-max db-ordinal-t
     id-left db-id-t
     id-right db-id-t
     id-label db-id-t

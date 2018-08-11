@@ -28,7 +28,10 @@
         a:unused temp
         a:end (+ length temp))
       (return 1)))
-  (i-array-declare a type) (define a type (struct-literal 0 0 0 0))
+  (i-array-declare a type)
+  (begin
+    "define so that in-range is false, length is zero and free doesnt fail"
+    (define a type (struct-literal 0 0 0 0)))
   (i-array-add a value)
   (set
     *a.unused value

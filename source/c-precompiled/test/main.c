@@ -204,6 +204,7 @@ status_t test_graph_read(db_env_t* env) {
   status_require(test_helper_graph_read_one(txn, data, 1, 1, 1, 1, 0));
 exit:
   db_txn_abort_if_active(txn);
+  test_helper_graph_read_teardown((&data));
   return (status);
 };
 /** some assertions depend on the correctness of graph-read */
@@ -216,15 +217,15 @@ status_t test_graph_delete(db_env_t* env) {
     common_label_count,
     (&data)));
   status_require(test_helper_graph_delete_one(data, 1, 0, 0, 0));
-  status_require(test_helper_graph_delete_one(data, 1, 0, 1, 0));
-  status_require(test_helper_graph_delete_one(data, 1, 1, 0, 0));
-  status_require(test_helper_graph_delete_one(data, 1, 1, 1, 0));
-  status_require(test_helper_graph_delete_one(data, 0, 0, 1, 0));
   status_require(test_helper_graph_delete_one(data, 0, 1, 0, 0));
+  status_require(test_helper_graph_delete_one(data, 1, 1, 0, 0));
+  status_require(test_helper_graph_delete_one(data, 0, 0, 1, 0));
+  status_require(test_helper_graph_delete_one(data, 1, 0, 1, 0));
   status_require(test_helper_graph_delete_one(data, 0, 1, 1, 0));
+  status_require(test_helper_graph_delete_one(data, 1, 1, 1, 0));
   status_require(test_helper_graph_delete_one(data, 1, 0, 0, 1));
-  status_require(test_helper_graph_delete_one(data, 1, 0, 1, 1));
   status_require(test_helper_graph_delete_one(data, 1, 1, 0, 1));
+  status_require(test_helper_graph_delete_one(data, 1, 0, 1, 1));
   status_require(test_helper_graph_delete_one(data, 1, 1, 1, 1));
 exit:
   return (status);
@@ -512,7 +513,18 @@ int main() {
   db_env_t* env;
   status_declare;
   db_env_new((&env));
+  test_helper_test_one(test_open_empty, env);
+  test_helper_test_one(test_statistics, env);
+  test_helper_test_one(test_id_construction, env);
+  test_helper_test_one(test_sequence, env);
+  test_helper_test_one(test_type_create_get_delete, env);
+  test_helper_test_one(test_type_create_many, env);
+  test_helper_test_one(test_open_nonempty, env);
+  test_helper_test_one(test_graph_read, env);
+  test_helper_test_one(test_graph_delete, env);
   test_helper_test_one(test_node_create, env);
+  test_helper_test_one(test_node_select, env);
+  test_helper_test_one(test_index, env);
 exit:
   if (status_is_success) {
     printf(("--\ntests finished successfully.\n"));

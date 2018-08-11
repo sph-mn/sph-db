@@ -25,6 +25,7 @@
     a->end = (length + temp); \
     return (1); \
   }
+/** define so that in-range is false, length is zero and free doesnt fail */
 #define i_array_declare(a, type) type a = { 0, 0, 0, 0 }
 #define i_array_add(a, value) \
   *(a.unused) = value; \
