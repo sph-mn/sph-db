@@ -6,8 +6,7 @@
 #define free_and_set_null(a) \
   free(a); \
   a = 0
-#define db_error_log(pattern, ...) \
-  fprintf(stderr, "%s:%d error: " pattern "\n", __func__, __LINE__, __VA_ARGS__)
+#define db_error_log(pattern, ...) fprintf(stderr, "%s:%d error: " pattern "\n", __func__, __LINE__, __VA_ARGS__)
 #define reduce_count count = (count - 1)
 #define stop_if_count_zero \
   if (0 == count) { \
@@ -32,10 +31,7 @@ ui8* uint_to_string(uintmax_t a, size_t* result_len) {
 };
 /** join strings into one string with each input string separated by delimiter.
   zero if strings-len is zero or memory could not be allocated */
-ui8* string_join(ui8** strings,
-  size_t strings_len,
-  ui8* delimiter,
-  size_t* result_len) {
+ui8* string_join(ui8** strings, size_t strings_len, ui8* delimiter, size_t* result_len) {
   ui8* result;
   ui8* result_temp;
   size_t size;
@@ -72,15 +68,13 @@ ui8* string_join(ui8** strings,
 };
 status_t db_txn_begin(db_txn_t* a) {
   status_declare;
-  db_mdb_status_require(
-    (mdb_txn_begin((a->env->mdb_env), 0, MDB_RDONLY, (&(a->mdb_txn)))));
+  db_mdb_status_require((mdb_txn_begin((a->env->mdb_env), 0, MDB_RDONLY, (&(a->mdb_txn)))));
 exit:
   return (status);
 };
 status_t db_txn_write_begin(db_txn_t* a) {
   status_declare;
-  db_mdb_status_require(
-    (mdb_txn_begin((a->env->mdb_env), 0, 0, (&(a->mdb_txn)))));
+  db_mdb_status_require((mdb_txn_begin((a->env->mdb_env), 0, 0, (&(a->mdb_txn)))));
 exit:
   return (status);
 };
@@ -119,8 +113,7 @@ void db_debug_log_graph_records(db_graph_records_t a) {
   printf(("graph records (ll -> or)\n"));
   while (i_array_in_range(a)) {
     b = i_array_get(a);
-    printf(
-      ("  %lu %lu -> %lu %lu\n"), (b.left), (b.label), (b.ordinal), (b.right));
+    printf(("  %lu %lu -> %lu %lu\n"), (b.left), (b.label), (b.ordinal), (b.right));
     i_array_forward(a);
   };
 };
@@ -128,13 +121,7 @@ status_t db_debug_log_btree_counts(db_txn_t txn) {
   status_declare;
   db_statistics_t stat;
   status_require(db_statistics(txn, (&stat)));
-  printf("btree entry count: system %zu, nodes %zu, graph-lr %zu, graph-rl "
-         "%zu, graph-ll %zu\n",
-    (stat.system.ms_entries),
-    (stat.nodes.ms_entries),
-    (stat.graph_lr.ms_entries),
-    (stat.graph_rl.ms_entries),
-    (stat.graph_ll.ms_entries));
+  printf("btree entry count: system %zu, nodes %zu, graph-lr %zu, graph-rl %zu, graph-ll %zu\n", (stat.system.ms_entries), (stat.nodes.ms_entries), (stat.graph_lr.ms_entries), (stat.graph_rl.ms_entries), (stat.graph_ll.ms_entries));
 exit:
   return (status);
 };
@@ -143,25 +130,19 @@ status_t db_debug_count_all_btree_entries(db_txn_t txn, ui32* result) {
   status_declare;
   db_statistics_t stat;
   status_require(db_statistics(txn, (&stat)));
-  *result =
-    (stat.system.ms_entries + stat.nodes.ms_entries + stat.graph_lr.ms_entries +
-      stat.graph_rl.ms_entries + stat.graph_ll.ms_entries);
+  *result = (stat.system.ms_entries + stat.nodes.ms_entries + stat.graph_lr.ms_entries + stat.graph_rl.ms_entries + stat.graph_ll.ms_entries);
 exit:
   return (status);
 };
 /** size in octets. zero for variable size types */
 ui8 db_field_type_size(ui8 a) {
-  if ((db_field_type_int64 == a) || (db_field_type_uint64 == a) ||
-    (db_field_type_char64 == a) || (db_field_type_float64 == a)) {
+  if ((db_field_type_int64 == a) || (db_field_type_uint64 == a) || (db_field_type_char64 == a) || (db_field_type_float64 == a)) {
     return (8);
-  } else if ((db_field_type_int32 == a) || (db_field_type_uint32 == a) ||
-    (db_field_type_char32 == a) || (db_field_type_float32 == a)) {
+  } else if ((db_field_type_int32 == a) || (db_field_type_uint32 == a) || (db_field_type_char32 == a) || (db_field_type_float32 == a)) {
     return (4);
-  } else if ((db_field_type_int16 == a) || (db_field_type_uint16 == a) ||
-    (db_field_type_char16 == a)) {
+  } else if ((db_field_type_int16 == a) || (db_field_type_uint16 == a) || (db_field_type_char16 == a)) {
     return (2);
-  } else if ((db_field_type_int8 == a) || (db_field_type_uint8 == a) ||
-    (db_field_type_char8 == a)) {
+  } else if ((db_field_type_int8 == a) || (db_field_type_uint8 == a) || (db_field_type_char8 == a)) {
     return (1);
   } else {
     return (0);
@@ -178,8 +159,7 @@ exit:
   return (status);
 };
 /** read a length prefixed string from system type data.
-  on success set result to a newly allocated string and data to the next byte
-  after the string */
+  on success set result to a newly allocated string and data to the next byte after the string */
 status_t db_read_name(ui8** data_pointer, ui8** result) {
   status_declare;
   ui8* data;
@@ -198,16 +178,11 @@ exit:
 /** expects an allocated db-statistics-t */
 status_t db_statistics(db_txn_t txn, db_statistics_t* result) {
   status_declare;
-  db_mdb_status_require(
-    (mdb_stat((txn.mdb_txn), ((txn.env)->dbi_system), (&(result->system)))));
-  db_mdb_status_require(
-    (mdb_stat((txn.mdb_txn), ((txn.env)->dbi_nodes), (&(result->nodes)))));
-  db_mdb_status_require((
-    mdb_stat((txn.mdb_txn), ((txn.env)->dbi_graph_lr), (&(result->graph_lr)))));
-  db_mdb_status_require((
-    mdb_stat((txn.mdb_txn), ((txn.env)->dbi_graph_ll), (&(result->graph_ll)))));
-  db_mdb_status_require((
-    mdb_stat((txn.mdb_txn), ((txn.env)->dbi_graph_rl), (&(result->graph_rl)))));
+  db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_system), (&(result->system)))));
+  db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_nodes), (&(result->nodes)))));
+  db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_graph_lr), (&(result->graph_lr)))));
+  db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_graph_ll), (&(result->graph_ll)))));
+  db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_graph_rl), (&(result->graph_rl)))));
 exit:
   return (status);
 };
@@ -231,8 +206,7 @@ exit:
 };
 /** return one new unique type node identifier.
   the maximum identifier returned is db-id-limit minus one */
-status_t
-db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result) {
+status_t db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result) {
   status_declare;
   db_id_t sequence;
   pthread_mutex_lock((&(env->mutex)));
@@ -248,8 +222,7 @@ db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result) {
 exit:
   return (status);
 };
-void db_free_env_types_indices(db_index_t** indices,
-  db_fields_len_t indices_len) {
+void db_free_env_types_indices(db_index_t** indices, db_fields_len_t indices_len) {
   db_fields_len_t i;
   db_index_t* index_pointer;
   if (!*indices) {

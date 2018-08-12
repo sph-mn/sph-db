@@ -1,18 +1,28 @@
 # about
 
-sph-db is a database as a shared library for storing records with relations like a directed graph. it is supposed to be embeddable (by code inclusion or linking) and efficient through minimalism.
+sph-db is a database as a shared library for records and relations.
 
 * [homepage](http://sph.mn/c/view/52)
 * [design](http://sph.mn/c/view/si)
 * license: lgpl3+
 
+# project goals
+* a minimal embeddable database to store records without having to construct high-level query language strings for each query
+* graph-like relations without having to manage many-to-many tables
+
 # features
+## data model
+* records that can act as nodes in relations to build a graph
+* records have identifiers for random access. they are of custom type, similar to table rows in relational databases, and indexable
+* relations are directed, labeled, unidirectionally ordered and small
+
+## technology
 * acid compliant, memory-mapped database that can grow to any size that fits on the local filesystem, unrestricted by available ram
 * direct, high-speed interface using c data structures. no overhead from sql or similar query language parsing
-* nodes are records with identifiers for random access. they are of custom type, like tables in relational databases, and indexable
-* relations are directed, labeled, unidirectionally ordered and small
-* read-optimised design with full support for parallel database reads. database performance corresponds to the performance of lmdb. benchmarks for lmdb can be found [here](https://symas.com/lightning-memory-mapped-database/technical/).
-* written in c via [sc](https://github.com/sph-mn/sph-sc)
+* embeddable by linking or code inclusion
+* read-optimised design with full support for parallel database reads
+* efficient through focus on limited feature-set and thin abstraction over lmdb. benchmarks for lmdb can be found [here](https://symas.com/lightning-memory-mapped-database/technical/)
+* written in c, currently via [sc](https://github.com/sph-mn/sph-sc)
 
 # dependencies
 * run-time
@@ -45,7 +55,7 @@ gcc example.c -o example-executable -llmdb -lsph-db
 ```
 
 ## error handling
-db routines return a "status_t" object that contains a status and a status-group identifier (error code and source library identifier). bindings to work with this small object are included with the main header "sph-db.h". sph-db usually uses a goto label named "exit" per routine where undesired return status ids are handled. ``status_require`` goes to exit on any failure status.
+db routines return a "status_t" object that contains a status and a status-group identifier (error code and source library identifier). bindings to work with this small object are included with the main header "sph-db.h". sph-db internally usually uses a goto label named "exit" per routine where undesired return status ids are handled. ``status_require`` goes to exit on any failure status (status.id not zero).
 the following examples assume this pattern of calling ``status_declare`` beforehand and having a label named ``exit``
 
 ```c
@@ -61,24 +71,47 @@ exit:
 ```c
 db_env_t* env;
 db_env_new(&env);
-// database file will be created if it does not exist
+// the database file will be created if it does not exist
 status_require(db_open("/tmp/example", 0, env));
 // code that makes use of the database ...
 db_close(env);
 ```
 
-## create node types
+## transactions
+* transactions are required for reading and writing except for schema changes.  create their own transaction and no transaction
+* there must only be one active transaction per thread (there is an option to relax this for read transactions). nested transactions are possible
+* data pointers returned for the transaction (for example by db_node_data_ref) are only valid until the transaction is aborted or committed. such data pointers are always only for reading and must never be written to
+
+api functions
+```c
+// declare a transaction handle
+// db-env-t*, custom_variable_name
+db_txn_declare(env, txn);
+// start a read-only transaction
+db_txn_begin(&txn);
+// start a read-write transaction
+db_txn_write_begin(&txn);
+// finish transaction and discard any writes
+db_txn_abort(&txn);
+// apply writes made in a transaction
+db_txn_commit(&txn);
 ```
+
+## create a type
+```c
 db_field_t fields[4];
 db_type_t* type;
-db_field_set(fields[0], db_field_type_int8, "test-field-1", 12);
-db_field_set(fields[1], db_field_type_int8, "test-field-2", 12);
-db_field_set(fields[2], db_field_type_string, "test-field-3", 12);
-db_field_set(fields[3], db_field_type_string, "test-field-4", 12);
+// set field.type, field.name and field.name_len
+db_field_set(fields[0], db_field_type_uint8, "field-name-1", 12);
+db_field_set(fields[1], db_field_type_int8, "field-name-2", 12);
+db_field_set(fields[2], db_field_type_string, "field-name-3", 12);
+db_field_set(fields[3], db_field_type_string, "field-name-4", 12);
+// arguments: db_env_t*, type_name, db_field_t*, field_count, flags, result
 status_require(db_type_create(env, "test-type", fields, 4, 0, &type));
 ```
 
-## create nodes
+## create nodes (records)
+```c
 db_txn_declare(env, txn);
 db_node_values_t values;
 db_id_t id;
@@ -86,28 +119,45 @@ ui8 value_1;
 i8 value_2;
 ui8* value_3 = "abc";
 ui8* value_4 = "abcde";
-status_require(db_node_values_new(type, (&values)));
+status_require(db_node_values_new(type, &values));
 value_1 = 11;
 value_2 = -128;
-db_node_values_set((&values_1), 0, &value_1, 0);
-db_node_values_set((&values_1), 1, &value_2, 0);
-db_node_values_set((&values_1), 2, value_3, 3);
-db_node_values_set((&values_1), 3, value_4, 5);
-db_txn_write_begin(txn);
+// arguments: db_node_values_t, field_index, value_address, size.
+// size is ignored fixed length types
+db_node_values_set(&values_1, 0, &value_1, 0);
+db_node_values_set(&values_1, 1, &value_2, 0);
+db_node_values_set(&values_1, 2, value_3, 3);
+db_node_values_set(&values_1, 3, value_4, 5);
+db_txn_write_begin(&txn);
 status_require(db_node_create(txn, values, &id));
-db_txn_commit();
+db_txn_commit(&txn);
+```
 
 ## read nodes
-```
+by unique identifier
+```c
+db_txn_declare(env, txn);
 db_node_data_t node_data;
 db_node_data_t field_data;
+db_txn_begin(&txn);
 status_require(db_node_get(txn, id, &node_data));
+// arguments: type, node_data, field_index
 field_data = db_node_data_ref(type, node_data, 1);
-
-status_require(db_node_select(txn, ids_filter, type, offset, matcher, matcher_state, &state));
-status_require_read(db_node_next(state));
-field_data = db_node_ref(state, 0);
+// field_data.data: void*, field_data.size: size_t
+db_txn_abort(&txn);
 ```
+
+by type
+```c
+status_require(db_node_select(txn, 0, type, offset, matcher, matcher_state, &state));
+status_require_read(db_node_next(state));
+if(db-status-id-notfound != status.id) {
+  field_data = db_node_ref(state, 0);
+}
+```
+
+, any of a list of ids or custom matcher function
+
 
 ## create relations
 ```c
@@ -446,12 +496,10 @@ db_type_id_t
 * custom data types can be specified with preprocessor definitions before compiling the sph-db library in a file named config.c
 * the data type of node identifiers for new databases can be set at compile time. currently identifiers can not be pointers
 * the maximum number of type creations is currently 65535 and the maximum size of dg-type-id is 16 bit
-* returned data pointers, not other values like integers, are only valid until the transaction is aborted or committed
 * returned data pointers point to data that is immutable and should be treated as such
 * make sure that db-data-list*, db-ids-t*, db-relation-records-t* and db-data-records-t* are set to 0 before adding the first element or otherwise the first link will likely point to a random memory initialisation address
 * all readers add elements until they fail, which means there might be elements that need deallocation after an error occurred
 * transactions are lmdb transactions. when in doubt you may refer to the documentation of lmdb
-* there can/should only be one active transaction per thread. nested transactions are possible though
 * make sure that you do not try to insert ordinals or ids bigger than what is defined to be possible by the data types for ordinals and node identifiers. otherwise numerical overflows might occur
 * updating an ordinal value requires the re-creation of the corresponding relation. ordinals are primarily intended to store data in a pre-calculated order for fast ordered retrieval but not for frequent updates. for example, the ordinal field is perhaps not well suited for storing a constantly changing vote count or weight value
 
@@ -478,6 +526,8 @@ this section is for when you want to change the core sph-db itself.
 * "mdb_cursor_close" seems to be ok with null pointers like "free"
 * struct db-index-errors-*-t field names have the format {type-of-error}-{source-key-name}-{source-value-name}
 * when values from an secondary dbi are not found in the primary dbi, they are excess values. when values from a primary dbi are not found in a secondary dbi (index), they are missing values. with these terms, which are used in the validator routines, one can discern the location of errors
+* conception, tests that use the new features, memory-leak tests
+* sph-db-extra.h contains declarations for internally used things
 
 ## db-relation-select
 * positions every relevant mdb cursor at the first entry of the dbi or exits with an error status if the database is empty

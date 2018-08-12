@@ -4,12 +4,6 @@
   "errno.h"
   "pthread.h" "../main/sph-db.h" "../main/sph-db-extra.h" "../main/lib/lmdb.c" "../foreign/sph/one.c")
 
-(pre-define (db-field-set a a-type a-name a-name-len)
-  (set
-    a.type a-type
-    a.name a-name
-    a.name-len a-name-len))
-
 (pre-define
   test-helper-db-root "/tmp/test-sph-db"
   test-helper-path-data (pre-string-concat test-helper-db-root "/data"))

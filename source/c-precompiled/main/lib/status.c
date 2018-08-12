@@ -1,17 +1,13 @@
 /* return status and error handling */
-/* return status code and error handling. uses a local variable named "status"
-   and a goto label named "exit". a status has an identifier and a group to
-   discern between status identifiers of different libraries. status id 0 is
-   success, everything else can be considered a failure or special case.
-   status ids are 32 bit signed integers for compatibility with error return
-   codes from many other existing libraries */
+/* return status code and error handling. uses a local variable named "status" and a goto label named "exit".
+   a status has an identifier and a group to discern between status identifiers of different libraries.
+   status id 0 is success, everything else can be considered a failure or special case.
+   status ids are 32 bit signed integers for compatibility with error return codes from many other existing libraries */
 /** like status declare but with a default group */
-#define status_declare_group(group) \
-  status_t status = { status_id_success, group }
+#define status_declare_group(group) status_t status = { status_id_success, group }
 #define status_id_success 0
 #define status_group_undefined 0
-#define status_declare \
-  status_t status = { status_id_success, status_group_undefined }
+#define status_declare status_t status = { status_id_success, status_group_undefined }
 #define status_reset status_set_both(status_group_undefined, status_id_success)
 #define status_is_success (status_id_success == status.id)
 #define status_is_failure !status_is_success
@@ -47,8 +43,7 @@ typedef struct {
   status_id_t id;
   ui8 group;
 } status_t;
-enum {
-  db_status_id_success,
+enum { db_status_id_success,
   db_status_id_undefined,
   db_status_id_condition_unfulfilled,
   db_status_id_data_length,
@@ -67,10 +62,8 @@ enum {
   db_status_id_index_keysize,
   db_status_group_db,
   db_status_group_lmdb,
-  db_status_group_libc
-};
-#define db_status_set_id_goto(status_id) \
-  status_set_both_goto(db_status_group_db, status_id)
+  db_status_group_libc };
+#define db_status_set_id_goto(status_id) status_set_both_goto(db_status_group_db, status_id)
 #define db_status_require_read(expression) \
   status = expression; \
   if (!(status_is_success || (status.id == db_status_id_notfound))) { \
@@ -120,16 +113,13 @@ ui8* db_status_description(status_t a) {
     } else if (db_status_id_max_type_id == a.id) {
       b = "maximum type identifier value has been reached";
     } else if (db_status_id_max_type_id_size == a.id) {
-      b =
-        "type identifier size is either configured to be greater than 16 bit, "
-        "which is currently not supported, or is not smaller than node id size";
+      b = "type identifier size is either configured to be greater than 16 bit, which is currently not supported, or is not smaller than node id size";
     } else if (db_status_id_condition_unfulfilled == a.id) {
       b = "condition unfulfilled";
     } else if (db_status_id_notfound == a.id) {
       b = "no more data to read";
     } else if (db_status_id_different_format == a.id) {
-      b = "configured format differs from the format the database was created "
-          "with";
+      b = "configured format differs from the format the database was created with";
     } else if (db_status_id_index_keysize == a.id) {
       b = "index key to be inserted exceeds mdb maxkeysize";
     } else {

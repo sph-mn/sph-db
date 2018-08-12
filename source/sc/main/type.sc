@@ -33,7 +33,7 @@
   (set types-len env:types-len)
   (for ((set i 0) (< i types-len) (set i (+ 1 i)))
     (set type (+ i env:types))
-    (if (and type:id (= 0 (strcmp name type:name))) (return type)))
+    (if (and type:id type:name (= 0 (strcmp name type:name))) (return type)))
   (return 0))
 
 (define (db-type-field-get type name) (db-field-t* db-type-t* ui8*)

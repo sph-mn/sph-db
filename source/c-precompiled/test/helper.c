@@ -6,10 +6,6 @@
 #include "../main/sph-db-extra.h"
 #include "../main/lib/lmdb.c"
 #include "../foreign/sph/one.c"
-#define db_field_set(a, a_type, a_name, a_name_len) \
-  a.type = a_type; \
-  a.name = a_name; \
-  a.name_len = a_name_len
 #define test_helper_db_root "/tmp/test-sph-db"
 #define test_helper_path_data test_helper_db_root "/data"
 #define test_helper_test_one(f, env) \
@@ -23,8 +19,7 @@
   }
 /** define a function that searches for an id in an array of records at field */
 #define test_helper_define_graph_records_contains_at(field_name) \
-  boolean db_debug_graph_records_contains_at_##field_name( \
-    db_graph_records_t records, db_id_t id) { \
+  boolean db_debug_graph_records_contains_at_##field_name(db_graph_records_t records, db_id_t id) { \
     db_graph_record_t record; \
     while (i_array_in_range(records)) { \
       record = i_array_get(records); \
@@ -36,13 +31,9 @@
     return (0); \
   }
 ;
-/** define a function for getting a field from a graph record, to use with a
- * function pointer */
+/** define a function for getting a field from a graph record, to use with a function pointer */
 #define test_helper_define_graph_record_get(field_name) \
-  db_id_t test_helper_graph_record_get_##field_name( \
-    db_graph_record_t record) { \
-    return ((record.field_name)); \
-  }
+  db_id_t test_helper_graph_record_get_##field_name(db_graph_record_t record) { return ((record.field_name)); }
 ;
 typedef struct {
   db_txn_t txn;
@@ -63,13 +54,9 @@ typedef struct {
   ui32 e_right_count;
   ui32 e_label_count;
 } test_helper_graph_delete_data_t;
-/** calculates the number of btree entries affected by a relation read or
-   delete. assumes linearly incremented ordinal integers starting at 1 and
-   queries for all or no ids */
-ui32 test_helper_estimate_graph_read_btree_entry_count(ui32 e_left_count,
-  ui32 e_right_count,
-  ui32 e_label_count,
-  db_ordinal_condition_t* ordinal) {
+/** calculates the number of btree entries affected by a relation read or delete.
+   assumes linearly incremented ordinal integers starting at 1 and queries for all or no ids */
+ui32 test_helper_estimate_graph_read_btree_entry_count(ui32 e_left_count, ui32 e_right_count, ui32 e_label_count, db_ordinal_condition_t* ordinal) {
   ui32 ordinal_min = 0;
   ui32 ordinal_max = 0;
   if (ordinal) {
@@ -83,10 +70,8 @@ ui32 test_helper_estimate_graph_read_btree_entry_count(ui32 e_left_count,
   ui32 left_count = 0;
   ui32 right_count = 0;
   ui32 label_count = 0;
-  /* the number of relations is not proportional to the number of entries in
-     graph-ll.
-      use a process similar to relation creation to correctly calculate graph-ll
-     and ordinal dependent entries */
+  /* the number of relations is not proportional to the number of entries in graph-ll.
+    use a process similar to relation creation to correctly calculate graph-ll and ordinal dependent entries */
   while ((label_count < e_label_count)) {
     while ((left_count < e_left_count)) {
       if ((ordinal_value <= ordinal_max) && (ordinal_value >= ordinal_min)) {
@@ -106,15 +91,11 @@ ui32 test_helper_estimate_graph_read_btree_entry_count(ui32 e_left_count,
   };
   return ((left_right_count + right_left_count + label_left_count));
 };
-status_t test_helper_display_all_relations(db_txn_t txn,
-  ui32 left_count,
-  ui32 right_count,
-  ui32 label_count) {
+status_t test_helper_display_all_relations(db_txn_t txn, ui32 left_count, ui32 right_count, ui32 label_count) {
   status_declare;
   db_graph_records_t records;
   db_graph_selection_t state;
-  i_array_allocate_db_graph_records_t(
-    (&records), (left_count * right_count * label_count));
+  i_array_allocate_db_graph_records_t((&records), (left_count * right_count * label_count));
   db_status_require_read(db_graph_select(txn, 0, 0, 0, 0, 0, (&state)));
   db_status_require_read(db_graph_read((&state), 0, (&records)));
   printf("all ");
@@ -194,8 +175,7 @@ status_t db_ids_reverse(db_ids_t a, db_ids_t* result) {
 exit:
   return (status);
 };
-/** create a new type with four fields, fixed and variable length, for testing
- */
+/** create a new type with four fields, fixed and variable length, for testing */
 status_t test_helper_create_type_1(db_env_t* env, db_type_t** result) {
   status_declare;
   db_field_t fields[4];
@@ -208,10 +188,7 @@ exit:
   return (status);
 };
 /** create multiple node-values */
-status_t test_helper_create_values_1(db_env_t* env,
-  db_type_t* type,
-  db_node_values_t** result_values,
-  ui32* result_values_len) {
+status_t test_helper_create_values_1(db_env_t* env, db_type_t* type, db_node_values_t** result_values, ui32* result_values_len) {
   status_declare;
   ui8* value_1;
   i8* value_2;
@@ -242,10 +219,7 @@ exit:
   return (status);
 };
 /** creates several nodes with the given values */
-status_t test_helper_create_nodes_1(db_env_t* env,
-  db_node_values_t* values,
-  db_id_t** result_ids,
-  ui32* result_len) {
+status_t test_helper_create_nodes_1(db_env_t* env, db_node_values_t* values, db_id_t** result_ids, ui32* result_len) {
   status_declare;
   db_txn_declare(env, txn);
   db_id_t* ids;
@@ -271,8 +245,7 @@ status_t test_helper_create_ids(db_txn_t txn, ui32 count, db_ids_t* result) {
     status_set_id_goto(db_status_id_memory);
   };
   while (count) {
-    /* use type id zero to have small node ids for testing which are easier to
-     * debug */
+    /* use type id zero to have small node ids for testing which are easier to debug */
     status_require((db_sequence_next((txn.env), 0, (&id))));
     i_array_add(result_temp, id);
     count = (count - 1);
@@ -282,13 +255,10 @@ exit:
   i_array_free(result_temp);
   return (status);
 };
-/** merge ids from two lists into a new list, interleave at half the size of the
-   arrays. result is as long as both id lists combined.
+/** merge ids from two lists into a new list, interleave at half the size of the arrays.
+   result is as long as both id lists combined.
    approximately like this: 1 1 1 1 + 2 2 2 2 -> 1 1 2 1 2 1 2 2 */
-status_t test_helper_interleave_ids(db_txn_t txn,
-  db_ids_t ids_a,
-  db_ids_t ids_b,
-  db_ids_t* result) {
+status_t test_helper_interleave_ids(db_txn_t txn, db_ids_t ids_a, db_ids_t ids_b, db_ids_t* result) {
   status_declare;
   i_array_declare(ids_result, db_ids_t);
   ui32 target_count;
@@ -327,22 +297,11 @@ exit:
   };
   return (status);
 };
-ui32 test_helper_calculate_relation_count(ui32 left_count,
-  ui32 right_count,
-  ui32 label_count) {
-  return ((left_count * right_count * label_count));
-};
-ui32 test_helper_calculate_relation_count_from_ids(db_ids_t left,
-  db_ids_t right,
-  db_ids_t label) {
-  return (test_helper_calculate_relation_count(
-    i_array_length(left), i_array_length(right), i_array_length(label)));
-};
+ui32 test_helper_calculate_relation_count(ui32 left_count, ui32 right_count, ui32 label_count) { return ((left_count * right_count * label_count)); };
+ui32 test_helper_calculate_relation_count_from_ids(db_ids_t left, db_ids_t right, db_ids_t label) { return (test_helper_calculate_relation_count(i_array_length(left), i_array_length(right), i_array_length(label))); };
 /** test if the result records contain all filter-ids,
   and the filter-ids contain all result record values for field "name". */
-status_t test_helper_graph_read_records_validate_one(ui8* name,
-  db_ids_t e_ids,
-  db_graph_records_t records) {
+status_t test_helper_graph_read_records_validate_one(ui8* name, db_ids_t e_ids, db_graph_records_t records) {
   status_declare;
   boolean (*contains_at)(db_graph_records_t, db_id_t);
   db_id_t (*record_get)(db_graph_record_t);
@@ -374,15 +333,11 @@ status_t test_helper_graph_read_records_validate_one(ui8* name,
 exit:
   return (status);
 };
-status_t
-test_helper_graph_read_records_validate(test_helper_graph_read_data_t data) {
+status_t test_helper_graph_read_records_validate(test_helper_graph_read_data_t data) {
   status_declare;
-  status_require((test_helper_graph_read_records_validate_one(
-    "left", (data.e_left), (data.records))));
-  status_require((test_helper_graph_read_records_validate_one(
-    "right", (data.e_right), (data.records))));
-  status_require((test_helper_graph_read_records_validate_one(
-    "label", (data.e_label), (data.records))));
+  status_require((test_helper_graph_read_records_validate_one("left", (data.e_left), (data.records))));
+  status_require((test_helper_graph_read_records_validate_one("right", (data.e_right), (data.records))));
+  status_require((test_helper_graph_read_records_validate_one("label", (data.e_label), (data.records))));
 exit:
   return (status);
 };
@@ -393,28 +348,16 @@ db_ordinal_t test_helper_default_ordinal_generator(void* state) {
   return (result);
 };
 /** create relations with linearly increasing ordinal starting from zero */
-status_t test_helper_create_relations(db_txn_t txn,
-  db_ids_t left,
-  db_ids_t right,
-  db_ids_t label) {
+status_t test_helper_create_relations(db_txn_t txn, db_ids_t left, db_ids_t right, db_ids_t label) {
   status_declare;
   db_ordinal_t ordinal_state_value;
   ordinal_state_value = 0;
-  status_require(db_graph_ensure(txn,
-    left,
-    right,
-    label,
-    test_helper_default_ordinal_generator,
-    (&ordinal_state_value)));
+  status_require(db_graph_ensure(txn, left, right, label, test_helper_default_ordinal_generator, (&ordinal_state_value)));
 exit:
   return (status);
 };
-/** assumes linearly set-plus-oneed ordinal integers starting at 1 and queries
- * for all or no ids */
-ui32 test_helper_estimate_graph_read_result_count(ui32 left_count,
-  ui32 right_count,
-  ui32 label_count,
-  db_ordinal_condition_t* ordinal) {
+/** assumes linearly set-plus-oneed ordinal integers starting at 1 and queries for all or no ids */
+ui32 test_helper_estimate_graph_read_result_count(ui32 left_count, ui32 right_count, ui32 label_count, db_ordinal_condition_t* ordinal) {
   ui32 count = (left_count * right_count * label_count);
   ui32 max;
   ui32 min;
@@ -428,13 +371,7 @@ ui32 test_helper_estimate_graph_read_result_count(ui32 left_count,
   };
   return ((count - min - (count - max)));
 };
-status_t test_helper_graph_read_one(db_txn_t txn,
-  test_helper_graph_read_data_t data,
-  boolean use_left,
-  boolean use_right,
-  boolean use_label,
-  boolean use_ordinal,
-  ui32 offset) {
+status_t test_helper_graph_read_one(db_txn_t txn, test_helper_graph_read_data_t data, boolean use_left, boolean use_right, boolean use_label, boolean use_ordinal, ui32 offset) {
   status_declare;
   db_ids_t* left_pointer;
   db_ids_t* right_pointer;
@@ -455,40 +392,25 @@ status_t test_helper_graph_read_one(db_txn_t txn,
   right_pointer = (use_right ? &(data.right) : 0);
   label_pointer = (use_label ? &(data.label) : 0);
   ordinal = (use_ordinal ? &ordinal_condition : 0);
-  reader_suffix = ((use_left ? 8 : 0) | (use_right ? 4 : 0) |
-    (use_label ? 2 : 0) | (use_ordinal ? 1 : 0));
-  reader_suffix_string =
-    test_helper_reader_suffix_integer_to_string(reader_suffix);
-  expected_count = test_helper_estimate_graph_read_result_count(
-    (data.e_left_count), (data.e_right_count), (data.e_label_count), ordinal);
+  reader_suffix = ((use_left ? 8 : 0) | (use_right ? 4 : 0) | (use_label ? 2 : 0) | (use_ordinal ? 1 : 0));
+  reader_suffix_string = test_helper_reader_suffix_integer_to_string(reader_suffix);
+  expected_count = test_helper_estimate_graph_read_result_count((data.e_left_count), (data.e_right_count), (data.e_label_count), ordinal);
   printf("  %s", reader_suffix_string);
   free(reader_suffix_string);
-  status_require(db_graph_select(txn,
-    left_pointer,
-    right_pointer,
-    label_pointer,
-    ordinal,
-    offset,
-    (&state)));
+  status_require(db_graph_select(txn, left_pointer, right_pointer, label_pointer, ordinal, offset, (&state)));
   db_status_require_read((db_graph_read((&state), 2, (&(data.records)))));
   db_status_require_read((db_graph_read((&state), 0, (&(data.records)))));
   if (status.id == db_status_id_notfound) {
     status.id = status_id_success;
   } else {
-    printf(
-      "\n  final read result does not indicate that there is no more data");
+    printf("\n  final read result does not indicate that there is no more data");
     status_set_id_goto(1);
   };
   if (!(i_array_length((data.records)) == expected_count)) {
-    printf(("\n  expected %lu read %lu. ordinal min %d max %d\n"),
-      expected_count,
-      (i_array_length((data.records))),
-      (ordinal ? ordinal_min : 0),
-      (ordinal ? ordinal_max : 0));
+    printf(("\n  expected %lu read %lu. ordinal min %d max %d\n"), expected_count, (i_array_length((data.records))), (ordinal ? ordinal_min : 0), (ordinal ? ordinal_max : 0));
     printf("read ");
     db_debug_log_graph_records((data.records));
-    test_helper_display_all_relations(
-      txn, (data.e_left_count), (data.e_right_count), (data.e_label_count));
+    test_helper_display_all_relations(txn, (data.e_left_count), (data.e_right_count), (data.e_label_count));
     status_set_id_goto(1);
   };
   if (!ordinal) {
@@ -501,42 +423,29 @@ exit:
   printf("\n");
   return (status);
 };
-/** prepare arrays with ids to be used in the graph (e, existing) and ids unused
-  in the graph
+/** prepare arrays with ids to be used in the graph (e, existing) and ids unused in the graph
   (ne, non-existing) and with both partly interleaved (left, right, label) */
-status_t test_helper_graph_read_setup(db_env_t* env,
-  ui32 e_left_count,
-  ui32 e_right_count,
-  ui32 e_label_count,
-  test_helper_graph_read_data_t* r) {
+status_t test_helper_graph_read_setup(db_env_t* env, ui32 e_left_count, ui32 e_right_count, ui32 e_label_count, test_helper_graph_read_data_t* r) {
   status_declare;
   db_txn_declare(env, txn);
   i_array_declare(ne_left, db_ids_t);
   i_array_declare(ne_right, db_ids_t);
   i_array_declare(ne_label, db_ids_t);
-  if (!(i_array_allocate_db_graph_records_t(
-          (&(r->records)), (e_left_count * e_right_count * e_label_count)) &&
-        i_array_allocate_db_ids_t((&(r->e_left)), e_left_count) &&
-        i_array_allocate_db_ids_t((&(r->e_right)), e_right_count) &&
-        i_array_allocate_db_ids_t((&(r->e_label)), e_label_count))) {
+  if (!(i_array_allocate_db_graph_records_t((&(r->records)), (e_left_count * e_right_count * e_label_count)) && i_array_allocate_db_ids_t((&(r->e_left)), e_left_count) && i_array_allocate_db_ids_t((&(r->e_right)), e_right_count) && i_array_allocate_db_ids_t((&(r->e_label)), e_label_count))) {
     status_set_id_goto(db_status_id_memory);
   };
   status_require(db_txn_write_begin((&txn)));
   test_helper_create_ids(txn, e_left_count, (&(r->e_left)));
   test_helper_create_ids(txn, e_right_count, (&(r->e_right)));
   test_helper_create_ids(txn, e_label_count, (&(r->e_label)));
-  status_require((test_helper_create_relations(
-    txn, (r->e_left), (r->e_right), (r->e_label))));
+  status_require((test_helper_create_relations(txn, (r->e_left), (r->e_right), (r->e_label))));
   /* add ids that do not exist in the graph */
   test_helper_create_ids(txn, e_left_count, (&ne_left));
   test_helper_create_ids(txn, e_right_count, (&ne_right));
   test_helper_create_ids(txn, e_label_count, (&ne_label));
-  status_require(
-    (test_helper_interleave_ids(txn, (r->e_left), ne_left, (&(r->left)))));
-  status_require(
-    (test_helper_interleave_ids(txn, (r->e_right), ne_right, (&(r->right)))));
-  status_require(
-    (test_helper_interleave_ids(txn, (r->e_label), ne_label, (&(r->label)))));
+  status_require((test_helper_interleave_ids(txn, (r->e_left), ne_left, (&(r->left)))));
+  status_require((test_helper_interleave_ids(txn, (r->e_right), ne_right, (&(r->right)))));
+  status_require((test_helper_interleave_ids(txn, (r->e_label), ne_label, (&(r->label)))));
   status_require(db_txn_commit((&txn)));
   r->e_left_count = e_left_count;
   r->e_right_count = e_right_count;
@@ -556,11 +465,7 @@ void test_helper_graph_read_teardown(test_helper_graph_read_data_t* data) {
   i_array_free((data->right));
   i_array_free((data->label));
 };
-status_t test_helper_graph_delete_setup(db_env_t* env,
-  ui32 e_left_count,
-  ui32 e_right_count,
-  ui32 e_label_count,
-  test_helper_graph_delete_data_t* r) {
+status_t test_helper_graph_delete_setup(db_env_t* env, ui32 e_left_count, ui32 e_right_count, ui32 e_label_count, test_helper_graph_delete_data_t* r) {
   status_declare;
   r->env = env;
   r->e_left_count = e_left_count;
@@ -568,15 +473,8 @@ status_t test_helper_graph_delete_setup(db_env_t* env,
   r->e_label_count = e_label_count;
   return (status);
 };
-status_t test_helper_graph_delete_one(test_helper_graph_delete_data_t data,
-  boolean use_left,
-  boolean use_right,
-  boolean use_label,
-  boolean use_ordinal) {
-  "for any given argument permutation:\n     * checks btree entry count "
-  "difference\n     * checks read result count after deletion, using the same "
-  "search query\n    relations are assumed to be created with linearly "
-  "incremented ordinals starting with 1";
+status_t test_helper_graph_delete_one(test_helper_graph_delete_data_t data, boolean use_left, boolean use_right, boolean use_label, boolean use_ordinal) {
+  "for any given argument permutation:\n     * checks btree entry count difference\n     * checks read result count after deletion, using the same search query\n    relations are assumed to be created with linearly incremented ordinals starting with 1";
   status_declare;
   db_txn_declare((data.env), txn);
   i_array_declare(left, db_ids_t);
@@ -592,16 +490,12 @@ status_t test_helper_graph_delete_one(test_helper_graph_delete_data_t data,
   db_ordinal_condition_t ordinal_condition = { 2, 5 };
   printf("  %d%d%d%d", use_left, use_right, use_label, use_ordinal);
   ordinal = &ordinal_condition;
-  read_count_before_expected = test_helper_estimate_graph_read_result_count(
-    (data.e_left_count), (data.e_right_count), (data.e_label_count), ordinal);
-  btree_count_deleted_expected =
-    test_helper_estimate_graph_read_btree_entry_count(
-      (data.e_left_count), (data.e_right_count), (data.e_label_count), ordinal);
+  read_count_before_expected = test_helper_estimate_graph_read_result_count((data.e_left_count), (data.e_right_count), (data.e_label_count), ordinal);
+  btree_count_deleted_expected = test_helper_estimate_graph_read_btree_entry_count((data.e_left_count), (data.e_right_count), (data.e_label_count), ordinal);
   i_array_allocate_db_ids_t((&left), (data.e_left_count));
   i_array_allocate_db_ids_t((&right), (data.e_right_count));
   i_array_allocate_db_ids_t((&label), (data.e_label_count));
-  i_array_allocate_db_graph_records_t(
-    (&records), (data.e_left_count * data.e_right_count * data.e_label_count));
+  i_array_allocate_db_graph_records_t((&records), (data.e_left_count * data.e_right_count * data.e_label_count));
   status_require(db_txn_write_begin((&txn)));
   test_helper_create_ids(txn, (data.e_left_count), (&left));
   test_helper_create_ids(txn, (data.e_right_count), (&right));
@@ -611,38 +505,24 @@ status_t test_helper_graph_delete_one(test_helper_graph_delete_data_t data,
   status_require(db_txn_commit((&txn)));
   status_require(db_txn_write_begin((&txn)));
   /* delete */
-  status_require(db_graph_delete(txn,
-    (use_left ? &left : 0),
-    (use_right ? &right : 0),
-    (use_label ? &label : 0),
-    (use_ordinal ? ordinal : 0)));
+  status_require(db_graph_delete(txn, (use_left ? &left : 0), (use_right ? &right : 0), (use_label ? &label : 0), (use_ordinal ? ordinal : 0)));
   status_require(db_txn_commit((&txn)));
   status_require(db_txn_begin((&txn)));
   db_debug_count_all_btree_entries(txn, (&btree_count_after_delete));
-  db_status_require_read(db_graph_select(txn,
-    (use_left ? &left : 0),
-    (use_right ? &right : 0),
-    (use_label ? &label : 0),
-    (use_ordinal ? ordinal : 0),
-    0,
-    (&state)));
+  db_status_require_read(db_graph_select(txn, (use_left ? &left : 0), (use_right ? &right : 0), (use_label ? &label : 0), (use_ordinal ? ordinal : 0), 0, (&state)));
   /* check that readers can handle empty selections */
   db_status_require_read(db_graph_read((&state), 0, (&records)));
   db_graph_selection_destroy((&state));
   db_txn_abort((&txn));
   if (!(0 == i_array_length(records))) {
-    printf(("\n    failed deletion. %lu relations not deleted\n"),
-      i_array_length(records));
+    printf(("\n    failed deletion. %lu relations not deleted\n"), i_array_length(records));
     db_debug_log_graph_records(records);
     status_set_id_goto(1);
   };
   i_array_clear(records);
-  /* test only if not using ordinal condition because the expected counts arent
-   * estimated */
-  if (!(use_ordinal ||
-        (btree_count_after_delete == btree_count_before_create))) {
-    printf(("\n failed deletion. %lu btree entries not deleted\n"),
-      (btree_count_after_delete - btree_count_before_create));
+  /* test only if not using ordinal condition because the expected counts arent estimated */
+  if (!(use_ordinal || (btree_count_after_delete == btree_count_before_create))) {
+    printf(("\n failed deletion. %lu btree entries not deleted\n"), (btree_count_after_delete - btree_count_before_create));
     status_require(db_txn_begin((&txn)));
     db_debug_log_btree_counts(txn);
     db_status_require_read(db_graph_select(txn, 0, 0, 0, 0, 0, (&state)));

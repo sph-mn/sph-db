@@ -1,7 +1,6 @@
-/** convert a node-values array to the data format that is used as btree value
-  for nodes. unset trailing fields are not included */
-status_t
-db_node_values_to_data(db_node_values_t values, db_node_data_t* result) {
+/** convert a node-values array to the data format that is used as btree value for nodes.
+  unset trailing fields are not included */
+status_t db_node_values_to_data(db_node_values_t values, db_node_data_t* result) {
   status_declare;
   void* data;
   ui8* data_temp;
@@ -57,25 +56,19 @@ exit:
 };
 /** set a value for a field in node values.
   size is ignored for fixed length types */
-void db_node_values_set(db_node_values_t* values,
-  db_fields_len_t field,
-  void* data,
-  size_t size) {
+void db_node_values_set(db_node_values_t* values, db_fields_len_t field, void* data, size_t size) {
   db_field_type_t field_type;
   db_node_values_t values_temp;
   values_temp = *values;
   field_type = (((values_temp.type)->fields)[field]).type;
   ((values_temp.data)[field]).data = data;
-  ((values_temp.data)[field]).size =
-    (db_field_type_is_fixed(field_type) ? db_field_type_size(field_type)
-                                        : size);
+  ((values_temp.data)[field]).size = (db_field_type_is_fixed(field_type) ? db_field_type_size(field_type) : size);
   if (!values_temp.last || (field > values_temp.last)) {
     values_temp.last = field;
   };
   *values = values_temp;
 };
-status_t
-db_node_create(db_txn_t txn, db_node_values_t values, db_id_t* result) {
+status_t db_node_create(db_txn_t txn, db_node_values_t values, db_id_t* result) {
   status_declare;
   db_mdb_declare_val_id;
   db_mdb_cursor_declare(nodes);
@@ -101,8 +94,7 @@ exit:
 };
 /** from the full btree value a node (all fields), return a reference
   to the data for specific field and the size */
-db_node_data_t
-db_node_data_ref(db_type_t* type, db_node_data_t data, db_fields_len_t field) {
+db_node_data_t db_node_data_ref(db_type_t* type, db_node_data_t data, db_fields_len_t field) {
   ui8* data_temp;
   ui8* end;
   db_fields_len_t i;
@@ -122,9 +114,7 @@ db_node_data_ref(db_type_t* type, db_node_data_t data, db_fields_len_t field) {
     return (result);
   } else {
     /* variable length field */
-    offset = (type->fields_fixed_count
-        ? (type->fields_fixed_offsets)[type->fields_fixed_count]
-        : 0);
+    offset = (type->fields_fixed_count ? (type->fields_fixed_offsets)[type->fields_fixed_count] : 0);
     if (offset < data.size) {
       data_temp = (offset + ((ui8*)(data.data)));
       end = (data.size + ((ui8*)(data.data)));
@@ -148,15 +138,9 @@ db_node_data_ref(db_type_t* type, db_node_data_t data, db_fields_len_t field) {
   };
 };
 /** return a reference to the data for a field without copying */
-db_node_data_t db_node_ref(db_node_selection_t* state, db_fields_len_t field) {
-  return ((db_node_data_ref((state->type), (state->current), field)));
-};
-void db_free_node_values(db_node_values_t* values) {
-  free_and_set_null((values->data));
-};
-status_t db_node_data_to_values(db_type_t* type,
-  db_node_data_t data,
-  db_node_values_t* result) {
+db_node_data_t db_node_ref(db_node_selection_t* state, db_fields_len_t field) { return ((db_node_data_ref((state->type), (state->current), field))); };
+void db_free_node_values(db_node_values_t* values) { free_and_set_null((values->data)); };
+status_t db_node_data_to_values(db_type_t* type, db_node_data_t data, db_node_values_t* result) {
   status_declare;
   db_node_data_t field_data;
   db_fields_len_t fields_len;
@@ -200,8 +184,7 @@ status_t db_node_next(db_node_selection_t* state) {
     /* filter by ids */
     while ((i_array_in_range(ids) && count)) {
       val_id.mv_data = ids.current;
-      status.id =
-        mdb_cursor_get((state->cursor), (&val_id), (&val_data), MDB_SET_KEY);
+      status.id = mdb_cursor_get((state->cursor), (&val_id), (&val_data), MDB_SET_KEY);
       if (db_mdb_status_is_success) {
         if (matcher) {
           node_data.data = val_data.mv_data;
@@ -229,15 +212,12 @@ status_t db_node_next(db_node_selection_t* state) {
   } else {
     /* filter by type */
     type_id = state->type->id;
-    db_mdb_status_require((mdb_cursor_get(
-      (state->cursor), (&val_id), (&val_data), MDB_GET_CURRENT)));
-    while ((db_mdb_status_is_success && count &&
-      (type_id == db_id_type((db_pointer_to_id((val_id.mv_data))))))) {
+    db_mdb_status_require((mdb_cursor_get((state->cursor), (&val_id), (&val_data), MDB_GET_CURRENT)));
+    while ((db_mdb_status_is_success && count && (type_id == db_id_type((db_pointer_to_id((val_id.mv_data))))))) {
       if (matcher) {
         node_data.data = val_data.mv_data;
         node_data.size = val_data.mv_size;
-        match = matcher(
-          (db_pointer_to_id((val_id.mv_data))), node_data, matcher_state);
+        match = matcher((db_pointer_to_id((val_id.mv_data))), node_data, matcher_state);
       } else {
         match = 1;
       };
@@ -249,8 +229,7 @@ status_t db_node_next(db_node_selection_t* state) {
         };
         count = (count - 1);
       };
-      status.id =
-        mdb_cursor_get((state->cursor), (&val_id), (&val_data), MDB_NEXT_NODUP);
+      status.id = mdb_cursor_get((state->cursor), (&val_id), (&val_data), MDB_NEXT_NODUP);
     };
   };
 exit:
@@ -271,16 +250,9 @@ status_t db_node_skip(db_node_selection_t* state, db_count_t count) {
   ids: zero if unused
   type: zero if unused
   offset: skip this number of matches first
-  matcher: zero if unused. a function that is called for each node after
-  filtering by ids or type matcher-state: zero if unused. a pointer passed to
-  each call of matcher */
-status_t db_node_select(db_txn_t txn,
-  db_ids_t* ids,
-  db_type_t* type,
-  db_count_t offset,
-  db_node_matcher_t matcher,
-  void* matcher_state,
-  db_node_selection_t* result_state) {
+  matcher: zero if unused. a function that is called for each node after filtering by ids or type
+  matcher-state: zero if unused. a pointer passed to each call of matcher */
+status_t db_node_select(db_txn_t txn, db_ids_t* ids, db_type_t* type, db_count_t offset, db_node_matcher_t matcher, void* matcher_state, db_node_selection_t* result_state) {
   status_declare;
   db_mdb_declare_val_id;
   db_mdb_declare_val_null;
@@ -289,15 +261,13 @@ status_t db_node_select(db_txn_t txn,
   db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
   /* if ids filter set just check if database is empty */
   if (ids) {
-    db_mdb_status_require(
-      mdb_cursor_get(nodes, (&val_null), (&val_null), MDB_FIRST));
+    db_mdb_status_require(mdb_cursor_get(nodes, (&val_null), (&val_null), MDB_FIRST));
     result_state->ids = *ids;
   } else {
     id = db_id_add_type(0, (type->id));
     val_id.mv_data = &id;
     i_array_set_null((result_state->ids));
-    db_mdb_status_require(
-      mdb_cursor_get(nodes, (&val_id), (&val_null), MDB_SET_RANGE));
+    db_mdb_status_require(mdb_cursor_get(nodes, (&val_id), (&val_null), MDB_SET_RANGE));
     if (!(type->id == db_id_type((db_pointer_to_id((val_id.mv_data)))))) {
       status_set_id_goto(db_status_id_notfound);
     };
@@ -320,8 +290,7 @@ exit:
   return (status);
 };
 /** used in node-get and node-index-get */
-status_t
-db_node_get_internal(MDB_cursor* nodes, db_id_t id, db_node_data_t* result) {
+status_t db_node_get_internal(MDB_cursor* nodes, db_id_t id, db_node_data_t* result) {
   status_declare;
   db_mdb_declare_val_id;
   MDB_val val_data;
@@ -352,13 +321,7 @@ exit:
   return (status);
 };
 /** declare because it is defined later */
-status_t db_graph_internal_delete(db_ids_t* left,
-  db_ids_t* right,
-  db_ids_t* label,
-  db_ordinal_condition_t* ordinal,
-  MDB_cursor* graph_lr,
-  MDB_cursor* graph_rl,
-  MDB_cursor* graph_ll);
+status_t db_graph_internal_delete(db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal, MDB_cursor* graph_lr, MDB_cursor* graph_rl, MDB_cursor* graph_ll);
 /** delete a node and all its relations */
 status_t db_node_delete(db_txn_t txn, db_ids_t* ids_pointer) {
   status_declare;
@@ -373,20 +336,17 @@ status_t db_node_delete(db_txn_t txn, db_ids_t* ids_pointer) {
   db_mdb_cursor_declare(graph_lr);
   db_mdb_cursor_declare(graph_rl);
   db_mdb_cursor_declare(graph_ll);
-  /* first delete references. return if ids-pointer is zero because in
-   * db-graph-internal-delete it would mean non-filter and match all. */
+  /* first delete references.
+return if ids-pointer is zero because in db-graph-internal-delete it would mean non-filter and match all. */
   if (!ids_pointer) {
     return (status);
   };
   db_mdb_status_require(db_mdb_env_cursor_open(txn, graph_lr));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, graph_rl));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, graph_ll));
-  status_require(db_graph_internal_delete(
-    ids_pointer, 0, 0, 0, graph_lr, graph_rl, graph_ll));
-  status_require(db_graph_internal_delete(
-    0, ids_pointer, 0, 0, graph_lr, graph_rl, graph_ll));
-  status_require(db_graph_internal_delete(
-    0, 0, ids_pointer, 0, graph_lr, graph_rl, graph_ll));
+  status_require(db_graph_internal_delete(ids_pointer, 0, 0, 0, graph_lr, graph_rl, graph_ll));
+  status_require(db_graph_internal_delete(0, ids_pointer, 0, 0, graph_lr, graph_rl, graph_ll));
+  status_require(db_graph_internal_delete(0, 0, ids_pointer, 0, graph_lr, graph_rl, graph_ll));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
   /* delete node and index btree entries */
   while (i_array_in_range(ids)) {
@@ -396,8 +356,7 @@ status_t db_node_delete(db_txn_t txn, db_ids_t* ids_pointer) {
       id = i_array_get(ids);
       node_data.data = val_data.mv_data;
       node_data.size = val_data.mv_size;
-      status_require((db_node_data_to_values(
-        (db_type_get_by_id((txn.env), db_id_type(id))), node_data, (&values))));
+      status_require((db_node_data_to_values((db_type_get_by_id((txn.env), db_id_type(id))), node_data, (&values))));
       status_require(db_indices_entry_delete(txn, values, id));
       db_mdb_status_require(mdb_cursor_del(nodes, 0));
     } else {
@@ -416,11 +375,8 @@ exit:
   db_mdb_cursor_close_if_active(nodes);
   return (status);
 };
-void db_node_selection_destroy(db_node_selection_t* a) {
-  db_mdb_cursor_close_if_active((a->cursor));
-};
-/** update node data. like node-delete followed by node-create but keeps the old
- * id */
+void db_node_selection_destroy(db_node_selection_t* a) { db_mdb_cursor_close_if_active((a->cursor)); };
+/** update node data. like node-delete followed by node-create but keeps the old id */
 status_t db_node_update(db_txn_t txn, db_id_t id, db_node_values_t values) {
   status_declare;
   db_mdb_declare_val_id;
@@ -471,9 +427,7 @@ exit:
 status_t db_node_index_next(db_node_index_selection_t selection) {
   status_declare;
   status_require((db_index_next((selection.index_selection))));
-  status_require((db_node_get_internal((selection.nodes),
-    (selection.index_selection.current),
-    (&(selection.current)))));
+  status_require((db_node_get_internal((selection.nodes), (selection.index_selection.current), (&(selection.current)))));
   selection.current_id = selection.index_selection.current;
 exit:
   return (status);
@@ -482,10 +436,7 @@ void db_node_index_selection_destroy(db_node_index_selection_t* selection) {
   db_index_selection_destroy((&(selection->index_selection)));
   db_mdb_cursor_close_if_active((selection->nodes));
 };
-status_t db_node_index_select(db_txn_t txn,
-  db_index_t index,
-  db_node_values_t values,
-  db_node_index_selection_t* result) {
+status_t db_node_index_select(db_txn_t txn, db_index_t index, db_node_values_t values, db_node_index_selection_t* result) {
   status_declare;
   db_mdb_cursor_declare(nodes);
   db_index_selection_t index_selection;

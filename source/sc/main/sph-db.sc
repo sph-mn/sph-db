@@ -1,6 +1,6 @@
 (sc-comment "this file is for declarations and macros needed to use sph-db as a shared library")
 (pre-include "math.h" "pthread.h" "lmdb.h")
-(sc-include "foreign/sph" "main/lib/status" "main/lib/i-array" "main/config")
+(sc-include "foreign/sph" "foreign/sph/i-array" "main/lib/status"  "main/config")
 
 (pre-define-if-not-defined
   db-id-t ui64
@@ -64,7 +64,12 @@
   (db-txn-abort-if-active a) (if a.mdb-txn (db-txn-abort &a))
   (db-txn-is-active a)
   (if* a.mdb-txn #t
-    #f))
+    #f)
+  (db-field-set a a-type a-name a-name-len)
+  (set
+    a.type a-type
+    a.name a-name
+    a.name-len a-name-len))
 
 (declare db-graph-record-t
   (type

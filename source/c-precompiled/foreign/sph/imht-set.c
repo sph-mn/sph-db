@@ -9,91 +9,7 @@
 #ifndef imht_set_size_factor
 #define imht_set_size_factor 2
 #endif
-uint16_t imht_set_primes[] = { 0,
-  3,
-  7,
-  13,
-  19,
-  29,
-  37,
-  43,
-  53,
-  61,
-  71,
-  79,
-  89,
-  101,
-  107,
-  113,
-  131,
-  139,
-  151,
-  163,
-  173,
-  181,
-  193,
-  199,
-  223,
-  229,
-  239,
-  251,
-  263,
-  271,
-  281,
-  293,
-  311,
-  317,
-  337,
-  349,
-  359,
-  373,
-  383,
-  397,
-  409,
-  421,
-  433,
-  443,
-  457,
-  463,
-  479,
-  491,
-  503,
-  521,
-  541,
-  557,
-  569,
-  577,
-  593,
-  601,
-  613,
-  619,
-  641,
-  647,
-  659,
-  673,
-  683,
-  701,
-  719,
-  733,
-  743,
-  757,
-  769,
-  787,
-  809,
-  821,
-  827,
-  839,
-  857,
-  863,
-  881,
-  887,
-  911,
-  929,
-  941,
-  953,
-  971,
-  983,
-  997 };
+uint16_t imht_set_primes[] = { 0, 3, 7, 13, 19, 29, 37, 43, 53, 61, 71, 79, 89, 101, 107, 113, 131, 139, 151, 163, 173, 181, 193, 199, 223, 229, 239, 251, 263, 271, 281, 293, 311, 317, 337, 349, 359, 373, 383, 397, 409, 421, 433, 443, 457, 463, 479, 491, 503, 521, 541, 557, 569, 577, 593, 601, 613, 619, 641, 647, 659, 673, 683, 701, 719, 733, 743, 757, 769, 787, 809, 821, 827, 839, 857, 863, 881, 887, 911, 929, 941, 953, 971, 983, 997 };
 uint16_t* imht_set_primes_end = (imht_set_primes + 83);
 typedef struct {
   size_t size;
@@ -131,15 +47,13 @@ void imht_set_destroy(imht_set_t* a) {
   };
 };
 #if imht_set_can_contain_zero
-#define imht_set_hash(value, hash_table) \
-  (value ? (1 + (value % (hash_table.size - 1))) : 0)
+#define imht_set_hash(value, hash_table) (value ? (1 + (value % (hash_table.size - 1))) : 0)
 #else
 #define imht_set_hash(value, hash_table) (value % hash_table.size)
 #endif
 /** returns the address of the element in the set, 0 if it was not found.
   caveat: if imht-set-can-contain-zero is defined, which is the default,
-  pointer-geterencing a returned address for the found value 0 will return 1
-  instead */
+  pointer-geterencing a returned address for the found value 0 will return 1 instead */
 imht_set_key_t* imht_set_find(imht_set_t* a, imht_set_key_t value) {
   imht_set_key_t* h = (a->content + imht_set_hash(value, (*a)));
   if (*h) {
@@ -196,8 +110,7 @@ uint8_t imht_set_remove(imht_set_t* a, imht_set_key_t value) {
     return (0);
   };
 };
-/** returns the address of the added or already included element, 0 if there is
- * no space left in the set */
+/** returns the address of the added or already included element, 0 if there is no space left in the set */
 imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
   imht_set_key_t* h = (a->content + imht_set_hash(value, (*a)));
   if (*h) {

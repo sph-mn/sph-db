@@ -1,7 +1,6 @@
 /* a linked list with custom element types.
-   this file can be included multiple times to create differently typed
-   versions, depending the value of the preprocessor variables
-   mi-list-name-infix and mi-list-element-t before inclusion */
+   this file can be included multiple times to create differently typed versions,
+   depending the value of the preprocessor variables mi-list-name-infix and mi-list-element-t before inclusion */
 #include <stdlib.h>
 #include <inttypes.h>
 #ifndef mi_list_name_prefix
@@ -10,8 +9,7 @@
 #ifndef mi_list_element_t
 #define mi_list_element_t uint64_t
 #endif
-/* there does not seem to be a simpler way for identifier concatenation in c in
- * this case */
+/* there does not seem to be a simpler way for identifier concatenation in c in this case */
 #ifndef mi_list_name_concat
 #define mi_list_name_concat(a, b) a##_##b
 #define mi_list_name_concatenator(a, b) mi_list_name_concat(a, b)
@@ -33,8 +31,7 @@ mi_list_t* mi_list_name(drop)(mi_list_t* a) {
   free(a);
   return (a_next);
 };
-/** it would be nice to set the pointer to zero, but that would require more
- * indirection with a pointer-pointer */
+/** it would be nice to set the pointer to zero, but that would require more indirection with a pointer-pointer */
 void mi_list_name(destroy)(mi_list_t* a) {
   mi_list_t* a_next = 0;
   while (a) {

@@ -12,91 +12,7 @@
 #ifndef imht_set_size_factor
 #define imht_set_size_factor 2
 #endif
-uint16_t imht_set_primes[] = { 0,
-  3,
-  7,
-  13,
-  19,
-  29,
-  37,
-  43,
-  53,
-  61,
-  71,
-  79,
-  89,
-  101,
-  107,
-  113,
-  131,
-  139,
-  151,
-  163,
-  173,
-  181,
-  193,
-  199,
-  223,
-  229,
-  239,
-  251,
-  263,
-  271,
-  281,
-  293,
-  311,
-  317,
-  337,
-  349,
-  359,
-  373,
-  383,
-  397,
-  409,
-  421,
-  433,
-  443,
-  457,
-  463,
-  479,
-  491,
-  503,
-  521,
-  541,
-  557,
-  569,
-  577,
-  593,
-  601,
-  613,
-  619,
-  641,
-  647,
-  659,
-  673,
-  683,
-  701,
-  719,
-  733,
-  743,
-  757,
-  769,
-  787,
-  809,
-  821,
-  827,
-  839,
-  857,
-  863,
-  881,
-  887,
-  911,
-  929,
-  941,
-  953,
-  971,
-  983,
-  997 };
+uint16_t imht_set_primes[] = { 0, 3, 7, 13, 19, 29, 37, 43, 53, 61, 71, 79, 89, 101, 107, 113, 131, 139, 151, 163, 173, 181, 193, 199, 223, 229, 239, 251, 263, 271, 281, 293, 311, 317, 337, 349, 359, 373, 383, 397, 409, 421, 433, 443, 457, 463, 479, 491, 503, 521, 541, 557, 569, 577, 593, 601, 613, 619, 641, 647, 659, 673, 683, 701, 719, 733, 743, 757, 769, 787, 809, 821, 827, 839, 857, 863, 881, 887, 911, 929, 941, 953, 971, 983, 997 };
 uint16_t* imht_set_primes_end = (imht_set_primes + 83);
 typedef struct {
   size_t size;
@@ -134,15 +50,13 @@ void imht_set_destroy(imht_set_t* a) {
   };
 };
 #if imht_set_can_contain_zero
-#define imht_set_hash(value, hash_table) \
-  (value ? (1 + (value % (hash_table.size - 1))) : 0)
+#define imht_set_hash(value, hash_table) (value ? (1 + (value % (hash_table.size - 1))) : 0)
 #else
 #define imht_set_hash(value, hash_table) (value % hash_table.size)
 #endif
 /** returns the address of the element in the set, 0 if it was not found.
   caveat: if imht-set-can-contain-zero is defined, which is the default,
-  pointer-geterencing a returned address for the found value 0 will return 1
-  instead */
+  pointer-geterencing a returned address for the found value 0 will return 1 instead */
 imht_set_key_t* imht_set_find(imht_set_t* a, imht_set_key_t value) {
   imht_set_key_t* h = (a->content + imht_set_hash(value, (*a)));
   if (*h) {
@@ -199,8 +113,7 @@ uint8_t imht_set_remove(imht_set_t* a, imht_set_key_t value) {
     return (0);
   };
 };
-/** returns the address of the added or already included element, 0 if there is
- * no space left in the set */
+/** returns the address of the added or already included element, 0 if there is no space left in the set */
 imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
   imht_set_key_t* h = (a->content + imht_set_hash(value, (*a)));
   if (*h) {
@@ -254,8 +167,7 @@ imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
 #define db_selection_flag_skip 1
 #define db_graph_selection_flag_is_set_left 2
 #define db_graph_selection_flag_is_set_right 4
-#define db_id_type_mask \
-  (((db_id_t)(db_type_id_mask)) << (8 * db_size_element_id))
+#define db_id_type_mask (((db_id_t)(db_type_id_mask)) << (8 * db_size_element_id))
 #define db_id_element_mask ~db_id_type_mask
 #define db_type_id_limit db_type_id_mask
 #define db_element_id_limit db_id_element_mask
@@ -266,8 +178,7 @@ imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
 #define db_pointer_to_id(a) *((db_id_t*)(a))
 #define db_field_type_is_fixed(a) !(1 & a)
 #define db_system_key_label(a) *((ui8*)(a))
-#define db_system_key_id(a) \
-  *((db_type_id_t*)((db_size_system_label + ((ui8*)(a)))))
+#define db_system_key_id(a) *((db_type_id_t*)((db_size_system_label + ((ui8*)(a)))))
 #define db_status_memory_error_if_null(variable) \
   if (!variable) { \
     status_set_both_goto(db_status_group_db, db_status_id_memory); \
@@ -298,17 +209,7 @@ void db_debug_log_ids_set(imht_set_t a);
 void db_debug_log_graph_records(db_graph_records_t records);
 status_t db_debug_log_btree_counts(db_txn_t txn);
 status_t db_debug_count_all_btree_entries(db_txn_t txn, db_count_t* result);
-status_t db_index_key(db_env_t* env,
-  db_index_t index,
-  db_node_values_t values,
-  void** result_data,
-  size_t* result_size);
-status_t
-db_indices_entry_ensure(db_txn_t txn, db_node_values_t values, db_id_t id);
-status_t db_index_name(db_type_id_t type_id,
-  db_fields_len_t* fields,
-  db_fields_len_t fields_len,
-  ui8** result,
-  size_t* result_size);
-status_t
-db_indices_entry_delete(db_txn_t txn, db_node_values_t values, db_id_t id);
+status_t db_index_key(db_env_t* env, db_index_t index, db_node_values_t values, void** result_data, size_t* result_size);
+status_t db_indices_entry_ensure(db_txn_t txn, db_node_values_t values, db_id_t id);
+status_t db_index_name(db_type_id_t type_id, db_fields_len_t* fields, db_fields_len_t fields_len, ui8** result, size_t* result_size);
+status_t db_indices_entry_delete(db_txn_t txn, db_node_values_t values, db_id_t id);

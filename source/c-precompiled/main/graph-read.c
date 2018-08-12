@@ -1,9 +1,7 @@
-#define notfound_exit \
-  status_set_both_goto(db_status_group_db, db_status_id_notfound)
+#define notfound_exit status_set_both_goto(db_status_group_db, db_status_id_notfound)
 #define db_graph_select_cursor_initialise(name, state, state_field_name) \
   db_mdb_status_require(db_mdb_env_cursor_open(txn, name)); \
-  db_mdb_status_require( \
-    mdb_cursor_get(name, (&val_null), (&val_null), MDB_FIRST)); \
+  db_mdb_status_require(mdb_cursor_get(name, (&val_null), (&val_null), MDB_FIRST)); \
   if (!db_mdb_status_is_success) { \
     db_mdb_status_expect_notfound; \
     status_set_both_goto(db_status_group_db, db_status_id_notfound); \
@@ -25,30 +23,24 @@
 #define db_graph_reader_define_ordinal_variables(state) \
   db_ordinal_t ordinal_min = state->ordinal->min; \
   db_ordinal_t ordinal_max = state->ordinal->max
-status_t db_graph_read_1000(db_graph_selection_t* state,
-  db_count_t count,
-  db_graph_records_t* result) {
+status_t db_graph_read_1000(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
   db_graph_reader_header(state);
   db_mdb_declare_val_graph_data;
   MDB_cursor* graph_lr;
   db_ids_t left;
   graph_lr = state->cursor;
   left = state->left;
-  db_mdb_status_require(mdb_cursor_get(
-    graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
+  db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
   graph_key[0] = i_array_get(left);
-  if (db_id_equal(
-        (db_pointer_to_id((val_graph_key.mv_data))), (graph_key[0]))) {
+  if (db_id_equal((db_pointer_to_id((val_graph_key.mv_data))), (graph_key[0]))) {
     goto each_data;
   } else {
   set_range:
     val_graph_key.mv_data = graph_key;
-    status.id = mdb_cursor_get(
-      graph_lr, (&val_graph_key), (&val_graph_data), MDB_SET_RANGE);
+    status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_SET_RANGE);
   each_key:
     if (db_mdb_status_is_success) {
-      if (db_id_equal(
-            (db_pointer_to_id((val_graph_key.mv_data))), (graph_key[0]))) {
+      if (db_id_equal((db_pointer_to_id((val_graph_key.mv_data))), (graph_key[0]))) {
         goto each_data;
       };
     } else {
@@ -72,24 +64,20 @@ each_data:
     i_array_add((*result), record);
   };
   reduce_count;
-  status.id =
-    mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_DUP);
+  status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_DUP);
   if (db_mdb_status_is_success) {
     goto each_data;
   } else {
     db_mdb_status_expect_notfound;
   };
-  status.id = mdb_cursor_get(
-    graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_NODUP);
+  status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_NODUP);
   goto each_key;
 exit:
   state->left.current = left.current;
   state->status = status;
   return (status);
 };
-status_t db_graph_read_1010(db_graph_selection_t* state,
-  db_count_t count,
-  db_graph_records_t* result) {
+status_t db_graph_read_1010(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
   db_graph_reader_header(state);
   db_mdb_declare_val_graph_data;
   MDB_cursor* graph_lr;
@@ -98,8 +86,7 @@ status_t db_graph_read_1010(db_graph_selection_t* state,
   graph_lr = state->cursor;
   left = state->left;
   label = state->label;
-  db_mdb_status_require(mdb_cursor_get(
-    graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
+  db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
   graph_key[0] = i_array_get(left);
   graph_key[1] = i_array_get(label);
   if (db_graph_key_equal(graph_key, db_mdb_val_to_graph_key(val_graph_key))) {
@@ -107,8 +94,7 @@ status_t db_graph_read_1010(db_graph_selection_t* state,
   } else {
   set_key:
     val_graph_key.mv_data = graph_key;
-    status.id = mdb_cursor_get(
-      graph_lr, (&val_graph_key), (&val_graph_data), MDB_SET_KEY);
+    status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_SET_KEY);
     if (db_mdb_status_is_success) {
       goto each_data;
     } else {
@@ -141,8 +127,7 @@ each_data:
     i_array_add((*result), record);
   };
   reduce_count;
-  status.id =
-    mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_DUP);
+  status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_DUP);
   if (db_mdb_status_is_success) {
     goto each_data;
   } else {
@@ -154,9 +139,7 @@ exit:
   state->status = status;
   return (status);
 };
-status_t db_graph_read_1100(db_graph_selection_t* state,
-  db_count_t count,
-  db_graph_records_t* result) {
+status_t db_graph_read_1100(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
   db_mdb_declare_val_id;
   db_graph_reader_header(state);
   MDB_cursor* graph_rl;
@@ -165,21 +148,17 @@ status_t db_graph_read_1100(db_graph_selection_t* state,
   graph_rl = state->cursor;
   left = state->left;
   right = state->right;
-  db_mdb_status_require(
-    mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_CURRENT));
+  db_mdb_status_require(mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_CURRENT));
   graph_key[0] = i_array_get(right);
-  if (db_id_equal(
-        (db_pointer_to_id((val_graph_key.mv_data))), (graph_key[0]))) {
+  if (db_id_equal((db_pointer_to_id((val_graph_key.mv_data))), (graph_key[0]))) {
     goto each_left;
   } else {
   set_range:
     val_graph_key.mv_data = graph_key;
-    status.id =
-      mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_SET_RANGE);
+    status.id = mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_SET_RANGE);
   each_right:
     if (db_mdb_status_is_success) {
-      if (db_id_equal(
-            (db_pointer_to_id((val_graph_key.mv_data))), (graph_key[0]))) {
+      if (db_id_equal((db_pointer_to_id((val_graph_key.mv_data))), (graph_key[0]))) {
         goto each_left;
       };
     } else {
@@ -196,8 +175,7 @@ status_t db_graph_read_1100(db_graph_selection_t* state,
 each_left:
   stop_if_count_zero;
   val_id.mv_data = left.current;
-  status.id =
-    mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_BOTH);
+  status.id = mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_BOTH);
   if (db_mdb_status_is_success) {
     if (!skip) {
       record.left = db_pointer_to_id((val_id.mv_data));
@@ -215,8 +193,7 @@ each_left:
   } else {
     i_array_rewind(left);
   };
-  status.id =
-    mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_NEXT_NODUP);
+  status.id = mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_NEXT_NODUP);
   goto each_right;
 exit:
   state->left.current = left.current;
@@ -224,9 +201,7 @@ exit:
   state->status = status;
   return (status);
 };
-status_t db_graph_read_1110(db_graph_selection_t* state,
-  db_count_t count,
-  db_graph_records_t* result) {
+status_t db_graph_read_1110(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
   db_graph_reader_header(state);
   db_mdb_declare_val_id;
   MDB_cursor* graph_rl;
@@ -244,8 +219,7 @@ status_t db_graph_read_1110(db_graph_selection_t* state,
 set_cursor:
   val_graph_key.mv_data = graph_key;
   val_id.mv_data = &id_left;
-  status.id =
-    mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_BOTH);
+  status.id = mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_BOTH);
   if (db_mdb_status_is_success) {
     goto match;
   } else {
@@ -294,9 +268,7 @@ exit:
   state->status = status;
   return (status);
 };
-status_t db_graph_read_1001_1101(db_graph_selection_t* state,
-  db_count_t count,
-  db_graph_records_t* result) {
+status_t db_graph_read_1001_1101(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
   db_graph_reader_header(state);
   db_mdb_declare_val_graph_data;
   db_declare_graph_data(graph_data);
@@ -308,35 +280,29 @@ status_t db_graph_read_1001_1101(db_graph_selection_t* state,
   right = state->ids_set;
   db_graph_reader_define_ordinal_variables(state);
   db_graph_data_set_ordinal(graph_data, ordinal_min);
-  db_mdb_status_require(mdb_cursor_get(
-    graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
+  db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
   if (i_array_in_range(left)) {
     graph_key[0] = i_array_get(left);
   } else {
     notfound_exit;
   };
-  if (db_id_equal(
-        (db_pointer_to_id((val_graph_key.mv_data))), (graph_key[0]))) {
+  if (db_id_equal((db_pointer_to_id((val_graph_key.mv_data))), (graph_key[0]))) {
     goto each_key;
   };
 each_left:
   val_graph_key.mv_data = graph_key;
-  status.id = mdb_cursor_get(
-    graph_lr, (&val_graph_key), (&val_graph_data), MDB_SET_RANGE);
+  status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_SET_RANGE);
 each_key:
   if (db_mdb_status_is_success) {
-    if (db_id_equal(
-          (db_pointer_to_id((val_graph_key.mv_data))), (graph_key[0]))) {
+    if (db_id_equal((db_pointer_to_id((val_graph_key.mv_data))), (graph_key[0]))) {
       val_graph_data.mv_data = graph_data;
-      status.id = mdb_cursor_get(
-        graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_BOTH_RANGE);
+      status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_BOTH_RANGE);
       if (db_mdb_status_is_success) {
         goto each_data;
       } else {
         db_mdb_status_expect_notfound;
       };
-      status.id = mdb_cursor_get(
-        graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_NODUP);
+      status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_NODUP);
       goto each_key;
     };
   } else {
@@ -351,15 +317,9 @@ each_key:
   goto each_left;
 each_data:
   stop_if_count_zero;
-  /* check ordinal-min for if the first element, which graph-select initialises
-   * to, matches */
-  if ((!ordinal_min ||
-        (db_graph_data_to_ordinal((val_graph_data.mv_data)) >= ordinal_min)) &&
-    (!ordinal_max ||
-      (db_graph_data_to_ordinal((val_graph_data.mv_data)) <= ordinal_max))) {
-    if (!right ||
-      imht_set_contains(
-        right, (db_graph_data_to_id((val_graph_data.mv_data))))) {
+  /* check ordinal-min for if the first element, which graph-select initialises to, matches */
+  if ((!ordinal_min || (db_graph_data_to_ordinal((val_graph_data.mv_data)) >= ordinal_min)) && (!ordinal_max || (db_graph_data_to_ordinal((val_graph_data.mv_data)) <= ordinal_max))) {
+    if (!right || imht_set_contains(right, (db_graph_data_to_id((val_graph_data.mv_data))))) {
       if (!skip) {
         record.left = db_pointer_to_id((val_graph_key.mv_data));
         record.label = db_pointer_to_id_at((val_graph_key.mv_data), 1);
@@ -369,25 +329,21 @@ each_data:
       };
       reduce_count;
     };
-    status.id = mdb_cursor_get(
-      graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_DUP);
+    status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_DUP);
     if (db_mdb_status_is_success) {
       goto each_data;
     } else {
       db_mdb_status_expect_notfound;
     };
   };
-  status.id = mdb_cursor_get(
-    graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_NODUP);
+  status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_NODUP);
   goto each_key;
 exit:
   state->left.current = left.current;
   state->status = status;
   return (status);
 };
-status_t db_graph_read_1011_1111(db_graph_selection_t* state,
-  db_count_t count,
-  db_graph_records_t* result) {
+status_t db_graph_read_1011_1111(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
   db_graph_reader_header(state);
   db_declare_graph_data(graph_data);
   db_mdb_declare_val_graph_data;
@@ -401,15 +357,13 @@ status_t db_graph_read_1011_1111(db_graph_selection_t* state,
   right = state->ids_set;
   db_graph_reader_define_ordinal_variables(state);
   db_graph_data_set_ordinal(graph_data, ordinal_min);
-  db_mdb_status_require(mdb_cursor_get(
-    graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
+  db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
   graph_key[0] = i_array_get(left);
   graph_key[1] = i_array_get(label);
 set_key:
   val_graph_key.mv_data = graph_key;
   val_graph_data.mv_data = graph_data;
-  status.id = mdb_cursor_get(
-    graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_BOTH_RANGE);
+  status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_BOTH_RANGE);
   if (db_mdb_status_is_success) {
     goto each_data;
   } else {
@@ -432,13 +386,8 @@ set_key:
   };
 each_data:
   stop_if_count_zero;
-  if ((!ordinal_min ||
-        (db_graph_data_to_ordinal((val_graph_data.mv_data)) >= ordinal_min)) &&
-    (!ordinal_max ||
-      (db_graph_data_to_ordinal((val_graph_data.mv_data)) <= ordinal_max))) {
-    if (!right ||
-      imht_set_contains(
-        right, (db_graph_data_to_id((val_graph_data.mv_data))))) {
+  if ((!ordinal_min || (db_graph_data_to_ordinal((val_graph_data.mv_data)) >= ordinal_min)) && (!ordinal_max || (db_graph_data_to_ordinal((val_graph_data.mv_data)) <= ordinal_max))) {
+    if (!right || imht_set_contains(right, (db_graph_data_to_id((val_graph_data.mv_data))))) {
       if (!skip) {
         record.left = db_pointer_to_id((val_graph_key.mv_data));
         record.right = db_graph_data_to_id((val_graph_data.mv_data));
@@ -448,8 +397,7 @@ each_data:
       };
       reduce_count;
     };
-    status.id = mdb_cursor_get(
-      graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_DUP);
+    status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_DUP);
     if (db_mdb_status_is_success) {
       goto each_data;
     } else {
@@ -464,9 +412,7 @@ exit:
   state->status = status;
   return (status);
 };
-status_t db_graph_read_0010(db_graph_selection_t* state,
-  db_count_t count,
-  db_graph_records_t* result) {
+status_t db_graph_read_0010(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
   db_graph_reader_header(state);
   db_mdb_declare_val_id;
   db_mdb_declare_val_id_2;
@@ -479,10 +425,8 @@ status_t db_graph_read_0010(db_graph_selection_t* state,
   graph_ll = state->cursor;
   graph_lr = state->cursor_2;
   label = state->label;
-  db_mdb_status_require(
-    mdb_cursor_get(graph_ll, (&val_id), (&val_id_2), MDB_GET_CURRENT));
-  db_mdb_status_require(mdb_cursor_get(
-    graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
+  db_mdb_status_require(mdb_cursor_get(graph_ll, (&val_id), (&val_id_2), MDB_GET_CURRENT));
+  db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
   if (i_array_in_range(label)) {
     id_label = i_array_get(label);
   } else {
@@ -516,8 +460,7 @@ each_label_data:
   } else {
     graph_key[0] = id_left;
     val_graph_key.mv_data = graph_key;
-    status.id = mdb_cursor_get(
-      graph_lr, (&val_graph_key), (&val_graph_data), MDB_SET_KEY);
+    status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_SET_KEY);
     if (db_mdb_status_is_success) {
       goto each_left_data;
     } else {
@@ -533,8 +476,7 @@ each_left_data:
     i_array_add((*result), record);
   };
   reduce_count;
-  status.id =
-    mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_DUP);
+  status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_DUP);
   if (db_mdb_status_is_success) {
     goto each_left_data;
   } else {
@@ -557,9 +499,7 @@ exit:
   state->label.current = label.current;
   return (status);
 };
-status_t db_graph_read_0110(db_graph_selection_t* state,
-  db_count_t count,
-  db_graph_records_t* result) {
+status_t db_graph_read_0110(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
   db_graph_reader_header(state);
   db_mdb_declare_val_id;
   MDB_cursor* graph_rl;
@@ -568,8 +508,7 @@ status_t db_graph_read_0110(db_graph_selection_t* state,
   graph_rl = state->cursor;
   label = state->label;
   right = state->right;
-  db_mdb_status_require(
-    mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_CURRENT));
+  db_mdb_status_require(mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_CURRENT));
   graph_key[1] = i_array_get(label);
   graph_key[0] = i_array_get(right);
   if (db_graph_key_equal(graph_key, db_mdb_val_to_graph_key(val_graph_key))) {
@@ -577,8 +516,7 @@ status_t db_graph_read_0110(db_graph_selection_t* state,
   } else {
   set_key:
     val_graph_key.mv_data = graph_key;
-    status.id =
-      mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_SET_KEY);
+    status.id = mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_SET_KEY);
     if (db_mdb_status_is_success) {
       goto each_data;
     } else {
@@ -609,8 +547,7 @@ each_data:
     i_array_add((*result), record);
   };
   reduce_count;
-  status.id =
-    mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_NEXT_DUP);
+  status.id = mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_NEXT_DUP);
   if (db_mdb_status_is_success) {
     goto each_data;
   } else {
@@ -622,29 +559,23 @@ exit:
   state->status = status;
   return (status);
 };
-status_t db_graph_read_0100(db_graph_selection_t* state,
-  db_count_t count,
-  db_graph_records_t* result) {
+status_t db_graph_read_0100(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
   db_graph_reader_header(state);
   db_mdb_declare_val_id;
   MDB_cursor* graph_rl;
   db_ids_t right;
   graph_rl = state->cursor;
   right = state->right;
-  db_mdb_status_require(
-    mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_CURRENT));
+  db_mdb_status_require(mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_CURRENT));
   graph_key[0] = i_array_get(right);
-  if (db_id_equal(
-        (graph_key[0]), (db_pointer_to_id((val_graph_key.mv_data))))) {
+  if (db_id_equal((graph_key[0]), (db_pointer_to_id((val_graph_key.mv_data))))) {
     goto each_key;
   } else {
   set_range:
     val_graph_key.mv_data = graph_key;
-    status.id =
-      mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_SET_RANGE);
+    status.id = mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_SET_RANGE);
     if (db_mdb_status_is_success) {
-      if (db_id_equal(
-            (graph_key[0]), (db_pointer_to_id((val_graph_key.mv_data))))) {
+      if (db_id_equal((graph_key[0]), (db_pointer_to_id((val_graph_key.mv_data))))) {
         goto each_key;
       };
     } else {
@@ -668,18 +599,15 @@ each_data:
     i_array_add((*result), record);
   };
   reduce_count;
-  status.id =
-    mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_NEXT_DUP);
+  status.id = mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_NEXT_DUP);
   if (db_mdb_status_is_success) {
     goto each_data;
   } else {
     db_mdb_status_expect_notfound;
   };
-  status.id =
-    mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_NEXT_NODUP);
+  status.id = mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_NEXT_NODUP);
   if (db_mdb_status_is_success) {
-    if (db_id_equal(
-          (graph_key[0]), (db_pointer_to_id((val_graph_key.mv_data))))) {
+    if (db_id_equal((graph_key[0]), (db_pointer_to_id((val_graph_key.mv_data))))) {
       goto each_key;
     };
   } else {
@@ -697,15 +625,12 @@ exit:
   state->right.current = right.current;
   return (status);
 };
-status_t db_graph_read_0000(db_graph_selection_t* state,
-  db_count_t count,
-  db_graph_records_t* result) {
+status_t db_graph_read_0000(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
   db_graph_reader_header_0000(state);
   db_mdb_declare_val_graph_data;
   MDB_cursor* graph_lr;
   graph_lr = state->cursor;
-  db_mdb_status_require(mdb_cursor_get(
-    graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
+  db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
 each_key:
 each_data:
   stop_if_count_zero;
@@ -717,15 +642,13 @@ each_data:
     i_array_add((*result), record);
   };
   reduce_count;
-  status.id =
-    mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_DUP);
+  status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_DUP);
   if (db_mdb_status_is_success) {
     goto each_data;
   } else {
     db_mdb_status_expect_notfound;
   };
-  status.id = mdb_cursor_get(
-    graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_NODUP);
+  status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_NODUP);
   if (db_mdb_status_is_success) {
     goto each_key;
   } else {
@@ -737,20 +660,12 @@ exit:
 };
 /** prepare the state and select the reader.
   readers are specialised for filter combinations.
-  the 1/0 pattern at the end of reader names corresponds to the filter
-  combination the reader is supposed to handle. 1 stands for filter given, 0
-  stands for not given. order is left, right, label, ordinal. readers always
-  leave cursors at a valid entry, usually the next entry unless the results have
-  been exhausted. left/right/label ids pointer can be zero which means they are
-  unused. internally in the selection if unset i-array-in-range and
-  i-array-length is zero */
-status_t db_graph_select(db_txn_t txn,
-  db_ids_t* left,
-  db_ids_t* right,
-  db_ids_t* label,
-  db_ordinal_condition_t* ordinal,
-  db_count_t offset,
-  db_graph_selection_t* state) {
+  the 1/0 pattern at the end of reader names corresponds to the filter combination the reader is supposed to handle.
+  1 stands for filter given, 0 stands for not given. order is left, right, label, ordinal.
+  readers always leave cursors at a valid entry, usually the next entry unless the results have been exhausted.
+  left/right/label ids pointer can be zero which means they are unused.
+  internally in the selection if unset i-array-in-range and i-array-length is zero */
+status_t db_graph_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal, db_count_t offset, db_graph_selection_t* state) {
   status_declare;
   db_mdb_declare_val_null;
   imht_set_t* right_set;
@@ -783,8 +698,7 @@ status_t db_graph_select(db_txn_t txn,
       if (right) {
         status_require(db_ids_to_set((*right), (&right_set)));
         state->ids_set = right_set;
-        state->options =
-          (db_graph_selection_flag_is_set_right | state->options);
+        state->options = (db_graph_selection_flag_is_set_right | state->options);
       };
       db_graph_select_cursor_initialise(graph_lr, state, cursor);
       if (label) {
@@ -839,13 +753,10 @@ exit:
   return (status);
 };
 /** result memory is to be allocated by the caller */
-status_t db_graph_read(db_graph_selection_t* state,
-  db_count_t count,
-  db_graph_records_t* result) {
+status_t db_graph_read(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
   status_declare;
   status_require((state->status));
-  status = ((db_graph_reader_t)(state->reader))(
-    state, (!count ? i_array_max_length((*result)) : count), result);
+  status = ((db_graph_reader_t)(state->reader))(state, (!count ? i_array_max_length((*result)) : count), result);
 exit:
   db_mdb_status_notfound_if_notfound;
   return (status);

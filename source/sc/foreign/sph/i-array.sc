@@ -1,16 +1,23 @@
 (sc-comment
-  "array type for linked-list like usage with the main features get, next, add, variable used range and easy iteration."
-  "an array struct that tracks pointers to start, end, end of used range and current element."
-  "when using add, the array is filled from left to right."
-  "declarations of temporary indices and for loops arent necessary to iterate."
-  "example: (while (i-array-in-range a) (i-array-get a))."
-  "type declaration: declare new i-array types with i-array-declare-type, then use it with the generic i-array-* macros")
+  "\"iteration array\" - a fixed size array with variable length content that makes iteration easier to code. it is used similar to a linked list.
+  most bindings are generic macros that will work on all i-array types. i_array_add and i_array_forward go from left to right.
+  examples:
+    i_array_declare_type(my_type, int);
+    i_array_allocate_my_type(a, 4);
+    i_array_add(a, 1);
+    i_array_add(a, 2);
+    while(i_array_in_range(a)) { i_array_get(a); }
+    i_array_free(a);")
 
 (pre-include "stdlib.h")
 
 (pre-define
   (i-array-declare-type name element-type)
   (begin
+    ".current: to avoid having to write for-loops. it is what would be the index variable in loops
+     .unused: to have variable length content in a fixed length array. points outside the memory area after the last element has been added
+     .end: a boundary for iterations
+     .start: the beginning of the allocated array and used for rewind and free"
     (declare name
       (type
         (struct
@@ -19,14 +26,14 @@
           (end element-type*)
           (start element-type*))))
     (define ((pre-concat i-array-allocate- name) a length) (boolean name* size-t)
-      (declare temp element-type*)
-      (set temp (malloc (* length (sizeof element-type))))
-      (if (not temp) (return 0))
+      (declare start element-type*)
+      (set start (malloc (* length (sizeof element-type))))
+      (if (not start) (return 0))
       (set
-        a:start temp
-        a:current temp
-        a:unused temp
-        a:end (+ length temp))
+        a:start start
+        a:current start
+        a:unused start
+        a:end (+ length start))
       (return 1)))
   (i-array-declare a type)
   (begin
@@ -38,7 +45,7 @@
     a.unused (+ 1 a.unused))
   (i-array-set-null a)
   (begin
-    "set so that in-range is false and length is zero"
+    "set so that in-range is false, length is zero and free doesnt fail"
     (set
       a.start 0
       a.unused 0))

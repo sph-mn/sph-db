@@ -23,8 +23,7 @@ status_t db_env_types_extend(db_env_t* env, db_type_id_t type_id) {
 exit:
   return (status);
 };
-/** return a pointer to the type struct for the type with the given name. zero
- * if not found */
+/** return a pointer to the type struct for the type with the given name. zero if not found */
 db_type_t* db_type_get(db_env_t* env, ui8* name) {
   db_type_id_t i;
   db_type_id_t types_len;
@@ -32,7 +31,7 @@ db_type_t* db_type_get(db_env_t* env, ui8* name) {
   types_len = env->types_len;
   for (i = 0; (i < types_len); i = (1 + i)) {
     type = (i + env->types);
-    if (type->id && (0 == strcmp(name, (type->name)))) {
+    if (type->id && type->name && (0 == strcmp(name, (type->name)))) {
       return (type);
     };
   };
@@ -45,20 +44,14 @@ db_field_t* db_type_field_get(db_type_t* type, ui8* name) {
   fields_len = type->fields_len;
   fields = type->fields;
   for (index = 0; (index < fields_len); index = (1 + index)) {
-    if (0 ==
-      strncmp(name, ((fields[index]).name), ((fields[index]).name_len))) {
+    if (0 == strncmp(name, ((fields[index]).name), ((fields[index]).name_len))) {
       return ((fields + index));
     };
   };
   return (0);
 };
 /** the data format is documented in main/open.c */
-status_t db_type_create(db_env_t* env,
-  ui8* name,
-  db_field_t* fields,
-  db_fields_len_t fields_len,
-  ui8 flags,
-  db_type_t** result) {
+status_t db_type_create(db_env_t* env, ui8* name, db_field_t* fields, db_fields_len_t fields_len, ui8 flags, db_type_t** result) {
   status_declare;
   db_mdb_cursor_declare(system);
   db_mdb_cursor_declare(nodes);
@@ -86,8 +79,7 @@ status_t db_type_create(db_env_t* env,
   /* allocate insert data */
   data_size = (sizeof(db_name_len_t) + name_len + sizeof(db_fields_len_t));
   for (i = 0; (i < fields_len); i = (1 + i)) {
-    data_size = (data_size + sizeof(db_field_type_t) + sizeof(db_name_len_t) +
-      (i + fields)->name_len);
+    data_size = (data_size + sizeof(db_field_type_t) + sizeof(db_name_len_t) + (i + fields)->name_len);
   };
   db_malloc(data, data_size);
   /* set insert data */
@@ -122,11 +114,7 @@ status_t db_type_create(db_env_t* env,
   /* update cache */
   status_require((db_env_types_extend((txn.env), type_id)));
   db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
-  status_require((db_open_type((val_key.mv_data),
-    (val_data.mv_data),
-    ((txn.env)->types),
-    nodes,
-    (&type_pointer))));
+  status_require((db_open_type((val_key.mv_data), (val_data.mv_data), ((txn.env)->types), nodes, (&type_pointer))));
   db_mdb_cursor_close(nodes);
   status_require(db_txn_commit((&txn)));
   *result = type_pointer;
@@ -169,8 +157,7 @@ status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
   id = db_id_add_type(0, type_id);
   val_key.mv_data = &id;
   status.id = mdb_cursor_get(nodes, (&val_key), (&val_null), MDB_SET_RANGE);
-  while ((db_mdb_status_is_success &&
-    (type_id == db_id_type((db_pointer_to_id((val_key.mv_data))))))) {
+  while ((db_mdb_status_is_success && (type_id == db_id_type((db_pointer_to_id((val_key.mv_data))))))) {
     db_mdb_status_require(mdb_cursor_del(nodes, 0));
     status.id = mdb_cursor_get(nodes, (&val_key), (&val_null), MDB_NEXT_NODUP);
   };
