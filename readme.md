@@ -1,19 +1,17 @@
 # about
 
-sph-db is a database as a shared library for records and relations.
-
-it is new, please try it and report any issues
+sph-db is a database as a shared library for records and relations. sph-db is in beta as of 2018-08, please try it and report any issues
 
 * [design](http://sph.mn/c/view/si)
 * license: lgpl3+
 
 # project goals
 * a minimal embeddable database to store records without having to construct high-level query language strings for each query
-* graph-like relations without having to manage many-to-many tables
+* graph-like relations without having to manage junction tables
 
 # features
 ## data model
-* nodes that can be in relations to build a graph
+* records that act as nodes and can be in relations to build a graph
 * nodes have identifiers for random access. they are of custom type, similar to table rows in relational databases, and indexable
 * relations are directed, labeled, unidirectionally ordered and small
 
@@ -22,7 +20,7 @@ it is new, please try it and report any issues
 * direct, high-speed interface using c data structures. no overhead from sql or similar query language parsing
 * embeddable by linking or code inclusion
 * read-optimised design with full support for parallel database reads
-* efficient through focus on limited feature-set and thin abstraction over lmdb. benchmarks for lmdb can be found [here](https://symas.com/lightning-memory-mapped-database/technical/)
+* efficient through focus on limited feature-set and thin abstraction over lmdb. benchmarks for lmdb can be found [here](https://symas.com/lmdb/technical/)
 * written in c, currently via [sc](https://github.com/sph-mn/sph-sc)
 
 # dependencies
@@ -81,11 +79,11 @@ db_close(env);
 ## transactions
 * transactions are required for reading and writing. routines for schema changes like type and index creation create a transaction internally and must not be used while another transaction is active in the same thread
 * there must only be one active transaction per thread (there is an option to relax this for read transactions). nested transactions are possible
-* returned data pointers, for example by db_node_data_ref, are only valid until the corresponding transaction is aborted or committed. such data pointers are always only for reading and must never be written to
+* returned data pointers, for example from db_node_data_ref, are only valid until the corresponding transaction is aborted or committed. such data pointers are always only for reading and must never be written to
 
 declare a transaction handle variable
 ```c
-// db-env-t*, custom_variable_name
+// arguments: db-env-t*, custom_variable_name
 db_txn_declare(env, txn);
 ```
 
@@ -109,7 +107,7 @@ finish transaction, applying any writes made in the transaction
 db_txn_commit(&txn);
 ```
 
-in the following examples, where a ``txn`` variable occurs, use of the appropriate transaction features is implied.
+in the following examples, where a ``txn`` variable occurs, use of the appropriate transaction features is implied
 
 ## create a type
 ```c
@@ -124,37 +122,38 @@ db_field_set(fields[3], db_field_type_string, "field-name-4", 12);
 status_require(db_type_create(env, "test-type", fields, 4, 0, &type));
 ```
 fields can be fixed length (for example for integers and floating point values) or variable length. possible field types are db_field_type_* macro variables, see api reference below.
-besides being fixed and variable length and specifying size, field types are mostly a hint because no conversions take place.
+apart from indicating storage type and size, field types are mostly a hint because no conversions take place
 
 ## create nodes
 ```c
 db_node_values_t values;
-db_id_t id-1;
-db_id_t id-2;
-ui8 value_1 = 11;
+db_id_t id_1;
+db_id_t id_2;
+uint8_t value_1 = 11;
 i8 value_2 = -128;
-ui8* value_3 = "abc";
-ui8* value_4 = "abcde";
+uint8_t* value_3 = "abc";
+uint8_t* value_4 = "abcde";
 status_require(db_node_values_new(type, &values));
 // arguments: db_node_values_t*, field_index, value_address, size.
 // size is ignored for fixed length types
-db_node_values_set(&values_1, 0, &value_1, 0);
-db_node_values_set(&values_1, 1, &value_2, 0);
-// strings can be stored with and without a trailing null character
-db_node_values_set(&values_1, 2, value_3, 3);
-db_node_values_set(&values_1, 3, value_4, 5);
-status_require(db_node_create(txn, values, &id-1));
-status_require(db_node_create(txn, values, &id-2));
+db_node_values_set(&values, 0, &value_1, 0);
+db_node_values_set(&values, 1, &value_2, 0);
+// strings can be stored with or without a trailing null character
+db_node_values_set(&values, 2, value_3, 3);
+db_node_values_set(&values, 3, value_4, 5);
+status_require(db_node_create(txn, values, &id_1));
+db_node_values_set(&values, 1, &value_1, 0);
+status_require(db_node_create(txn, values, &id_2));
 db_node_values_free(&values);
 ```
 
 ## read nodes
-if no results are found or the end of results has been reached, status is set to db_status_id_notfound. here is one example of how to handle this
+if no results are found or the end of results has been reached, status is set to ``db_status_id_notfound``. here is one example of how to handle this
 ```c
 // like status_require but tolerates notfound
-status_require_read(db_node_next(state));
+status_require_read(db_node_next(selection));
 if(db_status_id_notfound != status.id) {
-  field_data = db_node_ref(state, 0);
+  field_data = db_node_ref(selection, 0);
 }
 ```
 
@@ -165,7 +164,7 @@ db_node_data_t node_data;
 db_node_data_t field_data;
 id = 123;
 status_require_read(db_node_get(txn, id, &node_data));
-if(db-status-id-notfound != status.id) {
+if(db_status_id_notfound != status.id) {
   // arguments: type, node_data, field_index
   field_data = db_node_data_ref(type, node_data, 1);
   // field_data.data: void*, field_data.size: size_t
@@ -176,10 +175,10 @@ all of type
 ```c
 db_node_selection_t selection;
 db_node_data_t field_data;
-// argumens: db_txn_t, db_ids_t*, db_type_t*, offset, matcher, matcher_state, &selection));
+// arguments: db_txn_t, db_ids_t*, db_type_t*, offset, matcher, matcher_state, selection_address));
 status_require(db_node_select(txn, 0, type, 0, 0, 0, &selection));
 status_require_read(db_node_next(selection));
-if(db-status-id-notfound != status.id) {
+if(db_status_id_notfound != status.id) {
   // arguments: selection, field_index
   field_data = db_node_ref(selection, 0);
 }
@@ -207,10 +206,10 @@ by custom matcher function and optionally either type or ids list
 boolean node_matcher(db_id_t id, db_node_data_t data, void* matcher_state) {
   db_node_data_t field_data;
   field_data = db_node_data_ref(type, node_data, 2);
-  *((ui8*)(matcher_state)) = 1;
+  *((uint8_t*)(matcher_state)) = 1;
   return 1;
 };
-ui8 matcher_state = 0;
+uint8_t matcher_state = 0;
 status_require(db_node_select(txn, 0, type, 0, node_matcher, &matcher_state, &selection));
 ```
 
@@ -220,10 +219,10 @@ db_ids_t left;
 db_ids_t right;
 db_ids_t label;
 db_ids_new(left, 5);
-db_ids_new(left, 5);
-db_ids_new(left, 2);
+db_ids_new(right, 5);
+db_ids_new(label, 2);
 // ... add ids to left, right and label ...
-// create relations between all given left and right nodes for each label (relations = left * right * label)
+// create relations between all given left and right nodes for each label. relations = left * right * label
 status_require(db_graph_ensure(txn, left, right, label, 0, 0));
 i_array_free(left);
 i_array_free(right);
@@ -247,10 +246,10 @@ ids_label = i_array_add(ids_label, 456);
 status_require(db_graph_select(txn, &ids_left, 0, &ids_label, 0, 0, &selection));
 // read 2 of the selected relations
 status_require(db_graph_read(&selection, 2, &relations));
-// read remaining matches, at most as many as fit into relations array
+// read as many remaining matches as fit into the relations array
 status_require_read(db_graph_read(&selection, 0, &relations));
 db_graph_selection_finish(&selection);
-// display relations. "ordinal" might not be set unless the left value was filtered
+// display relations. "ordinal" might not be set unless a filter for left was used
 while(i_array_in_range(relations)) {
   relation = i_array_get(relations);
   printf("relation: %lu %lu %lu %lu\n", relation.left, relation.label, relation.ordinal, relation.right);
@@ -265,27 +264,27 @@ i_array_free(relations);
 ## create indices
 ```c
 db_index_t* index;
-// array of indices of fields to index
+// array of field indices to index
 db_fields_len_t fields[2] = {1, 2};
 status_require(db_index_create(env, type, fields, 2));
 ```
 
 * existing nodes will be indexed on index creation
-* new nodes will be indexed when they are created
-* there is a limit on the combined size of indexed field data, which is defined by the lmdb compile-time constant MDB_MAXKEYSIZE, default 511 bytes, minus id size. currently index inserts with data too large are rejected
+* new nodes will be automatically added or removed from the index when they are created or deleted
+* there is a limit on the combined size of indexed field data for a node, which is defined by the lmdb compile-time constant MDB_MAXKEYSIZE, default 511 bytes minus db_id_t size. currently index inserts with data too large are rejected
 
 ## read node ids from indices
 ```c
 db_index_selection_t selection;
 db_node_values_t values;
 db_id_t id;
-ui8 value_1 = 11;
-ui8* value_2 = "abc";
+uint8_t value_1 = 11;
+uint8_t* value_2 = "abc";
 status_require(db_node_values_new(type, &values));
-db_node_values_set(&values_1, 1, &value_1, 0);
-db_node_values_set(&values_1, 2, &value_2, 3);
+db_node_values_set(&values, 1, &value_1, 0);
+db_node_values_set(&values, 2, &value_2, 3);
 // values for other fields will be ignored.
-// unlike node_ and graph_select, db_index_select sets selection to the first match
+// unlike node_ and graph_select, db_index_select already searches for the first match on call
 status_require(db_index_select(txn, *index, values, &selection));
 id = selection.current;
 status_require(db_index_next(selection));
@@ -296,12 +295,12 @@ db_index_selection_finish(&selection);
 ```c
 db_node_index_selection_t selection;
 status_require(db_node_index_select(txn, *index, values, &selection));
-db_node_index_selection_finish(&selection);
-// db-node-data-t
+// db_node_data_t
 selection.current
-// db-id-t
-selection.current-id
+// db_id_t
+selection.current_id
 status_require(db_node_index_next(selection));
+db_node_index_selection_finish(&selection);
 ```
 
 # api
@@ -312,10 +311,10 @@ db_env_new :: db_env_t**:result -> status_t
 db_field_type_size :: uint8_t:a -> uint8_t
 db_graph_delete :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal -> status_t
 db_graph_ensure :: db_txn_t:txn db_ids_t:left db_ids_t:right db_ids_t:label db_graph_ordinal_generator_t:ordinal_generator void*:ordinal_generator_state -> status_t
-db_graph_read :: db_graph_selection_t*:state db_count_t:count db_relations_t*:result -> status_t
+db_graph_read :: db_graph_selection_t*:selection db_count_t:count db_relations_t*:result -> status_t
 db_graph_select :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal db_count_t:offset db_graph_selection_t*:result -> status_t
 db_graph_select :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal db_count_t:offset db_graph_selection_t*:result -> status_t
-db_graph_selection_finish :: db_graph_selection_t*:state -> void
+db_graph_selection_finish :: db_graph_selection_t*:selection -> void
 db_graph_selection_finish :: db_graph_selection_t*:selection -> void
 db_index_create :: db_env_t*:env db_type_t*:type db_fields_len_t*:fields db_fields_len_t:fields_len -> status_t
 db_index_delete :: db_env_t*:env db_index_t*:index -> status_t
@@ -399,11 +398,9 @@ db_node_virtual_to_data(id)
 db_null
 db_ordinal_compare
 db_ordinal_t
-db_pointer_allocation_set(result, expression, result_temp)
 db_size_element_id
 db_size_graph_data
 db_size_graph_key
-db_status_require_read(expression)
 db_status_set_id_goto(status_id)
 db_status_success_if_notfound
 db_txn_abort_if_active(a)
@@ -411,6 +408,7 @@ db_txn_declare(env, name)
 db_txn_is_active(a)
 db_type_id_mask
 db_type_id_t
+status_require_read(expression)
 ```
 
 ## types
@@ -535,20 +533,20 @@ db_status_id_success db_status_id_undefined db_status_id_condition_unfulfilled
 * scheme: [sph-db-guile](https://github.com/sph-mn/sph-db-guile)
 
 # compile-time configuration
-these values can be set before compilation in ``c-precompiled/main/config.c``. once compiled, they can not be changed. databases created with one configuration must only be used by code compiled with the same configuration. if necessary, for example, multiple shared libraries with different configuration can be created and linked to.
+these values can be set before compilation in ``c-precompiled/main/config.c``. once compiled, they can not be changed. databases created with one configuration must only be used by code compiled with the same configuration. if necessary, for example, multiple shared libraries with different configuration can be created and linked to
 
-|db_id_t|ui64|for node identifiers. will also contain a node type id
-|db_type_id_t|ui16||for type ids. limits the number of possible types. currently can not be larger than 16 bit|
-|db_ordinal_t|ui32|for relation order values|
+|db_id_t|ui64|for node identifiers. will also contain a node type id|
+|db_type_id_t|uint16_t||for type ids. limits the number of possible types. currently can not be larger than 16 bit|
+|db_ordinal_t|uint32_t|for relation order values|
 |db_id_mask|UINT64_MAX|maximum value for the id type (all digits set to one)|
 |db_type_id_mask|UINT16_MAX|maximum value for the type-id type|
-|db_data_len_t|ui32|to store field sizes|
+|db_data_len_t|uint32_t|to store field sizes|
 |db_data_len_max|UINT32_MAX|maximum allowed field size|
-|db_name_len_t|ui8|to store name string lengths (for type and field names)|
+|db_name_len_t|uint8_t|to store name string lengths (for type and field names)|
 |db_name_len_max|UINT8_MAX|maximum allowed name length|
-|db_fields_len_t|ui8|for field indices. limits the number of possible fields|
-|db_indices_len_t|ui8|limits the number of possible indices per type|
-|db_count_t|ui32|for values like the count of elements to read. does not need to be larger than half size_t|
+|db_fields_len_t|uint8_t|for field indices. limits the number of possible fields|
+|db_indices_len_t|uint8_t|limits the number of possible indices per type|
+|db_count_t|uint32_t|for values like the count of elements to read. does not need to be larger than half size_t|
 
 # additional features and caveats
 * the maximum number of type creations is currently 65535
@@ -558,6 +556,7 @@ these values can be set before compilation in ``c-precompiled/main/config.c``. o
 * readers can return results and indicate the end of results in the same call
 
 # possible enhancements
+* virtual nodes (custom types that carry the data with the identifier) are designed but need to be implemented
 * currently index inserts with data too large are rejected. add an option to truncate instead
 * make it possible to increase the maximum number of types. needs a new data structure for types for that
 * validator functions for indices and graph data consistency
@@ -566,9 +565,9 @@ these values can be set before compilation in ``c-precompiled/main/config.c``. o
 
 # development
 this section is for when you want to change sph-db itself.
-the primary source code is currently under source/sc. source/c-precompiled is updated by exe/compile-sc. code files from submodules are copied into source/sc/foreign before compiling from sc to c.
+the primary source code is currently under source/sc. source/c-precompiled is updated by ``exe/compile-sc``. code files from submodules are copied into source/sc/foreign before compiling from sc to c.
 depending on circumstances, in the future, the sc dependency could be dropped and the c code could be made primary.
-the general development stages for new sph-db features is planning, basic code implementation, tests that use the new features, debugging, memory-leak tests (exe/valgrind-test) and documentation
+the general development stages for new sph-db features is design, basic code implementation, tests that use the new features, debugging, memory-leak tests (``exe/valgrind-test``) and documentation
 
 ## setup
 * install the development dependencies listed above
@@ -580,7 +579,7 @@ the general development stages for new sph-db features is planning, basic code i
 * bug reports or design commentaries are welcome
 
 # internals
-* sph-db-extra.h contains declarations for internally used things
+* ``sph-db-extra.h`` contains declarations for internally used things
 * the code assumes that "mdb_cursor_close" can be called with null pointers at some places
 
 ## db-graph-select

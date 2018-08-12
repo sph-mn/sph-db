@@ -309,13 +309,6 @@ i_array_declare_type(db_relations_t, db_relation_t);
 #define db_id_element(id) (db_id_element_mask & id)
 /** db-id-t -> db-id-t */
 #define db_node_virtual_to_data(id) (id >> 2)
-#define db_pointer_allocation_set(result, expression, result_temp) \
-  result_temp = expression; \
-  if (result_temp) { \
-    result = result_temp; \
-  } else { \
-    db_status_set_id_goto(db_status_id_memory); \
-  }
 #define db_txn_declare(env, name) db_txn_t name = { 0, env }
 #define db_txn_abort_if_active(a) \
   if (a.mdb_txn) { \

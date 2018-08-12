@@ -51,11 +51,6 @@
   (begin
     "db-id-t -> db-id-t"
     (bit-shift-right id 2))
-  (db-pointer-allocation-set result expression result-temp)
-  (begin
-    (set result-temp expression)
-    (if result-temp (set result result-temp)
-      (db-status-set-id-goto db-status-id-memory)))
   (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
   (db-txn-abort-if-active a) (if a.mdb-txn (db-txn-abort &a))
   (db-txn-is-active a)
