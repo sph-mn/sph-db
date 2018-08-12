@@ -1,35 +1,35 @@
 #define notfound_exit status_set_both_goto(db_status_group_db, db_status_id_notfound)
-#define db_graph_select_cursor_initialise(name, state, state_field_name) \
+#define db_graph_select_cursor_initialise(name, selection, selection_field_name) \
   db_mdb_status_require(db_mdb_env_cursor_open(txn, name)); \
   db_mdb_status_require(mdb_cursor_get(name, (&val_null), (&val_null), MDB_FIRST)); \
   if (!db_mdb_status_is_success) { \
     db_mdb_status_expect_notfound; \
     status_set_both_goto(db_status_group_db, db_status_id_notfound); \
   }; \
-  state->state_field_name = name
-#define db_graph_reader_header(state) \
+  selection->selection_field_name = name
+#define db_graph_reader_header(selection) \
   status_declare; \
   db_mdb_declare_val_graph_key; \
   db_declare_graph_key(graph_key); \
   db_declare_graph_record(record); \
   boolean skip; \
-  skip = (db_selection_flag_skip & state->options)
-#define db_graph_reader_header_0000(state) \
+  skip = (db_selection_flag_skip & selection->options)
+#define db_graph_reader_header_0000(selection) \
   status_declare; \
   db_mdb_declare_val_graph_key; \
   db_declare_graph_record(record); \
   boolean skip; \
-  skip = (db_selection_flag_skip & state->options)
-#define db_graph_reader_define_ordinal_variables(state) \
-  db_ordinal_t ordinal_min = state->ordinal->min; \
-  db_ordinal_t ordinal_max = state->ordinal->max
-status_t db_graph_read_1000(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
-  db_graph_reader_header(state);
+  skip = (db_selection_flag_skip & selection->options)
+#define db_graph_reader_define_ordinal_variables(selection) \
+  db_ordinal_t ordinal_min = selection->ordinal->min; \
+  db_ordinal_t ordinal_max = selection->ordinal->max
+status_t db_graph_read_1000(db_graph_selection_t* selection, db_count_t count, db_graph_records_t* result) {
+  db_graph_reader_header(selection);
   db_mdb_declare_val_graph_data;
   MDB_cursor* graph_lr;
   db_ids_t left;
-  graph_lr = state->cursor;
-  left = state->left;
+  graph_lr = selection->cursor;
+  left = selection->left;
   db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
   graph_key[0] = i_array_get(left);
   if (db_id_equal((db_pointer_to_id((val_graph_key.mv_data))), (graph_key[0]))) {
@@ -73,19 +73,19 @@ each_data:
   status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_NODUP);
   goto each_key;
 exit:
-  state->left.current = left.current;
-  state->status = status;
+  selection->left.current = left.current;
+  selection->status = status;
   return (status);
 };
-status_t db_graph_read_1010(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
-  db_graph_reader_header(state);
+status_t db_graph_read_1010(db_graph_selection_t* selection, db_count_t count, db_graph_records_t* result) {
+  db_graph_reader_header(selection);
   db_mdb_declare_val_graph_data;
   MDB_cursor* graph_lr;
   db_ids_t left;
   db_ids_t label;
-  graph_lr = state->cursor;
-  left = state->left;
-  label = state->label;
+  graph_lr = selection->cursor;
+  left = selection->left;
+  label = selection->label;
   db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
   graph_key[0] = i_array_get(left);
   graph_key[1] = i_array_get(label);
@@ -134,20 +134,20 @@ each_data:
     goto next_key;
   };
 exit:
-  state->left.current = left.current;
-  state->label.current = label.current;
-  state->status = status;
+  selection->left.current = left.current;
+  selection->label.current = label.current;
+  selection->status = status;
   return (status);
 };
-status_t db_graph_read_1100(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
+status_t db_graph_read_1100(db_graph_selection_t* selection, db_count_t count, db_graph_records_t* result) {
   db_mdb_declare_val_id;
-  db_graph_reader_header(state);
+  db_graph_reader_header(selection);
   MDB_cursor* graph_rl;
   db_ids_t left;
   db_ids_t right;
-  graph_rl = state->cursor;
-  left = state->left;
-  right = state->right;
+  graph_rl = selection->cursor;
+  left = selection->left;
+  right = selection->right;
   db_mdb_status_require(mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_CURRENT));
   graph_key[0] = i_array_get(right);
   if (db_id_equal((db_pointer_to_id((val_graph_key.mv_data))), (graph_key[0]))) {
@@ -196,23 +196,23 @@ each_left:
   status.id = mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_NEXT_NODUP);
   goto each_right;
 exit:
-  state->left.current = left.current;
-  state->right.current = right.current;
-  state->status = status;
+  selection->left.current = left.current;
+  selection->right.current = right.current;
+  selection->status = status;
   return (status);
 };
-status_t db_graph_read_1110(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
-  db_graph_reader_header(state);
+status_t db_graph_read_1110(db_graph_selection_t* selection, db_count_t count, db_graph_records_t* result) {
+  db_graph_reader_header(selection);
   db_mdb_declare_val_id;
   MDB_cursor* graph_rl;
   db_ids_t left;
   db_ids_t right;
   db_ids_t label;
   db_id_t id_left;
-  graph_rl = state->cursor;
-  left = state->left;
-  right = state->right;
-  label = state->label;
+  graph_rl = selection->cursor;
+  left = selection->left;
+  right = selection->right;
+  label = selection->label;
   graph_key[1] = i_array_get(label);
   id_left = i_array_get(left);
   graph_key[0] = i_array_get(right);
@@ -262,23 +262,23 @@ match:
   reduce_count;
   goto next_query;
 exit:
-  state->left.current = left.current;
-  state->right.current = right.current;
-  state->label.current = label.current;
-  state->status = status;
+  selection->left.current = left.current;
+  selection->right.current = right.current;
+  selection->label.current = label.current;
+  selection->status = status;
   return (status);
 };
-status_t db_graph_read_1001_1101(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
-  db_graph_reader_header(state);
+status_t db_graph_read_1001_1101(db_graph_selection_t* selection, db_count_t count, db_graph_records_t* result) {
+  db_graph_reader_header(selection);
   db_mdb_declare_val_graph_data;
   db_declare_graph_data(graph_data);
   MDB_cursor* graph_lr;
   db_ids_t left;
   imht_set_t* right;
-  graph_lr = state->cursor;
-  left = state->left;
-  right = state->ids_set;
-  db_graph_reader_define_ordinal_variables(state);
+  graph_lr = selection->cursor;
+  left = selection->left;
+  right = selection->ids_set;
+  db_graph_reader_define_ordinal_variables(selection);
   db_graph_data_set_ordinal(graph_data, ordinal_min);
   db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
   if (i_array_in_range(left)) {
@@ -339,23 +339,23 @@ each_data:
   status.id = mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_NEXT_NODUP);
   goto each_key;
 exit:
-  state->left.current = left.current;
-  state->status = status;
+  selection->left.current = left.current;
+  selection->status = status;
   return (status);
 };
-status_t db_graph_read_1011_1111(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
-  db_graph_reader_header(state);
+status_t db_graph_read_1011_1111(db_graph_selection_t* selection, db_count_t count, db_graph_records_t* result) {
+  db_graph_reader_header(selection);
   db_declare_graph_data(graph_data);
   db_mdb_declare_val_graph_data;
   MDB_cursor* graph_lr;
   db_ids_t left;
   db_ids_t label;
   imht_set_t* right;
-  graph_lr = state->cursor;
-  left = state->left;
-  label = state->label;
-  right = state->ids_set;
-  db_graph_reader_define_ordinal_variables(state);
+  graph_lr = selection->cursor;
+  left = selection->left;
+  label = selection->label;
+  right = selection->ids_set;
+  db_graph_reader_define_ordinal_variables(selection);
   db_graph_data_set_ordinal(graph_data, ordinal_min);
   db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
   graph_key[0] = i_array_get(left);
@@ -407,13 +407,13 @@ each_data:
     goto each_key;
   };
 exit:
-  state->left.current = left.current;
-  state->label.current = label.current;
-  state->status = status;
+  selection->left.current = left.current;
+  selection->label.current = label.current;
+  selection->status = status;
   return (status);
 };
-status_t db_graph_read_0010(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
-  db_graph_reader_header(state);
+status_t db_graph_read_0010(db_graph_selection_t* selection, db_count_t count, db_graph_records_t* result) {
+  db_graph_reader_header(selection);
   db_mdb_declare_val_id;
   db_mdb_declare_val_id_2;
   db_mdb_declare_val_graph_data;
@@ -422,9 +422,9 @@ status_t db_graph_read_0010(db_graph_selection_t* state, db_count_t count, db_gr
   db_ids_t label;
   db_id_t id_left;
   db_id_t id_label;
-  graph_ll = state->cursor;
-  graph_lr = state->cursor_2;
-  label = state->label;
+  graph_ll = selection->cursor;
+  graph_lr = selection->cursor_2;
+  label = selection->label;
   db_mdb_status_require(mdb_cursor_get(graph_ll, (&val_id), (&val_id_2), MDB_GET_CURRENT));
   db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
   if (i_array_in_range(label)) {
@@ -495,19 +495,19 @@ each_left_data:
     goto set_label_key;
   };
 exit:
-  state->status = status;
-  state->label.current = label.current;
+  selection->status = status;
+  selection->label.current = label.current;
   return (status);
 };
-status_t db_graph_read_0110(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
-  db_graph_reader_header(state);
+status_t db_graph_read_0110(db_graph_selection_t* selection, db_count_t count, db_graph_records_t* result) {
+  db_graph_reader_header(selection);
   db_mdb_declare_val_id;
   MDB_cursor* graph_rl;
   db_ids_t label;
   db_ids_t right;
-  graph_rl = state->cursor;
-  label = state->label;
-  right = state->right;
+  graph_rl = selection->cursor;
+  label = selection->label;
+  right = selection->right;
   db_mdb_status_require(mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_CURRENT));
   graph_key[1] = i_array_get(label);
   graph_key[0] = i_array_get(right);
@@ -554,18 +554,18 @@ each_data:
     goto each_key;
   };
 exit:
-  state->right.current = right.current;
-  state->label.current = label.current;
-  state->status = status;
+  selection->right.current = right.current;
+  selection->label.current = label.current;
+  selection->status = status;
   return (status);
 };
-status_t db_graph_read_0100(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
-  db_graph_reader_header(state);
+status_t db_graph_read_0100(db_graph_selection_t* selection, db_count_t count, db_graph_records_t* result) {
+  db_graph_reader_header(selection);
   db_mdb_declare_val_id;
   MDB_cursor* graph_rl;
   db_ids_t right;
-  graph_rl = state->cursor;
-  right = state->right;
+  graph_rl = selection->cursor;
+  right = selection->right;
   db_mdb_status_require(mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_CURRENT));
   graph_key[0] = i_array_get(right);
   if (db_id_equal((graph_key[0]), (db_pointer_to_id((val_graph_key.mv_data))))) {
@@ -621,15 +621,15 @@ each_data:
   };
   goto set_range;
 exit:
-  state->status = status;
-  state->right.current = right.current;
+  selection->status = status;
+  selection->right.current = right.current;
   return (status);
 };
-status_t db_graph_read_0000(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
-  db_graph_reader_header_0000(state);
+status_t db_graph_read_0000(db_graph_selection_t* selection, db_count_t count, db_graph_records_t* result) {
+  db_graph_reader_header_0000(selection);
   db_mdb_declare_val_graph_data;
   MDB_cursor* graph_lr;
-  graph_lr = state->cursor;
+  graph_lr = selection->cursor;
   db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
 each_key:
 each_data:
@@ -655,17 +655,17 @@ each_data:
     db_mdb_status_expect_notfound;
   };
 exit:
-  state->status = status;
+  selection->status = status;
   return (status);
 };
-/** prepare the state and select the reader.
+/** prepare the selection and select the reader.
   readers are specialised for filter combinations.
   the 1/0 pattern at the end of reader names corresponds to the filter combination the reader is supposed to handle.
   1 stands for filter given, 0 stands for not given. order is left, right, label, ordinal.
   readers always leave cursors at a valid entry, usually the next entry unless the results have been exhausted.
   left/right/label ids pointer can be zero which means they are unused.
   internally in the selection if unset i-array-in-range and i-array-length is zero */
-status_t db_graph_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal, db_count_t offset, db_graph_selection_t* state) {
+status_t db_graph_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal, db_count_t offset, db_graph_selection_t* selection) {
   status_declare;
   db_mdb_declare_val_null;
   imht_set_t* right_set;
@@ -673,99 +673,99 @@ status_t db_graph_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t
   db_mdb_cursor_declare(graph_rl);
   db_mdb_cursor_declare(graph_ll);
   if (left) {
-    state->left = *left;
+    selection->left = *left;
   } else {
-    i_array_set_null((state->left));
+    i_array_set_null((selection->left));
   };
   if (right) {
-    state->right = *right;
+    selection->right = *right;
   } else {
-    i_array_set_null((state->right));
+    i_array_set_null((selection->right));
   };
   if (label) {
-    state->label = *label;
+    selection->label = *label;
   } else {
-    i_array_set_null((state->label));
+    i_array_set_null((selection->label));
   };
-  state->ids_set = 0;
-  state->status = status;
-  state->ordinal = ordinal;
-  state->cursor = 0;
-  state->cursor_2 = 0;
-  state->options = 0;
+  selection->ids_set = 0;
+  selection->status = status;
+  selection->ordinal = ordinal;
+  selection->cursor = 0;
+  selection->cursor_2 = 0;
+  selection->options = 0;
   if (left) {
     if (ordinal) {
       if (right) {
         status_require(db_ids_to_set((*right), (&right_set)));
-        state->ids_set = right_set;
-        state->options = (db_graph_selection_flag_is_set_right | state->options);
+        selection->ids_set = right_set;
+        selection->options = (db_graph_selection_flag_is_set_right | selection->options);
       };
-      db_graph_select_cursor_initialise(graph_lr, state, cursor);
+      db_graph_select_cursor_initialise(graph_lr, selection, cursor);
       if (label) {
-        state->reader = db_graph_read_1011_1111;
+        selection->reader = db_graph_read_1011_1111;
       } else {
-        state->reader = db_graph_read_1001_1101;
+        selection->reader = db_graph_read_1001_1101;
       };
     } else {
       if (right) {
-        db_graph_select_cursor_initialise(graph_rl, state, cursor);
+        db_graph_select_cursor_initialise(graph_rl, selection, cursor);
         if (label) {
-          state->reader = db_graph_read_1110;
+          selection->reader = db_graph_read_1110;
         } else {
-          state->reader = db_graph_read_1100;
+          selection->reader = db_graph_read_1100;
         };
       } else {
-        db_graph_select_cursor_initialise(graph_lr, state, cursor);
+        db_graph_select_cursor_initialise(graph_lr, selection, cursor);
         if (label) {
-          state->reader = db_graph_read_1010;
+          selection->reader = db_graph_read_1010;
         } else {
-          state->reader = db_graph_read_1000;
+          selection->reader = db_graph_read_1000;
         };
       };
     };
   } else {
     if (right) {
-      db_graph_select_cursor_initialise(graph_rl, state, cursor);
-      state->reader = (label ? db_graph_read_0110 : db_graph_read_0100);
+      db_graph_select_cursor_initialise(graph_rl, selection, cursor);
+      selection->reader = (label ? db_graph_read_0110 : db_graph_read_0100);
     } else {
       if (label) {
-        db_graph_select_cursor_initialise(graph_ll, state, cursor);
-        db_graph_select_cursor_initialise(graph_lr, state, cursor_2);
-        state->reader = db_graph_read_0010;
+        db_graph_select_cursor_initialise(graph_ll, selection, cursor);
+        db_graph_select_cursor_initialise(graph_lr, selection, cursor_2);
+        selection->reader = db_graph_read_0010;
       } else {
-        db_graph_select_cursor_initialise(graph_lr, state, cursor);
-        state->reader = db_graph_read_0000;
+        db_graph_select_cursor_initialise(graph_lr, selection, cursor);
+        selection->reader = db_graph_read_0000;
       };
     };
   };
-  db_graph_reader_t reader = state->reader;
+  db_graph_reader_t reader = selection->reader;
   if (offset) {
-    state->options = (db_selection_flag_skip | state->options);
-    status = reader(state, offset, 0);
+    selection->options = (db_selection_flag_skip | selection->options);
+    status = reader(selection, offset, 0);
     if (!db_mdb_status_is_success) {
       db_mdb_status_expect_notfound;
     };
-    state->options = (db_selection_flag_skip ^ state->options);
+    selection->options = (db_selection_flag_skip ^ selection->options);
   };
 exit:
   db_mdb_status_notfound_if_notfound;
-  state->status = status;
+  selection->status = status;
   return (status);
 };
 /** result memory is to be allocated by the caller */
-status_t db_graph_read(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result) {
+status_t db_graph_read(db_graph_selection_t* selection, db_count_t count, db_graph_records_t* result) {
   status_declare;
-  status_require((state->status));
-  status = ((db_graph_reader_t)(state->reader))(state, (!count ? i_array_max_length((*result)) : count), result);
+  status_require((selection->status));
+  status = ((db_graph_reader_t)(selection->reader))(selection, (!count ? i_array_max_length((*result)) : count), result);
 exit:
   db_mdb_status_notfound_if_notfound;
   return (status);
 };
-void db_graph_selection_destroy(db_graph_selection_t* state) {
-  db_mdb_cursor_close((state->cursor));
-  db_mdb_cursor_close((state->cursor_2));
-  if (db_graph_selection_flag_is_set_right & state->options) {
-    imht_set_destroy((state->ids_set));
-    state->ids_set = 0;
+void db_graph_selection_finish(db_graph_selection_t* selection) {
+  db_mdb_cursor_close((selection->cursor));
+  db_mdb_cursor_close((selection->cursor_2));
+  if (db_graph_selection_flag_is_set_right & selection->options) {
+    imht_set_destroy((selection->ids_set));
+    selection->ids_set = 0;
   };
 };

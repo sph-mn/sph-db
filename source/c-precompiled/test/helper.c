@@ -99,7 +99,7 @@ status_t test_helper_display_all_relations(db_txn_t txn, ui32 left_count, ui32 r
   db_status_require_read(db_graph_select(txn, 0, 0, 0, 0, 0, (&state)));
   db_status_require_read(db_graph_read((&state), 0, (&records)));
   printf("all ");
-  db_graph_selection_destroy((&state));
+  db_graph_selection_finish((&state));
   db_debug_log_graph_records(records);
   i_array_free(records);
 exit:
@@ -416,7 +416,7 @@ status_t test_helper_graph_read_one(db_txn_t txn, test_helper_graph_read_data_t 
   if (!ordinal) {
     status_require(test_helper_graph_read_records_validate(data));
   };
-  db_graph_selection_destroy((&state));
+  db_graph_selection_finish((&state));
   db_status_success_if_notfound;
   i_array_rewind((data.records));
 exit:
@@ -512,7 +512,7 @@ status_t test_helper_graph_delete_one(test_helper_graph_delete_data_t data, bool
   db_status_require_read(db_graph_select(txn, (use_left ? &left : 0), (use_right ? &right : 0), (use_label ? &label : 0), (use_ordinal ? ordinal : 0), 0, (&state)));
   /* check that readers can handle empty selections */
   db_status_require_read(db_graph_read((&state), 0, (&records)));
-  db_graph_selection_destroy((&state));
+  db_graph_selection_finish((&state));
   db_txn_abort((&txn));
   if (!(0 == i_array_length(records))) {
     printf(("\n    failed deletion. %lu relations not deleted\n"), i_array_length(records));
@@ -529,7 +529,7 @@ status_t test_helper_graph_delete_one(test_helper_graph_delete_data_t data, bool
     db_status_require_read(db_graph_read((&state), 0, (&records)));
     printf("all remaining ");
     db_debug_log_graph_records(records);
-    db_graph_selection_destroy((&state));
+    db_graph_selection_finish((&state));
     db_txn_abort((&txn));
     status_set_id_goto(1);
   };

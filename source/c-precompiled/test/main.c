@@ -308,7 +308,7 @@ status_t test_node_select(db_env_t* env) {
   status = db_node_next((&selection));
   test_helper_assert("all type entries found", (db_status_id_notfound == status.id));
   status.id = status_id_success;
-  db_node_selection_destroy((&selection));
+  db_node_selection_finish((&selection));
   /* ids */
   if (!i_array_allocate_db_ids_t((&ids), 5)) {
     status_set_id_goto(db_status_id_memory);
@@ -321,7 +321,7 @@ status_t test_node_select(db_env_t* env) {
   status_require(db_node_select(txn, (&ids), 0, 0, 0, 0, (&selection)));
   status_require(db_node_next((&selection)));
   data = db_node_ref((&selection), 3);
-  db_node_selection_destroy((&selection));
+  db_node_selection_finish((&selection));
   /* matcher */
   matcher_state = 0;
   status_require(db_node_select(txn, 0, type, 0, node_matcher, (&matcher_state), (&selection)));
@@ -329,7 +329,7 @@ status_t test_node_select(db_env_t* env) {
   data = db_node_ref((&selection), 0);
   test_helper_assert("node-ref size", (1 == data.size));
   test_helper_assert("matcher-state", (1 == matcher_state));
-  db_node_selection_destroy((&selection));
+  db_node_selection_finish((&selection));
   /* type and skip */
   status_require(db_node_select(txn, 0, type, 0, 0, 0, (&selection)));
   status_require(db_node_skip((&selection), 2));
@@ -337,7 +337,7 @@ status_t test_node_select(db_env_t* env) {
   status = db_node_next((&selection));
   test_helper_assert("entries skipped", (db_status_id_notfound == status.id));
   status.id = status_id_success;
-  db_node_selection_destroy((&selection));
+  db_node_selection_finish((&selection));
   db_txn_abort((&txn));
   status_require(db_txn_write_begin((&txn)));
   db_debug_count_all_btree_entries(txn, (&btree_size_before_delete));
@@ -412,7 +412,7 @@ status_t test_index(db_env_t* env) {
   status = db_index_next(selection);
   test_helper_assert("index-select next end", (db_status_id_notfound == status.id));
   status.id = status_id_success;
-  db_index_selection_destroy((&selection));
+  db_index_selection_finish((&selection));
   db_txn_abort((&txn));
   db_txn_begin((&txn));
   status_require(db_index_rebuild(env, index));
@@ -422,7 +422,7 @@ status_t test_index(db_env_t* env) {
   db_txn_begin((&txn));
   db_node_index_selection_t node_index_selection;
   status_require((db_node_index_select(txn, (*index), (values[0]), (&node_index_selection))));
-  db_node_index_selection_destroy((&node_index_selection));
+  db_node_index_selection_finish((&node_index_selection));
   db_txn_abort((&txn));
 exit:
   db_txn_abort_if_active(txn);

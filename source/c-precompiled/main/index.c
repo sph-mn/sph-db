@@ -358,20 +358,20 @@ exit:
 };
 /** position at the next index value.
   if no value is found, status is db-notfound.
-  before call, state must be positioned at a matching key */
-status_t db_index_next(db_index_selection_t state) {
+  before call, selection must be positioned at a matching key */
+status_t db_index_next(db_index_selection_t selection) {
   status_declare;
   db_mdb_declare_val_null;
   db_mdb_declare_val_id;
-  db_mdb_status_require((mdb_cursor_get((state.cursor), (&val_null), (&val_id), MDB_NEXT_DUP)));
-  state.current = db_pointer_to_id((val_id.mv_data));
+  db_mdb_status_require((mdb_cursor_get((selection.cursor), (&val_null), (&val_id), MDB_NEXT_DUP)));
+  selection.current = db_pointer_to_id((val_id.mv_data));
 exit:
   db_mdb_status_notfound_if_notfound;
   return (status);
 };
-void db_index_selection_destroy(db_index_selection_t* state) { db_mdb_cursor_close_if_active((state->cursor)); };
+void db_index_selection_finish(db_index_selection_t* selection) { db_mdb_cursor_close_if_active((selection->cursor)); };
 /** open the cursor and set to the index key matching values.
-  state is set to the first match.
+  selection is set to the first match.
   if no match found status is db-notfound */
 status_t db_index_select(db_txn_t txn, db_index_t index, db_node_values_t values, db_index_selection_t* result) {
   status_declare;

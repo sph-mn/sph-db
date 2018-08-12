@@ -109,7 +109,7 @@
   (db-status-require-read (db-graph-select txn 0 0 0 0 0 &state))
   (db-status-require-read (db-graph-read &state 0 &records))
   (printf "all ")
-  (db-graph-selection-destroy &state)
+  (db-graph-selection-finish &state)
   (db-debug-log-graph-records records)
   (i-array-free records)
   (label exit
@@ -477,7 +477,7 @@
         txn data.e-left-count data.e-right-count data.e-label-count)
       (status-set-id-goto 1)))
   (if (not ordinal) (status-require (test-helper-graph-read-records-validate data)))
-  (db-graph-selection-destroy &state)
+  (db-graph-selection-finish &state)
   db-status-success-if-notfound
   (i-array-rewind data.records)
   (label exit
@@ -616,7 +616,7 @@
         0 &state))
     (sc-comment "check that readers can handle empty selections")
     (db-status-require-read (db-graph-read &state 0 &records))
-    (db-graph-selection-destroy &state)
+    (db-graph-selection-finish &state)
     (db-txn-abort &txn)
     (if (not (= 0 (i-array-length records)))
       (begin
@@ -640,7 +640,7 @@
         (db-status-require-read (db-graph-read &state 0 &records))
         (printf "all remaining ")
         (db-debug-log-graph-records records)
-        (db-graph-selection-destroy &state)
+        (db-graph-selection-finish &state)
         (db-txn-abort &txn)
         (status-set-id-goto 1)))
     db-status-success-if-notfound

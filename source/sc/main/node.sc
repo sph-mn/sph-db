@@ -56,6 +56,8 @@
   (label exit
     (return status)))
 
+(define (db-node-values-free a) (void db-node-values-t*) (free-and-set-null a:data))
+
 (define (db-node-values-set values field data size)
   (void db-node-values-t* db-fields-len-t void* size-t)
   "set a value for a field in node values.
@@ -154,9 +156,9 @@
         result.size 0)
       (return result))))
 
-(define (db-node-ref state field) (db-node-data-t db-node-selection-t* db-fields-len-t)
+(define (db-node-ref selection field) (db-node-data-t db-node-selection-t* db-fields-len-t)
   "return a reference to the data for a field without copying"
-  (return (db-node-data-ref state:type state:current field)))
+  (return (db-node-data-ref selection:type selection:current field)))
 
 (define (db-free-node-values values) (void db-node-values-t*) (free-and-set-null values:data))
 
@@ -179,7 +181,7 @@
     (if status-is-failure (db-free-node-values &values))
     (return status)))
 
-(define (db-node-next state) (status-t db-node-selection-t*)
+(define (db-node-next selection) (status-t db-node-selection-t*)
   status-declare
   db-mdb-declare-val-id
   (declare
@@ -194,18 +196,18 @@
     match boolean
     type-id db-type-id-t)
   (set
-    matcher state:matcher
-    matcher-state state:matcher-state
-    skip (bit-and state:options db-selection-flag-skip)
-    count state:count
-    ids state:ids)
+    matcher selection:matcher
+    matcher-state selection:matcher-state
+    skip (bit-and selection:options db-selection-flag-skip)
+    count selection:count
+    ids selection:ids)
   (if (i-array-in-range ids)
     (begin
       (sc-comment "filter by ids")
       (while (and (i-array-in-range ids) count)
         (set
           val-id.mv-data ids.current
-          status.id (mdb-cursor-get state:cursor &val-id &val-data MDB-SET-KEY))
+          status.id (mdb-cursor-get selection:cursor &val-id &val-data MDB-SET-KEY))
         (if db-mdb-status-is-success
           (begin
             (if matcher
@@ -219,18 +221,18 @@
                 (if (not skip)
                   (set
                     id (db-pointer->id val-id.mv-data)
-                    state:type (db-type-get-by-id state:env (db-id-type id))
-                    state:current.data val-data.mv-data
-                    state:current.size val-data.mv-size
-                    state:current-id id))
+                    selection:type (db-type-get-by-id selection:env (db-id-type id))
+                    selection:current.data val-data.mv-data
+                    selection:current.size val-data.mv-size
+                    selection:current-id id))
                 (set count (- count 1)))))
           db-mdb-status-expect-notfound)
         (i-array-forward ids))
-      (set state:ids ids))
+      (set selection:ids ids))
     (begin
       (sc-comment "filter by type")
-      (set type-id state:type:id)
-      (db-mdb-status-require (mdb-cursor-get state:cursor &val-id &val-data MDB-GET-CURRENT))
+      (set type-id selection:type:id)
+      (db-mdb-status-require (mdb-cursor-get selection:cursor &val-id &val-data MDB-GET-CURRENT))
       (while
         (and
           db-mdb-status-is-success count (= type-id (db-id-type (db-pointer->id val-id.mv-data))))
@@ -244,27 +246,27 @@
           (begin
             (if (not skip)
               (set
-                state:current.data val-data.mv-data
-                state:current.size val-data.mv-size
-                state:current-id (db-pointer->id val-id.mv-data)))
+                selection:current.data val-data.mv-data
+                selection:current.size val-data.mv-size
+                selection:current-id (db-pointer->id val-id.mv-data)))
             (set count (- count 1))))
-        (set status.id (mdb-cursor-get state:cursor &val-id &val-data MDB-NEXT-NODUP)))))
+        (set status.id (mdb-cursor-get selection:cursor &val-id &val-data MDB-NEXT-NODUP)))))
   (label exit
     db-mdb-status-notfound-if-notfound
     (return status)))
 
-(define (db-node-skip state count) (status-t db-node-selection-t* db-count-t)
-  "read the next count matches and position state afterwards"
+(define (db-node-skip selection count) (status-t db-node-selection-t* db-count-t)
+  "read the next count matches and position selection afterwards"
   status-declare
   (set
-    state:options (bit-or state:options db-selection-flag-skip)
-    state:count count
-    status (db-node-next state)
-    state:options (bit-xor state:options db-selection-flag-skip)
-    state:count 1)
+    selection:options (bit-or selection:options db-selection-flag-skip)
+    selection:count count
+    status (db-node-next selection)
+    selection:options (bit-xor selection:options db-selection-flag-skip)
+    selection:count 1)
   (return status))
 
-(define (db-node-select txn ids type offset matcher matcher-state result-state)
+(define (db-node-select txn ids type offset matcher matcher-state result-selection)
   (status-t db-txn-t db-ids-t* db-type-t* db-count-t db-node-matcher-t void* db-node-selection-t*)
   "select nodes optionally filtered by either a list of ids or type.
   ids: zero if unused
@@ -282,24 +284,24 @@
   (if ids
     (begin
       (db-mdb-status-require (mdb-cursor-get nodes &val-null &val-null MDB-FIRST))
-      (set result-state:ids *ids))
+      (set result-selection:ids *ids))
     (begin
       (set
         id (db-id-add-type 0 type:id)
         val-id.mv-data &id)
-      (i-array-set-null result-state:ids)
+      (i-array-set-null result-selection:ids)
       (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-null MDB-SET-RANGE))
       (if (not (= type:id (db-id-type (db-pointer->id val-id.mv-data))))
         (status-set-id-goto db-status-id-notfound))))
   (set
-    result-state:cursor nodes
-    result-state:count 1
-    result-state:env txn.env
-    result-state:matcher matcher
-    result-state:matcher-state matcher-state
-    result-state:options 0
-    result-state:type type)
-  (if offset (set status (db-node-skip result-state offset)))
+    result-selection:cursor nodes
+    result-selection:count 1
+    result-selection:env txn.env
+    result-selection:matcher matcher
+    result-selection:matcher-state matcher-state
+    result-selection:options 0
+    result-selection:type type)
+  (if offset (set status (db-node-skip result-selection offset)))
   (label exit
     (if (not status-is-success)
       (begin
@@ -389,7 +391,7 @@
     (db-mdb-cursor-close-if-active nodes)
     (return status)))
 
-(define (db-node-selection-destroy a) (void db-node-selection-t*)
+(define (db-node-selection-finish a) (void db-node-selection-t*)
   (db-mdb-cursor-close-if-active a:cursor))
 
 (define (db-node-update txn id values) (status-t db-txn-t db-id-t db-node-values-t)
@@ -450,8 +452,8 @@
   (label exit
     (return status)))
 
-(define (db-node-index-selection-destroy selection) (void db-node-index-selection-t*)
-  (db-index-selection-destroy &selection:index-selection)
+(define (db-node-index-selection-finish selection) (void db-node-index-selection-t*)
+  (db-index-selection-finish &selection:index-selection)
   (db-mdb-cursor-close-if-active selection:nodes))
 
 (define (db-node-index-select txn index values result)

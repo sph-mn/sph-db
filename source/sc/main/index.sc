@@ -373,26 +373,26 @@
     (if status-is-success (return (db-index-build env *index))
       (db-txn-abort-if-active txn))))
 
-(define (db-index-next state) (status-t db-index-selection-t)
+(define (db-index-next selection) (status-t db-index-selection-t)
   "position at the next index value.
   if no value is found, status is db-notfound.
-  before call, state must be positioned at a matching key"
+  before call, selection must be positioned at a matching key"
   status-declare
   db-mdb-declare-val-null
   db-mdb-declare-val-id
-  (db-mdb-status-require (mdb-cursor-get state.cursor &val-null &val-id MDB-NEXT-DUP))
-  (set state.current (db-pointer->id val-id.mv-data))
+  (db-mdb-status-require (mdb-cursor-get selection.cursor &val-null &val-id MDB-NEXT-DUP))
+  (set selection.current (db-pointer->id val-id.mv-data))
   (label exit
     db-mdb-status-notfound-if-notfound
     (return status)))
 
-(define (db-index-selection-destroy state) (void db-index-selection-t*)
-  (db-mdb-cursor-close-if-active state:cursor))
+(define (db-index-selection-finish selection) (void db-index-selection-t*)
+  (db-mdb-cursor-close-if-active selection:cursor))
 
 (define (db-index-select txn index values result)
   (status-t db-txn-t db-index-t db-node-values-t db-index-selection-t*)
   "open the cursor and set to the index key matching values.
-  state is set to the first match.
+  selection is set to the first match.
   if no match found status is db-notfound"
   status-declare
   db-mdb-declare-val-id
