@@ -64,7 +64,7 @@ enum { db_status_id_success,
   db_status_group_lmdb,
   db_status_group_libc };
 #define db_status_set_id_goto(status_id) status_set_both_goto(db_status_group_db, status_id)
-#define db_status_require_read(expression) \
+#define status_require_read(expression) \
   status = expression; \
   if (!(status_is_success || (status.id == db_status_id_notfound))) { \
     status_goto; \

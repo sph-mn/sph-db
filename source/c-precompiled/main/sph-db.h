@@ -153,7 +153,7 @@ enum { db_status_id_success,
   db_status_group_lmdb,
   db_status_group_libc };
 #define db_status_set_id_goto(status_id) status_set_both_goto(db_status_group_db, status_id)
-#define db_status_require_read(expression) \
+#define status_require_read(expression) \
   status = expression; \
   if (!(status_is_success || (status.id == db_status_id_notfound))) { \
     status_goto; \
@@ -259,79 +259,49 @@ ui8* db_status_name(status_t a) {
   };
   return (((ui8*)(b)));
 };
-#define db_count_t ui32
-#define db_fields_len_t ui8
-#define db_field_type_t ui8
-#define db_id_mask UINT64_MAX
 #define db_id_t ui64
-#define db_index_len_t ui8
-#define db_name_len_max UINT8_MAX
-#define db_name_len_t ui8
+#define db_type_id_t ui16
+#define db_ordinal_t ui32
+#define db_id_mask UINT64_MAX
+#define db_type_id_mask UINT16_MAX
 #define db_data_len_t ui32
-#define db_data_len_max UINT32_MAX
-#define db_ordinal_t ui32
-#define db_type_id_mask UINT16_MAX
-#define db_type_id_t ui16
-#ifndef db_id_t
-#define db_id_t ui64
-#endif
-#ifndef db_type_id_t
-#define db_type_id_t ui16
-#endif
-#ifndef db_ordinal_t
-#define db_ordinal_t ui32
-#endif
-#ifndef db_count_t
-#define db_count_t ui32
-#endif
-#ifndef db_indices_len_t
-#define db_indices_len_t ui8
-#endif
-#ifndef db_fields_len_t
-#define db_fields_len_t ui8
-#endif
-#ifndef db_name_len_t
 #define db_name_len_t ui8
-#endif
-#ifndef db_name_len_max
 #define db_name_len_max UINT8_MAX
-#endif
-#ifndef db_field_type_t
-#define db_field_type_t ui8
-#endif
-#ifndef db_id_mask
-#define db_id_mask UINT64_MAX
-#endif
-#ifndef db_type_id_mask
-#define db_type_id_mask UINT16_MAX
-#endif
-#ifndef db_id_equal
-#define db_id_equal(a, b) (a == b)
-#endif
-#ifndef db_id_compare
-#define db_id_compare(a, b) ((a < b) ? -1 : (a > b))
-#endif
-#define db_ordinal_compare db_id_compare
+#define db_data_len_max UINT32_MAX
+#define db_fields_len_t ui8
+#define db_indices_len_t ui8
+#define db_count_t ui32
+typedef struct {
+  db_id_t left;
+  db_id_t right;
+  db_id_t label;
+  db_ordinal_t ordinal;
+} db_relation_t;
+i_array_declare_type(db_ids_t, db_id_t);
+i_array_declare_type(db_relations_t, db_relation_t);
+#define db_ids_new i_array_allocate_db_ids_t
+#define db_relations_new i_array_allocate_db_relations_t
 #define db_size_graph_data (sizeof(db_ordinal_t) + sizeof(db_id_t))
 #define db_size_graph_key (2 * sizeof(db_id_t))
 #define db_null 0
 #define db_size_element_id (sizeof(db_id_t) - sizeof(db_type_id_t))
-#define db_field_type_float32 4
-#define db_field_type_float64 6
+#define db_field_type_t ui8
 #define db_field_type_binary 1
 #define db_field_type_string 3
-#define db_field_type_int8 48
+#define db_field_type_float32 4
+#define db_field_type_float64 6
 #define db_field_type_int16 80
 #define db_field_type_int32 112
 #define db_field_type_int64 144
-#define db_field_type_uint8 32
+#define db_field_type_int8 48
+#define db_field_type_string16 66
+#define db_field_type_string32 98
+#define db_field_type_string64 130
+#define db_field_type_string8 34
 #define db_field_type_uint16 64
 #define db_field_type_uint32 96
 #define db_field_type_uint64 128
-#define db_field_type_char8 34
-#define db_field_type_char16 66
-#define db_field_type_char32 98
-#define db_field_type_char64 130
+#define db_field_type_uint8 32
 #define db_id_add_type(id, type_id) (id | (((db_id_t)(type_id)) << (8 * db_size_element_id)))
 /** get the type id part from a node id. a node id without element id */
 #define db_id_type(id) (id >> (8 * db_size_element_id))
@@ -356,14 +326,6 @@ ui8* db_status_name(status_t a) {
   a.type = a_type; \
   a.name = a_name; \
   a.name_len = a_name_len
-typedef struct {
-  db_id_t left;
-  db_id_t right;
-  db_id_t label;
-  db_ordinal_t ordinal;
-} db_graph_record_t;
-i_array_declare_type(db_ids_t, db_id_t);
-i_array_declare_type(db_graph_records_t, db_graph_record_t);
 typedef struct {
   ui8* name;
   db_name_len_t name_len;
@@ -477,7 +439,7 @@ typedef struct {
   ui8 options;
   void* reader;
 } db_graph_selection_t;
-typedef status_t (*db_graph_reader_t)(db_graph_selection_t*, db_count_t, db_graph_records_t*);
+typedef status_t (*db_graph_reader_t)(db_graph_selection_t*, db_count_t, db_relations_t*);
 status_t db_env_new(db_env_t** result);
 status_t db_statistics(db_txn_t txn, db_statistics_t* result);
 void db_close(db_env_t* env);
@@ -494,7 +456,7 @@ ui8* db_status_name(status_t a);
 ui8* db_status_group_id_to_name(status_id_t a);
 void db_graph_selection_finish(db_graph_selection_t* state);
 status_t db_graph_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal, db_count_t offset, db_graph_selection_t* result);
-status_t db_graph_read(db_graph_selection_t* state, db_count_t count, db_graph_records_t* result);
+status_t db_graph_read(db_graph_selection_t* state, db_count_t count, db_relations_t* result);
 status_t db_graph_ensure(db_txn_t txn, db_ids_t left, db_ids_t right, db_ids_t label, db_graph_ordinal_generator_t ordinal_generator, void* ordinal_generator_state);
 void db_graph_selection_finish(db_graph_selection_t* selection);
 status_t db_graph_delete(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal);

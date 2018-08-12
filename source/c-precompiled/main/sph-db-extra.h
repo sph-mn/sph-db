@@ -206,7 +206,7 @@ imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
   db_graph_data_set_id(id)
 void db_debug_log_ids(db_ids_t a);
 void db_debug_log_ids_set(imht_set_t a);
-void db_debug_log_graph_records(db_graph_records_t records);
+void db_debug_log_relations(db_relations_t records);
 status_t db_debug_log_btree_counts(db_txn_t txn);
 status_t db_debug_count_all_btree_entries(db_txn_t txn, db_count_t* result);
 status_t db_index_key(db_env_t* env, db_index_t index, db_node_values_t values, void** result_data, size_t* result_size);

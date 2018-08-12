@@ -1,6 +1,6 @@
 (pre-define
   (db-graph-key-equal a b)
-  (and (db-id-equal (array-get a 0) (array-get b 0)) (db-id-equal (array-get a 1) (array-get b 1)))
+  (and (= (array-get a 0) (array-get b 0)) (= (array-get a 1) (array-get b 1)))
   (db-graph-data-ordinal-set graph-data value)
   (set (array-get (convert-type graph-data db-ordinal-t*) 0) value)
   (db-graph-data-id-set graph-data value)
@@ -10,7 +10,7 @@
   (begin
     (declare graph-data (array ui8 ((+ (sizeof db-ordinal-t) (sizeof db-id-t)))))
     (memset graph-data 0 (+ (sizeof db-ordinal-t) (sizeof db-id-t))))
-  (db-declare-graph-record name) (define name db-graph-record-t (struct-literal 0 0 0 0)))
+  (db-declare-relation name) (define name db-relation-t (struct-literal 0 0 0 0)))
 
 (define (db-mdb-graph-lr-seek-right graph-lr id-right) (status-t MDB-cursor* db-id-t)
   "search data until the given id-right has been found"

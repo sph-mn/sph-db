@@ -56,7 +56,7 @@
   ; db-debug
   (db-debug-log-ids a) (void db-ids-t)
   (db-debug-log-ids-set a) (void imht-set-t)
-  (db-debug-log-graph-records records) (void db-graph-records-t)
+  (db-debug-log-relations records) (void db-relations-t)
   (db-debug-log-btree-counts txn) (status-t db-txn-t)
   (db-debug-count-all-btree-entries txn result) (status-t db-txn-t db-count-t*)
   ; index

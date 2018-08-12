@@ -54,7 +54,7 @@
     db_type_get;
     db_debug_count_all_btree_entries;
     db_debug_log_btree_counts;
-    db_debug_log_graph_records;
+    db_debug_log_relations;
     db_debug_log_ids;
     db_debug_log_ids_set;
     db_index_indices_entry_delete;

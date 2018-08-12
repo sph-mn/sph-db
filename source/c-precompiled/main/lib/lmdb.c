@@ -1,5 +1,6 @@
 #include <string.h>
 /* lmdb helpers */
+#define db_id_compare(a, b) ((a < b) ? -1 : (a > b))
 #define db_mdb_status_is_notfound (MDB_NOTFOUND == status.id)
 #define db_mdb_status_is_success (MDB_SUCCESS == status.id)
 #define db_mdb_status_is_failure !db_mdb_status_is_success

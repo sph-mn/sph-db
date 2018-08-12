@@ -106,8 +106,8 @@
     (set i (+ 1 i)))
   (printf "\n"))
 
-(define (db-debug-log-graph-records a) (void db-graph-records-t)
-  (declare b db-graph-record-t)
+(define (db-debug-log-relations a) (void db-relations-t)
+  (declare b db-relation-t)
   (printf "graph records (ll -> or)\n")
   (while (i-array-in-range a)
     (set b (i-array-get a))
@@ -141,12 +141,12 @@
 (define (db-field-type-size a) (ui8 ui8)
   "size in octets. zero for variable size types"
   (case = a
-    ( (db-field-type-int64 db-field-type-uint64 db-field-type-char64 db-field-type-float64)
+    ( (db-field-type-int64 db-field-type-uint64 db-field-type-string64 db-field-type-float64)
       (return 8))
-    ( (db-field-type-int32 db-field-type-uint32 db-field-type-char32 db-field-type-float32)
+    ( (db-field-type-int32 db-field-type-uint32 db-field-type-string32 db-field-type-float32)
       (return 4))
-    ((db-field-type-int16 db-field-type-uint16 db-field-type-char16) (return 2))
-    ((db-field-type-int8 db-field-type-uint8 db-field-type-char8) (return 1))
+    ((db-field-type-int16 db-field-type-uint16 db-field-type-string16) (return 2))
+    ((db-field-type-int8 db-field-type-uint8 db-field-type-string8) (return 1))
     (else (return 0))))
 
 (define (db-ids->set a result) (status-t db-ids-t imht-set-t**)

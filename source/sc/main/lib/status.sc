@@ -22,7 +22,7 @@
 
 (pre-define
   (db-status-set-id-goto status-id) (status-set-both-goto db-status-group-db status-id)
-  (db-status-require-read expression)
+  (status-require-read expression)
   (begin
     (set status expression)
     (if (not (or status-is-success (= status.id db-status-id-notfound))) status-goto))

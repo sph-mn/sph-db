@@ -2,45 +2,41 @@
 (pre-include "math.h" "pthread.h" "lmdb.h")
 (sc-include "foreign/sph" "foreign/sph/i-array" "main/lib/status" "main/config")
 
-(pre-define-if-not-defined
-  db-id-t ui64
-  db-type-id-t ui16
-  db-ordinal-t ui32
-  db-count-t ui32
-  db-indices-len-t ui8
-  db-fields-len-t ui8
-  db-name-len-t ui8
-  db-name-len-max UINT8_MAX
-  db-field-type-t ui8
-  db-id-mask UINT64_MAX
-  db-type-id-mask UINT16_MAX
-  (db-id-equal a b) (= a b)
-  (db-id-compare a b)
-  (if* (< a b) -1
-    (> a b)))
+(declare db-relation-t
+  (type
+    (struct
+      (left db-id-t)
+      (right db-id-t)
+      (label db-id-t)
+      (ordinal db-ordinal-t))))
+
+(i-array-declare-type db-ids-t db-id-t)
+(i-array-declare-type db-relations-t db-relation-t)
 
 (pre-define
-  db-ordinal-compare db-id-compare
+  db-ids-new i-array-allocate-db-ids-t
+  db-relations-new i-array-allocate-db-relations-t
   db-size-graph-data (+ (sizeof db-ordinal-t) (sizeof db-id-t))
   db-size-graph-key (* 2 (sizeof db-id-t))
   db-null 0
   db-size-element-id (- (sizeof db-id-t) (sizeof db-type-id-t))
-  db-field-type-float32 4
-  db-field-type-float64 6
+  db-field-type-t ui8
   db-field-type-binary 1
   db-field-type-string 3
-  db-field-type-int8 48
+  db-field-type-float32 4
+  db-field-type-float64 6
   db-field-type-int16 80
   db-field-type-int32 112
   db-field-type-int64 144
-  db-field-type-uint8 32
+  db-field-type-int8 48
+  db-field-type-string16 66
+  db-field-type-string32 98
+  db-field-type-string64 130
+  db-field-type-string8 34
   db-field-type-uint16 64
   db-field-type-uint32 96
   db-field-type-uint64 128
-  db-field-type-char8 34
-  db-field-type-char16 66
-  db-field-type-char32 98
-  db-field-type-char64 130
+  db-field-type-uint8 32
   (db-id-add-type id type-id)
   (bit-or id (bit-shift-left (convert-type type-id db-id-t) (* 8 db-size-element-id)))
   (db-id-type id)
@@ -70,17 +66,6 @@
     a.type a-type
     a.name a-name
     a.name-len a-name-len))
-
-(declare db-graph-record-t
-  (type
-    (struct
-      (left db-id-t)
-      (right db-id-t)
-      (label db-id-t)
-      (ordinal db-ordinal-t))))
-
-(i-array-declare-type db-ids-t db-id-t)
-(i-array-declare-type db-graph-records-t db-graph-record-t)
 
 (declare
   ; types
@@ -217,7 +202,7 @@
       (options ui8)
       (reader void*)))
   db-graph-reader-t
-  (type (function-pointer status-t db-graph-selection-t* db-count-t db-graph-records-t*))
+  (type (function-pointer status-t db-graph-selection-t* db-count-t db-relations-t*))
   ; routines
   (db-env-new result) (status-t db-env-t**)
   (db-statistics txn result) (status-t db-txn-t db-statistics-t*)
@@ -239,7 +224,7 @@
   (db-graph-select txn left right label ordinal offset result)
   (status-t
     db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* db-count-t db-graph-selection-t*)
-  (db-graph-read state count result) (status-t db-graph-selection-t* db-count-t db-graph-records-t*)
+  (db-graph-read state count result) (status-t db-graph-selection-t* db-count-t db-relations-t*)
   (db-graph-ensure txn left right label ordinal-generator ordinal-generator-state)
   (status-t db-txn-t db-ids-t db-ids-t db-ids-t db-graph-ordinal-generator-t void*)
   (db-graph-selection-finish selection) (void db-graph-selection-t*)

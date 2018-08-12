@@ -16,7 +16,7 @@ copy_example_config() {
   # the config file is not versioned so that users can customise it
   if [ ! -f "$sm/config.sc" ]
   then
-    cp "$sm/config.sc.example" "$sm/config.sc"
+    cp "$sm/config.example.sc" "$sm/config.sc"
   fi
 }
 

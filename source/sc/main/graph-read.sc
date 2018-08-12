@@ -15,7 +15,7 @@
     status-declare
     db-mdb-declare-val-graph-key
     (db-declare-graph-key graph-key)
-    (db-declare-graph-record record)
+    (db-declare-relation record)
     (declare skip boolean)
     (set skip (bit-and db-selection-flag-skip selection:options))))
 
@@ -23,7 +23,7 @@
   (begin
     status-declare
     db-mdb-declare-val-graph-key
-    (db-declare-graph-record record)
+    (db-declare-relation record)
     (declare skip boolean)
     (set skip (bit-and db-selection-flag-skip selection:options))))
 
@@ -33,7 +33,7 @@
     (define ordinal-max db-ordinal-t selection:ordinal:max)))
 
 (define (db-graph-read-1000 selection count result)
-  (status-t db-graph-selection-t* db-count-t db-graph-records-t*)
+  (status-t db-graph-selection-t* db-count-t db-relations-t*)
   (db-graph-reader-header selection)
   db-mdb-declare-val-graph-data
   (declare
@@ -44,14 +44,13 @@
     left selection:left)
   (db-mdb-status-require (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
   (set (array-get graph-key 0) (i-array-get left))
-  (if (db-id-equal (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0)) (goto each-data)
+  (if (= (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0)) (goto each-data)
     (label set-range
       (set val-graph-key.mv-data graph-key)
       (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-RANGE))
       (label each-key
         (if db-mdb-status-is-success
-          (if (db-id-equal (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0))
-            (goto each-data))
+          (if (= (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0)) (goto each-data))
           db-mdb-status-expect-notfound)
         (i-array-forward left)
         (if (i-array-in-range left)
@@ -82,7 +81,7 @@
     (return status)))
 
 (define (db-graph-read-1010 selection count result)
-  (status-t db-graph-selection-t* db-count-t db-graph-records-t*)
+  (status-t db-graph-selection-t* db-count-t db-relations-t*)
   (db-graph-reader-header selection)
   db-mdb-declare-val-graph-data
   (declare
@@ -141,7 +140,7 @@
     (return status)))
 
 (define (db-graph-read-1100 selection count result)
-  (status-t db-graph-selection-t* db-count-t db-graph-records-t*)
+  (status-t db-graph-selection-t* db-count-t db-relations-t*)
   db-mdb-declare-val-id
   (db-graph-reader-header selection)
   (declare
@@ -154,14 +153,13 @@
     right selection:right)
   (db-mdb-status-require (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-GET-CURRENT))
   (set (array-get graph-key 0) (i-array-get right))
-  (if (db-id-equal (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0)) (goto each-left)
+  (if (= (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0)) (goto each-left)
     (label set-range
       (set val-graph-key.mv-data graph-key)
       (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-SET-RANGE))
       (label each-right
         (if db-mdb-status-is-success
-          (if (db-id-equal (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0))
-            (goto each-left))
+          (if (= (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0)) (goto each-left))
           db-mdb-status-expect-notfound)
         (i-array-forward right)
         (if (i-array-in-range right) (set (array-get graph-key 0) (i-array-get right))
@@ -195,7 +193,7 @@
     (return status)))
 
 (define (db-graph-read-1110 selection count result)
-  (status-t db-graph-selection-t* db-count-t db-graph-records-t*)
+  (status-t db-graph-selection-t* db-count-t db-relations-t*)
   (db-graph-reader-header selection)
   db-mdb-declare-val-id
   (declare
@@ -264,7 +262,7 @@
     (return status)))
 
 (define (db-graph-read-1001-1101 selection count result)
-  (status-t db-graph-selection-t* db-count-t db-graph-records-t*)
+  (status-t db-graph-selection-t* db-count-t db-relations-t*)
   (db-graph-reader-header selection)
   db-mdb-declare-val-graph-data
   (db-declare-graph-data graph-data)
@@ -281,13 +279,13 @@
   (db-mdb-status-require (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
   (if (i-array-in-range left) (set (array-get graph-key 0) (i-array-get left))
     notfound-exit)
-  (if (db-id-equal (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0)) (goto each-key))
+  (if (= (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0)) (goto each-key))
   (label each-left
     (set val-graph-key.mv-data graph-key)
     (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-RANGE))
     (label each-key
       (if db-mdb-status-is-success
-        (if (db-id-equal (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0))
+        (if (= (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0))
           (begin
             (set
               val-graph-data.mv-data graph-data
@@ -333,7 +331,7 @@
     (return status)))
 
 (define (db-graph-read-1011-1111 selection count result)
-  (status-t db-graph-selection-t* db-count-t db-graph-records-t*)
+  (status-t db-graph-selection-t* db-count-t db-relations-t*)
   (db-graph-reader-header selection)
   (db-declare-graph-data graph-data)
   db-mdb-declare-val-graph-data
@@ -403,7 +401,7 @@
     (return status)))
 
 (define (db-graph-read-0010 selection count result)
-  (status-t db-graph-selection-t* db-count-t db-graph-records-t*)
+  (status-t db-graph-selection-t* db-count-t db-relations-t*)
   (db-graph-reader-header selection)
   db-mdb-declare-val-id
   db-mdb-declare-val-id-2
@@ -422,7 +420,7 @@
   (db-mdb-status-require (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
   (if (i-array-in-range label) (set id-label (i-array-get label))
     notfound-exit)
-  (if (db-id-equal id-label (db-pointer->id val-id.mv-data))
+  (if (= id-label (db-pointer->id val-id.mv-data))
     (begin
       (set (array-get graph-key 1) id-label)
       (goto each-label-data))
@@ -441,7 +439,7 @@
           (goto set-label-key)))))
   (label each-label-data
     (set id-left (db-pointer->id val-id-2.mv-data))
-    (if (db-id-equal id-left (db-pointer->id val-graph-key.mv-data)) (goto each-left-data)
+    (if (= id-left (db-pointer->id val-graph-key.mv-data)) (goto each-left-data)
       (begin
         (set (array-get graph-key 0) id-left)
         (set val-graph-key.mv-data graph-key)
@@ -475,7 +473,7 @@
     (return status)))
 
 (define (db-graph-read-0110 selection count result)
-  (status-t db-graph-selection-t* db-count-t db-graph-records-t*)
+  (status-t db-graph-selection-t* db-count-t db-relations-t*)
   (db-graph-reader-header selection)
   db-mdb-declare-val-id
   (declare
@@ -530,7 +528,7 @@
     (return status)))
 
 (define (db-graph-read-0100 selection count result)
-  (status-t db-graph-selection-t* db-count-t db-graph-records-t*)
+  (status-t db-graph-selection-t* db-count-t db-relations-t*)
   (db-graph-reader-header selection)
   db-mdb-declare-val-id
   (declare
@@ -541,13 +539,12 @@
     right selection:right)
   (db-mdb-status-require (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-GET-CURRENT))
   (set (array-get graph-key 0) (i-array-get right))
-  (if (db-id-equal (array-get graph-key 0) (db-pointer->id val-graph-key.mv-data)) (goto each-key)
+  (if (= (array-get graph-key 0) (db-pointer->id val-graph-key.mv-data)) (goto each-key)
     (label set-range
       (set val-graph-key.mv-data graph-key)
       (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-SET-RANGE))
       (if db-mdb-status-is-success
-        (if (db-id-equal (array-get graph-key 0) (db-pointer->id val-graph-key.mv-data))
-          (goto each-key))
+        (if (= (array-get graph-key 0) (db-pointer->id val-graph-key.mv-data)) (goto each-key))
         db-mdb-status-expect-notfound)
       (i-array-forward right)
       (if (i-array-in-range right) (set (array-get graph-key 0) (i-array-get right))
@@ -569,8 +566,7 @@
         db-mdb-status-expect-notfound))
     (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-NEXT-NODUP))
     (if db-mdb-status-is-success
-      (if (db-id-equal (array-get graph-key 0) (db-pointer->id val-graph-key.mv-data))
-        (goto each-key))
+      (if (= (array-get graph-key 0) (db-pointer->id val-graph-key.mv-data)) (goto each-key))
       db-mdb-status-expect-notfound)
     (i-array-forward right)
     (if (i-array-in-range right) (set (array-get graph-key 0) (i-array-get right))
@@ -583,7 +579,7 @@
     (return status)))
 
 (define (db-graph-read-0000 selection count result)
-  (status-t db-graph-selection-t* db-count-t db-graph-records-t*)
+  (status-t db-graph-selection-t* db-count-t db-relations-t*)
   (db-graph-reader-header-0000 selection)
   db-mdb-declare-val-graph-data
   (declare graph-lr MDB-cursor*)
@@ -688,7 +684,7 @@
     (return status)))
 
 (define (db-graph-read selection count result)
-  (status-t db-graph-selection-t* db-count-t db-graph-records-t*)
+  (status-t db-graph-selection-t* db-count-t db-relations-t*)
   "result memory is to be allocated by the caller"
   status-declare
   (status-require selection:status)

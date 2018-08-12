@@ -108,8 +108,8 @@ void db_debug_log_ids_set(imht_set_t a) {
   };
   printf("\n");
 };
-void db_debug_log_graph_records(db_graph_records_t a) {
-  db_graph_record_t b;
+void db_debug_log_relations(db_relations_t a) {
+  db_relation_t b;
   printf(("graph records (ll -> or)\n"));
   while (i_array_in_range(a)) {
     b = i_array_get(a);
@@ -136,13 +136,13 @@ exit:
 };
 /** size in octets. zero for variable size types */
 ui8 db_field_type_size(ui8 a) {
-  if ((db_field_type_int64 == a) || (db_field_type_uint64 == a) || (db_field_type_char64 == a) || (db_field_type_float64 == a)) {
+  if ((db_field_type_int64 == a) || (db_field_type_uint64 == a) || (db_field_type_string64 == a) || (db_field_type_float64 == a)) {
     return (8);
-  } else if ((db_field_type_int32 == a) || (db_field_type_uint32 == a) || (db_field_type_char32 == a) || (db_field_type_float32 == a)) {
+  } else if ((db_field_type_int32 == a) || (db_field_type_uint32 == a) || (db_field_type_string32 == a) || (db_field_type_float32 == a)) {
     return (4);
-  } else if ((db_field_type_int16 == a) || (db_field_type_uint16 == a) || (db_field_type_char16 == a)) {
+  } else if ((db_field_type_int16 == a) || (db_field_type_uint16 == a) || (db_field_type_string16 == a)) {
     return (2);
-  } else if ((db_field_type_int8 == a) || (db_field_type_uint8 == a) || (db_field_type_char8 == a)) {
+  } else if ((db_field_type_int8 == a) || (db_field_type_uint8 == a) || (db_field_type_string8 == a)) {
     return (1);
   } else {
     return (0);

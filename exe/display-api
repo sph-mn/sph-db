@@ -4,4 +4,4 @@
 
 extra="$PWD/other/sc-documentor-config.scm"
 cd source/sc/main &&
-sc-documentor sph-db.sc lib/status.sc config.sc --config="$extra"
+sc-documentor sph-db.sc --config="$extra"

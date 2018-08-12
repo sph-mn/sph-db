@@ -3,6 +3,9 @@
 
 (pre-define
   ; status
+  (db-id-compare a b)
+  (if* (< a b) -1
+    (> a b))
   db-mdb-status-is-notfound (= MDB-NOTFOUND status.id)
   db-mdb-status-is-success (= MDB-SUCCESS status.id)
   db-mdb-status-is-failure (not db-mdb-status-is-success)

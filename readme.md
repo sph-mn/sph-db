@@ -2,7 +2,8 @@
 
 sph-db is a database as a shared library for records and relations.
 
-* [homepage](http://sph.mn/c/view/52)
+it is new, please try it and report any issues
+
 * [design](http://sph.mn/c/view/si)
 * license: lgpl3+
 
@@ -40,7 +41,7 @@ sph-db is a database as a shared library for records and relations.
 1. change into the project directory and execute ``./exe/compile-c``
 1. execute ``./exe/install``. this supports one optional argument: a path prefix to install to
 
-optionally execute ``./exe/test`` to see if the tests run successful.
+optionally execute ``./exe/test`` to see if the tests run successful
 
 # usage in c
 ## compilation of programs using sph-db
@@ -49,14 +50,14 @@ for example with gcc:
 gcc example.c -o example-executable -llmdb -lsph-db
 ```
 
-## inclusions of api declarations
+## inclusion of api declarations
 ```c
 #include "<sph-db.h>"
 ```
 
 ## error handling
-db routines return a "status_t" object that contains a status and a status-group identifier (error code and source library identifier). bindings to work with this small object are included with the main header "sph-db.h". sph-db internally usually uses a goto label named "exit" per routine where undesired return status ids are handled. ``status_require`` goes to exit on any failure status (status.id not zero).
-the following examples assume this pattern of calling ``status_declare`` beforehand and having a label named ``exit``
+db routines return a "status_t" object that contains a status and a status-group identifier (error code and source library identifier). bindings to work with this small object are included with the main header "sph-db.h". sph-db internally usually uses a goto label named "exit" per routine where undesired return stati are handled. ``status_require`` goes to exit on any failure status (status.id not zero).
+the following examples assume this pattern of calling ``status_declare`` to introduce an initialised variable named ``status`` and having a label named ``exit``
 
 ```c
 int main() {
@@ -80,7 +81,7 @@ db_close(env);
 ## transactions
 * transactions are required for reading and writing. routines for schema changes like type and index creation create a transaction internally and must not be used while another transaction is active in the same thread
 * there must only be one active transaction per thread (there is an option to relax this for read transactions). nested transactions are possible
-* returned data pointers, for example by db_node_data_ref, are only valid until the transaction is aborted or committed. such data pointers are always only for reading and must never be written to
+* returned data pointers, for example by db_node_data_ref, are only valid until the corresponding transaction is aborted or committed. such data pointers are always only for reading and must never be written to
 
 declare a transaction handle variable
 ```c
@@ -122,8 +123,8 @@ db_field_set(fields[3], db_field_type_string, "field-name-4", 12);
 // arguments: db_env_t*, type_name, db_field_t*, field_count, flags, result
 status_require(db_type_create(env, "test-type", fields, 4, 0, &type));
 ```
-
-fields can be fixed length (signed and unsigned integers, 64 and 32 bit floating point, characters) or variable length (string, binary). possible field types are db_field_type_* macro variables, see api reference below.
+fields can be fixed length (for example for integers and floating point values) or variable length. possible field types are db_field_type_* macro variables, see api reference below.
+besides being fixed and variable length and specifying size, field types are mostly a hint because no conversions take place.
 
 ## create nodes
 ```c
@@ -139,6 +140,7 @@ status_require(db_node_values_new(type, &values));
 // size is ignored for fixed length types
 db_node_values_set(&values_1, 0, &value_1, 0);
 db_node_values_set(&values_1, 1, &value_2, 0);
+// strings can be stored with and without a trailing null character
 db_node_values_set(&values_1, 2, value_3, 3);
 db_node_values_set(&values_1, 3, value_4, 5);
 status_require(db_node_create(txn, values, &id-1));
@@ -189,7 +191,7 @@ by any of a list of ids
 db_node_selection_t selection;
 db_node_data_t field_data;
 db_ids_t ids;
-i_array_allocate_db_ids_t(ids, 3);
+db_ids_new(ids, 3);
 i_array_add(ids, 10);
 i_array_add(ids, 15);
 i_array_add(ids, 28);
@@ -197,9 +199,10 @@ status_require(db_node_select(txn, ids, 0, 0, 0, 0, &selection));
 status_require_read(db_node_next(selection));
 status_require_read(db_node_next(selection));
 db_node_selection_finish(&selection);
+i_array_free(ids);
 ```
 
-by custom matcher function
+by custom matcher function and optionally either type or ids list
 ```c
 boolean node_matcher(db_id_t id, db_node_data_t data, void* matcher_state) {
   db_node_data_t field_data;
@@ -209,83 +212,107 @@ boolean node_matcher(db_id_t id, db_node_data_t data, void* matcher_state) {
 };
 ui8 matcher_state = 0;
 status_require(db_node_select(txn, 0, type, 0, node_matcher, &matcher_state, &selection));
-status_require(db_node_next((&selection)));
 ```
 
 ## create relations
-# todo: update examples
 ```c
-db_ids_t* left = 0;
-db_ids_t* right = 0;
-db_ids_t* label = 0;
-db_txn_declare(env txn);
-// store node-ids in left, right and label
-
-db_txn_write_begin(txn);
-
-// create relations for each label between all the specified left and right nodes (relations = left * right * label)
+db_ids_t left;
+db_ids_t right;
+db_ids_t label;
+db_ids_new(left, 5);
+db_ids_new(left, 5);
+db_ids_new(left, 2);
+// ... add ids to left, right and label ...
+// create relations between all given left and right nodes for each label (relations = left * right * label)
 status_require(db_graph_ensure(txn, left, right, label, 0, 0));
-db_txn_commit(txn);
-
-exit:
-  if(db_txn_active(txn)) db_txn_abort(txn);
-  // deallocate the id lists
-  db_ids_destroy(left);
-  db_ids_destroy(right);
-  db_ids_destroy(label);
+i_array_free(left);
+i_array_free(right);
+i_array_free(label);
 ```
 
 ## read relations
 ```c
-db_ids_t* ids_left = 0;
-db_ids_t* ids_label = 0;
-db_graph_records_t* records = 0;
-db_graph_selection_t state;
-db_txn_introduce;
-
+db_ids_t ids_left;
+db_ids_t ids_label;
+db_relations_t relations;
+db_relation_t relation;
+db_graph_selection_t selection;
+db_ids_new(ids_left, 1);
+db_ids_new(ids_label, 1);
+db_relations_new(relations, 10);
 // node ids to be used to filter
-ids_left = db_ids_add(ids_left, 123);
-ids_label = db_ids_add(ids_label, 456);
-
-// select relations whose left side is in "ids_left" and label in "ids_label"
-status_require(db_graph_select(db_txn, ids_left, 0, ids_label, 0, 0, &state))
-
+ids_left = i_array_add(ids_left, 123);
+ids_label = i_array_add(ids_label, 456);
+// select relations whose left side is in "ids_left" and label in "ids_label".
+status_require(db_graph_select(txn, &ids_left, 0, &ids_label, 0, 0, &selection));
 // read 2 of the selected relations
-db_status_require_read(db_graph_read(&state, 2, &records));
-
-// read as many matching relations as there are left
-db_status_require_read(db_graph_read(&state, 0, &records));
-
-db_graph_selection_destroy(&state);
-
-// display records. "ordinal" might not be set in the record unless the query uses a filter for a left value
-while(records) {
-  record = db_graph_records_first(records);
-  printf("record: %lu %lu %lu %lu\n", record.left, record.label, record.ordinal, record.right);
-  records = db_graph_records_rest(records);
+status_require(db_graph_read(&selection, 2, &relations));
+// read remaining matches, at most as many as fit into relations array
+status_require_read(db_graph_read(&selection, 0, &relations));
+db_graph_selection_finish(&selection);
+// display relations. "ordinal" might not be set unless the left value was filtered
+while(i_array_in_range(relations)) {
+  relation = i_array_get(relations);
+  printf("relation: %lu %lu %lu %lu\n", relation.left, relation.label, relation.ordinal, relation.right);
+  i_array_forward(relations);
 };
 
-exit:
-  if(db_txn) db_txn_abort;
-  db_ids_destroy(ids_left);
-  db_ids_destroy(ids_label);
-  db_graph_records_destroy(records);
+i_array_free(ids_left);
+i_array_free(ids_label);
+i_array_free(relations);
 ```
 
 ## create indices
+```c
+db_index_t* index;
+// array of indices of fields to index
+db_fields_len_t fields[2] = {1, 2};
+status_require(db_index_create(env, type, fields, 2));
+```
+
+* existing nodes will be indexed on index creation
+* new nodes will be indexed when they are created
+* there is a limit on the combined size of indexed field data, which is defined by the lmdb compile-time constant MDB_MAXKEYSIZE, default 511 bytes, minus id size. currently index inserts with data too large are rejected
+
+## read node ids from indices
+```c
+db_index_selection_t selection;
+db_node_values_t values;
+db_id_t id;
+ui8 value_1 = 11;
+ui8* value_2 = "abc";
+status_require(db_node_values_new(type, &values));
+db_node_values_set(&values_1, 1, &value_1, 0);
+db_node_values_set(&values_1, 2, &value_2, 3);
+// values for other fields will be ignored.
+// unlike node_ and graph_select, db_index_select sets selection to the first match
+status_require(db_index_select(txn, *index, values, &selection));
+id = selection.current;
+status_require(db_index_next(selection));
+db_index_selection_finish(&selection);
+```
+
 ## read nodes via indices
-index_select();
-node_index_select();
+```c
+db_node_index_selection_t selection;
+status_require(db_node_index_select(txn, *index, values, &selection));
+db_node_index_selection_finish(&selection);
+// db-node-data-t
+selection.current
+// db-id-t
+selection.current-id
+status_require(db_node_index_next(selection));
+```
 
 # api
-# routines
+## routines
 ```c
 db_close :: db_env_t*:env -> void
 db_env_new :: db_env_t**:result -> status_t
 db_field_type_size :: uint8_t:a -> uint8_t
 db_graph_delete :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal -> status_t
 db_graph_ensure :: db_txn_t:txn db_ids_t:left db_ids_t:right db_ids_t:label db_graph_ordinal_generator_t:ordinal_generator void*:ordinal_generator_state -> status_t
-db_graph_read :: db_graph_selection_t*:state db_count_t:count db_graph_records_t*:result -> status_t
+db_graph_read :: db_graph_selection_t*:state db_count_t:count db_relations_t*:result -> status_t
 db_graph_select :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal db_count_t:offset db_graph_selection_t*:result -> status_t
 db_graph_select :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal db_count_t:offset db_graph_selection_t*:result -> status_t
 db_graph_selection_finish :: db_graph_selection_t*:state -> void
@@ -336,24 +363,24 @@ db_type_field_get :: db_type_t*:type uint8_t*:name -> db_field_t*
 db_type_get :: db_env_t*:env uint8_t*:name -> db_type_t*
 ```
 
-# macros
+## macros
 ```c
 db_count_t
 db_data_len_max
 db_data_len_t
 db_field_set(a, a_type, a_name, a_name_len)
 db_field_type_binary
-db_field_type_char16
-db_field_type_char32
-db_field_type_char64
-db_field_type_char8
+db_field_type_string
+db_field_type_string16
+db_field_type_string32
+db_field_type_string64
+db_field_type_string8
 db_field_type_float32
 db_field_type_float64
 db_field_type_int16
 db_field_type_int32
 db_field_type_int64
 db_field_type_int8
-db_field_type_string
 db_field_type_t
 db_field_type_uint16
 db_field_type_uint32
@@ -386,10 +413,10 @@ db_type_id_mask
 db_type_id_t
 ```
 
-# types
+## types
 ```c
 db_graph_ordinal_generator_t: void* -> db_ordinal_t
-db_graph_reader_t: db_graph_selection_t* db_count_t db_graph_records_t* -> status_t
+db_graph_reader_t: db_graph_selection_t* db_count_t db_relations_t* -> status_t
 db_node_matcher_t: db_id_t db_node_data_t void* -> boolean
 db_env_t: struct
   dbi_nodes: MDB_dbi
@@ -409,7 +436,7 @@ db_field_t: struct
   name_len: db_name_len_t
   type: db_field_type_t
   index: db_fields_len_t
-db_graph_record_t: struct
+db_relation_t: struct
   left: db_id_t
   right: db_id_t
   label: db_id_t
@@ -493,7 +520,7 @@ db_type_t: struct
   sequence: db_id_t
 ```
 
-# enum
+## enum
 ```c
 db_status_id_success db_status_id_undefined db_status_id_condition_unfulfilled
   db_status_id_data_length db_status_id_different_format db_status_id_duplicate
@@ -507,55 +534,68 @@ db_status_id_success db_status_id_undefined db_status_id_condition_unfulfilled
 # other language bindings
 * scheme: [sph-db-guile](https://github.com/sph-mn/sph-db-guile)
 
+# compile-time configuration
+these values can be set before compilation in ``c-precompiled/main/config.c``. once compiled, they can not be changed. databases created with one configuration must only be used by code compiled with the same configuration. if necessary, for example, multiple shared libraries with different configuration can be created and linked to.
+
+|db_id_t|ui64|for node identifiers. will also contain a node type id
+|db_type_id_t|ui16||for type ids. limits the number of possible types. currently can not be larger than 16 bit|
+|db_ordinal_t|ui32|for relation order values|
+|db_id_mask|UINT64_MAX|maximum value for the id type (all digits set to one)|
+|db_type_id_mask|UINT16_MAX|maximum value for the type-id type|
+|db_data_len_t|ui32|to store field sizes|
+|db_data_len_max|UINT32_MAX|maximum allowed field size|
+|db_name_len_t|ui8|to store name string lengths (for type and field names)|
+|db_name_len_max|UINT8_MAX|maximum allowed name length|
+|db_fields_len_t|ui8|for field indices. limits the number of possible fields|
+|db_indices_len_t|ui8|limits the number of possible indices per type|
+|db_count_t|ui32|for values like the count of elements to read. does not need to be larger than half size_t|
+
 # additional features and caveats
-* custom data types can be specified with preprocessor definitions before compiling the sph-db library in a file named config.c
-* the data type of node identifiers for new databases can be set at compile time. currently identifiers can not be pointers
-* the maximum number of type creations is currently 65535 and the maximum size of dg-type-id is 16 bit
-* returned data pointers point to data that is immutable and should be treated as such
-* make sure that db-data-list*, db-ids-t*, db-relation-records-t* and db-data-records-t* are set to 0 before adding the first element or otherwise the first link will likely point to a random memory initialisation address
-* all readers add elements until they fail, which means there might be elements that need deallocation after an error occurred
-* transactions are lmdb transactions. when in doubt you may refer to the documentation of lmdb
+* the maximum number of type creations is currently 65535
 * make sure that you do not try to insert ordinals or ids bigger than what is defined to be possible by the data types for ordinals and node identifiers. otherwise numerical overflows might occur
-* updating an ordinal value requires the re-creation of the corresponding relation. ordinals are primarily intended to store data in a pre-calculated order for fast ordered retrieval but not for frequent updates. for example, the ordinal field is perhaps not well suited for storing a constantly changing vote count or weight value
+* ordinals are primarily intended to store data in a pre-calculated order for fast ordered retrieval
+* to use db_graph_select and a filter by ordinal, "left" filter values must be given
+* readers can return results and indicate the end of results in the same call
 
-# db-relation-select and db-relation-read
-* "db-relation-select" internally chooses the reader, relevant databases and other values to use for the search
-* if a filter parameter is set to a non-zero value, it is used, otherwise no filter is used for that parameter
-* search strategies for most filter combinations are pre-coded to make it fast
+# possible enhancements
+* currently index inserts with data too large are rejected. add an option to truncate instead
+* make it possible to increase the maximum number of types. needs a new data structure for types for that
+* validator functions for indices and graph data consistency
+* float values as ordinals has not yet been tested
+* at some places MDB_SET_RANGE and MDB_GET_BOTH_RANGE is used in succession. maybe get-both-range includes set-range and the latter can be left out
 
-## features
-* partial reads with max read count: the reader can be called repeatedly to get the next results from the full result set
-* optional filter by left, right, label, minimum and maximum ordinal/weight. for filtering by ordinal, "left" filter values must be given
-* offset: selected results begin after ``n`` matches
-* can return results and indicate the end of the data stream in one call
+# development
+this section is for when you want to change sph-db itself.
+the primary source code is currently under source/sc. source/c-precompiled is updated by exe/compile-sc. code files from submodules are copied into source/sc/foreign before compiling from sc to c.
+depending on circumstances, in the future, the sc dependency could be dropped and the c code could be made primary.
+the general development stages for new sph-db features is planning, basic code implementation, tests that use the new features, debugging, memory-leak tests (exe/valgrind-test) and documentation
 
-## development
-this section is for when you want to change the core sph-db itself.
-
-### setup
+## setup
 * install the development dependencies listed above
 * clone the sourcecode repository "git clone https://github.com/sph-mn/sph-db.git"
 * clone the submodule repositories. "git submodule init" "git submodule update"
 
-### notes
-* "mdb_cursor_close" seems to be ok with null pointers like "free"
-* struct db-index-errors-*-t field names have the format {type-of-error}-{source-key-name}-{source-value-name}
-* when values from an secondary dbi are not found in the primary dbi, they are excess values. when values from a primary dbi are not found in a secondary dbi (index), they are missing values. with these terms, which are used in the validator routines, one can discern the location of errors
-* conception, tests that use the new features, memory-leak tests
-* sph-db-extra.h contains declarations for internally used things
+## contribution
+* send feature requests, patches or pull requests via issues or e-mail and they will be considered
+* bug reports or design commentaries are welcome
 
-## db-relation-select
+# internals
+* sph-db-extra.h contains declarations for internally used things
+* the code assumes that "mdb_cursor_close" can be called with null pointers at some places
+
+## db-graph-select
+* chooses the reader, relevant databases and other values to use for the search
 * positions every relevant mdb cursor at the first entry of the dbi or exits with an error status if the database is empty
-* chooses an appropiate reader routine
+* chooses the appropiate reader routine
 * applies the read offset
 
-## db-relation-read
-readers of type "db-relation-reader-t" support the following:
-* partial reads. for example reading up to ten matches at a time. this is why a state object is used (this has many subtle consequences, like having to get the current cursor value at the beginning of the reader code to check if the right key or data is already set)
-* skipping: matching but not copying the result. this is used for preparing reads from an offset
-* cursors as arguments are always in position at a valid entry. the reader ends as soon as all results have been read or an error has occurred and eventually rejects additional calls with the same state by returning the same end-of-data or error result
-* readers and deleters are built using stacked goto labels because this makes it much easier in this case to control the execution flow, compared to the alternative of nested while loops. especially for choosing the best place for evaluating the read-count stop condition
-* db-relation-read-1001-1101 is a good example of how queries with ordinals make the code more complicated (range lookups), and why using ordinals is only supported when a filter on "left" is given
+## db-graph-read
+* supports partial reads. for example reading up to ten matches at a time. this is why a selection object is used. this has many subtle consequences, like having to get the current cursor value at the beginning of the reader code, to check if the right key or data is already set
+* supports skipping: matching but not copying the result. this is used for reading from an offset
+* cursors as arguments are assumed to be in position at a valid entry on call
+* readers must not be called after db-status-id-notfound
+* readers and deleters are built using stacked goto labels because this makes it much easier for this case to control the execution flow, compared to the alternative of nested while loops. especially for choosing the best place for evaluating the read-count stop condition
+* db-relation-read-1001-1101 is a good example of how queries with ordinals make the code more complicated (range lookups) and why using ordinals is only supported when a filter on "left" is given
 
 ## db-relation-delete
 * db-relation-delete differs from db-relation-read in that it does not need a state because it does not support partial processing

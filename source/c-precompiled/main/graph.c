@@ -1,11 +1,11 @@
-#define db_graph_key_equal(a, b) (db_id_equal((a[0]), (b[0])) && db_id_equal((a[1]), (b[1])))
+#define db_graph_key_equal(a, b) ((a[0] == b[0]) && (a[1] == b[1]))
 #define db_graph_data_ordinal_set(graph_data, value) ((db_ordinal_t*)(graph_data))[0] = value
 #define db_graph_data_id_set(graph_data, value) ((db_id_t*)((1 + ((db_ordinal_t*)(graph_data)))))[0] = value
 #define db_declare_graph_key(name) db_id_t name[2] = { 0, 0 }
 #define db_declare_graph_data(name) \
   ui8 graph_data[(sizeof(db_ordinal_t) + sizeof(db_id_t))]; \
   memset(graph_data, 0, (sizeof(db_ordinal_t) + sizeof(db_id_t)))
-#define db_declare_graph_record(name) db_graph_record_t name = { 0, 0, 0, 0 }
+#define db_declare_relation(name) db_relation_t name = { 0, 0, 0, 0 }
 /** search data until the given id-right has been found */
 status_t db_mdb_graph_lr_seek_right(MDB_cursor* graph_lr, db_id_t id_right) {
   status_declare;
