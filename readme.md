@@ -561,7 +561,9 @@ db_status_id_success db_status_id_undefined db_status_id_condition_unfulfilled
 # compile-time configuration
 these values can be set before compilation in ``c-precompiled/main/config.c``. once compiled, they can not be changed. databases created with one configuration must only be used by code compiled with the same configuration. if necessary, for example, multiple shared libraries with different configuration can be created and linked to
 
-|db_id_t|ui64|for node identifiers. will also contain a node type id|
+|name|default|description|
+| --- | --- | --- |
+|db_id_t|uint64_t|for node identifiers. will also contain a node type id|
 |db_type_id_t|uint16_t||for type ids. limits the number of possible types. currently can not be larger than 16 bit|
 |db_ordinal_t|uint32_t|for relation order values|
 |db_id_mask|UINT64_MAX|maximum value for the id type (all digits set to one)|
