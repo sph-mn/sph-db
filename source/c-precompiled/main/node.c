@@ -3,8 +3,8 @@
 status_t db_node_values_to_data(db_node_values_t values, db_node_data_t* result) {
   status_declare;
   void* data;
-  ui8* data_temp;
-  ui8 field_size;
+  uint8_t* data_temp;
+  uint8_t field_size;
   db_field_type_t field_type;
   db_fields_len_t i;
   size_t size;
@@ -96,8 +96,8 @@ exit:
 /** from the full btree value a node (all fields), return a reference
   to the data for specific field and the size */
 db_node_data_t db_node_data_ref(db_type_t* type, db_node_data_t data, db_fields_len_t field) {
-  ui8* data_temp;
-  ui8* end;
+  uint8_t* data_temp;
+  uint8_t* end;
   db_fields_len_t i;
   size_t offset;
   db_node_data_t result;
@@ -106,7 +106,7 @@ db_node_data_t db_node_data_ref(db_type_t* type, db_node_data_t data, db_fields_
     /* fixed length field */
     offset = (type->fields_fixed_offsets)[field];
     if (offset < data.size) {
-      result.data = (offset + ((ui8*)(data.data)));
+      result.data = (offset + ((uint8_t*)(data.data)));
       result.size = db_field_type_size((((type->fields)[field]).type));
     } else {
       result.data = 0;
@@ -117,8 +117,8 @@ db_node_data_t db_node_data_ref(db_type_t* type, db_node_data_t data, db_fields_
     /* variable length field */
     offset = (type->fields_fixed_count ? (type->fields_fixed_offsets)[type->fields_fixed_count] : 0);
     if (offset < data.size) {
-      data_temp = (offset + ((ui8*)(data.data)));
-      end = (data.size + ((ui8*)(data.data)));
+      data_temp = (offset + ((uint8_t*)(data.data)));
+      end = (data.size + ((uint8_t*)(data.data)));
       i = type->fields_fixed_count;
       /* variable length data is prefixed by its size */
       while (((i <= field) && (data_temp < end))) {

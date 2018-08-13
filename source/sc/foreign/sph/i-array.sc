@@ -1,13 +1,13 @@
 (sc-comment
   "\"iteration array\" - a fixed size array with variable length content that makes iteration easier to code. it is used similar to a linked list.
-  most bindings are generic macros that will work on all i-array types. i_array_add and i_array_forward go from left to right.
+  most bindings are generic macros that will work on all i-array types. i-array-add and i-array-forward go from left to right.
   examples:
-    i_array_declare_type(my_type, int);
-    i_array_allocate_my_type(a, 4);
-    i_array_add(a, 1);
-    i_array_add(a, 2);
-    while(i_array_in_range(a)) { i_array_get(a); }
-    i_array_free(a);")
+    i-array-declare-type(my-type, int);
+    i-array-allocate-my-type(a, 4);
+    i-array-add(a, 1);
+    i-array-add(a, 2);
+    while(i-array-in-range(a)) { i-array-get(a); }
+    i-array-free(a);")
 
 (pre-include "stdlib.h")
 
@@ -25,7 +25,7 @@
           (unused element-type*)
           (end element-type*)
           (start element-type*))))
-    (define ((pre-concat i-array-allocate- name) a length) (boolean name* size-t)
+    (define ((pre-concat i-array-allocate_ name) a length) (uint8-t name* size-t)
       (declare start element-type*)
       (set start (malloc (* length (sizeof element-type))))
       (if (not start) (return 0))

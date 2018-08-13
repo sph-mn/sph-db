@@ -24,7 +24,7 @@
   (label exit
     (return status)))
 
-(define (db-type-get env name) (db-type-t* db-env-t* ui8*)
+(define (db-type-get env name) (db-type-t* db-env-t* uint8-t*)
   "return a pointer to the type struct for the type with the given name. zero if not found"
   (declare
     i db-type-id-t
@@ -36,7 +36,7 @@
     (if (and type:id type:name (= 0 (strcmp name type:name))) (return type)))
   (return 0))
 
-(define (db-type-field-get type name) (db-field-t* db-type-t* ui8*)
+(define (db-type-field-get type name) (db-field-t* db-type-t* uint8-t*)
   (declare
     index db-fields-len-t
     fields-len db-fields-len-t
@@ -55,20 +55,20 @@
   (return 0))
 
 (define (db-type-create env name fields fields-len flags result)
-  (status-t db-env-t* ui8* db-field-t* db-fields-len-t ui8 db-type-t**)
+  (status-t db-env-t* uint8-t* db-field-t* db-fields-len-t uint8-t db-type-t**)
   "the data format is documented in main/open.c"
   status-declare
   (db-mdb-cursor-declare system)
   (db-mdb-cursor-declare nodes)
   (db-txn-declare env txn)
   (declare
-    data ui8*
-    data-start ui8*
+    data uint8-t*
+    data-start uint8-t*
     field db-field-t
     i db-fields-len-t
     type-pointer db-type-t*
-    key (array ui8 (db-size-system-key))
-    name-len ui8
+    key (array uint8-t (db-size-system-key))
+    name-len uint8-t
     data-size size-t
     type-id db-type-id-t
     val-data MDB-val
@@ -142,7 +142,7 @@
   (declare
     val-key MDB-val
     id db-id-t
-    key (array ui8 (db-size-system-key)))
+    key (array uint8-t (db-size-system-key)))
   (set
     val-key.mv-size db-size-system-key
     (db-system-key-label key) db-system-label-type

@@ -8,8 +8,8 @@
    key-format: system-label-type type-id indexed-field-offset ..."
   status-declare
   (declare
-    data ui8*
-    data-temp ui8*
+    data uint8-t*
+    data-temp uint8-t*
     size size-t)
   (sc-comment "system-label + type + fields")
   (set size (+ 1 (sizeof db-type-id-t) (* (sizeof db-fields-len-t) fields-len)))
@@ -27,23 +27,23 @@
     (return status)))
 
 (define (db-index-name type-id fields fields-len result result-len)
-  (status-t db-type-id-t db-fields-len-t* db-fields-len-t ui8** size-t*)
+  (status-t db-type-id-t db-fields-len-t* db-fields-len-t uint8-t** size-t*)
   "create a string name from type-id and field offsets.
   i-{type-id}-{field-offset}-{field-offset}..."
   status-declare
   (declare
     i db-fields-len-t
-    str ui8*
+    str uint8-t*
     name-len size-t
     str-len size-t
-    strings ui8**
+    strings uint8-t**
     strings-len int
-    name ui8*)
-  (define prefix ui8* "i")
+    name uint8-t*)
+  (define prefix uint8-t* "i")
   (set
     strings 0
     strings-len (+ 2 fields-len))
-  (db-calloc strings strings-len (sizeof ui8*))
+  (db-calloc strings strings-len (sizeof uint8-t*))
   (sc-comment "type id")
   (set str (uint->string type-id &str-len))
   (db-status-memory-error-if-null str)
@@ -79,7 +79,7 @@
     data void*
     i db-fields-len-t
     size size-t
-    data-temp ui8*)
+    data-temp uint8-t*)
   (set size 0)
   (for ((set i 0) (< i index.fields-len) (set i (+ 1 i)))
     (set size (+ size (struct-get (array-get values.data (array-get index.fields i)) size))))
@@ -134,7 +134,7 @@
   db-mdb-declare-val-id
   (db-mdb-cursor-declare node-index-cursor)
   (declare
-    data ui8*
+    data uint8-t*
     val-data MDB-val
     i db-indices-len-t
     node-index db-index-t
@@ -272,7 +272,7 @@
     fields-copy db-fields-len-t*
     data void*
     size size-t
-    name ui8*
+    name uint8-t*
     name-len size-t
     indices-temp db-index-t*
     node-index db-index-t)
@@ -360,7 +360,7 @@
   status-declare
   (db-txn-declare env txn)
   (declare
-    name ui8*
+    name uint8-t*
     name-len size-t)
   (set name 0)
   (status-require (db-index-name index:type:id index:fields index:fields-len &name &name-len))

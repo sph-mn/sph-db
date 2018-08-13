@@ -20,9 +20,9 @@
   (db-pointer->id-at a index) (pointer-get (+ index (convert-type a db-id-t*)))
   (db-pointer->id a) (pointer-get (convert-type a db-id-t*))
   (db-field-type-is-fixed a) (not (bit-and 1 a))
-  (db-system-key-label a) (pointer-get (convert-type a ui8*))
+  (db-system-key-label a) (pointer-get (convert-type a uint8-t*))
   (db-system-key-id a)
-  (pointer-get (convert-type (+ db-size-system-label (convert-type a ui8*)) db-type-id-t*))
+  (pointer-get (convert-type (+ db-size-system-label (convert-type a uint8-t*)) db-type-id-t*))
   (db-status-memory-error-if-null variable)
   (if (not variable) (status-set-both-goto db-status-group-db db-status-id-memory))
   (db-malloc variable size)
@@ -53,6 +53,8 @@
     (db-graph-data-set-id id)))
 
 (declare
+  (db-sequence-next-system env result) (status-t db-env-t* db-type-id-t*)
+  (db-sequence-next env type-id result) (status-t db-env-t* db-type-id-t db-id-t*)
   ; db-debug
   (db-debug-log-ids a) (void db-ids-t)
   (db-debug-log-ids-set a) (void imht-set-t)
@@ -64,5 +66,5 @@
   (status-t db-env-t* db-index-t db-node-values-t void** size-t*)
   (db-indices-entry-ensure txn values id) (status-t db-txn-t db-node-values-t db-id-t)
   (db-index-name type-id fields fields-len result result-size)
-  (status-t db-type-id-t db-fields-len-t* db-fields-len-t ui8** size-t*)
+  (status-t db-type-id-t db-fields-len-t* db-fields-len-t uint8-t** size-t*)
   (db-indices-entry-delete txn values id) (status-t db-txn-t db-node-values-t db-id-t))

@@ -38,10 +38,10 @@
     status_goto; \
   }
 ;
-typedef i32 status_id_t;
+typedef int32_t status_id_t;
 typedef struct {
   status_id_t id;
-  ui8 group;
+  uint8_t group;
 } status_t;
 enum { db_status_id_success,
   db_status_id_undefined,
@@ -73,7 +73,7 @@ enum { db_status_id_success,
   if (status.id == db_status_id_notfound) { \
     status.id = status_id_success; \
   }
-ui8* db_status_group_id_to_name(status_id_t a) {
+uint8_t* db_status_group_id_to_name(status_id_t a) {
   char* b;
   if (db_status_group_db == a) {
     b = "sph-db";
@@ -87,7 +87,7 @@ ui8* db_status_group_id_to_name(status_id_t a) {
   return (b);
 };
 /** get the description if available for a status */
-ui8* db_status_description(status_t a) {
+uint8_t* db_status_description(status_t a) {
   char* b;
   if (db_status_group_lmdb == a.group) {
     b = mdb_strerror((a.id));
@@ -126,10 +126,10 @@ ui8* db_status_description(status_t a) {
       b = "";
     };
   };
-  return (((ui8*)(b)));
+  return (((uint8_t*)(b)));
 };
 /** get the name if available for a status */
-ui8* db_status_name(status_t a) {
+uint8_t* db_status_name(status_t a) {
   char* b;
   if (db_status_group_lmdb == a.group) {
     b = mdb_strerror((a.id));
@@ -168,5 +168,5 @@ ui8* db_status_name(status_t a) {
       b = "unknown";
     };
   };
-  return (((ui8*)(b)));
+  return (((uint8_t*)(b)));
 };

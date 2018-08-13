@@ -3,8 +3,8 @@
 #include <stdlib.h>
 /** set result to a new string with a trailing slash added, or the given string if it already has a trailing slash.
   returns 0 if result is the given string, 1 if new memory could not be allocated, 2 if result is a new string */
-ui8 ensure_trailing_slash(ui8* a, ui8** result) {
-  ui32 a_len = strlen(a);
+uint8_t ensure_trailing_slash(uint8_t* a, uint8_t** result) {
+  uint32_t a_len = strlen(a);
   if (!a_len || ('/' == *(a + (a_len - 1)))) {
     *result = a;
     return (0);
@@ -21,10 +21,10 @@ ui8 ensure_trailing_slash(ui8* a, ui8** result) {
   };
 };
 /** always returns a new string */
-ui8* string_append(ui8* a, ui8* b) {
+uint8_t* string_append(uint8_t* a, uint8_t* b) {
   size_t a_length = strlen(a);
   size_t b_length = strlen(b);
-  ui8* result = malloc((1 + a_length + b_length));
+  uint8_t* result = malloc((1 + a_length + b_length));
   if (result) {
     memcpy(result, a, a_length);
     memcpy((result + a_length), b, (1 + b_length));
@@ -32,9 +32,9 @@ ui8* string_append(ui8* a, ui8* b) {
   return (result);
 };
 /** return a new string with the same contents as the given string. return 0 if the memory allocation failed */
-ui8* string_clone(ui8* a) {
+uint8_t* string_clone(uint8_t* a) {
   size_t a_size = (1 + strlen(a));
-  ui8* result = malloc(a_size);
+  uint8_t* result = malloc(a_size);
   if (result) {
     memcpy(result, a, a_size);
   };
@@ -46,17 +46,17 @@ ui8* string_clone(ui8* a) {
 #include <errno.h>
 #define file_exists_p(path) !(access(path, F_OK) == -1)
 /** like posix dirname, but never modifies its argument and always returns a new string */
-ui8* dirname_2(ui8* a) {
-  ui8* path_copy = string_clone(a);
+uint8_t* dirname_2(uint8_t* a) {
+  uint8_t* path_copy = string_clone(a);
   return (dirname(path_copy));
 };
 /** return 1 if the path exists or has been successfully created */
-boolean ensure_directory_structure(ui8* path, mode_t mkdir_mode) {
+uint8_t ensure_directory_structure(uint8_t* path, mode_t mkdir_mode) {
   if (file_exists_p(path)) {
     return (1);
   } else {
-    ui8* path_dirname = dirname_2(path);
-    boolean status = ensure_directory_structure(path_dirname, mkdir_mode);
+    uint8_t* path_dirname = dirname_2(path);
+    uint8_t status = ensure_directory_structure(path_dirname, mkdir_mode);
     free(path_dirname);
     return ((status && ((EEXIST == errno) || (0 == mkdir(path, mkdir_mode)))));
   };

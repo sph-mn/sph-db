@@ -45,9 +45,9 @@
     (if status-is-failure status-goto)))
 
 (declare
-  status-id-t (type i32)
+  status-id-t (type int32-t)
   status-t
   (type
     (struct
       (id status-id-t)
-      (group ui8))))
+      (group uint8-t))))

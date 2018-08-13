@@ -177,8 +177,8 @@ imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
 #define db_pointer_to_id_at(a, index) *(index + ((db_id_t*)(a)))
 #define db_pointer_to_id(a) *((db_id_t*)(a))
 #define db_field_type_is_fixed(a) !(1 & a)
-#define db_system_key_label(a) *((ui8*)(a))
-#define db_system_key_id(a) *((db_type_id_t*)((db_size_system_label + ((ui8*)(a)))))
+#define db_system_key_label(a) *((uint8_t*)(a))
+#define db_system_key_id(a) *((db_type_id_t*)((db_size_system_label + ((uint8_t*)(a)))))
 #define db_status_memory_error_if_null(variable) \
   if (!variable) { \
     status_set_both_goto(db_status_group_db, db_status_id_memory); \
@@ -204,6 +204,8 @@ imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
 #define db_graph_data_set_both(a, ordinal, id) \
   db_graph_data_set_ordinal(ordinal); \
   db_graph_data_set_id(id)
+status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result);
+status_t db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result);
 void db_debug_log_ids(db_ids_t a);
 void db_debug_log_ids_set(imht_set_t a);
 void db_debug_log_relations(db_relations_t records);
@@ -211,5 +213,5 @@ status_t db_debug_log_btree_counts(db_txn_t txn);
 status_t db_debug_count_all_btree_entries(db_txn_t txn, db_count_t* result);
 status_t db_index_key(db_env_t* env, db_index_t index, db_node_values_t values, void** result_data, size_t* result_size);
 status_t db_indices_entry_ensure(db_txn_t txn, db_node_values_t values, db_id_t id);
-status_t db_index_name(db_type_id_t type_id, db_fields_len_t* fields, db_fields_len_t fields_len, ui8** result, size_t* result_size);
+status_t db_index_name(db_type_id_t type_id, db_fields_len_t* fields, db_fields_len_t fields_len, uint8_t** result, size_t* result_size);
 status_t db_indices_entry_delete(db_txn_t txn, db_node_values_t values, db_id_t id);

@@ -2,6 +2,6 @@
 # list all bindings from sph-db.h.
 # depends on sc-documentor from sph-sc.
 
-extra="$PWD/other/sc-documentor-config.scm"
-cd source/sc/main &&
-sc-documentor sph-db.sc --config="$extra"
+config="$PWD/other/sc-documentor-config.scm"
+export SC_LOAD_PATH="$PWD/source/sc"
+sc-documentor source/sc/main/sph-db.sc --config="$config" --md-level=2

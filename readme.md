@@ -305,16 +305,14 @@ db_node_index_selection_finish(&selection);
 
 # api
 ## routines
-```c
+```
 db_close :: db_env_t*:env -> void
 db_env_new :: db_env_t**:result -> status_t
 db_field_type_size :: uint8_t:a -> uint8_t
 db_graph_delete :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal -> status_t
 db_graph_ensure :: db_txn_t:txn db_ids_t:left db_ids_t:right db_ids_t:label db_graph_ordinal_generator_t:ordinal_generator void*:ordinal_generator_state -> status_t
-db_graph_read :: db_graph_selection_t*:selection db_count_t:count db_relations_t*:result -> status_t
+db_graph_read :: db_graph_selection_t*:state db_count_t:count db_relations_t*:result -> status_t
 db_graph_select :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal db_count_t:offset db_graph_selection_t*:result -> status_t
-db_graph_select :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal db_count_t:offset db_graph_selection_t*:result -> status_t
-db_graph_selection_finish :: db_graph_selection_t*:selection -> void
 db_graph_selection_finish :: db_graph_selection_t*:selection -> void
 db_index_create :: db_env_t*:env db_type_t*:type db_fields_len_t*:fields db_fields_len_t:fields_len -> status_t
 db_index_delete :: db_env_t*:env db_index_t*:index -> status_t
@@ -343,14 +341,9 @@ db_node_values_free :: db_node_values_t*:a -> void
 db_node_values_new :: db_type_t*:type db_node_values_t*:result -> status_t
 db_node_values_set :: db_node_values_t*:values db_fields_len_t:field_index void*:data size_t:size -> void
 db_open :: uint8_t*:root db_open_options_t*:options db_env_t*:env -> status_t
-db_sequence_next :: db_env_t*:env db_type_id_t:type_id db_id_t*:result -> status_t
-db_sequence_next_system :: db_env_t*:env db_type_id_t*:result -> status_t
 db_statistics :: db_txn_t:txn db_statistics_t*:result -> status_t
 db_status_description :: status_t:a -> uint8_t*
-db_status_description :: status_t:a -> uint8_t*
 db_status_group_id_to_name :: status_id_t:a -> uint8_t*
-db_status_group_id_to_name :: status_id_t:a -> uint8_t*
-db_status_name :: status_t:a -> uint8_t*
 db_status_name :: status_t:a -> uint8_t*
 db_txn_abort :: db_txn_t*:a -> void
 db_txn_begin :: db_txn_t*:a -> status_t
@@ -363,23 +356,23 @@ db_type_get :: db_env_t*:env uint8_t*:name -> db_type_t*
 ```
 
 ## macros
-```c
+```
 db_count_t
 db_data_len_max
 db_data_len_t
 db_field_set(a, a_type, a_name, a_name_len)
 db_field_type_binary
-db_field_type_string
-db_field_type_string16
-db_field_type_string32
-db_field_type_string64
-db_field_type_string8
 db_field_type_float32
 db_field_type_float64
 db_field_type_int16
 db_field_type_int32
 db_field_type_int64
 db_field_type_int8
+db_field_type_string
+db_field_type_string16
+db_field_type_string32
+db_field_type_string64
+db_field_type_string8
 db_field_type_t
 db_field_type_uint16
 db_field_type_uint32
@@ -391,13 +384,14 @@ db_id_element(id)
 db_id_mask
 db_id_t
 db_id_type(id)
-db_index_len_t
+db_ids_new
+db_indices_len_t
 db_name_len_max
 db_name_len_t
 db_node_virtual_to_data(id)
 db_null
-db_ordinal_compare
 db_ordinal_t
+db_relations_new
 db_size_element_id
 db_size_graph_data
 db_size_graph_key
@@ -408,11 +402,40 @@ db_txn_declare(env, name)
 db_txn_is_active(a)
 db_type_id_mask
 db_type_id_t
+i_array_add(a, value)
+i_array_clear(a)
+i_array_declare(a, type)
+i_array_forward(a)
+i_array_free(a)
+i_array_get(a)
+i_array_get_at(a, index)
+i_array_in_range(a)
+i_array_length(a)
+i_array_max_length(a)
+i_array_remove(a)
+i_array_rewind(a)
+i_array_set_null(a)
+status_declare
+status_declare_group(group)
+status_goto
+status_group_undefined
+status_id_require(expression)
+status_id_success
+status_is_failure
+status_is_success
+status_require(expression)
 status_require_read(expression)
+status_reset
+status_set_both(group_id, status_id)
+status_set_both_goto(group_id, status_id)
+status_set_group_goto(group_id)
+status_set_id_goto(status_id)
+uint8_t
 ```
 
 ## types
-```c
+```
+status_id_t: int32_t
 db_graph_ordinal_generator_t: void* -> db_ordinal_t
 db_graph_reader_t: db_graph_selection_t* db_count_t db_relations_t* -> status_t
 db_node_matcher_t: db_id_t db_node_data_t void* -> boolean
@@ -434,11 +457,6 @@ db_field_t: struct
   name_len: db_name_len_t
   type: db_field_type_t
   index: db_fields_len_t
-db_relation_t: struct
-  left: db_id_t
-  right: db_id_t
-  label: db_id_t
-  ordinal: db_ordinal_t
 db_graph_selection_t: struct
   status: status_t
   cursor: MDB_cursor* restrict
@@ -490,11 +508,16 @@ db_open_options_t: struct
   maximum_reader_count: db_count_t
   maximum_db_count: db_count_t
   filesystem_has_ordered_writes: uint8_t
-  env_open_flags: uint32_t_least
+  env_open_flags: uint_least32_t
   file_permissions: uint16_t
 db_ordinal_condition_t: struct
   min: db_ordinal_t
   max: db_ordinal_t
+db_relation_t: struct
+  left: db_id_t
+  right: db_id_t
+  label: db_id_t
+  ordinal: db_ordinal_t
 db_statistics_t: struct
   system: MDB_stat
   nodes: MDB_stat
@@ -516,10 +539,13 @@ db_type_t: struct
   indices_size: size_t
   name: uint8_t*
   sequence: db_id_t
+status_t: struct
+  id: status_id_t
+  group: uint8_t
 ```
 
 ## enum
-```c
+```
 db_status_id_success db_status_id_undefined db_status_id_condition_unfulfilled
   db_status_id_data_length db_status_id_different_format db_status_id_duplicate
   db_status_id_input_type db_status_id_invalid_argument db_status_id_max_element_id

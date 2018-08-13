@@ -41,35 +41,35 @@ typedef struct {
   db_ids_t e_left;
   db_ids_t e_right;
   db_ids_t e_label;
-  ui32 e_left_count;
-  ui32 e_right_count;
-  ui32 e_label_count;
+  uint32_t e_left_count;
+  uint32_t e_right_count;
+  uint32_t e_label_count;
   db_ids_t left;
   db_ids_t right;
   db_ids_t label;
 } test_helper_graph_read_data_t;
 typedef struct {
   db_env_t* env;
-  ui32 e_left_count;
-  ui32 e_right_count;
-  ui32 e_label_count;
+  uint32_t e_left_count;
+  uint32_t e_right_count;
+  uint32_t e_label_count;
 } test_helper_graph_delete_data_t;
 /** calculates the number of btree entries affected by a relation read or delete.
    assumes linearly incremented ordinal integers starting at 1 and queries for all or no ids */
-ui32 test_helper_estimate_graph_read_btree_entry_count(ui32 e_left_count, ui32 e_right_count, ui32 e_label_count, db_ordinal_condition_t* ordinal) {
-  ui32 ordinal_min = 0;
-  ui32 ordinal_max = 0;
+uint32_t test_helper_estimate_graph_read_btree_entry_count(uint32_t e_left_count, uint32_t e_right_count, uint32_t e_label_count, db_ordinal_condition_t* ordinal) {
+  uint32_t ordinal_min = 0;
+  uint32_t ordinal_max = 0;
   if (ordinal) {
     ordinal_min = ordinal->min;
     ordinal_max = ordinal->max;
   };
-  ui32 label_left_count = 0;
-  ui32 left_right_count = 0;
-  ui32 right_left_count = 0;
-  ui32 ordinal_value = 1;
-  ui32 left_count = 0;
-  ui32 right_count = 0;
-  ui32 label_count = 0;
+  uint32_t label_left_count = 0;
+  uint32_t left_right_count = 0;
+  uint32_t right_left_count = 0;
+  uint32_t ordinal_value = 1;
+  uint32_t left_count = 0;
+  uint32_t right_count = 0;
+  uint32_t label_count = 0;
   /* the number of relations is not proportional to the number of entries in graph-ll.
     use a process similar to relation creation to correctly calculate graph-ll and ordinal dependent entries */
   while ((label_count < e_label_count)) {
@@ -91,7 +91,7 @@ ui32 test_helper_estimate_graph_read_btree_entry_count(ui32 e_left_count, ui32 e
   };
   return ((left_right_count + right_left_count + label_left_count));
 };
-status_t test_helper_display_all_relations(db_txn_t txn, ui32 left_count, ui32 right_count, ui32 label_count) {
+status_t test_helper_display_all_relations(db_txn_t txn, uint32_t left_count, uint32_t right_count, uint32_t label_count) {
   status_declare;
   db_relations_t records;
   db_graph_selection_t state;
@@ -106,8 +106,8 @@ exit:
   return (status);
 };
 /** 1101 -> "1101" */
-ui8* test_helper_reader_suffix_integer_to_string(ui8 a) {
-  ui8* result = malloc(40);
+uint8_t* test_helper_reader_suffix_integer_to_string(uint8_t a) {
+  uint8_t* result = malloc(40);
   result[0] = ((8 & a) ? '1' : '0');
   result[1] = ((4 & a) ? '1' : '0');
   result[2] = ((2 & a) ? '1' : '0');
@@ -136,16 +136,16 @@ status_t test_helper_reset(db_env_t* env, boolean re_use) {
 exit:
   return (status);
 };
-void test_helper_print_binary_ui64(ui64 a) {
+void test_helper_print_binary_uint64_t(uint64_t a) {
   size_t i;
-  ui8 result[65];
+  uint8_t result[65];
   *(64 + result) = 0;
   for (i = 0; (i < 64); i = (1 + i)) {
-    *(i + result) = (((((ui64)(1)) << i) & a) ? '1' : '0');
+    *(i + result) = (((((uint64_t)(1)) << i) & a) ? '1' : '0');
   };
   printf("%s\n", result);
 };
-void test_helper_display_array_ui8(ui8* a, size_t size) {
+void test_helper_display_array_uint8_t(uint8_t* a, size_t size) {
   size_t i;
   for (i = 0; (i < size); i = (1 + i)) {
     printf("%lu ", (a[i]));
@@ -188,12 +188,12 @@ exit:
   return (status);
 };
 /** create multiple node-values */
-status_t test_helper_create_values_1(db_env_t* env, db_type_t* type, db_node_values_t** result_values, ui32* result_values_len) {
+status_t test_helper_create_values_1(db_env_t* env, db_type_t* type, db_node_values_t** result_values, uint32_t* result_values_len) {
   status_declare;
-  ui8* value_1;
-  i8* value_2;
-  ui8* value_3;
-  ui8* value_4;
+  uint8_t* value_1;
+  int8_t* value_2;
+  uint8_t* value_3;
+  uint8_t* value_4;
   db_node_values_t* values;
   db_malloc(value_1, 1);
   db_malloc(value_2, 1);
@@ -219,7 +219,7 @@ exit:
   return (status);
 };
 /** creates several nodes with the given values */
-status_t test_helper_create_nodes_1(db_env_t* env, db_node_values_t* values, db_id_t** result_ids, ui32* result_len) {
+status_t test_helper_create_nodes_1(db_env_t* env, db_node_values_t* values, db_id_t** result_ids, uint32_t* result_len) {
   status_declare;
   db_txn_declare(env, txn);
   db_id_t* ids;
@@ -237,7 +237,7 @@ exit:
 };
 /** create only ids, without nodes. doesnt depend on node creation.
   especially with relation reading where order lead to lucky success results */
-status_t test_helper_create_ids(db_txn_t txn, ui32 count, db_ids_t* result) {
+status_t test_helper_create_ids(db_txn_t txn, uint32_t count, db_ids_t* result) {
   status_declare;
   db_id_t id;
   db_ids_t result_temp;
@@ -261,10 +261,10 @@ exit:
 status_t test_helper_interleave_ids(db_txn_t txn, db_ids_t ids_a, db_ids_t ids_b, db_ids_t* result) {
   status_declare;
   i_array_declare(ids_result, db_ids_t);
-  ui32 target_count;
-  ui32 start_mixed;
-  ui32 start_new;
-  ui32 i;
+  uint32_t target_count;
+  uint32_t start_mixed;
+  uint32_t start_new;
+  uint32_t i;
   target_count = (i_array_length(ids_a) + i_array_length(ids_b));
   start_mixed = (target_count / 4);
   start_new = (target_count - start_mixed);
@@ -297,11 +297,11 @@ exit:
   };
   return (status);
 };
-ui32 test_helper_calculate_relation_count(ui32 left_count, ui32 right_count, ui32 label_count) { return ((left_count * right_count * label_count)); };
-ui32 test_helper_calculate_relation_count_from_ids(db_ids_t left, db_ids_t right, db_ids_t label) { return (test_helper_calculate_relation_count(i_array_length(left), i_array_length(right), i_array_length(label))); };
+uint32_t test_helper_calculate_relation_count(uint32_t left_count, uint32_t right_count, uint32_t label_count) { return ((left_count * right_count * label_count)); };
+uint32_t test_helper_calculate_relation_count_from_ids(db_ids_t left, db_ids_t right, db_ids_t label) { return (test_helper_calculate_relation_count(i_array_length(left), i_array_length(right), i_array_length(label))); };
 /** test if the result records contain all filter-ids,
   and the filter-ids contain all result record values for field "name". */
-status_t test_helper_graph_read_records_validate_one(ui8* name, db_ids_t e_ids, db_relations_t records) {
+status_t test_helper_graph_read_records_validate_one(uint8_t* name, db_ids_t e_ids, db_relations_t records) {
   status_declare;
   boolean (*contains_at)(db_relations_t, db_id_t);
   db_id_t (*record_get)(db_relation_t);
@@ -357,10 +357,10 @@ exit:
   return (status);
 };
 /** assumes linearly set-plus-oneed ordinal integers starting at 1 and queries for all or no ids */
-ui32 test_helper_estimate_graph_read_result_count(ui32 left_count, ui32 right_count, ui32 label_count, db_ordinal_condition_t* ordinal) {
-  ui32 count = (left_count * right_count * label_count);
-  ui32 max;
-  ui32 min;
+uint32_t test_helper_estimate_graph_read_result_count(uint32_t left_count, uint32_t right_count, uint32_t label_count, db_ordinal_condition_t* ordinal) {
+  uint32_t count = (left_count * right_count * label_count);
+  uint32_t max;
+  uint32_t min;
   if (ordinal) {
     min = (ordinal->min ? (ordinal->min - 1) : 0);
     max = ordinal->max;
@@ -371,19 +371,19 @@ ui32 test_helper_estimate_graph_read_result_count(ui32 left_count, ui32 right_co
   };
   return ((count - min - (count - max)));
 };
-status_t test_helper_graph_read_one(db_txn_t txn, test_helper_graph_read_data_t data, boolean use_left, boolean use_right, boolean use_label, boolean use_ordinal, ui32 offset) {
+status_t test_helper_graph_read_one(db_txn_t txn, test_helper_graph_read_data_t data, boolean use_left, boolean use_right, boolean use_label, boolean use_ordinal, uint32_t offset) {
   status_declare;
   db_ids_t* left_pointer;
   db_ids_t* right_pointer;
   db_ids_t* label_pointer;
   db_graph_selection_t state;
-  ui32 ordinal_min;
-  ui32 ordinal_max;
+  uint32_t ordinal_min;
+  uint32_t ordinal_max;
   db_ordinal_condition_t ordinal_condition;
   db_ordinal_condition_t* ordinal;
-  ui32 expected_count;
-  ui8 reader_suffix;
-  ui8* reader_suffix_string;
+  uint32_t expected_count;
+  uint8_t reader_suffix;
+  uint8_t* reader_suffix_string;
   ordinal_min = 2;
   ordinal_max = 5;
   ordinal_condition.min = ordinal_min;
@@ -425,7 +425,7 @@ exit:
 };
 /** prepare arrays with ids to be used in the graph (e, existing) and ids unused in the graph
   (ne, non-existing) and with both partly interleaved (left, right, label) */
-status_t test_helper_graph_read_setup(db_env_t* env, ui32 e_left_count, ui32 e_right_count, ui32 e_label_count, test_helper_graph_read_data_t* r) {
+status_t test_helper_graph_read_setup(db_env_t* env, uint32_t e_left_count, uint32_t e_right_count, uint32_t e_label_count, test_helper_graph_read_data_t* r) {
   status_declare;
   db_txn_declare(env, txn);
   i_array_declare(ne_left, db_ids_t);
@@ -465,7 +465,7 @@ void test_helper_graph_read_teardown(test_helper_graph_read_data_t* data) {
   i_array_free((data->right));
   i_array_free((data->label));
 };
-status_t test_helper_graph_delete_setup(db_env_t* env, ui32 e_left_count, ui32 e_right_count, ui32 e_label_count, test_helper_graph_delete_data_t* r) {
+status_t test_helper_graph_delete_setup(db_env_t* env, uint32_t e_left_count, uint32_t e_right_count, uint32_t e_label_count, test_helper_graph_delete_data_t* r) {
   status_declare;
   r->env = env;
   r->e_left_count = e_left_count;
@@ -482,10 +482,10 @@ status_t test_helper_graph_delete_one(test_helper_graph_delete_data_t data, bool
   i_array_declare(label, db_ids_t);
   i_array_declare(records, db_relations_t);
   db_graph_selection_t state;
-  ui32 read_count_before_expected;
-  ui32 btree_count_after_delete;
-  ui32 btree_count_before_create;
-  ui32 btree_count_deleted_expected;
+  uint32_t read_count_before_expected;
+  uint32_t btree_count_after_delete;
+  uint32_t btree_count_before_create;
+  uint32_t btree_count_deleted_expected;
   db_ordinal_condition_t* ordinal;
   db_ordinal_condition_t ordinal_condition = { 2, 5 };
   printf("  %d%d%d%d", use_left, use_right, use_label, use_ordinal);

@@ -4,8 +4,8 @@ void db_free_node_values(db_node_values_t* values);
    key-format: system-label-type type-id indexed-field-offset ... */
 status_t db_index_system_key(db_type_id_t type_id, db_fields_len_t* fields, db_fields_len_t fields_len, void** result_data, size_t* result_size) {
   status_declare;
-  ui8* data;
-  ui8* data_temp;
+  uint8_t* data;
+  uint8_t* data_temp;
   size_t size;
   /* system-label + type + fields */
   size = (1 + sizeof(db_type_id_t) + (sizeof(db_fields_len_t) * fields_len));
@@ -22,19 +22,19 @@ exit:
 };
 /** create a string name from type-id and field offsets.
   i-{type-id}-{field-offset}-{field-offset}... */
-status_t db_index_name(db_type_id_t type_id, db_fields_len_t* fields, db_fields_len_t fields_len, ui8** result, size_t* result_len) {
+status_t db_index_name(db_type_id_t type_id, db_fields_len_t* fields, db_fields_len_t fields_len, uint8_t** result, size_t* result_len) {
   status_declare;
   db_fields_len_t i;
-  ui8* str;
+  uint8_t* str;
   size_t name_len;
   size_t str_len;
-  ui8** strings;
+  uint8_t** strings;
   int strings_len;
-  ui8* name;
-  ui8* prefix = "i";
+  uint8_t* name;
+  uint8_t* prefix = "i";
   strings = 0;
   strings_len = (2 + fields_len);
-  db_calloc(strings, strings_len, sizeof(ui8*));
+  db_calloc(strings, strings_len, sizeof(uint8_t*));
   /* type id */
   str = uint_to_string(type_id, (&str_len));
   db_status_memory_error_if_null(str);
@@ -68,7 +68,7 @@ status_t db_index_key(db_env_t* env, db_index_t index, db_node_values_t values, 
   void* data;
   db_fields_len_t i;
   size_t size;
-  ui8* data_temp;
+  uint8_t* data_temp;
   size = 0;
   for (i = 0; (i < index.fields_len); i = (1 + i)) {
     size = (size + ((values.data)[(index.fields)[i]]).size);
@@ -125,7 +125,7 @@ status_t db_indices_entry_delete(db_txn_t txn, db_node_values_t values, db_id_t 
   status_declare;
   db_mdb_declare_val_id;
   db_mdb_cursor_declare(node_index_cursor);
-  ui8* data;
+  uint8_t* data;
   MDB_val val_data;
   db_indices_len_t i;
   db_index_t node_index;
@@ -253,7 +253,7 @@ status_t db_index_create(db_env_t* env, db_type_t* type, db_fields_len_t* fields
   db_fields_len_t* fields_copy;
   void* data;
   size_t size;
-  ui8* name;
+  uint8_t* name;
   size_t name_len;
   db_index_t* indices_temp;
   db_index_t node_index;
@@ -340,7 +340,7 @@ exit:
 status_t db_index_rebuild(db_env_t* env, db_index_t* index) {
   status_declare;
   db_txn_declare(env, txn);
-  ui8* name;
+  uint8_t* name;
   size_t name_len;
   name = 0;
   status_require((db_index_name((index->type->id), (index->fields), (index->fields_len), (&name), (&name_len))));

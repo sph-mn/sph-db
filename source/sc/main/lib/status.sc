@@ -29,7 +29,7 @@
   db-status-success-if-notfound
   (if (= status.id db-status-id-notfound) (set status.id status-id-success)))
 
-(define (db-status-group-id->name a) (ui8* status-id-t)
+(define (db-status-group-id->name a) (uint8-t* status-id-t)
   (declare b char*)
   (case = a
     (db-status-group-db (set b "sph-db"))
@@ -38,7 +38,7 @@
     (else (set b "")))
   (return b))
 
-(define (db-status-description a) (ui8* status-t)
+(define (db-status-description a) (uint8-t* status-t)
   "get the description if available for a status"
   (declare b char*)
   (case = a.group
@@ -65,9 +65,9 @@
           (set b "configured format differs from the format the database was created with"))
         (db-status-id-index-keysize (set b "index key to be inserted exceeds mdb maxkeysize"))
         (else (set b "")))))
-  (return (convert-type b ui8*)))
+  (return (convert-type b uint8-t*)))
 
-(define (db-status-name a) (ui8* status-t)
+(define (db-status-name a) (uint8-t* status-t)
   "get the name if available for a status"
   (declare b char*)
   (case = a.group
@@ -90,4 +90,4 @@
         (db-status-id-different-format (set b "differing-db-format"))
         (db-status-id-index-keysize (set b "index-key-mdb-keysize"))
         (else (set b "unknown")))))
-  (return (convert-type b ui8*)))
+  (return (convert-type b uint8-t*)))

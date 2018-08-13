@@ -3,7 +3,7 @@
 #define db_graph_data_id_set(graph_data, value) ((db_id_t*)((1 + ((db_ordinal_t*)(graph_data)))))[0] = value
 #define db_declare_graph_key(name) db_id_t name[2] = { 0, 0 }
 #define db_declare_graph_data(name) \
-  ui8 graph_data[(sizeof(db_ordinal_t) + sizeof(db_id_t))]; \
+  uint8_t graph_data[(sizeof(db_ordinal_t) + sizeof(db_id_t))]; \
   memset(graph_data, 0, (sizeof(db_ordinal_t) + sizeof(db_id_t)))
 #define db_declare_relation(name) db_relation_t name = { 0, 0, 0, 0 }
 /** search data until the given id-right has been found */

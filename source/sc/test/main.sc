@@ -5,8 +5,8 @@
    the values should also not be so high that the linearly created ordinals exceed the size of the ordinal type.
    tip: reduce when debugging to make tests run faster")
 
-(define common-element-count ui32 3)
-(define common-label-count ui32 3)
+(define common-element-count uint32-t 3)
+(define common-label-count uint32-t 3)
 (pre-define db-env-types-extra-count 20)
 
 (define (test-open-empty env) (status-t db-env-t*)
@@ -107,7 +107,7 @@
   status-declare
   (declare
     i db-type-id-t
-    name (array ui8 255)
+    name (array uint8-t 255)
     type db-type-t*)
   (sc-comment "10 times as many as there is extra room left for new types in env:types")
   (for ((set i 0) (< i (* 10 db-env-types-extra-count)) (set i (+ 1 i)))
@@ -245,12 +245,12 @@
     size-2 size-t
     exists boolean
     type db-type-t*
-    value-1 ui8
-    value-2 i8
+    value-1 uint8-t
+    value-2 int8-t
     values-1 db-node-values-t
     values-2 db-node-values-t)
-  (define value-3 ui8* (convert-type "abc" ui8*))
-  (define value-4 ui8* (convert-type "abcde" ui8*))
+  (define value-3 uint8-t* (convert-type "abc" uint8-t*))
+  (define value-4 uint8-t* (convert-type "abcde" uint8-t*))
   (status-require (test-helper-create-type-1 env &type))
   (sc-comment "prepare node values")
   (status-require (db-node-values-new type &values-1))
@@ -327,7 +327,8 @@
   (test-helper-assert
     "node-data-ref-2"
     (and
-      (= (sizeof i8) field-data.size) (= value-2 (pointer-get (convert-type field-data.data i8*)))))
+      (= (sizeof int8-t) field-data.size)
+      (= value-2 (pointer-get (convert-type field-data.data int8-t*)))))
   (set field-data (db-node-data-ref type node-data-1 3))
   (test-helper-assert
     "node-data-ref-3"
@@ -351,7 +352,7 @@
     (return status)))
 
 (define (node-matcher id data matcher-state) (boolean db-id-t db-node-data-t void*)
-  (set (pointer-get (convert-type matcher-state ui8*)) 1)
+  (set (pointer-get (convert-type matcher-state uint8-t*)) 1)
   (return #t))
 
 (define (test-node-select env) (status-t db-env-t*)
@@ -359,31 +360,31 @@
   (db-txn-declare env txn)
   (i-array-declare ids db-ids-t)
   (declare
-    value-1 ui8
-    matcher-state ui8
+    value-1 uint8-t
+    matcher-state uint8-t
     data db-node-data-t
     selection db-node-selection-t
-    btree-size-before-delete ui32
-    btree-size-after-delete ui32
+    btree-size-before-delete uint32-t
+    btree-size-after-delete uint32-t
     type db-type-t*
     values db-node-values-t*
     node-ids db-id-t*
-    node-ids-len ui32
-    values-len ui32)
+    node-ids-len uint32-t
+    values-len uint32-t)
   (sc-comment "create nodes")
   (status-require (test-helper-create-type-1 env &type))
   (status-require (test-helper-create-values-1 env type &values &values-len))
   (status-require (test-helper-create-nodes-1 env values &node-ids &node-ids-len))
   (set value-1
     (pointer-get
-      (convert-type (struct-get (array-get (struct-get (array-get values 0) data) 0) data) ui8*)))
+      (convert-type (struct-get (array-get (struct-get (array-get values 0) data) 0) data) uint8-t*)))
   (status-require (db-txn-begin &txn))
   (sc-comment "type")
   (status-require (db-node-select txn 0 type 0 0 0 &selection))
   (status-require (db-node-next &selection))
   (set data (db-node-ref &selection 0))
   (test-helper-assert "node-ref size" (= 1 data.size))
-  (test-helper-assert "node-ref value" (= value-1 (pointer-get (convert-type data.data ui8*))))
+  (test-helper-assert "node-ref value" (= value-1 (pointer-get (convert-type data.data uint8-t*))))
   (test-helper-assert "current id set" (db-id-element selection.current-id))
   (status-require (db-node-next &selection))
   (status-require (db-node-next &selection))
@@ -449,16 +450,16 @@
     fields-len db-fields-len-t
     type db-type-t*
     index db-index-t*
-    index-name ui8*
+    index-name uint8-t*
     index-name-len size-t
     values db-node-values-t*
-    values-len ui32
+    values-len uint32-t
     key-data void*
     key-size size-t
     node-ids db-id-t*
-    node-ids-len ui32
+    node-ids-len uint32-t
     selection db-index-selection-t)
-  (define index-name-expected ui8* "i-1-1-2")
+  (define index-name-expected uint8-t* "i-1-1-2")
   (set fields-len 2)
   (status-require (test-helper-create-type-1 env &type))
   (status-require (test-helper-create-values-1 env type &values &values-len))
@@ -473,7 +474,7 @@
     "index-get fields set" (and (= 1 (array-get index:fields 0)) (= 2 (array-get index:fields 1))))
   (status-require (db-index-key env *index (array-get values 0) &key-data &key-size))
   (test-helper-assert "key size" (= 4 key-size))
-  (test-helper-assert "key memory ref" (array-get (convert-type key-data ui8*) 3))
+  (test-helper-assert "key memory ref" (array-get (convert-type key-data uint8-t*) 3))
   (sc-comment "test node index update")
   (status-require (test-helper-create-nodes-1 env values &node-ids &node-ids-len))
   (sc-comment "test delete")

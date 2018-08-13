@@ -46,9 +46,9 @@
       (e-left db-ids-t)
       (e-right db-ids-t)
       (e-label db-ids-t)
-      (e-left-count ui32)
-      (e-right-count ui32)
-      (e-label-count ui32)
+      (e-left-count uint32-t)
+      (e-right-count uint32-t)
+      (e-label-count uint32-t)
       (left db-ids-t)
       (right db-ids-t)
       (label db-ids-t))))
@@ -57,30 +57,30 @@
   (type
     (struct
       (env db-env-t*)
-      (e-left-count ui32)
-      (e-right-count ui32)
-      (e-label-count ui32))))
+      (e-left-count uint32-t)
+      (e-right-count uint32-t)
+      (e-label-count uint32-t))))
 
 (define
   (test-helper-estimate-graph-read-btree-entry-count
     e-left-count e-right-count e-label-count ordinal)
-  (ui32 ui32 ui32 ui32 db-ordinal-condition-t*)
+  (uint32-t uint32-t uint32-t uint32-t db-ordinal-condition-t*)
   "calculates the number of btree entries affected by a relation read or delete.
    assumes linearly incremented ordinal integers starting at 1 and queries for all or no ids"
-  (define ordinal-min ui32 0)
-  (define ordinal-max ui32 0)
+  (define ordinal-min uint32-t 0)
+  (define ordinal-max uint32-t 0)
   (if ordinal
     (set
       ordinal-min (struct-pointer-get ordinal min)
       ordinal-max (struct-pointer-get ordinal max)))
-  (define label-left-count ui32 0)
-  (define left-right-count ui32 0)
-  (define right-left-count ui32 0)
+  (define label-left-count uint32-t 0)
+  (define left-right-count uint32-t 0)
+  (define right-left-count uint32-t 0)
   ; test-relation-ordinals currently start at one
-  (define ordinal-value ui32 1)
-  (define left-count ui32 0)
-  (define right-count ui32 0)
-  (define label-count ui32 0)
+  (define ordinal-value uint32-t 1)
+  (define left-count uint32-t 0)
+  (define right-count uint32-t 0)
+  (define label-count uint32-t 0)
   (sc-comment
     "the number of relations is not proportional to the number of entries in graph-ll.
     use a process similar to relation creation to correctly calculate graph-ll and ordinal dependent entries")
@@ -100,7 +100,7 @@
   (return (+ left-right-count right-left-count label-left-count)))
 
 (define (test-helper-display-all-relations txn left-count right-count label-count)
-  (status-t db-txn-t ui32 ui32 ui32)
+  (status-t db-txn-t uint32-t uint32-t uint32-t)
   status-declare
   (declare
     records db-relations-t
@@ -115,9 +115,9 @@
   (label exit
     (return status)))
 
-(define (test-helper-reader-suffix-integer->string a) (ui8* ui8)
+(define (test-helper-reader-suffix-integer->string a) (uint8-t* uint8-t)
   "1101 -> \"1101\""
-  (define result ui8* (malloc 40))
+  (define result uint8-t* (malloc 40))
   (array-set
     result
     0
@@ -153,18 +153,18 @@
   (label exit
     (return status)))
 
-(define (test-helper-print-binary-ui64 a) (void ui64)
+(define (test-helper-print-binary-uint64-t a) (void uint64-t)
   (declare
     i size-t
-    result (array ui8 65))
+    result (array uint8-t 65))
   (set (pointer-get (+ 64 result)) 0)
   (for ((set i 0) (< i 64) (set i (+ 1 i)))
     (set (pointer-get (+ i result))
-      (if* (bit-and (bit-shift-left (convert-type 1 ui64) i) a) #\1
+      (if* (bit-and (bit-shift-left (convert-type 1 uint64-t) i) a) #\1
         #\0)))
   (printf "%s\n" result))
 
-(define (test-helper-display-array-ui8 a size) (void ui8* size-t)
+(define (test-helper-display-array-uint8-t a size) (void uint8-t* size-t)
   (declare i size-t)
   (for ((set i 0) (< i size) (set i (+ 1 i)))
     (printf "%lu " (array-get a i)))
@@ -201,14 +201,14 @@
     (return status)))
 
 (define (test-helper-create-values-1 env type result-values result-values-len)
-  (status-t db-env-t* db-type-t* db-node-values-t** ui32*)
+  (status-t db-env-t* db-type-t* db-node-values-t** uint32-t*)
   "create multiple node-values"
   status-declare
   (declare
-    value-1 ui8*
-    value-2 i8*
-    value-3 ui8*
-    value-4 ui8*
+    value-1 uint8-t*
+    value-2 int8-t*
+    value-3 uint8-t*
+    value-4 uint8-t*
     values db-node-values-t*)
   (db-malloc value-1 1)
   (db-malloc value-2 1)
@@ -236,7 +236,7 @@
     (return status)))
 
 (define (test-helper-create-nodes-1 env values result-ids result-len)
-  (status-t db-env-t* db-node-values-t* db-id-t** ui32*)
+  (status-t db-env-t* db-node-values-t* db-id-t** uint32-t*)
   "creates several nodes with the given values"
   status-declare
   (db-txn-declare env txn)
@@ -254,7 +254,7 @@
   (label exit
     (return status)))
 
-(define (test-helper-create-ids txn count result) (status-t db-txn-t ui32 db-ids-t*)
+(define (test-helper-create-ids txn count result) (status-t db-txn-t uint32-t db-ids-t*)
   "create only ids, without nodes. doesnt depend on node creation.
   especially with relation reading where order lead to lucky success results"
   status-declare
@@ -280,10 +280,10 @@
   status-declare
   (i-array-declare ids-result db-ids-t)
   (declare
-    target-count ui32
-    start-mixed ui32
-    start-new ui32
-    i ui32)
+    target-count uint32-t
+    start-mixed uint32-t
+    start-new uint32-t
+    i uint32-t)
   (set
     target-count (+ (i-array-length ids-a) (i-array-length ids-b))
     start-mixed (/ target-count 4)
@@ -312,16 +312,16 @@
     (return status)))
 
 (define (test-helper-calculate-relation-count left-count right-count label-count)
-  (ui32 ui32 ui32 ui32) (return (* left-count right-count label-count)))
+  (uint32-t uint32-t uint32-t uint32-t) (return (* left-count right-count label-count)))
 
 (define (test-helper-calculate-relation-count-from-ids left right label)
-  (ui32 db-ids-t db-ids-t db-ids-t)
+  (uint32-t db-ids-t db-ids-t db-ids-t)
   (return
     (test-helper-calculate-relation-count
       (i-array-length left) (i-array-length right) (i-array-length label))))
 
 (define (test-helper-graph-read-records-validate-one name e-ids records)
-  (status-t ui8* db-ids-t db-relations-t)
+  (status-t uint8-t* db-ids-t db-relations-t)
   "test if the result records contain all filter-ids,
   and the filter-ids contain all result record values for field \"name\"."
   status-declare
@@ -386,12 +386,12 @@
     (return status)))
 
 (define (test-helper-estimate-graph-read-result-count left-count right-count label-count ordinal)
-  (ui32 ui32 ui32 ui32 db-ordinal-condition-t*)
+  (uint32-t uint32-t uint32-t uint32-t db-ordinal-condition-t*)
   "assumes linearly set-plus-oneed ordinal integers starting at 1 and queries for all or no ids"
-  (define count ui32 (* left-count right-count label-count))
+  (define count uint32-t (* left-count right-count label-count))
   (declare
-    max ui32
-    min ui32)
+    max uint32-t
+    min uint32-t)
   (if ordinal
     (begin
       (set
@@ -406,20 +406,20 @@
   (return (- count min (- count max))))
 
 (define (test-helper-graph-read-one txn data use-left use-right use-label use-ordinal offset)
-  (status-t db-txn-t test-helper-graph-read-data-t boolean boolean boolean boolean ui32)
+  (status-t db-txn-t test-helper-graph-read-data-t boolean boolean boolean boolean uint32-t)
   status-declare
   (declare
     left-pointer db-ids-t*
     right-pointer db-ids-t*
     label-pointer db-ids-t*
     state db-graph-selection-t
-    ordinal-min ui32
-    ordinal-max ui32
+    ordinal-min uint32-t
+    ordinal-max uint32-t
     ordinal-condition db-ordinal-condition-t
     ordinal db-ordinal-condition-t*
-    expected-count ui32
-    reader-suffix ui8
-    reader-suffix-string ui8*)
+    expected-count uint32-t
+    reader-suffix uint8-t
+    reader-suffix-string uint8-t*)
   (set
     ordinal-min 2
     ordinal-max 5
@@ -485,7 +485,7 @@
     (return status)))
 
 (define (test-helper-graph-read-setup env e-left-count e-right-count e-label-count r)
-  (status-t db-env-t* ui32 ui32 ui32 test-helper-graph-read-data-t*)
+  (status-t db-env-t* uint32-t uint32-t uint32-t test-helper-graph-read-data-t*)
   "prepare arrays with ids to be used in the graph (e, existing) and ids unused in the graph
   (ne, non-existing) and with both partly interleaved (left, right, label)"
   status-declare
@@ -535,7 +535,7 @@
   (i-array-free data:label))
 
 (define (test-helper-graph-delete-setup env e-left-count e-right-count e-label-count r)
-  (status-t db-env-t* ui32 ui32 ui32 test-helper-graph-delete-data-t*)
+  (status-t db-env-t* uint32-t uint32-t uint32-t test-helper-graph-delete-data-t*)
   status-declare
   (set
     r:env env
@@ -559,10 +559,10 @@
     (i-array-declare records db-relations-t)
     (declare
       state db-graph-selection-t
-      read-count-before-expected ui32
-      btree-count-after-delete ui32
-      btree-count-before-create ui32
-      btree-count-deleted-expected ui32
+      read-count-before-expected uint32-t
+      btree-count-after-delete uint32-t
+      btree-count-before-create uint32-t
+      btree-count-deleted-expected uint32-t
       ordinal db-ordinal-condition-t*)
     (define ordinal-condition db-ordinal-condition-t (struct-literal 2 5))
     (printf "  %d%d%d%d" use-left use-right use-label use-ordinal)

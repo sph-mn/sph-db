@@ -1,49 +1,23 @@
 /* this file is for declarations and macros needed to use sph-db as a shared library */
+#include <inttypes.h>
 #include <math.h>
 #include <pthread.h>
 #include <lmdb.h>
-#include <inttypes.h>
 #include <stdio.h>
-#define boolean ui8
-#define i8 int8_t
-#define i16 int16_t
-#define i32 int32_t
-#define i64 int64_t
-#define i8_least int_least8_t
-#define i16_least int_least16_t
-#define i32_least int_least32_t
-#define i64_least int_least64_t
-#define i8_fast int_fast8_t
-#define i16_fast int_fast16_t
-#define i32_fast int_fast32_t
-#define i64_fast int_fast64_t
-#define ui8 int8_t
-#define ui16 uint16_t
-#define ui32 uint32_t
-#define ui64 uint64_t
-#define ui8_least uint_least8_t
-#define ui16_least uint_least16_t
-#define ui32_least uint_least32_t
-#define ui64_least uint_least64_t
-#define ui8_fast uint_fast8_t
-#define ui16_fast uint_fast16_t
-#define ui32_fast uint_fast32_t
-#define ui64_fast uint_fast64_t
-#define f32 float
-#define f64 double
 /** writes values with current routine name and line info to standard output.
     example: (debug-log "%d" 1)
     otherwise like printf */
 #define debug_log(format, ...) fprintf(stdout, "%s:%d " format "\n", __func__, __LINE__, __VA_ARGS__)
+;
 /* "iteration array" - a fixed size array with variable length content that makes iteration easier to code. it is used similar to a linked list.
-  most bindings are generic macros that will work on all i-array types. i_array_add and i_array_forward go from left to right.
+  most bindings are generic macros that will work on all i-array types. i-array-add and i-array-forward go from left to right.
   examples:
-    i_array_declare_type(my_type, int);
-    i_array_allocate_my_type(a, 4);
-    i_array_add(a, 1);
-    i_array_add(a, 2);
-    while(i_array_in_range(a)) { i_array_get(a); }
-    i_array_free(a); */
+    i-array-declare-type(my-type, int);
+    i-array-allocate-my-type(a, 4);
+    i-array-add(a, 1);
+    i-array-add(a, 2);
+    while(i-array-in-range(a)) { i-array-get(a); }
+    i-array-free(a); */
 #include <stdlib.h>
 /** .current: to avoid having to write for-loops. it is what would be the index variable in loops
      .unused: to have variable length content in a fixed length array. points outside the memory area after the last element has been added
@@ -56,7 +30,7 @@
     element_type* end; \
     element_type* start; \
   } name; \
-  boolean i_array_allocate_##name(name* a, size_t length) { \
+  uint8_t i_array_allocate_##name(name* a, size_t length) { \
     element_type* start; \
     start = malloc((length * sizeof(element_type))); \
     if (!start) { \
@@ -127,10 +101,10 @@
     status_goto; \
   }
 ;
-typedef i32 status_id_t;
+typedef int32_t status_id_t;
 typedef struct {
   status_id_t id;
-  ui8 group;
+  uint8_t group;
 } status_t;
 enum { db_status_id_success,
   db_status_id_undefined,
@@ -162,7 +136,7 @@ enum { db_status_id_success,
   if (status.id == db_status_id_notfound) { \
     status.id = status_id_success; \
   }
-ui8* db_status_group_id_to_name(status_id_t a) {
+uint8_t* db_status_group_id_to_name(status_id_t a) {
   char* b;
   if (db_status_group_db == a) {
     b = "sph-db";
@@ -176,7 +150,7 @@ ui8* db_status_group_id_to_name(status_id_t a) {
   return (b);
 };
 /** get the description if available for a status */
-ui8* db_status_description(status_t a) {
+uint8_t* db_status_description(status_t a) {
   char* b;
   if (db_status_group_lmdb == a.group) {
     b = mdb_strerror((a.id));
@@ -215,10 +189,10 @@ ui8* db_status_description(status_t a) {
       b = "";
     };
   };
-  return (((ui8*)(b)));
+  return (((uint8_t*)(b)));
 };
 /** get the name if available for a status */
-ui8* db_status_name(status_t a) {
+uint8_t* db_status_name(status_t a) {
   char* b;
   if (db_status_group_lmdb == a.group) {
     b = mdb_strerror((a.id));
@@ -257,20 +231,20 @@ ui8* db_status_name(status_t a) {
       b = "unknown";
     };
   };
-  return (((ui8*)(b)));
+  return (((uint8_t*)(b)));
 };
-#define db_id_t ui64
-#define db_type_id_t ui16
-#define db_ordinal_t ui32
+#define db_id_t uint64_t
+#define db_type_id_t uint16_t
+#define db_ordinal_t uint32_t
 #define db_id_mask UINT64_MAX
 #define db_type_id_mask UINT16_MAX
-#define db_data_len_t ui32
-#define db_name_len_t ui8
+#define db_data_len_t uint32_t
+#define db_name_len_t uint8_t
 #define db_name_len_max UINT8_MAX
 #define db_data_len_max UINT32_MAX
-#define db_fields_len_t ui8
-#define db_indices_len_t ui8
-#define db_count_t ui32
+#define db_fields_len_t uint8_t
+#define db_indices_len_t uint8_t
+#define db_count_t uint32_t
 typedef struct {
   db_id_t left;
   db_id_t right;
@@ -279,13 +253,14 @@ typedef struct {
 } db_relation_t;
 i_array_declare_type(db_ids_t, db_id_t);
 i_array_declare_type(db_relations_t, db_relation_t);
+#define boolean uint8_t
 #define db_ids_new i_array_allocate_db_ids_t
 #define db_relations_new i_array_allocate_db_relations_t
 #define db_size_graph_data (sizeof(db_ordinal_t) + sizeof(db_id_t))
 #define db_size_graph_key (2 * sizeof(db_id_t))
 #define db_null 0
 #define db_size_element_id (sizeof(db_id_t) - sizeof(db_type_id_t))
-#define db_field_type_t ui8
+#define db_field_type_t uint8_t
 #define db_field_type_binary 1
 #define db_field_type_string 3
 #define db_field_type_float32 4
@@ -320,7 +295,7 @@ i_array_declare_type(db_relations_t, db_relation_t);
   a.name = a_name; \
   a.name_len = a_name_len
 typedef struct {
-  ui8* name;
+  uint8_t* name;
   db_name_len_t name_len;
   db_field_type_t type;
   db_fields_len_t index;
@@ -331,12 +306,12 @@ typedef struct {
   db_fields_len_t fields_fixed_count;
   size_t* fields_fixed_offsets;
   db_field_t* fields;
-  ui8 flags;
+  uint8_t flags;
   db_type_id_t id;
   struct db_index_t* indices;
   db_indices_len_t indices_len;
   size_t indices_size;
-  ui8* name;
+  uint8_t* name;
   db_id_t sequence;
 } db_type_t;
 typedef struct db_index_t {
@@ -353,7 +328,7 @@ typedef struct {
   MDB_dbi dbi_system;
   MDB_env* mdb_env;
   boolean open;
-  ui8* root;
+  uint8_t* root;
   pthread_mutex_t mutex;
   int maxkeysize;
   db_type_t* types;
@@ -376,8 +351,8 @@ typedef struct {
   db_count_t maximum_reader_count;
   db_count_t maximum_db_count;
   boolean filesystem_has_ordered_writes;
-  ui32_least env_open_flags;
-  ui16 file_permissions;
+  uint_least32_t env_open_flags;
+  uint16_t file_permissions;
 } db_open_options_t;
 typedef db_ordinal_t (*db_graph_ordinal_generator_t)(void*);
 typedef struct {
@@ -417,7 +392,7 @@ typedef struct {
   db_ids_t ids;
   db_node_matcher_t matcher;
   void* matcher_state;
-  ui8 options;
+  uint8_t options;
   db_type_t* type;
 } db_node_selection_t;
 typedef struct {
@@ -429,31 +404,27 @@ typedef struct {
   db_ids_t label;
   void* ids_set;
   db_ordinal_condition_t* ordinal;
-  ui8 options;
+  uint8_t options;
   void* reader;
 } db_graph_selection_t;
 typedef status_t (*db_graph_reader_t)(db_graph_selection_t*, db_count_t, db_relations_t*);
 status_t db_env_new(db_env_t** result);
 status_t db_statistics(db_txn_t txn, db_statistics_t* result);
 void db_close(db_env_t* env);
-status_t db_open(ui8* root, db_open_options_t* options, db_env_t* env);
-db_field_t* db_type_field_get(db_type_t* type, ui8* name);
-db_type_t* db_type_get(db_env_t* env, ui8* name);
-status_t db_type_create(db_env_t* env, ui8* name, db_field_t* fields, db_fields_len_t fields_len, ui8 flags, db_type_t** result);
+status_t db_open(uint8_t* root, db_open_options_t* options, db_env_t* env);
+db_field_t* db_type_field_get(db_type_t* type, uint8_t* name);
+db_type_t* db_type_get(db_env_t* env, uint8_t* name);
+status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fields_len_t fields_len, uint8_t flags, db_type_t** result);
 status_t db_type_delete(db_env_t* env, db_type_id_t id);
-status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result);
-status_t db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result);
-ui8 db_field_type_size(ui8 a);
-ui8* db_status_description(status_t a);
-ui8* db_status_name(status_t a);
-ui8* db_status_group_id_to_name(status_id_t a);
-void db_graph_selection_finish(db_graph_selection_t* state);
-status_t db_graph_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal, db_count_t offset, db_graph_selection_t* result);
-status_t db_graph_read(db_graph_selection_t* state, db_count_t count, db_relations_t* result);
-status_t db_graph_ensure(db_txn_t txn, db_ids_t left, db_ids_t right, db_ids_t label, db_graph_ordinal_generator_t ordinal_generator, void* ordinal_generator_state);
+uint8_t db_field_type_size(uint8_t a);
+uint8_t* db_status_description(status_t a);
+uint8_t* db_status_name(status_t a);
+uint8_t* db_status_group_id_to_name(status_id_t a);
 void db_graph_selection_finish(db_graph_selection_t* selection);
-status_t db_graph_delete(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal);
 status_t db_graph_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal, db_count_t offset, db_graph_selection_t* result);
+status_t db_graph_read(db_graph_selection_t* selection, db_count_t count, db_relations_t* result);
+status_t db_graph_ensure(db_txn_t txn, db_ids_t left, db_ids_t right, db_ids_t label, db_graph_ordinal_generator_t ordinal_generator, void* ordinal_generator_state);
+status_t db_graph_delete(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal);
 void db_node_values_free(db_node_values_t* a);
 status_t db_node_values_new(db_type_t* type, db_node_values_t* result);
 void db_node_values_set(db_node_values_t* values, db_fields_len_t field_index, void* data, size_t size);

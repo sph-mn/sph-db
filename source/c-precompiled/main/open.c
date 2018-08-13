@@ -1,12 +1,12 @@
 /* system btree entry format. key -> value
-     type-label id -> 8b:name-len name db-field-len-t:field-len (ui8:field-type ui8:name-len name) ...
+     type-label id -> 8b:name-len name db-field-len-t:field-len (uint8-t:field-type uint8-t:name-len name) ...
      index-label db-type-id-t:type-id db-field-len-t:field-offset ... -> () */
 #define db_env_types_extra_count 20
 /** prepare the database filesystem root path.
   create the full directory path if it does not exist */
-status_t db_open_root(db_env_t* env, db_open_options_t* options, ui8* path) {
+status_t db_open_root(db_env_t* env, db_open_options_t* options, uint8_t* path) {
   status_declare;
-  ui8* path_temp;
+  uint8_t* path_temp;
   path_temp = 0;
   path_temp = string_clone(path);
   if (!path_temp) {
@@ -22,10 +22,10 @@ exit:
   };
   return (status);
 };
-ui32 db_open_mdb_env_flags(db_open_options_t* options) { return ((options->env_open_flags ? options->env_open_flags : (MDB_NOSUBDIR | MDB_WRITEMAP | (options->is_read_only ? MDB_RDONLY : 0) | (options->filesystem_has_ordered_writes ? MDB_MAPASYNC : 0)))); };
+uint32_t db_open_mdb_env_flags(db_open_options_t* options) { return ((options->env_open_flags ? options->env_open_flags : (MDB_NOSUBDIR | MDB_WRITEMAP | (options->is_read_only ? MDB_RDONLY : 0) | (options->filesystem_has_ordered_writes ? MDB_MAPASYNC : 0)))); };
 status_t db_open_mdb_env(db_env_t* env, db_open_options_t* options) {
   status_declare;
-  ui8* data_path;
+  uint8_t* data_path;
   MDB_env* mdb_env;
   mdb_env = 0;
   data_path = string_append((env->root), "/data");
@@ -53,9 +53,9 @@ exit:
   after data has been inserted */
 status_t db_open_format(MDB_cursor* system, db_txn_t txn) {
   status_declare;
-  ui8* data;
-  ui8 label;
-  ui8 format[3] = { sizeof(db_id_t), sizeof(db_type_id_t), sizeof(db_ordinal_t) };
+  uint8_t* data;
+  uint8_t label;
+  uint8_t format[3] = { sizeof(db_id_t), sizeof(db_type_id_t), sizeof(db_ordinal_t) };
   MDB_val val_key;
   MDB_val val_data;
   MDB_stat stat_info;
@@ -94,7 +94,7 @@ status_t db_open_system_sequence(MDB_cursor* system, db_type_id_t* result) {
   db_mdb_declare_val_null;
   MDB_val val_key;
   db_type_id_t current;
-  ui8 key[db_size_system_key];
+  uint8_t key[db_size_system_key];
   val_key.mv_size = 1;
   current = 0;
   db_system_key_label(key) = db_system_label_type;
@@ -230,11 +230,11 @@ exit:
   return (status);
 };
 /** read information for fields from system btree type data */
-status_t db_open_type_read_fields(ui8** data_pointer, db_type_t* type) {
+status_t db_open_type_read_fields(uint8_t** data_pointer, db_type_t* type) {
   status_declare;
   db_fields_len_t count;
-  ui8* data;
-  ui8 field_type;
+  uint8_t* data;
+  uint8_t field_type;
   db_field_t* field_pointer;
   db_field_t* fields;
   db_fields_len_t fixed_count;
@@ -282,7 +282,7 @@ exit:
   };
   return (status);
 };
-status_t db_open_type(ui8* system_key, ui8* system_value, db_type_t* types, MDB_cursor* nodes, db_type_t** result_type) {
+status_t db_open_type(uint8_t* system_key, uint8_t* system_value, db_type_t* types, MDB_cursor* nodes, db_type_t** result_type) {
   status_declare;
   db_type_id_t id;
   db_type_t* type_pointer;
@@ -305,7 +305,7 @@ status_t db_open_types(MDB_cursor* system, MDB_cursor* nodes, db_txn_t txn) {
   status_declare;
   MDB_val val_key;
   MDB_val val_data;
-  ui8 key[db_size_system_key];
+  uint8_t key[db_size_system_key];
   db_type_t* type_pointer;
   db_type_t* types;
   db_type_id_t types_len;
@@ -357,7 +357,7 @@ status_t db_open_indices(MDB_cursor* system, db_txn_t txn) {
   db_fields_len_t indices_alloc_len;
   db_fields_len_t indices_len;
   db_index_t* indices_temp;
-  ui8 key[db_size_system_key];
+  uint8_t key[db_size_system_key];
   db_type_id_t type_id;
   db_type_t* types;
   db_type_id_t types_len;
@@ -433,7 +433,7 @@ exit:
 /** ensure that the trees used for the graph exist, configure and open dbi */
 status_t db_open_graph(db_txn_t txn) {
   status_declare;
-  ui32 db_options;
+  uint32_t db_options;
   MDB_dbi dbi_graph_lr;
   MDB_dbi dbi_graph_rl;
   MDB_dbi dbi_graph_ll;
@@ -469,7 +469,7 @@ status_t db_open_nodes(db_txn_t txn) {
 exit:
   return (status);
 };
-status_t db_open(ui8* path, db_open_options_t* options_pointer, db_env_t* env) {
+status_t db_open(uint8_t* path, db_open_options_t* options_pointer, db_env_t* env) {
   status_declare;
   db_open_options_t options;
   if (!(sizeof(db_id_t) > sizeof(db_type_id_t))) {

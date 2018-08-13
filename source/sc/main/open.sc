@@ -1,15 +1,15 @@
 (sc-comment
   "system btree entry format. key -> value
-     type-label id -> 8b:name-len name db-field-len-t:field-len (ui8:field-type ui8:name-len name) ...
+     type-label id -> 8b:name-len name db-field-len-t:field-len (uint8-t:field-type uint8-t:name-len name) ...
      index-label db-type-id-t:type-id db-field-len-t:field-offset ... -> ()")
 
 (pre-define db-env-types-extra-count 20)
 
-(define (db-open-root env options path) (status-t db-env-t* db-open-options-t* ui8*)
+(define (db-open-root env options path) (status-t db-env-t* db-open-options-t* uint8-t*)
   "prepare the database filesystem root path.
   create the full directory path if it does not exist"
   status-declare
-  (declare path-temp ui8*)
+  (declare path-temp uint8-t*)
   (set
     path-temp 0
     path-temp (string-clone path))
@@ -21,7 +21,7 @@
     (if status-is-failure (free path-temp))
     (return status)))
 
-(define (db-open-mdb-env-flags options) (ui32 db-open-options-t*)
+(define (db-open-mdb-env-flags options) (uint32-t db-open-options-t*)
   (return
     (if* options:env-open-flags options:env-open-flags
       (bit-or
@@ -35,7 +35,7 @@
 (define (db-open-mdb-env env options) (status-t db-env-t* db-open-options-t*)
   status-declare
   (declare
-    data-path ui8*
+    data-path uint8-t*
     mdb-env MDB-env*)
   (set
     mdb-env 0
@@ -61,9 +61,9 @@
   after data has been inserted"
   status-declare
   (declare
-    data ui8*
-    label ui8
-    format (array ui8 (3) (sizeof db-id-t) (sizeof db-type-id-t) (sizeof db-ordinal-t))
+    data uint8-t*
+    label uint8-t
+    format (array uint8-t (3) (sizeof db-id-t) (sizeof db-type-id-t) (sizeof db-ordinal-t))
     val-key MDB-val
     val-data MDB-val
     stat-info MDB-stat)
@@ -113,7 +113,7 @@
   (declare
     val-key MDB-val
     current db-type-id-t
-    key (array ui8 (db-size-system-key)))
+    key (array uint8-t (db-size-system-key)))
   (set
     val-key.mv-size 1
     current 0
@@ -248,13 +248,13 @@
   (label exit
     (return status)))
 
-(define (db-open-type-read-fields data-pointer type) (status-t ui8** db-type-t*)
+(define (db-open-type-read-fields data-pointer type) (status-t uint8-t** db-type-t*)
   "read information for fields from system btree type data"
   status-declare
   (declare
     count db-fields-len-t
-    data ui8*
-    field-type ui8
+    data uint8-t*
+    field-type uint8-t
     field-pointer db-field-t*
     fields db-field-t*
     fixed-count db-fields-len-t
@@ -301,7 +301,7 @@
     (return status)))
 
 (define (db-open-type system-key system-value types nodes result-type)
-  (status-t ui8* ui8* db-type-t* MDB-cursor* db-type-t**)
+  (status-t uint8-t* uint8-t* db-type-t* MDB-cursor* db-type-t**)
   status-declare
   (declare
     id db-type-id-t
@@ -327,7 +327,7 @@
   (declare
     val-key MDB-val
     val-data MDB-val
-    key (array ui8 (db-size-system-key))
+    key (array uint8-t (db-size-system-key))
     type-pointer db-type-t*
     types db-type-t*
     types-len db-type-id-t
@@ -381,7 +381,7 @@
     indices-alloc-len db-fields-len-t
     indices-len db-fields-len-t
     indices-temp db-index-t*
-    key (array ui8 (db-size-system-key))
+    key (array uint8-t (db-size-system-key))
     type-id db-type-id-t
     types db-type-t*
     types-len db-type-id-t)
@@ -456,7 +456,7 @@
   "ensure that the trees used for the graph exist, configure and open dbi"
   status-declare
   (declare
-    db-options ui32
+    db-options uint32-t
     dbi-graph-lr MDB-dbi
     dbi-graph-rl MDB-dbi
     dbi-graph-ll MDB-dbi)
@@ -502,7 +502,7 @@
   (label exit
     (return status)))
 
-(define (db-open path options-pointer env) (status-t ui8* db-open-options-t* db-env-t*)
+(define (db-open path options-pointer env) (status-t uint8-t* db-open-options-t* db-env-t*)
   status-declare
   (declare options db-open-options-t)
   (if (not (> (sizeof db-id-t) (sizeof db-type-id-t)))

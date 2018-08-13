@@ -12,7 +12,7 @@
 ; along with this program; if not, see <http://www.gnu.org/licenses/>.
 (pre-include "stdlib.h" "inttypes.h")
 ; the following definition sets the integer type and size for values
-(pre-if-not-defined imht-set-key-t (pre-define imht-set-key-t uint64_t))
+(pre-if-not-defined imht-set-key-t (pre-define imht-set-key-t uint64-t))
 ; using the following leads to slightly faster set operations but a stored zero will not be found
 (pre-if-not-defined imht-set-can-contain-zero (pre-define imht-set-can-contain-zero 1))
 ; the minimum memory usage is size times imht-set-size-factor
@@ -20,7 +20,7 @@
 
 (declare imht-set-primes
   (array
-    uint16_t
+    uint16-t
     ()
     ; performance can be optimised for bigger sets by adding additional primes nearer to the desired set size times set-size-factor
     #f
@@ -86,7 +86,7 @@
     659
     673 683 701 719 733 743 757 769 787 809 821 827 839 857 863 881 887 911 929 941 953 971 983 997))
 
-(define imht-set-primes-end uint16_t* (+ imht-set-primes 83))
+(define imht-set-primes-end uint16-t* (+ imht-set-primes 83))
 
 (declare imht-set-t
   (type
@@ -96,7 +96,7 @@
 
 (define (imht-set-calculate-hash-table-size min-size) (size-t size-t)
   (set min-size (* imht-set-size-factor min-size))
-  (define primes uint16_t* imht-set-primes)
+  (define primes uint16-t* imht-set-primes)
   (while (< primes imht-set-primes-end)
     (if (<= min-size *primes) (return *primes)
       (set primes (+ 1 primes))))
@@ -104,7 +104,7 @@
   ; if no prime has been found, use size-factor times size made odd as a best guess
   (return (bit-or 1 min-size)))
 
-(define (imht-set-create min-size result) (uint8_t size-t imht-set-t**)
+(define (imht-set-create min-size result) (uint8-t size-t imht-set-t**)
   ; returns 1 on success or 0 if the memory allocation failed
   (set *result (malloc (sizeof imht-set-t)))
   (if (not *result) (return #f))

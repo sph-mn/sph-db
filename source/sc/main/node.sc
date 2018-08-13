@@ -4,8 +4,8 @@
   status-declare
   (declare
     data void*
-    data-temp ui8*
-    field-size ui8
+    data-temp uint8-t*
+    field-size uint8-t
     field-type db-field-type-t
     i db-fields-len-t
     size size-t)
@@ -108,8 +108,8 @@
   "from the full btree value a node (all fields), return a reference
   to the data for specific field and the size"
   (declare
-    data-temp ui8*
-    end ui8*
+    data-temp uint8-t*
+    end uint8-t*
     i db-fields-len-t
     offset size-t
     result db-node-data-t
@@ -120,7 +120,7 @@
       (set offset (array-get type:fields-fixed-offsets field))
       (if (< offset data.size)
         (set
-          result.data (+ offset (convert-type data.data ui8*))
+          result.data (+ offset (convert-type data.data uint8-t*))
           result.size (db-field-type-size (struct-get (array-get type:fields field) type)))
         (set
           result.data 0
@@ -134,8 +134,8 @@
       (if (< offset data.size)
         (begin
           (set
-            data-temp (+ offset (convert-type data.data ui8*))
-            end (+ data.size (convert-type data.data ui8*))
+            data-temp (+ offset (convert-type data.data uint8-t*))
+            end (+ data.size (convert-type data.data uint8-t*))
             i type:fields-fixed-count)
           (sc-comment "variable length data is prefixed by its size")
           (while (and (<= i field) (< data-temp end))

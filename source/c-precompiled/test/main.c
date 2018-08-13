@@ -2,8 +2,8 @@
 /* these values should not be below 3, or important cases would not be tested.
    the values should also not be so high that the linearly created ordinals exceed the size of the ordinal type.
    tip: reduce when debugging to make tests run faster */
-ui32 common_element_count = 3;
-ui32 common_label_count = 3;
+uint32_t common_element_count = 3;
+uint32_t common_label_count = 3;
 #define db_env_types_extra_count 20
 status_t test_open_empty(db_env_t* env) {
   status_declare;
@@ -82,7 +82,7 @@ exit:
 status_t test_type_create_many(db_env_t* env) {
   status_declare;
   db_type_id_t i;
-  ui8 name[255];
+  uint8_t name[255];
   db_type_t* type;
   /* 10 times as many as there is extra room left for new types in env:types */
   for (i = 0; (i < (10 * db_env_types_extra_count)); i = (1 + i)) {
@@ -207,12 +207,12 @@ status_t test_node_create(db_env_t* env) {
   size_t size_2;
   boolean exists;
   db_type_t* type;
-  ui8 value_1;
-  i8 value_2;
+  uint8_t value_1;
+  int8_t value_2;
   db_node_values_t values_1;
   db_node_values_t values_2;
-  ui8* value_3 = ((ui8*)("abc"));
-  ui8* value_4 = ((ui8*)("abcde"));
+  uint8_t* value_3 = ((uint8_t*)("abc"));
+  uint8_t* value_4 = ((uint8_t*)("abcde"));
   status_require(test_helper_create_type_1(env, (&type)));
   /* prepare node values */
   status_require(db_node_values_new(type, (&values_1)));
@@ -250,7 +250,7 @@ status_t test_node_create(db_env_t* env) {
   /* test node-get */
   status_require(db_node_get(txn, id_1, (&node_data_1)));
   field_data = db_node_data_ref(type, node_data_1, 1);
-  test_helper_assert("node-data-ref-2", ((sizeof(i8) == field_data.size) && (value_2 == *((i8*)(field_data.data)))));
+  test_helper_assert("node-data-ref-2", ((sizeof(int8_t) == field_data.size) && (value_2 == *((int8_t*)(field_data.data)))));
   field_data = db_node_data_ref(type, node_data_1, 3);
   test_helper_assert("node-data-ref-3", ((5 == field_data.size) && (0 == memcmp(value_4, (field_data.data), (field_data.size)))));
   status_require(db_node_get(txn, id_2, (&node_data_1)));
@@ -272,36 +272,36 @@ exit:
   return (status);
 };
 boolean node_matcher(db_id_t id, db_node_data_t data, void* matcher_state) {
-  *((ui8*)(matcher_state)) = 1;
+  *((uint8_t*)(matcher_state)) = 1;
   return (1);
 };
 status_t test_node_select(db_env_t* env) {
   status_declare;
   db_txn_declare(env, txn);
   i_array_declare(ids, db_ids_t);
-  ui8 value_1;
-  ui8 matcher_state;
+  uint8_t value_1;
+  uint8_t matcher_state;
   db_node_data_t data;
   db_node_selection_t selection;
-  ui32 btree_size_before_delete;
-  ui32 btree_size_after_delete;
+  uint32_t btree_size_before_delete;
+  uint32_t btree_size_after_delete;
   db_type_t* type;
   db_node_values_t* values;
   db_id_t* node_ids;
-  ui32 node_ids_len;
-  ui32 values_len;
+  uint32_t node_ids_len;
+  uint32_t values_len;
   /* create nodes */
   status_require(test_helper_create_type_1(env, (&type)));
   status_require(test_helper_create_values_1(env, type, (&values), (&values_len)));
   status_require(test_helper_create_nodes_1(env, values, (&node_ids), (&node_ids_len)));
-  value_1 = *((ui8*)((((values[0]).data)[0]).data));
+  value_1 = *((uint8_t*)((((values[0]).data)[0]).data));
   status_require(db_txn_begin((&txn)));
   /* type */
   status_require(db_node_select(txn, 0, type, 0, 0, 0, (&selection)));
   status_require(db_node_next((&selection)));
   data = db_node_ref((&selection), 0);
   test_helper_assert("node-ref size", (1 == data.size));
-  test_helper_assert("node-ref value", (value_1 == *((ui8*)(data.data))));
+  test_helper_assert("node-ref value", (value_1 == *((uint8_t*)(data.data))));
   test_helper_assert("current id set", (db_id_element((selection.current_id))));
   status_require(db_node_next((&selection)));
   status_require(db_node_next((&selection)));
@@ -368,16 +368,16 @@ status_t test_index(db_env_t* env) {
   db_fields_len_t fields_len;
   db_type_t* type;
   db_index_t* index;
-  ui8* index_name;
+  uint8_t* index_name;
   size_t index_name_len;
   db_node_values_t* values;
-  ui32 values_len;
+  uint32_t values_len;
   void* key_data;
   size_t key_size;
   db_id_t* node_ids;
-  ui32 node_ids_len;
+  uint32_t node_ids_len;
   db_index_selection_t selection;
-  ui8* index_name_expected = "i-1-1-2";
+  uint8_t* index_name_expected = "i-1-1-2";
   fields_len = 2;
   status_require(test_helper_create_type_1(env, (&type)));
   status_require(test_helper_create_values_1(env, type, (&values), (&values_len)));
@@ -391,7 +391,7 @@ status_t test_index(db_env_t* env) {
   test_helper_assert("index-get fields set", ((1 == (index->fields)[0]) && (2 == (index->fields)[1])));
   status_require((db_index_key(env, (*index), (values[0]), (&key_data), (&key_size))));
   test_helper_assert("key size", (4 == key_size));
-  test_helper_assert("key memory ref", (((ui8*)(key_data))[3]));
+  test_helper_assert("key memory ref", (((uint8_t*)(key_data))[3]));
   /* test node index update */
   status_require(test_helper_create_nodes_1(env, values, (&node_ids), (&node_ids_len)));
   /* test delete */

@@ -37,8 +37,8 @@
     status_goto; \
   }
 ;
-typedef i32 status_id_t;
+typedef int32_t status_id_t;
 typedef struct {
   status_id_t id;
-  ui8 group;
+  uint8_t group;
 } status_t;

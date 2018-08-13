@@ -11,10 +11,10 @@
   stop-if-count-zero (if (= 0 count) (goto exit))
   db-size-system-key (+ 1 (sizeof db-type-id-t)))
 
-(define (uint->string a result-len) (ui8* uintmax-t size-t*)
+(define (uint->string a result-len) (uint8-t* uintmax-t size-t*)
   (declare
     size size-t
-    result ui8*)
+    result uint8-t*)
   (set
     size
     (+ 1
@@ -30,12 +30,12 @@
       (set *result-len (- size 1))
       (return result))))
 
-(define (string-join strings strings-len delimiter result-len) (ui8* ui8** size-t ui8* size-t*)
+(define (string-join strings strings-len delimiter result-len) (uint8-t* uint8-t** size-t uint8-t* size-t*)
   "join strings into one string with each input string separated by delimiter.
   zero if strings-len is zero or memory could not be allocated"
   (declare
-    result ui8*
-    result-temp ui8*
+    result uint8-t*
+    result-temp uint8-t*
     size size-t
     size-temp size-t
     i size-t
@@ -99,7 +99,7 @@
 
 (define (db-debug-log-ids-set a) (void imht-set-t)
   "display an ids set"
-  (define i ui32 0)
+  (define i uint32-t 0)
   (printf "id set (%lu):" a.size)
   (while (< i a.size)
     (printf " %lu" (array-get a.content i))
@@ -125,7 +125,7 @@
   (label exit
     (return status)))
 
-(define (db-debug-count-all-btree-entries txn result) (status-t db-txn-t ui32*)
+(define (db-debug-count-all-btree-entries txn result) (status-t db-txn-t uint32-t*)
   "sum the count of all entries in all btrees used by the database"
   status-declare
   (declare stat db-statistics-t)
@@ -138,7 +138,7 @@
   (label exit
     (return status)))
 
-(define (db-field-type-size a) (ui8 ui8)
+(define (db-field-type-size a) (uint8-t uint8-t)
   "size in octets. zero for variable size types"
   (case = a
     ( (db-field-type-int64 db-field-type-uint64 db-field-type-string64 db-field-type-float64)
@@ -158,14 +158,14 @@
   (label exit
     (return status)))
 
-(define (db-read-name data-pointer result) (status-t ui8** ui8**)
+(define (db-read-name data-pointer result) (status-t uint8-t** uint8-t**)
   "read a length prefixed string from system type data.
   on success set result to a newly allocated string and data to the next byte after the string"
   status-declare
   (declare
-    data ui8*
+    data uint8-t*
     len db-name-len-t
-    name ui8*)
+    name uint8-t*)
   (set
     data *data-pointer
     len (pointer-get (convert-type data db-name-len-t*))

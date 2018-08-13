@@ -8,7 +8,7 @@
   (db-declare-graph-key name) (declare name (array db-id-t 2 0 0))
   (db-declare-graph-data name)
   (begin
-    (declare graph-data (array ui8 ((+ (sizeof db-ordinal-t) (sizeof db-id-t)))))
+    (declare graph-data (array uint8-t ((+ (sizeof db-ordinal-t) (sizeof db-id-t)))))
     (memset graph-data 0 (+ (sizeof db-ordinal-t) (sizeof db-id-t))))
   (db-declare-relation name) (define name db-relation-t (struct-literal 0 0 0 0)))
 

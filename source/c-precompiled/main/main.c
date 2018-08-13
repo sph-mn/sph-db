@@ -13,9 +13,9 @@
     goto exit; \
   }
 #define db_size_system_key (1 + sizeof(db_type_id_t))
-ui8* uint_to_string(uintmax_t a, size_t* result_len) {
+uint8_t* uint_to_string(uintmax_t a, size_t* result_len) {
   size_t size;
-  ui8* result;
+  uint8_t* result;
   size = (1 + ((0 == a) ? 1 : (1 + log10(a))));
   result = malloc(size);
   if (!result) {
@@ -31,9 +31,9 @@ ui8* uint_to_string(uintmax_t a, size_t* result_len) {
 };
 /** join strings into one string with each input string separated by delimiter.
   zero if strings-len is zero or memory could not be allocated */
-ui8* string_join(ui8** strings, size_t strings_len, ui8* delimiter, size_t* result_len) {
-  ui8* result;
-  ui8* result_temp;
+uint8_t* string_join(uint8_t** strings, size_t strings_len, uint8_t* delimiter, size_t* result_len) {
+  uint8_t* result;
+  uint8_t* result_temp;
   size_t size;
   size_t size_temp;
   size_t i;
@@ -100,7 +100,7 @@ void db_debug_log_ids(db_ids_t a) {
 };
 /** display an ids set */
 void db_debug_log_ids_set(imht_set_t a) {
-  ui32 i = 0;
+  uint32_t i = 0;
   printf("id set (%lu):", (a.size));
   while ((i < a.size)) {
     printf(" %lu", ((a.content)[i]));
@@ -126,7 +126,7 @@ exit:
   return (status);
 };
 /** sum the count of all entries in all btrees used by the database */
-status_t db_debug_count_all_btree_entries(db_txn_t txn, ui32* result) {
+status_t db_debug_count_all_btree_entries(db_txn_t txn, uint32_t* result) {
   status_declare;
   db_statistics_t stat;
   status_require(db_statistics(txn, (&stat)));
@@ -135,7 +135,7 @@ exit:
   return (status);
 };
 /** size in octets. zero for variable size types */
-ui8 db_field_type_size(ui8 a) {
+uint8_t db_field_type_size(uint8_t a) {
   if ((db_field_type_int64 == a) || (db_field_type_uint64 == a) || (db_field_type_string64 == a) || (db_field_type_float64 == a)) {
     return (8);
   } else if ((db_field_type_int32 == a) || (db_field_type_uint32 == a) || (db_field_type_string32 == a) || (db_field_type_float32 == a)) {
@@ -160,11 +160,11 @@ exit:
 };
 /** read a length prefixed string from system type data.
   on success set result to a newly allocated string and data to the next byte after the string */
-status_t db_read_name(ui8** data_pointer, ui8** result) {
+status_t db_read_name(uint8_t** data_pointer, uint8_t** result) {
   status_declare;
-  ui8* data;
+  uint8_t* data;
   db_name_len_t len;
-  ui8* name;
+  uint8_t* name;
   data = *data_pointer;
   len = *((db_name_len_t*)(data));
   data = (sizeof(db_name_len_t) + data);
