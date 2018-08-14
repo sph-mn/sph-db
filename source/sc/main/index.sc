@@ -368,12 +368,13 @@
   (db-mdb-status-require (mdb-drop txn.mdb-txn index:dbi 0))
   (db-mdb-status-require (mdb-dbi-open txn.mdb-txn name MDB-CREATE &index:dbi))
   (status-require (db-txn-commit &txn))
+  (set status (db-index-build env *index))
   (label exit
     (free name)
-    (if status-is-success (return (db-index-build env *index))
-      (db-txn-abort-if-active txn))))
+    (db-txn-abort-if-active txn)
+    (return status)))
 
-(define (db-index-next selection) (status-t db-index-selection-t)
+(define (db-index-next selection count result-ids) (status-t db-index-selection-t db-count-t db-ids-t*)
   "position at the next index value.
   if no value is found, status is db-notfound.
   before call, selection must be positioned at a matching key"

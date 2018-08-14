@@ -2,15 +2,23 @@
 (pre-include "inttypes.h" "math.h" "pthread.h" "lmdb.h")
 (sc-include "foreign/sph" "foreign/sph/i-array" "main/lib/status" "main/config")
 
-(declare db-relation-t
+(declare
+  db-relation-t
   (type
     (struct
       (left db-id-t)
       (right db-id-t)
       (label db-id-t)
-      (ordinal db-ordinal-t))))
+      (ordinal db-ordinal-t)))
+  db-node-t
+  (type
+    (struct
+      (id db-id-t)
+      (data void*)
+      (size size-t))))
 
 (i-array-declare-type db-ids-t db-id-t)
+(i-array-declare-type db-nodes-t db-node-t)
 (i-array-declare-type db-relations-t db-relation-t)
 
 (pre-define
@@ -153,30 +161,20 @@
       (data db-node-value-t*)
       (last db-fields-len-t)
       (type db-type-t*)))
-  db-node-data-t
-  (type
-    (struct
-      (data void*)
-      (size size-t)))
-  db-node-matcher-t (type (function-pointer boolean db-id-t db-node-data-t void*))
+  db-node-matcher-t (type (function-pointer boolean db-node-t void*))
   db-index-selection-t
   (type
     (struct
-      (current db-id-t)
       (cursor MDB-cursor*)))
   db-node-index-selection-t
   (type
     (struct
-      (current db-node-data-t)
-      (current-id db-id-t)
       (index-selection db-index-selection-t)
       (nodes MDB-cursor*)))
   db-node-selection-t
   (type
     (struct
       (count db-count-t)
-      (current db-node-data-t)
-      (current-id db-id-t)
       (cursor MDB-cursor*)
       (env db-env-t*)
       (ids db-ids-t)
@@ -228,17 +226,16 @@
   (db-node-values-new type result) (status-t db-type-t* db-node-values-t*)
   (db-node-values-set values field-index data size)
   (void db-node-values-t* db-fields-len-t void* size-t) (db-node-values->data values result)
-  (status-t db-node-values-t db-node-data-t*) (db-node-data->values type data result)
-  (status-t db-type-t* db-node-data-t db-node-values-t*) (db-node-create txn values result)
+  (status-t db-node-values-t db-node-t*) (db-node-data->values type data result)
+  (status-t db-type-t* db-node-t db-node-values-t*) (db-node-create txn values result)
   (status-t db-txn-t db-node-values-t db-id-t*) (db-node-get txn id result)
-  (status-t db-txn-t db-id-t db-node-data-t*) (db-node-delete txn ids)
-  (status-t db-txn-t db-ids-t*) (db-node-data-ref type data field)
-  (db-node-data-t db-type-t* db-node-data-t db-fields-len-t) (db-node-ref selection field)
-  (db-node-data-t db-node-selection-t* db-fields-len-t) (db-node-exists txn ids result)
+  (status-t db-txn-t db-id-t db-node-t*) (db-node-delete txn ids)
+  (status-t db-txn-t db-ids-t*) (db-node-ref type node field)
+  (db-node-value-t db-type-t* db-node-t db-fields-len-t) (db-node-exists txn ids result)
   (status-t db-txn-t db-ids-t boolean*)
   (db-node-select txn ids type offset matcher matcher-state result-selection)
   (status-t db-txn-t db-ids-t* db-type-t* db-count-t db-node-matcher-t void* db-node-selection-t*)
-  (db-node-next selection) (status-t db-node-selection-t*)
+  (db-node-read selection count result-nodes) (status-t db-node-selection-t* db-count-t db-nodes-t*)
   (db-node-skip selection count) (status-t db-node-selection-t* db-count-t)
   (db-node-selection-finish selection) (void db-node-selection-t*)
   (db-node-update txn id values) (status-t db-txn-t db-id-t db-node-values-t)
@@ -250,11 +247,12 @@
   (db-index-create env type fields fields-len)
   (status-t db-env-t* db-type-t* db-fields-len-t* db-fields-len-t) (db-index-delete env index)
   (status-t db-env-t* db-index-t*) (db-index-rebuild env index)
-  (status-t db-env-t* db-index-t*) (db-index-next selection)
-  (status-t db-index-selection-t) (db-index-selection-finish selection)
+  (status-t db-env-t* db-index-t*) (db-index-read selection count result-ids)
+  (status-t db-index-selection-t db-count-t db-ids-t*) (db-index-selection-finish selection)
   (void db-index-selection-t*) (db-index-select txn index values result)
   (status-t db-txn-t db-index-t db-node-values-t db-index-selection-t*)
-  (db-node-index-next selection) (status-t db-node-index-selection-t)
+  (db-node-index-read selection count result-nodes)
+  (status-t db-node-index-selection-t db-count-t db-nodes-t*)
   (db-node-index-select txn index values result)
   (status-t db-txn-t db-index-t db-node-values-t db-node-index-selection-t*)
   (db-node-index-selection-finish selection) (void db-node-index-selection-t*))

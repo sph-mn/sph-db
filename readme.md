@@ -590,6 +590,8 @@ these values can be set before compilation in ``c-precompiled/main/config.c``. o
 * validator functions for indices and graph data consistency
 * float values as ordinals has not yet been tested
 * at some places MDB_SET_RANGE and MDB_GET_BOTH_RANGE is used in succession. maybe get-both-range includes set-range and the latter can be left out
+* search in index keys
+* partial indices. data filter function given at index definition
 
 # development
 this section is for when you want to change sph-db itself.
@@ -622,8 +624,8 @@ the general development stages for new sph-db features is design, basic code imp
 * cursors as arguments are assumed to be in position at a valid entry on call
 * readers must not be called after db-status-id-notfound
 * readers and deleters are built using stacked goto labels because this makes it much easier for this case to control the execution flow, compared to the alternative of nested while loops. especially for choosing the best place for evaluating the read-count stop condition
-* db-relation-read-1001-1101 is a good example of how queries with ordinals make the code more complicated (range lookups) and why using ordinals is only supported when a filter on "left" is given
+* db-graph-read-1001-1101 is a good example of how queries with ordinals make the code more complicated (range lookups) and why using ordinals is only supported when a filter on "left" is given
 
-## db-relation-delete
-* db-relation-delete differs from db-relation-read in that it does not need a state because it does not support partial processing
+## db-graph-delete
+* db-graph-delete differs from db-graph-read in that it does not need a state because it does not support partial processing
 * it also differs in that it always needs to use all three relation dbi to complete the deletion instead of just any dbi necessary to match relations

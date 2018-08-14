@@ -1,6 +1,6 @@
 (define (db-node-values->data values result) (status-t db-node-values-t db-node-data-t*)
   "convert a node-values array to the data format that is used as btree value for nodes.
-  unset trailing fields are not included"
+  the data for unset trailing fields is not included"
   status-declare
   (declare
     data void*
@@ -181,7 +181,8 @@
     (if status-is-failure (db-free-node-values &values))
     (return status)))
 
-(define (db-node-next selection) (status-t db-node-selection-t*)
+(define (db-node-read selection count result-nodes)
+  (status-t db-node-selection-t* db-count-t db-nodes-t*)
   status-declare
   db-mdb-declare-val-id
   (declare
@@ -201,7 +202,7 @@
     skip (bit-and selection:options db-selection-flag-skip)
     count selection:count
     ids selection:ids)
-  (if (i-array-in-range ids)
+  (if ids.start
     (begin
       (sc-comment "filter by ids")
       (while (and (i-array-in-range ids) count)
@@ -395,7 +396,7 @@
   (db-mdb-cursor-close-if-active a:cursor))
 
 (define (db-node-update txn id values) (status-t db-txn-t db-id-t db-node-values-t)
-  "update node data. like node-delete followed by node-create but keeps the old id"
+  "set new data for the node with the given id"
   status-declare
   db-mdb-declare-val-id
   (db-mdb-cursor-declare nodes)
@@ -443,9 +444,10 @@
     (mdb-cursor-close nodes)
     (return status)))
 
-(define (db-node-index-next selection) (status-t db-node-index-selection-t)
+(define (db-node-index-read selection count result-nodes)
+  (status-t db-node-index-selection-t db-count-t db-nodes-t*)
   status-declare
-  (status-require (db-index-next selection.index-selection))
+  (status-require (db-index-read selection.index-selection count result))
   (status-require
     (db-node-get-internal selection.nodes selection.index-selection.current &selection.current))
   (set selection.current-id selection.index-selection.current)
