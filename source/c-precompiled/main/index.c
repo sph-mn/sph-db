@@ -1,4 +1,4 @@
-status_t db_node_data_to_values(db_type_t* type, db_node_data_t data, db_node_values_t* result);
+status_t db_node_data_to_values(db_type_t* type, db_node_t data, db_node_values_t* result);
 void db_free_node_values(db_node_values_t* values);
 /** create a key for an index to be used in the system btree.
    key-format: system-label-type type-id indexed-field-offset ... */
@@ -166,7 +166,7 @@ status_t db_index_build(db_env_t* env, db_index_t index) {
   void* data;
   db_id_t id;
   db_type_t type;
-  db_node_data_t node_data;
+  db_node_t node;
   db_node_values_t values;
   values.data = 0;
   data = 0;
@@ -179,9 +179,9 @@ status_t db_index_build(db_env_t* env, db_index_t index) {
   db_mdb_status_require(mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_SET_RANGE));
   /* for each node of type */
   while ((db_mdb_status_is_success && (type.id == db_id_type((db_pointer_to_id((val_id.mv_data))))))) {
-    node_data.data = val_data.mv_data;
-    node_data.size = val_data.mv_size;
-    status_require(db_node_data_to_values((&type), node_data, (&values)));
+    node.data = val_data.mv_data;
+    node.size = val_data.mv_size;
+    status_require(db_node_data_to_values((&type), node, (&values)));
     status_require((db_index_key(env, index, values, (&data), (&(val_data.mv_size)))));
     db_free_node_values((&values));
     val_data.mv_data = data;
@@ -348,31 +348,32 @@ status_t db_index_rebuild(db_env_t* env, db_index_t* index) {
   db_mdb_status_require((mdb_drop((txn.mdb_txn), (index->dbi), 0)));
   db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), name, MDB_CREATE, (&(index->dbi)))));
   status_require(db_txn_commit((&txn)));
+  status = db_index_build(env, (*index));
 exit:
   free(name);
-  if (status_is_success) {
-    return (db_index_build(env, (*index)));
-  } else {
-    db_txn_abort_if_active(txn);
-  };
+  db_txn_abort_if_active(txn);
+  return (status);
 };
-/** position at the next index value.
-  if no value is found, status is db-notfound.
-  before call, selection must be positioned at a matching key */
-status_t db_index_next(db_index_selection_t selection) {
+/** read index values (node ids).
+  if no more value is found, status is db-notfound.
+  status must be success on call */
+status_t db_index_read(db_index_selection_t selection, db_count_t count, db_ids_t* result_ids) {
   status_declare;
   db_mdb_declare_val_null;
   db_mdb_declare_val_id;
-  db_mdb_status_require((mdb_cursor_get((selection.cursor), (&val_null), (&val_id), MDB_NEXT_DUP)));
-  selection.current = db_pointer_to_id((val_id.mv_data));
+  while (count) {
+    i_array_add((*result_ids), (db_pointer_to_id((val_id.mv_data))));
+    db_mdb_status_require((mdb_cursor_get((selection.cursor), (&val_null), (&val_id), MDB_NEXT_DUP)));
+    count = (count - 1);
+  };
 exit:
   db_mdb_status_notfound_if_notfound;
   return (status);
 };
 void db_index_selection_finish(db_index_selection_t* selection) { db_mdb_cursor_close_if_active((selection->cursor)); };
 /** open the cursor and set to the index key matching values.
-  selection is set to the first match.
-  if no match found status is db-notfound */
+  selection is positioned at the first match.
+  if no match found then status is db-notfound */
 status_t db_index_select(db_txn_t txn, db_index_t index, db_node_values_t values, db_index_selection_t* result) {
   status_declare;
   db_mdb_declare_val_id;
@@ -384,7 +385,6 @@ status_t db_index_select(db_txn_t txn, db_index_t index, db_node_values_t values
   val_data.mv_data = data;
   db_mdb_status_require((mdb_cursor_open((txn.mdb_txn), (index.dbi), (&cursor))));
   db_mdb_status_require(mdb_cursor_get(cursor, (&val_data), (&val_id), MDB_SET_KEY));
-  result->current = db_pointer_to_id((val_id.mv_data));
   result->cursor = cursor;
 exit:
   free(data);

@@ -251,7 +251,13 @@ typedef struct {
   db_id_t label;
   db_ordinal_t ordinal;
 } db_relation_t;
+typedef struct {
+  db_id_t id;
+  void* data;
+  size_t size;
+} db_node_t;
 i_array_declare_type(db_ids_t, db_id_t);
+i_array_declare_type(db_nodes_t, db_node_t);
 i_array_declare_type(db_relations_t, db_relation_t);
 #define boolean uint8_t
 #define db_ids_new i_array_allocate_db_ids_t
@@ -368,25 +374,16 @@ typedef struct {
   db_fields_len_t last;
   db_type_t* type;
 } db_node_values_t;
+typedef boolean (*db_node_matcher_t)(db_node_t, void*);
 typedef struct {
-  void* data;
-  size_t size;
-} db_node_data_t;
-typedef boolean (*db_node_matcher_t)(db_id_t, db_node_data_t, void*);
-typedef struct {
-  db_id_t current;
   MDB_cursor* cursor;
 } db_index_selection_t;
 typedef struct {
-  db_node_data_t current;
-  db_id_t current_id;
   db_index_selection_t index_selection;
   MDB_cursor* nodes;
 } db_node_index_selection_t;
 typedef struct {
   db_count_t count;
-  db_node_data_t current;
-  db_id_t current_id;
   MDB_cursor* cursor;
   db_env_t* env;
   db_ids_t ids;
@@ -428,16 +425,15 @@ status_t db_graph_delete(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t
 void db_node_values_free(db_node_values_t* a);
 status_t db_node_values_new(db_type_t* type, db_node_values_t* result);
 void db_node_values_set(db_node_values_t* values, db_fields_len_t field_index, void* data, size_t size);
-status_t db_node_values_to_data(db_node_values_t values, db_node_data_t* result);
-status_t db_node_data_to_values(db_type_t* type, db_node_data_t data, db_node_values_t* result);
+status_t db_node_values_to_data(db_node_values_t values, db_node_t* result);
+status_t db_node_data_to_values(db_type_t* type, db_node_t data, db_node_values_t* result);
 status_t db_node_create(db_txn_t txn, db_node_values_t values, db_id_t* result);
-status_t db_node_get(db_txn_t txn, db_id_t id, db_node_data_t* result);
+status_t db_node_get(db_txn_t txn, db_id_t id, db_node_t* result);
 status_t db_node_delete(db_txn_t txn, db_ids_t* ids);
-db_node_data_t db_node_data_ref(db_type_t* type, db_node_data_t data, db_fields_len_t field);
-db_node_data_t db_node_ref(db_node_selection_t* selection, db_fields_len_t field);
+db_node_value_t db_node_ref(db_type_t* type, db_node_t node, db_fields_len_t field);
 status_t db_node_exists(db_txn_t txn, db_ids_t ids, boolean* result);
 status_t db_node_select(db_txn_t txn, db_ids_t* ids, db_type_t* type, db_count_t offset, db_node_matcher_t matcher, void* matcher_state, db_node_selection_t* result_selection);
-status_t db_node_next(db_node_selection_t* selection);
+status_t db_node_read(db_node_selection_t* selection, db_count_t count, db_nodes_t* result_nodes);
 status_t db_node_skip(db_node_selection_t* selection, db_count_t count);
 void db_node_selection_finish(db_node_selection_t* selection);
 status_t db_node_update(db_txn_t txn, db_id_t id, db_node_values_t values);
@@ -449,9 +445,9 @@ db_index_t* db_index_get(db_type_t* type, db_fields_len_t* fields, db_fields_len
 status_t db_index_create(db_env_t* env, db_type_t* type, db_fields_len_t* fields, db_fields_len_t fields_len);
 status_t db_index_delete(db_env_t* env, db_index_t* index);
 status_t db_index_rebuild(db_env_t* env, db_index_t* index);
-status_t db_index_next(db_index_selection_t selection);
+status_t db_index_read(db_index_selection_t selection, db_count_t count, db_ids_t* result_ids);
 void db_index_selection_finish(db_index_selection_t* selection);
 status_t db_index_select(db_txn_t txn, db_index_t index, db_node_values_t values, db_index_selection_t* result);
-status_t db_node_index_next(db_node_index_selection_t selection);
+status_t db_node_index_read(db_node_index_selection_t selection, db_count_t count, db_nodes_t* result_nodes);
 status_t db_node_index_select(db_txn_t txn, db_index_t index, db_node_values_t values, db_node_index_selection_t* result);
 void db_node_index_selection_finish(db_node_index_selection_t* selection);

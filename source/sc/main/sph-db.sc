@@ -170,7 +170,7 @@
   (type
     (struct
       (index-selection db-index-selection-t)
-      (nodes MDB-cursor*)))
+      (nodes-cursor MDB-cursor*)))
   db-node-selection-t
   (type
     (struct

@@ -1,5 +1,5 @@
 (declare
-  (db-node-data->values type data result) (status-t db-type-t* db-node-data-t db-node-values-t*)
+  (db-node-data->values type data result) (status-t db-type-t* db-node-t db-node-values-t*)
   (db-free-node-values values) (void db-node-values-t*))
 
 (define (db-index-system-key type-id fields fields-len result-data result-size)
@@ -174,7 +174,7 @@
     data void*
     id db-id-t
     type db-type-t
-    node-data db-node-data-t
+    node db-node-t
     values db-node-values-t)
   (set
     values.data 0
@@ -189,9 +189,9 @@
   (sc-comment "for each node of type")
   (while (and db-mdb-status-is-success (= type.id (db-id-type (db-pointer->id val-id.mv-data))))
     (set
-      node-data.data val-data.mv-data
-      node-data.size val-data.mv-size)
-    (status-require (db-node-data->values &type node-data &values))
+      node.data val-data.mv-data
+      node.size val-data.mv-size)
+    (status-require (db-node-data->values &type node &values))
     (status-require (db-index-key env index values &data &val-data.mv-size))
     (db-free-node-values &values)
     (set val-data.mv-data data)
@@ -374,15 +374,18 @@
     (db-txn-abort-if-active txn)
     (return status)))
 
-(define (db-index-next selection count result-ids) (status-t db-index-selection-t db-count-t db-ids-t*)
-  "position at the next index value.
-  if no value is found, status is db-notfound.
-  before call, selection must be positioned at a matching key"
+(define (db-index-read selection count result-ids)
+  (status-t db-index-selection-t db-count-t db-ids-t*)
+  "read index values (node ids).
+  if no more value is found, status is db-notfound.
+  status must be success on call"
   status-declare
   db-mdb-declare-val-null
   db-mdb-declare-val-id
-  (db-mdb-status-require (mdb-cursor-get selection.cursor &val-null &val-id MDB-NEXT-DUP))
-  (set selection.current (db-pointer->id val-id.mv-data))
+  (while count
+    (i-array-add *result-ids (db-pointer->id val-id.mv-data))
+    (db-mdb-status-require (mdb-cursor-get selection.cursor &val-null &val-id MDB-NEXT-DUP))
+    (set count (- count 1)))
   (label exit
     db-mdb-status-notfound-if-notfound
     (return status)))
@@ -393,8 +396,8 @@
 (define (db-index-select txn index values result)
   (status-t db-txn-t db-index-t db-node-values-t db-index-selection-t*)
   "open the cursor and set to the index key matching values.
-  selection is set to the first match.
-  if no match found status is db-notfound"
+  selection is positioned at the first match.
+  if no match found then status is db-notfound"
   status-declare
   db-mdb-declare-val-id
   (db-mdb-cursor-declare cursor)
@@ -406,9 +409,7 @@
   (set val-data.mv-data data)
   (db-mdb-status-require (mdb-cursor-open txn.mdb-txn index.dbi &cursor))
   (db-mdb-status-require (mdb-cursor-get cursor &val-data &val-id MDB-SET-KEY))
-  (set
-    result:current (db-pointer->id val-id.mv-data)
-    result:cursor cursor)
+  (set result:cursor cursor)
   (label exit
     (free data)
     (if status-is-failure
