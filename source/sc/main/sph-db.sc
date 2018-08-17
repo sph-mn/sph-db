@@ -86,7 +86,6 @@
     (struct
       (fields-len db-fields-len-t)
       (fields-fixed-count db-fields-len-t)
-      ; example: field-sizes-in-bytes: 1 4 2, fields-fixed-offsets: 1 5 7
       (fields-fixed-offsets size-t*)
       (fields db-field-t*)
       (flags uint8-t)
@@ -174,10 +173,7 @@
   db-node-selection-t
   (type
     (struct
-      (count db-count-t)
       (cursor MDB-cursor*)
-      (env db-env-t*)
-      (ids db-ids-t)
       (matcher db-node-matcher-t)
       (matcher-state void*)
       (options uint8-t)
@@ -228,13 +224,13 @@
   (void db-node-values-t* db-fields-len-t void* size-t) (db-node-values->data values result)
   (status-t db-node-values-t db-node-t*) (db-node-data->values type data result)
   (status-t db-type-t* db-node-t db-node-values-t*) (db-node-create txn values result)
-  (status-t db-txn-t db-node-values-t db-id-t*) (db-node-get txn id result)
-  (status-t db-txn-t db-id-t db-node-t*) (db-node-delete txn ids)
+  (status-t db-txn-t db-node-values-t db-id-t*) (db-node-get txn ids result-nodes)
+  (status-t db-txn-t db-ids-t db-nodes-t*) (db-node-delete txn ids)
   (status-t db-txn-t db-ids-t*) (db-node-ref type node field)
   (db-node-value-t db-type-t* db-node-t db-fields-len-t) (db-node-exists txn ids result)
   (status-t db-txn-t db-ids-t boolean*)
-  (db-node-select txn ids type offset matcher matcher-state result-selection)
-  (status-t db-txn-t db-ids-t* db-type-t* db-count-t db-node-matcher-t void* db-node-selection-t*)
+  (db-node-select txn type offset matcher matcher-state result-selection)
+  (status-t db-txn-t db-type-t* db-count-t db-node-matcher-t void* db-node-selection-t*)
   (db-node-read selection count result-nodes) (status-t db-node-selection-t* db-count-t db-nodes-t*)
   (db-node-skip selection count) (status-t db-node-selection-t* db-count-t)
   (db-node-selection-finish selection) (void db-node-selection-t*)
@@ -251,8 +247,8 @@
   (status-t db-index-selection-t db-count-t db-ids-t*) (db-index-selection-finish selection)
   (void db-index-selection-t*) (db-index-select txn index values result)
   (status-t db-txn-t db-index-t db-node-values-t db-index-selection-t*)
-  (db-node-index-read selection count result-nodes)
-  (status-t db-node-index-selection-t db-count-t db-nodes-t*)
+  (db-node-index-read selection count temp-ids result-nodes)
+  (status-t db-node-index-selection-t db-count-t db-ids-t db-nodes-t*)
   (db-node-index-select txn index values result)
   (status-t db-txn-t db-index-t db-node-values-t db-node-index-selection-t*)
   (db-node-index-selection-finish selection) (void db-node-index-selection-t*))

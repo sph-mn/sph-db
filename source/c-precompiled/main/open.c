@@ -262,7 +262,8 @@ status_t db_open_type_read_fields(uint8_t** data_pointer, db_type_t* type) {
       fixed_count = (1 + fixed_count);
     };
   };
-  /* offsets */
+  /* offsets
+example: field-sizes-in-bytes: 1 4 2. fields-fixed-offsets: 1 5 7 */
   if (fixed_count) {
     db_malloc(fixed_offsets, ((1 + fixed_count) * sizeof(size_t)));
     for (i = 0; (i < fixed_count); i = (1 + i)) {

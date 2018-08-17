@@ -380,13 +380,10 @@ typedef struct {
 } db_index_selection_t;
 typedef struct {
   db_index_selection_t index_selection;
-  MDB_cursor* nodes;
+  MDB_cursor* nodes_cursor;
 } db_node_index_selection_t;
 typedef struct {
-  db_count_t count;
   MDB_cursor* cursor;
-  db_env_t* env;
-  db_ids_t ids;
   db_node_matcher_t matcher;
   void* matcher_state;
   uint8_t options;
@@ -428,11 +425,11 @@ void db_node_values_set(db_node_values_t* values, db_fields_len_t field_index, v
 status_t db_node_values_to_data(db_node_values_t values, db_node_t* result);
 status_t db_node_data_to_values(db_type_t* type, db_node_t data, db_node_values_t* result);
 status_t db_node_create(db_txn_t txn, db_node_values_t values, db_id_t* result);
-status_t db_node_get(db_txn_t txn, db_id_t id, db_node_t* result);
+status_t db_node_get(db_txn_t txn, db_ids_t ids, db_nodes_t* result_nodes);
 status_t db_node_delete(db_txn_t txn, db_ids_t* ids);
 db_node_value_t db_node_ref(db_type_t* type, db_node_t node, db_fields_len_t field);
 status_t db_node_exists(db_txn_t txn, db_ids_t ids, boolean* result);
-status_t db_node_select(db_txn_t txn, db_ids_t* ids, db_type_t* type, db_count_t offset, db_node_matcher_t matcher, void* matcher_state, db_node_selection_t* result_selection);
+status_t db_node_select(db_txn_t txn, db_type_t* type, db_count_t offset, db_node_matcher_t matcher, void* matcher_state, db_node_selection_t* result_selection);
 status_t db_node_read(db_node_selection_t* selection, db_count_t count, db_nodes_t* result_nodes);
 status_t db_node_skip(db_node_selection_t* selection, db_count_t count);
 void db_node_selection_finish(db_node_selection_t* selection);
@@ -448,6 +445,6 @@ status_t db_index_rebuild(db_env_t* env, db_index_t* index);
 status_t db_index_read(db_index_selection_t selection, db_count_t count, db_ids_t* result_ids);
 void db_index_selection_finish(db_index_selection_t* selection);
 status_t db_index_select(db_txn_t txn, db_index_t index, db_node_values_t values, db_index_selection_t* result);
-status_t db_node_index_read(db_node_index_selection_t selection, db_count_t count, db_nodes_t* result_nodes);
+status_t db_node_index_read(db_node_index_selection_t selection, db_count_t count, db_ids_t temp_ids, db_nodes_t* result_nodes);
 status_t db_node_index_select(db_txn_t txn, db_index_t index, db_node_values_t values, db_node_index_selection_t* result);
 void db_node_index_selection_finish(db_node_index_selection_t* selection);

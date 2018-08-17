@@ -281,7 +281,7 @@
       field-pointer:name-len (pointer-get (convert-type data db-name-len-t*)))
     (db-read-name &data (address-of (: field-pointer name)))
     (if (db-field-type-is-fixed field-type) (set fixed-count (+ 1 fixed-count))))
-  (sc-comment "offsets")
+  (sc-comment "offsets" "example: field-sizes-in-bytes: 1 4 2. fields-fixed-offsets: 1 5 7")
   (if fixed-count
     (begin
       (db-malloc fixed-offsets (* (+ 1 fixed-count) (sizeof size-t)))
