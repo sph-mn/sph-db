@@ -78,7 +78,7 @@ db_close(env);
 
 ## transactions
 * transactions are required for reading and writing. routines for schema changes like type and index creation create a transaction internally and must not be used while another transaction is active in the same thread
-* there must only be one active transaction per thread (there is an option to relax this for read transactions). nested transactions are possible
+* there must only be one active transaction per thread (there is an option to relax this for read transactions). nested transactions might be possible in the future
 * returned data pointers, for example from db_node_data_ref, are only valid until the corresponding transaction is aborted or committed. such data pointers are always only for reading and must never be written to
 
 declare a transaction handle variable
@@ -151,66 +151,59 @@ db_node_values_free(&values);
 if no results are found or the end of results has been reached, status is set to ``db_status_id_notfound``. here is one example of how to handle this
 ```c
 // like status_require but tolerates notfound
-status_require_read(db_node_next(selection));
+status_require_read(db_node_read(selection, count, &results));
 if(db_status_id_notfound != status.id) {
-  field_data = db_node_ref(selection, 0);
+  field_data = db_node_ref(i_array_get_at(results, 0), 0);
 }
 ```
 
 by unique identifier
 ```c
-db_id_t id;
-db_node_data_t node_data;
-db_node_data_t field_data;
-id = 123;
-status_require_read(db_node_get(txn, id, &node_data));
+i_array_declare(ids, db_ids_t);
+i_array_declare(nodes, db_nodes_t);
+db_node_value_t field_data;
+status_require(db_nodes_new(2, &nodes));
+status_require(db_ids_new(3, &ids));
+i_array_add(ids, 10);
+i_array_add(ids, 15);
+i_array_add(ids, 28);
+status_require_read(db_node_get(txn, ids, &nodes));
 if(db_status_id_notfound != status.id) {
-  // arguments: type, node_data, field_index
-  field_data = db_node_data_ref(type, node_data, 1);
+  // arguments: type, db-node-t, field_index
+  field_data = db_node_ref(type, i_array_get_at(nodes, 0), 1);
   // field_data.data: void*, field_data.size: size_t
 }
+i_array_free(ids);
+i_array_free(nodes);
 ```
 
 all of type
 ```c
-db_node_selection_t selection;
-db_node_data_t field_data;
-// arguments: db_txn_t, db_ids_t*, db_type_t*, offset, matcher, matcher_state, selection_address));
-status_require(db_node_select(txn, 0, type, 0, 0, 0, &selection));
-status_require_read(db_node_next(selection));
+db_node_selection_declare(selection);
+i_array_declare(nodes, db_nodes_t);
+db_node_value_t field_data;
+status_require(db_nodes_new(1, &nodes));
+// arguments: db_txn_t, db_type_t*, offset, matcher, matcher_state, selection_address));
+status_require(db_node_select(txn, type, 0, 0, 0, &selection));
+status_require_read(db_node_read(selection, 1, &nodes));
 if(db_status_id_notfound != status.id) {
   // arguments: selection, field_index
-  field_data = db_node_ref(selection, 0);
+  field_data = db_node_ref(i_array_get(nodes), 0);
 }
 db_node_selection_finish(&selection);
-```
-
-by any of a list of ids
-```c
-db_node_selection_t selection;
-db_node_data_t field_data;
-db_ids_t ids;
-db_ids_new(ids, 3);
-i_array_add(ids, 10);
-i_array_add(ids, 15);
-i_array_add(ids, 28);
-status_require(db_node_select(txn, ids, 0, 0, 0, 0, &selection));
-status_require_read(db_node_next(selection));
-status_require_read(db_node_next(selection));
-db_node_selection_finish(&selection);
-i_array_free(ids);
+i_array_free(nodes);
 ```
 
 by custom matcher function and optionally either type or ids list
 ```c
-boolean node_matcher(db_id_t id, db_node_data_t data, void* matcher_state) {
-  db_node_data_t field_data;
-  field_data = db_node_data_ref(type, node_data, 2);
+boolean node_matcher(db_node_t node, void* matcher_state) {
+  db_node_value_t field_data;
+  field_data = db_node_ref(type, node, 2);
   *((uint8_t*)(matcher_state)) = 1;
   return 1;
 };
 uint8_t matcher_state = 0;
-status_require(db_node_select(txn, 0, type, 0, node_matcher, &matcher_state, &selection));
+status_require(db_node_select(txn, type, 0, node_matcher, &matcher_state, &selection));
 ```
 
 ## create relations
@@ -218,9 +211,9 @@ status_require(db_node_select(txn, 0, type, 0, node_matcher, &matcher_state, &se
 db_ids_t left;
 db_ids_t right;
 db_ids_t label;
-db_ids_new(left, 5);
-db_ids_new(right, 5);
-db_ids_new(label, 2);
+status_require(db_ids_new(left, 5));
+status_require(db_ids_new(right, 5));
+status_require(db_ids_new(label, 2));
 // ... add ids to left, right and label ...
 // create relations between all given left and right nodes for each label. relations = left * right * label
 status_require(db_graph_ensure(txn, left, right, label, 0, 0));
@@ -235,9 +228,9 @@ db_ids_t ids_left;
 db_ids_t ids_label;
 db_relations_t relations;
 db_relation_t relation;
-db_graph_selection_t selection;
-db_ids_new(ids_left, 1);
-db_ids_new(ids_label, 1);
+db_graph_selection_declare(selection);
+status_require(db_ids_new(ids_left, 1));
+status_require(db_ids_new(ids_label, 1));
 db_relations_new(relations, 10);
 // node ids to be used to filter
 ids_left = i_array_add(ids_left, 123);
@@ -255,7 +248,6 @@ while(i_array_in_range(relations)) {
   printf("relation: %lu %lu %lu %lu\n", relation.left, relation.label, relation.ordinal, relation.right);
   i_array_forward(relations);
 };
-
 i_array_free(ids_left);
 i_array_free(ids_label);
 i_array_free(relations);
@@ -275,17 +267,19 @@ status_require(db_index_create(env, type, fields, 2));
 
 ## read node ids from indices
 ```c
-db_index_selection_t selection;
+db_index_selection_declare(selection);
+i_array_declare(ids, db_ids_t);
 db_node_values_t values;
-db_id_t id;
 uint8_t value_1 = 11;
 uint8_t* value_2 = "abc";
+status_require(db_ids_new(2, &ids));
 status_require(db_node_values_new(type, &values));
 db_node_values_set(&values, 1, &value_1, 0);
 db_node_values_set(&values, 2, &value_2, 3);
 // values for other fields will be ignored.
 // unlike node_ and graph_select, db_index_select already searches for the first match on call
 status_require(db_index_select(txn, *index, values, &selection));
+status_require(db_index_read(selection, 2, &ids));
 id = selection.current;
 status_require(db_index_next(selection));
 db_index_selection_finish(&selection);
@@ -293,13 +287,15 @@ db_index_selection_finish(&selection);
 
 ## read nodes via indices
 ```c
-db_node_index_selection_t selection;
+db_node_t node;
+i_array_declare(temp, db_ids_t);
+i_array_declare(nodes, db_nodes_t);
+db_node_index_selection_declare(selection);
+status_require(db_ids_new(2, &temp));
+status_require(db_nodes_new(2, &nodes));
 status_require(db_node_index_select(txn, *index, values, &selection));
-// db_node_data_t
-selection.current
-// db_id_t
-selection.current_id
-status_require(db_node_index_next(selection));
+status_require(db_node_index_read(selection, 1, temp, &nodes))
+node = i_array_get(nodes);
 db_node_index_selection_finish(&selection);
 ```
 
@@ -311,44 +307,52 @@ db_env_new :: db_env_t**:result -> status_t
 db_field_type_size :: uint8_t:a -> uint8_t
 db_graph_delete :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal -> status_t
 db_graph_ensure :: db_txn_t:txn db_ids_t:left db_ids_t:right db_ids_t:label db_graph_ordinal_generator_t:ordinal_generator void*:ordinal_generator_state -> status_t
-db_graph_read :: db_graph_selection_t*:state db_count_t:count db_relations_t*:result -> status_t
+db_graph_read :: db_graph_selection_t*:selection db_count_t:count db_relations_t*:result -> status_t
 db_graph_select :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal db_count_t:offset db_graph_selection_t*:result -> status_t
 db_graph_selection_finish :: db_graph_selection_t*:selection -> void
+db_ids_new :: size_t:length db_ids_t*:result_ids -> status_t
 db_index_create :: db_env_t*:env db_type_t*:type db_fields_len_t*:fields db_fields_len_t:fields_len -> status_t
 db_index_delete :: db_env_t*:env db_index_t*:index -> status_t
 db_index_get :: db_type_t*:type db_fields_len_t*:fields db_fields_len_t:fields_len -> db_index_t*
-db_index_next :: db_index_selection_t:selection -> status_t
+db_index_read :: db_index_selection_t:selection db_count_t:count db_ids_t*:result_ids -> status_t
 db_index_rebuild :: db_env_t*:env db_index_t*:index -> status_t
 db_index_select :: db_txn_t:txn db_index_t:index db_node_values_t:values db_index_selection_t*:result -> status_t
 db_index_selection_finish :: db_index_selection_t*:selection -> void
 db_node_create :: db_txn_t:txn db_node_values_t:values db_id_t*:result -> status_t
-db_node_data_to_values :: db_type_t*:type db_node_data_t:data db_node_values_t*:result -> status_t
-db_node_data_ref :: db_type_t*:type db_node_data_t:data db_fields_len_t:field -> db_node_data_t
-db_node_delete :: db_txn_t:txn db_ids_t*:ids -> status_t
-db_node_exists :: db_txn_t:txn db_ids_t:ids uint8_t*:result -> status_t
-db_node_get :: db_txn_t:txn db_id_t:id db_node_data_t*:result -> status_t
-db_node_index_next :: db_node_index_selection_t:selection -> status_t
+db_node_data_to_values :: db_type_t*:type db_node_t:data db_node_values_t*:result -> status_t
+db_node_delete :: db_txn_t:txn db_ids_t:ids -> status_t
+db_node_delete_type :: db_txn_t:txn db_type_id_t:type_id -> status_t
+db_node_get :: db_txn_t:txn db_ids_t:ids db_nodes_t*:result_nodes -> status_t
+db_node_index_read :: db_node_index_selection_t:selection db_count_t:count db_ids_t:temp_ids db_nodes_t*:result_nodes -> status_t
 db_node_index_select :: db_txn_t:txn db_index_t:index db_node_values_t:values db_node_index_selection_t*:result -> status_t
 db_node_index_selection_finish :: db_node_index_selection_t*:selection -> void
-db_node_next :: db_node_selection_t*:selection -> status_t
-db_node_ref :: db_node_selection_t*:selection db_fields_len_t:field -> db_node_data_t
-db_node_select :: db_txn_t:txn db_ids_t*:ids db_type_t*:type db_count_t:offset db_node_matcher_t:matcher void*:matcher_state db_node_selection_t*:result_selection -> status_t
+db_node_read :: db_node_selection_t:selection db_count_t:count db_nodes_t*:result_nodes -> status_t
+db_node_ref :: db_type_t*:type db_node_t:node db_fields_len_t:field -> db_node_value_t
+db_node_select :: db_txn_t:txn db_type_t*:type db_count_t:offset db_node_matcher_t:matcher void*:matcher_state db_node_selection_t*:result_selection -> status_t
 db_node_selection_finish :: db_node_selection_t*:selection -> void
-db_node_skip :: db_node_selection_t*:selection db_count_t:count -> status_t
+db_node_skip :: db_node_selection_t:selection db_count_t:count -> status_t
 db_node_update :: db_txn_t:txn db_id_t:id db_node_values_t:values -> status_t
-db_node_values_to_data :: db_node_values_t:values db_node_data_t*:result -> status_t
+db_node_values_to_data :: db_node_values_t:values db_node_t*:result -> status_t
 db_node_values_free :: db_node_values_t*:a -> void
 db_node_values_new :: db_type_t*:type db_node_values_t*:result -> status_t
 db_node_values_set :: db_node_values_t*:values db_fields_len_t:field_index void*:data size_t:size -> void
+db_nodes_to_ids :: db_nodes_t:nodes db_ids_t*:result_ids -> void
+db_nodes_new :: size_t:length db_nodes_t*:result_nodes -> status_t
 db_open :: uint8_t*:root db_open_options_t*:options db_env_t*:env -> status_t
+db_relations_new :: size_t:length db_relations_t*:result_relations -> status_t
 db_statistics :: db_txn_t:txn db_statistics_t*:result -> status_t
 db_status_description :: status_t:a -> uint8_t*
+db_status_description :: status_t:a -> uint8_t*
 db_status_group_id_to_name :: status_id_t:a -> uint8_t*
+db_status_group_id_to_name :: status_id_t:a -> uint8_t*
+db_status_name :: status_t:a -> uint8_t*
 db_status_name :: status_t:a -> uint8_t*
 db_txn_abort :: db_txn_t*:a -> void
 db_txn_begin :: db_txn_t*:a -> status_t
+db_txn_begin_child :: db_txn_t:parent_txn db_txn_t*:a -> status_t
 db_txn_commit :: db_txn_t*:a -> status_t
 db_txn_write_begin :: db_txn_t*:a -> status_t
+db_txn_write_begin_child :: db_txn_t:parent_txn db_txn_t*:a -> status_t
 db_type_create :: db_env_t*:env uint8_t*:name db_field_t*:fields db_fields_len_t:fields_len uint8_t:flags db_type_t**:result -> status_t
 db_type_delete :: db_env_t*:env db_type_id_t:id -> status_t
 db_type_field_get :: db_type_t*:type uint8_t*:name -> db_field_t*
@@ -357,6 +361,8 @@ db_type_get :: db_env_t*:env uint8_t*:name -> db_type_t*
 
 ## macros
 ```
+boolean
+db_batch_len
 db_count_t
 db_data_len_max
 db_data_len_t
@@ -379,19 +385,23 @@ db_field_type_uint32
 db_field_type_uint64
 db_field_type_uint8
 db_fields_len_t
+db_graph_selection_declare(name)
 db_id_add_type(id, type_id)
 db_id_element(id)
 db_id_mask
 db_id_t
 db_id_type(id)
-db_ids_new
+db_index_selection_declare(name)
 db_indices_len_t
 db_name_len_max
 db_name_len_t
-db_node_virtual_to_data(id)
+db_node_index_selection_declare(name)
+db_node_is_virtual(env, node_id)
+db_node_selection_declare(name)
+db_node_virtual(type_id, data)
+db_node_virtual_data(id)
 db_null
 db_ordinal_t
-db_relations_new
 db_size_element_id
 db_size_graph_data
 db_size_graph_key
@@ -400,11 +410,13 @@ db_status_success_if_notfound
 db_txn_abort_if_active(a)
 db_txn_declare(env, name)
 db_txn_is_active(a)
+db_type_flag_virtual
+db_type_get_by_id(env, type_id)
 db_type_id_mask
 db_type_id_t
+db_type_is_virtual(type)
 i_array_add(a, value)
 i_array_clear(a)
-i_array_declare(a, type)
 i_array_forward(a)
 i_array_free(a)
 i_array_get(a)
@@ -430,7 +442,6 @@ status_set_both(group_id, status_id)
 status_set_both_goto(group_id, status_id)
 status_set_group_goto(group_id)
 status_set_id_goto(status_id)
-uint8_t
 ```
 
 ## types
@@ -438,7 +449,7 @@ uint8_t
 status_id_t: int32_t
 db_graph_ordinal_generator_t: void* -> db_ordinal_t
 db_graph_reader_t: db_graph_selection_t* db_count_t db_relations_t* -> status_t
-db_node_matcher_t: db_id_t db_node_data_t void* -> boolean
+db_node_matcher_t: db_node_t void* -> boolean
 db_env_t: struct
   dbi_nodes: MDB_dbi
   dbi_graph_ll: MDB_dbi
@@ -446,7 +457,7 @@ db_env_t: struct
   dbi_graph_rl: MDB_dbi
   dbi_system: MDB_dbi
   mdb_env: MDB_env*
-  open: uint8_t
+  open: boolean
   root: uint8_t*
   mutex: pthread_mutex_t
   maxkeysize: int
@@ -458,7 +469,6 @@ db_field_t: struct
   type: db_field_type_t
   index: db_fields_len_t
 db_graph_selection_t: struct
-  status: status_t
   cursor: MDB_cursor* restrict
   cursor_2: MDB_cursor* restrict
   left: db_ids_t
@@ -469,32 +479,25 @@ db_graph_selection_t: struct
   options: uint8_t
   reader: void*
 db_index_selection_t: struct
-  current: db_id_t
   cursor: MDB_cursor*
 db_index_t: struct db_index_t
   dbi: MDB_dbi
   fields: db_fields_len_t*
   fields_len: db_fields_len_t
   type: db_type_t*
-db_node_data_t: struct
-  data: void*
-  size: size_t
 db_node_index_selection_t: struct
-  current: db_node_data_t
-  current_id: db_id_t
   index_selection: db_index_selection_t
-  nodes: MDB_cursor*
+  nodes_cursor: MDB_cursor*
 db_node_selection_t: struct
-  count: db_count_t
-  current: db_node_data_t
-  current_id: db_id_t
   cursor: MDB_cursor*
-  env: db_env_t*
-  ids: db_ids_t
   matcher: db_node_matcher_t
   matcher_state: void*
   options: uint8_t
   type: db_type_t*
+db_node_t: struct
+  id: db_id_t
+  data: void*
+  size: size_t
 db_node_value_t: struct
   size: db_data_len_t
   data: void*
@@ -503,11 +506,11 @@ db_node_values_t: struct
   last: db_fields_len_t
   type: db_type_t*
 db_open_options_t: struct
-  is_read_only: uint8_t
+  is_read_only: boolean
   maximum_size: size_t
   maximum_reader_count: db_count_t
   maximum_db_count: db_count_t
-  filesystem_has_ordered_writes: uint8_t
+  filesystem_has_ordered_writes: boolean
   env_open_flags: uint_least32_t
   file_permissions: uint16_t
 db_ordinal_condition_t: struct
@@ -584,7 +587,6 @@ these values can be set before compilation in ``c-precompiled/main/config.c``. o
 * readers can return results and indicate the end of results in the same call
 
 # possible enhancements
-* virtual nodes (custom types that carry the data with the identifier) are designed but need to be implemented
 * currently index inserts with data too large are rejected. add an option to truncate instead
 * make it possible to increase the maximum number of types. needs a new data structure for types for that
 * validator functions for indices and graph data consistency
@@ -592,6 +594,9 @@ these values can be set before compilation in ``c-precompiled/main/config.c``. o
 * at some places MDB_SET_RANGE and MDB_GET_BOTH_RANGE is used in succession. maybe get-both-range includes set-range and the latter can be left out
 * search in index keys
 * partial indices. data filter function given at index definition
+* float values for virtual nodes not implemented
+* find solution to nested transactions lmdb issue
+* reduce use of mixed i_array_* and db_ids_new, db_nodes_new, etc api complication
 
 # development
 this section is for when you want to change sph-db itself.
@@ -629,7 +634,3 @@ the general development stages for new sph-db features is design, basic code imp
 ## db-graph-delete
 * db-graph-delete differs from db-graph-read in that it does not need a state because it does not support partial processing
 * it also differs in that it always needs to use all three relation dbi to complete the deletion instead of just any dbi necessary to match relations
-
-declarations-via-macros
-declarations
-setting initial values
