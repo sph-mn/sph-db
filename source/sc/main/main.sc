@@ -30,7 +30,8 @@
       (set *result-len (- size 1))
       (return result))))
 
-(define (string-join strings strings-len delimiter result-len) (uint8-t* uint8-t** size-t uint8-t* size-t*)
+(define (string-join strings strings-len delimiter result-len)
+  (uint8-t* uint8-t** size-t uint8-t* size-t*)
   "join strings into one string with each input string separated by delimiter.
   zero if strings-len is zero or memory could not be allocated"
   (declare
@@ -75,6 +76,18 @@
 (define (db-txn-write-begin a) (status-t db-txn-t*)
   status-declare
   (db-mdb-status-require (mdb-txn-begin a:env:mdb-env 0 0 &a:mdb-txn))
+  (label exit
+    (return status)))
+
+(define (db-txn-begin-child parent-txn a) (status-t db-txn-t db-txn-t*)
+  status-declare
+  (db-mdb-status-require (mdb-txn-begin a:env:mdb-env parent-txn.mdb-txn MDB-RDONLY &a:mdb-txn))
+  (label exit
+    (return status)))
+
+(define (db-txn-write-begin-child parent-txn a) (status-t db-txn-t db-txn-t*)
+  status-declare
+  (db-mdb-status-require (mdb-txn-begin a:env:mdb-env parent-txn.mdb-txn 0 &a:mdb-txn))
   (label exit
     (return status)))
 
@@ -159,7 +172,7 @@
     (return status)))
 
 (define (db-read-name data-pointer result) (status-t uint8-t** uint8-t**)
-  "read a length prefixed string from system type data.
+  "read a length prefixed string.
   on success set result to a newly allocated string and data to the next byte after the string"
   status-declare
   (declare
@@ -177,6 +190,26 @@
       *data-pointer (+ len data)
       *result name)
     (return status)))
+
+(pre-define (db-define-i-array-new name type)
+  (define (name length result) (status-t size-t type*)
+    "like i-array-allocate-* but returns status-t"
+    status-declare
+    (if (not ((pre-concat i-array-allocate_ type) length result))
+      (set
+        status.id db-status-id-memory
+        status.group db-status-group-db))
+    (return status)))
+
+(db-define-i-array-new db-ids-new db-ids-t)
+(db-define-i-array-new db-nodes-new db-nodes-t)
+(db-define-i-array-new db-relations-new db-relations-t)
+
+(define (db-nodes->ids nodes result-ids) (void db-nodes-t db-ids-t*)
+  "copies to a db-ids-t array all ids from a db-nodes-t array. result-ids is allocated by the caller"
+  (while (i-array-in-range nodes)
+    (i-array-add *result-ids (struct-get (i-array-get nodes) id))
+    (i-array-forward nodes)))
 
 (define (db-statistics txn result) (status-t db-txn-t db-statistics-t*)
   "expects an allocated db-statistics-t"

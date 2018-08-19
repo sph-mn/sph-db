@@ -34,7 +34,7 @@ status_t db_index_name(db_type_id_t type_id, db_fields_len_t* fields, db_fields_
   uint8_t* prefix = "i";
   strings = 0;
   strings_len = (2 + fields_len);
-  db_calloc(strings, strings_len, sizeof(uint8_t*));
+  db_calloc(strings, strings_len, (sizeof(uint8_t*)));
   /* type id */
   str = uint_to_string(type_id, (&str_len));
   db_status_memory_error_if_null(str);
@@ -112,7 +112,7 @@ status_t db_indices_entry_ensure(db_txn_t txn, db_node_values_t values, db_id_t 
     status_require((db_index_key((txn.env), node_index, values, (&data), (&(val_data.mv_size)))));
     val_data.mv_data = data;
     db_mdb_status_require((mdb_cursor_open((txn.mdb_txn), (node_index.dbi), (&node_index_cursor))));
-    db_mdb_status_require(mdb_cursor_put(node_index_cursor, (&val_data), (&val_id), 0));
+    db_mdb_status_require((mdb_cursor_put(node_index_cursor, (&val_data), (&val_id), 0)));
     db_mdb_cursor_close(node_index_cursor);
   };
 exit:
@@ -143,10 +143,10 @@ status_t db_indices_entry_delete(db_txn_t txn, db_node_values_t values, db_id_t 
     status_require((db_index_key((txn.env), node_index, values, ((void**)(&data)), (&(val_data.mv_size)))));
     val_data.mv_data = data;
     db_mdb_status_require((mdb_cursor_open((txn.mdb_txn), (node_index.dbi), (&node_index_cursor))));
-    db_mdb_status_require(mdb_cursor_put(node_index_cursor, (&val_data), (&val_id), 0));
-    db_mdb_status_require(mdb_cursor_get(node_index_cursor, (&val_data), (&val_id), MDB_GET_BOTH));
+    db_mdb_status_require((mdb_cursor_put(node_index_cursor, (&val_data), (&val_id), 0)));
+    db_mdb_status_require((mdb_cursor_get(node_index_cursor, (&val_data), (&val_id), MDB_GET_BOTH)));
     if (status_is_success) {
-      db_mdb_status_require(mdb_cursor_del(node_index_cursor, 0));
+      db_mdb_status_require((mdb_cursor_del(node_index_cursor, 0)));
     };
     db_mdb_cursor_close(node_index_cursor);
   };
@@ -173,23 +173,23 @@ status_t db_index_build(db_env_t* env, db_index_t index) {
   type = *(index.type);
   id = db_id_add_type(0, (type.id));
   val_id.mv_data = &id;
-  status_require(db_txn_write_begin((&txn)));
+  status_require((db_txn_write_begin((&txn))));
   db_mdb_status_require((mdb_cursor_open((txn.mdb_txn), (index.dbi), (&index_cursor))));
-  db_mdb_status_require(db_mdb_env_cursor_open(txn, nodes));
-  db_mdb_status_require(mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_SET_RANGE));
+  db_mdb_status_require((db_mdb_env_cursor_open(txn, nodes)));
+  db_mdb_status_require((mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_SET_RANGE)));
   /* for each node of type */
   while ((db_mdb_status_is_success && (type.id == db_id_type((db_pointer_to_id((val_id.mv_data))))))) {
     node.data = val_data.mv_data;
     node.size = val_data.mv_size;
-    status_require(db_node_data_to_values((&type), node, (&values)));
+    status_require((db_node_data_to_values((&type), node, (&values))));
     status_require((db_index_key(env, index, values, (&data), (&(val_data.mv_size)))));
     db_free_node_values((&values));
     val_data.mv_data = data;
-    db_mdb_status_require(mdb_cursor_put(index_cursor, (&val_data), (&val_id), 0));
+    db_mdb_status_require((mdb_cursor_put(index_cursor, (&val_data), (&val_id), 0)));
     status.id = mdb_cursor_get(nodes, (&val_id), (&val_data), MDB_NEXT_NODUP);
   };
   db_mdb_status_expect_read;
-  status_require(db_txn_commit((&txn)));
+  status_require((db_txn_commit((&txn))));
 exit:
   db_mdb_cursor_close_if_active(index_cursor);
   db_mdb_cursor_close_if_active(nodes);
@@ -276,9 +276,9 @@ status_t db_index_create(db_env_t* env, db_type_t* type, db_fields_len_t* fields
   /* add to system btree */
   val_data.mv_data = data;
   val_data.mv_size = size;
-  status_require(db_txn_write_begin((&txn)));
-  db_mdb_status_require(db_mdb_env_cursor_open(txn, system));
-  db_mdb_status_require(mdb_cursor_put(system, (&val_data), (&val_null), 0));
+  status_require((db_txn_write_begin((&txn))));
+  db_mdb_status_require((db_mdb_env_cursor_open(txn, system)));
+  db_mdb_status_require((mdb_cursor_put(system, (&val_data), (&val_null), 0)));
   db_mdb_cursor_close(system);
   /* add data btree */
   db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), name, MDB_CREATE, (&(node_index.dbi)))));
@@ -288,9 +288,9 @@ status_t db_index_create(db_env_t* env, db_type_t* type, db_fields_len_t* fields
   node_index.fields = fields_copy;
   node_index.fields_len = fields_len;
   node_index.type = type;
-  status_require(db_type_indices_add(type, node_index));
-  status_require(db_txn_commit((&txn)));
-  status_require(db_index_build(env, node_index));
+  status_require((db_type_indices_add(type, node_index)));
+  status_require((db_txn_commit((&txn))));
+  status_require((db_index_build(env, node_index)));
 exit:
   db_mdb_cursor_close_if_active(system);
   db_txn_abort_if_active(txn);
@@ -314,19 +314,19 @@ status_t db_index_delete(db_env_t* env, db_index_t* index) {
   status_require((db_index_system_key((index->type->id), (index->fields), (index->fields_len), (&key_data), (&key_size))));
   val_data.mv_data = key_data;
   val_data.mv_size = key_size;
-  status_require(db_txn_write_begin((&txn)));
+  status_require((db_txn_write_begin((&txn))));
   /* remove data btree. closes the handle */
   db_mdb_status_require((mdb_drop((txn.mdb_txn), (index->dbi), 1)));
   /* remove from system btree */
-  db_mdb_status_require(db_mdb_env_cursor_open(txn, system));
-  db_mdb_status_require(mdb_cursor_get(system, (&val_data), (&val_null), MDB_SET));
+  db_mdb_status_require((db_mdb_env_cursor_open(txn, system)));
+  db_mdb_status_require((mdb_cursor_get(system, (&val_data), (&val_null), MDB_SET)));
   if (db_mdb_status_is_success) {
-    db_mdb_status_require(mdb_cursor_del(system, 0));
+    db_mdb_status_require((mdb_cursor_del(system, 0)));
   } else {
     db_mdb_status_expect_notfound;
   };
   db_mdb_cursor_close(system);
-  status_require(db_txn_commit((&txn)));
+  status_require((db_txn_commit((&txn))));
   /* update cache */
   free_and_set_null((index->fields));
   index->fields_len = 0;
@@ -344,10 +344,10 @@ status_t db_index_rebuild(db_env_t* env, db_index_t* index) {
   size_t name_len;
   name = 0;
   status_require((db_index_name((index->type->id), (index->fields), (index->fields_len), (&name), (&name_len))));
-  status_require(db_txn_write_begin((&txn)));
+  status_require((db_txn_write_begin((&txn))));
   db_mdb_status_require((mdb_drop((txn.mdb_txn), (index->dbi), 0)));
   db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), name, MDB_CREATE, (&(index->dbi)))));
-  status_require(db_txn_commit((&txn)));
+  status_require((db_txn_commit((&txn))));
   status = db_index_build(env, (*index));
 exit:
   free(name);
@@ -355,17 +355,19 @@ exit:
   return (status);
 };
 /** read index values (node ids).
+  count must be positive.
   if no more value is found, status is db-notfound.
   status must be success on call */
 status_t db_index_read(db_index_selection_t selection, db_count_t count, db_ids_t* result_ids) {
   status_declare;
   db_mdb_declare_val_null;
   db_mdb_declare_val_id;
-  while (count) {
+  db_mdb_status_require((mdb_cursor_get((selection.cursor), (&val_null), (&val_id), MDB_GET_CURRENT)));
+  do {
     i_array_add((*result_ids), (db_pointer_to_id((val_id.mv_data))));
-    db_mdb_status_require((mdb_cursor_get((selection.cursor), (&val_null), (&val_id), MDB_NEXT_DUP)));
     count = (count - 1);
-  };
+    db_mdb_status_require((mdb_cursor_get((selection.cursor), (&val_null), (&val_id), MDB_NEXT_DUP)));
+  } while (count);
 exit:
   db_mdb_status_notfound_if_notfound;
   return (status);
@@ -384,7 +386,7 @@ status_t db_index_select(db_txn_t txn, db_index_t index, db_node_values_t values
   status_require((db_index_key((txn.env), index, values, (&data), (&(val_data.mv_size)))));
   val_data.mv_data = data;
   db_mdb_status_require((mdb_cursor_open((txn.mdb_txn), (index.dbi), (&cursor))));
-  db_mdb_status_require(mdb_cursor_get(cursor, (&val_data), (&val_id), MDB_SET_KEY));
+  db_mdb_status_require((mdb_cursor_get(cursor, (&val_data), (&val_id), MDB_SET_KEY)));
   result->cursor = cursor;
 exit:
   free(data);

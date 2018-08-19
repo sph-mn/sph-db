@@ -10,4 +10,5 @@
   db-data-len-max UINT32_MAX
   db-fields-len-t uint8-t
   db-indices-len-t uint8-t
-  db-count-t uint32-t)
+  db-count-t uint32-t
+  db-batch-len 100)

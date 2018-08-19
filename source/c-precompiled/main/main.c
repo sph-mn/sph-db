@@ -78,6 +78,18 @@ status_t db_txn_write_begin(db_txn_t* a) {
 exit:
   return (status);
 };
+status_t db_txn_begin_child(db_txn_t parent_txn, db_txn_t* a) {
+  status_declare;
+  db_mdb_status_require((mdb_txn_begin((a->env->mdb_env), (parent_txn.mdb_txn), MDB_RDONLY, (&(a->mdb_txn)))));
+exit:
+  return (status);
+};
+status_t db_txn_write_begin_child(db_txn_t parent_txn, db_txn_t* a) {
+  status_declare;
+  db_mdb_status_require((mdb_txn_begin((a->env->mdb_env), (parent_txn.mdb_txn), 0, (&(a->mdb_txn)))));
+exit:
+  return (status);
+};
 void db_txn_abort(db_txn_t* a) {
   mdb_txn_abort((a->mdb_txn));
   a->mdb_txn = 0;
@@ -91,9 +103,9 @@ exit:
 };
 /** display an ids array */
 void db_debug_log_ids(db_ids_t a) {
-  printf("ids (%lu):", i_array_length(a));
+  printf(("ids (%lu):"), (i_array_length(a)));
   while (i_array_in_range(a)) {
-    printf(" %lu", i_array_get(a));
+    printf(" %lu", (i_array_get(a)));
     i_array_forward(a);
   };
   printf("\n");
@@ -101,7 +113,7 @@ void db_debug_log_ids(db_ids_t a) {
 /** display an ids set */
 void db_debug_log_ids_set(imht_set_t a) {
   uint32_t i = 0;
-  printf("id set (%lu):", (a.size));
+  printf(("id set (%lu):"), (a.size));
   while ((i < a.size)) {
     printf(" %lu", ((a.content)[i]));
     i = (1 + i);
@@ -120,7 +132,7 @@ void db_debug_log_relations(db_relations_t a) {
 status_t db_debug_log_btree_counts(db_txn_t txn) {
   status_declare;
   db_statistics_t stat;
-  status_require(db_statistics(txn, (&stat)));
+  status_require((db_statistics(txn, (&stat))));
   printf("btree entry count: system %zu, nodes %zu, graph-lr %zu, graph-rl %zu, graph-ll %zu\n", (stat.system.ms_entries), (stat.nodes.ms_entries), (stat.graph_lr.ms_entries), (stat.graph_rl.ms_entries), (stat.graph_ll.ms_entries));
 exit:
   return (status);
@@ -129,7 +141,7 @@ exit:
 status_t db_debug_count_all_btree_entries(db_txn_t txn, uint32_t* result) {
   status_declare;
   db_statistics_t stat;
-  status_require(db_statistics(txn, (&stat)));
+  status_require((db_statistics(txn, (&stat))));
   *result = (stat.system.ms_entries + stat.nodes.ms_entries + stat.graph_lr.ms_entries + stat.graph_rl.ms_entries + stat.graph_ll.ms_entries);
 exit:
   return (status);
@@ -150,15 +162,15 @@ uint8_t db_field_type_size(uint8_t a) {
 };
 status_t db_ids_to_set(db_ids_t a, imht_set_t** result) {
   status_declare;
-  db_status_memory_error_if_null(imht_set_create(i_array_length(a), result));
+  db_status_memory_error_if_null((imht_set_create((i_array_length(a)), result)));
   while (i_array_in_range(a)) {
-    imht_set_add((*result), i_array_get(a));
+    imht_set_add((*result), (i_array_get(a)));
     i_array_forward(a);
   };
 exit:
   return (status);
 };
-/** read a length prefixed string from system type data.
+/** read a length prefixed string.
   on success set result to a newly allocated string and data to the next byte after the string */
 status_t db_read_name(uint8_t** data_pointer, uint8_t** result) {
   status_declare;
@@ -174,6 +186,26 @@ exit:
   *data_pointer = (len + data);
   *result = name;
   return (status);
+};
+#define db_define_i_array_new(name, type) \
+  /** like i-array-allocate-* but returns status-t */ \
+  status_t name(size_t length, type* result) { \
+    status_declare; \
+    if (!i_array_allocate_##type(length, result)) { \
+      status.id = db_status_id_memory; \
+      status.group = db_status_group_db; \
+    }; \
+    return (status); \
+  }
+db_define_i_array_new(db_ids_new, db_ids_t);
+db_define_i_array_new(db_nodes_new, db_nodes_t);
+db_define_i_array_new(db_relations_new, db_relations_t);
+/** copies to a db-ids-t array all ids from a db-nodes-t array. result-ids is allocated by the caller */
+void db_nodes_to_ids(db_nodes_t nodes, db_ids_t* result_ids) {
+  while (i_array_in_range(nodes)) {
+    i_array_add((*result_ids), ((i_array_get(nodes)).id));
+    i_array_forward(nodes);
+  };
 };
 /** expects an allocated db-statistics-t */
 status_t db_statistics(db_txn_t txn, db_statistics_t* result) {
@@ -268,7 +300,7 @@ void db_free_env_types(db_type_t** types, db_type_id_t types_len) {
 status_t db_env_new(db_env_t** result) {
   status_declare;
   db_env_t* a;
-  db_calloc(a, 1, sizeof(db_env_t));
+  db_calloc(a, 1, (sizeof(db_env_t)));
   *result = a;
 exit:
   return (status);

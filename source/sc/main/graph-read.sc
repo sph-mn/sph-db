@@ -611,6 +611,7 @@
   (status-t
     db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* db-count-t db-graph-selection-t*)
   "prepare the selection and select the reader.
+  selection must have been declared with db-graph-selection-declare.
   readers are specialised for filter combinations.
   the 1/0 pattern at the end of reader names corresponds to the filter combination the reader is supposed to handle.
   1 stands for filter given, 0 stands for not given. order is left, right, label, ordinal.
@@ -630,12 +631,8 @@
   (if label (set selection:label *label)
     (i-array-set-null selection:label))
   (set
-    selection:ids-set 0
     selection:status status
-    selection:ordinal ordinal
-    selection:cursor 0
-    selection:cursor-2 0
-    selection:options 0)
+    selection:ordinal ordinal)
   (if left
     (if ordinal
       (begin
@@ -699,8 +696,8 @@
     (return status)))
 
 (define (db-graph-selection-finish selection) (void db-graph-selection-t*)
-  (db-mdb-cursor-close selection:cursor)
-  (db-mdb-cursor-close selection:cursor-2)
+  (db-mdb-cursor-close-if-active selection:cursor)
+  (db-mdb-cursor-close-if-active selection:cursor-2)
   (if (bit-and db-graph-selection-flag-is-set-right selection:options)
     (begin
       (imht-set-destroy selection:ids-set)

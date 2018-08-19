@@ -629,3 +629,7 @@ the general development stages for new sph-db features is design, basic code imp
 ## db-graph-delete
 * db-graph-delete differs from db-graph-read in that it does not need a state because it does not support partial processing
 * it also differs in that it always needs to use all three relation dbi to complete the deletion instead of just any dbi necessary to match relations
+
+declarations-via-macros
+declarations
+setting initial values

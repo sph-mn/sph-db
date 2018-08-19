@@ -23,8 +23,6 @@
 
 (pre-define
   boolean uint8-t
-  db-ids-new i-array-allocate-db-ids-t
-  db-relations-new i-array-allocate-db-relations-t
   db-size-graph-data (+ (sizeof db-ordinal-t) (sizeof db-id-t))
   db-size-graph-key (* 2 (sizeof db-id-t))
   db-null 0
@@ -46,6 +44,10 @@
   db-field-type-uint32 96
   db-field-type-uint64 128
   db-field-type-uint8 32
+  db-type-flag-virtual 1
+  (db-type-get-by-id env type-id) (+ type-id env:types)
+  (db-type-is-virtual type) (bit-and db-type-flag-virtual type:flags)
+  (db-node-is-virtual env node-id) (db-type-is-virtual (db-type-get-by-id env (db-id-type node-id)))
   (db-id-add-type id type-id)
   (bit-or id (bit-shift-left (convert-type type-id db-id-t) (* 8 db-size-element-id)))
   (db-id-type id)
@@ -56,10 +58,14 @@
   (begin
     "get the element id part from a node id. a node id without type id"
     (bit-and db-id-element-mask id))
-  (db-node-virtual->data id)
+  (db-node-virtual-data id)
   (begin
-    "db-id-t -> db-id-t"
-    (bit-shift-right id 2))
+    "get the data associated with a virtual node as a db-id-t"
+    (db-id-element id))
+  (db-node-virtual type-id data)
+  (begin
+    "return a virtual node id"
+    (db-id-add-type (convert-type data db-id-t) type-id))
   (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
   (db-txn-abort-if-active a) (if a.mdb-txn (db-txn-abort &a))
   (db-txn-is-active a)
@@ -69,7 +75,32 @@
   (set
     a.type a-type
     a.name a-name
-    a.name-len a-name-len))
+    a.name-len a-name-len)
+  (db-graph-selection-declare name)
+  (begin
+    (sc-comment
+      "declare so that *-finish succeeds even if it has not yet been initialised."
+      "for having cleanup tasks at one place like with a goto exit label")
+    (declare name db-graph-selection-t)
+    (set
+      name.cursor 0
+      name.cursor-2 0
+      name.options 0
+      name.ids-set 0))
+  (db-node-selection-declare name)
+  (begin
+    (declare name db-node-selection-t)
+    (set name.cursor 0))
+  (db-index-selection-declare name)
+  (begin
+    (declare name db-index-selection-t)
+    (set name.cursor 0))
+  (db-node-index-selection-declare name)
+  (begin
+    (declare name db-node-index-selection-t)
+    (set
+      name.nodes-cursor 0
+      name.index-selection.cursor 0)))
 
 (declare
   ; types
@@ -207,6 +238,10 @@
   (db-status-description a) (uint8-t* status-t)
   (db-status-name a) (uint8-t* status-t)
   (db-status-group-id->name a) (uint8-t* status-id-t)
+  (db-ids-new length result-ids) (status-t size-t db-ids-t*)
+  (db-nodes-new length result-nodes) (status-t size-t db-nodes-t*)
+  (db-relations-new length result-relations) (status-t size-t db-relations-t*)
+  (db-nodes->ids nodes result-ids) (void db-nodes-t db-ids-t*)
   ; -- graph
   (db-graph-selection-finish selection) (void db-graph-selection-t*)
   (db-graph-select txn left right label ordinal offset result)
@@ -226,19 +261,21 @@
   (status-t db-type-t* db-node-t db-node-values-t*) (db-node-create txn values result)
   (status-t db-txn-t db-node-values-t db-id-t*) (db-node-get txn ids result-nodes)
   (status-t db-txn-t db-ids-t db-nodes-t*) (db-node-delete txn ids)
-  (status-t db-txn-t db-ids-t*) (db-node-ref type node field)
-  (db-node-value-t db-type-t* db-node-t db-fields-len-t) (db-node-exists txn ids result)
-  (status-t db-txn-t db-ids-t boolean*)
+  (status-t db-txn-t db-ids-t) (db-node-delete-type txn type-id)
+  (status-t db-txn-t db-type-id-t) (db-node-ref type node field)
+  (db-node-value-t db-type-t* db-node-t db-fields-len-t)
   (db-node-select txn type offset matcher matcher-state result-selection)
   (status-t db-txn-t db-type-t* db-count-t db-node-matcher-t void* db-node-selection-t*)
-  (db-node-read selection count result-nodes) (status-t db-node-selection-t* db-count-t db-nodes-t*)
-  (db-node-skip selection count) (status-t db-node-selection-t* db-count-t)
+  (db-node-read selection count result-nodes) (status-t db-node-selection-t db-count-t db-nodes-t*)
+  (db-node-skip selection count) (status-t db-node-selection-t db-count-t)
   (db-node-selection-finish selection) (void db-node-selection-t*)
   (db-node-update txn id values) (status-t db-txn-t db-id-t db-node-values-t)
   (db-txn-write-begin a) (status-t db-txn-t*)
   (db-txn-begin a) (status-t db-txn-t*)
   (db-txn-commit a) (status-t db-txn-t*)
   (db-txn-abort a) (void db-txn-t*)
+  (db-txn-begin-child parent-txn a) (status-t db-txn-t db-txn-t*)
+  (db-txn-write-begin-child parent-txn a) (status-t db-txn-t db-txn-t*)
   (db-index-get type fields fields-len) (db-index-t* db-type-t* db-fields-len-t* db-fields-len-t)
   (db-index-create env type fields fields-len)
   (status-t db-env-t* db-type-t* db-fields-len-t* db-fields-len-t) (db-index-delete env index)

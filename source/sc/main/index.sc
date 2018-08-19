@@ -377,15 +377,17 @@
 (define (db-index-read selection count result-ids)
   (status-t db-index-selection-t db-count-t db-ids-t*)
   "read index values (node ids).
+  count must be positive.
   if no more value is found, status is db-notfound.
   status must be success on call"
   status-declare
   db-mdb-declare-val-null
   db-mdb-declare-val-id
-  (while count
+  (db-mdb-status-require (mdb-cursor-get selection.cursor &val-null &val-id MDB-GET-CURRENT))
+  (do-while count
     (i-array-add *result-ids (db-pointer->id val-id.mv-data))
-    (db-mdb-status-require (mdb-cursor-get selection.cursor &val-null &val-id MDB-NEXT-DUP))
-    (set count (- count 1)))
+    (set count (- count 1))
+    (db-mdb-status-require (mdb-cursor-get selection.cursor &val-null &val-id MDB-NEXT-DUP)))
   (label exit
     db-mdb-status-notfound-if-notfound
     (return status)))

@@ -10,8 +10,8 @@
 #define test_helper_path_data test_helper_db_root "/data"
 #define test_helper_test_one(f, env) \
   printf("%s\n", #f); \
-  status_require(test_helper_reset(env, 0)); \
-  status_require(f(env))
+  status_require((test_helper_reset(env, 0))); \
+  status_require((f(env)))
 #define test_helper_assert(description, expression) \
   if (!expression) { \
     printf("%s failed\n", description); \
@@ -95,9 +95,9 @@ status_t test_helper_display_all_relations(db_txn_t txn, uint32_t left_count, ui
   status_declare;
   db_relations_t records;
   db_graph_selection_t state;
-  i_array_allocate_db_relations_t((&records), (left_count * right_count * label_count));
-  status_require_read(db_graph_select(txn, 0, 0, 0, 0, 0, (&state)));
-  status_require_read(db_graph_read((&state), 0, (&records)));
+  status_require((db_relations_new((left_count * right_count * label_count), (&records))));
+  status_require_read((db_graph_select(txn, 0, 0, 0, 0, 0, (&state))));
+  status_require_read((db_graph_read((&state), 0, (&records))));
   printf("all ");
   db_graph_selection_finish((&state));
   db_debug_log_relations(records);
@@ -132,7 +132,7 @@ status_t test_helper_reset(db_env_t* env, boolean re_use) {
       status_goto;
     };
   };
-  status_require(db_open(test_helper_db_root, 0, env));
+  status_require((db_open(test_helper_db_root, 0, env)));
 exit:
   return (status);
 };
@@ -164,11 +164,9 @@ boolean db_ids_contains(db_ids_t ids, db_id_t id) {
 status_t db_ids_reverse(db_ids_t a, db_ids_t* result) {
   status_declare;
   db_ids_t temp;
-  if (!i_array_allocate_db_ids_t((&temp), i_array_length(a))) {
-    status_set_id_goto(db_status_id_memory);
-  };
+  status_require((db_ids_new((i_array_length(a)), (&temp))));
   while (i_array_in_range(a)) {
-    i_array_add(temp, i_array_get(a));
+    i_array_add(temp, (i_array_get(a)));
     i_array_forward(a);
   };
   *result = temp;
@@ -183,7 +181,7 @@ status_t test_helper_create_type_1(db_env_t* env, db_type_t** result) {
   db_field_set((fields[1]), db_field_type_int8, "test-field-2", 12);
   db_field_set((fields[2]), db_field_type_string, "test-field-3", 12);
   db_field_set((fields[3]), db_field_type_string, "test-field-4", 12);
-  status_require(db_type_create(env, "test-type-1", fields, 4, 0, result));
+  status_require((db_type_create(env, "test-type-1", fields, 4, 0, result)));
 exit:
   return (status);
 };
@@ -204,8 +202,8 @@ status_t test_helper_create_values_1(db_env_t* env, db_type_t* type, db_node_val
   db_malloc_string(value_4, 5);
   memcpy(value_3, (&"abc"), 3);
   memcpy(value_4, (&"abcde"), 5);
-  status_require(db_node_values_new(type, (0 + values)));
-  status_require(db_node_values_new(type, (1 + values)));
+  status_require((db_node_values_new(type, (0 + values))));
+  status_require((db_node_values_new(type, (1 + values))));
   db_node_values_set((0 + values), 0, value_1, 0);
   db_node_values_set((0 + values), 1, value_2, 0);
   db_node_values_set((0 + values), 2, value_3, 3);
@@ -224,12 +222,12 @@ status_t test_helper_create_nodes_1(db_env_t* env, db_node_values_t* values, db_
   db_txn_declare(env, txn);
   db_id_t* ids;
   db_malloc(ids, (4 * sizeof(db_id_t)));
-  status_require(db_txn_write_begin((&txn)));
+  status_require((db_txn_write_begin((&txn))));
   status_require((db_node_create(txn, (values[0]), (0 + ids))));
   status_require((db_node_create(txn, (values[0]), (1 + ids))));
   status_require((db_node_create(txn, (values[1]), (2 + ids))));
   status_require((db_node_create(txn, (values[1]), (3 + ids))));
-  status_require(db_txn_commit((&txn)));
+  status_require((db_txn_commit((&txn))));
   *result_ids = ids;
   *result_len = 4;
 exit:
@@ -241,16 +239,14 @@ status_t test_helper_create_ids(db_txn_t txn, uint32_t count, db_ids_t* result) 
   status_declare;
   db_id_t id;
   db_ids_t result_temp;
-  if (!i_array_allocate_db_ids_t((&result_temp), count)) {
-    status_set_id_goto(db_status_id_memory);
-  };
+  status_require((db_ids_new(count, (&result_temp))));
   while (count) {
     /* use type id zero to have small node ids for testing which are easier to debug */
     status_require((db_sequence_next((txn.env), 0, (&id))));
     i_array_add(result_temp, id);
     count = (count - 1);
   };
-  status_require(db_ids_reverse(result_temp, result));
+  status_require((db_ids_reverse(result_temp, result)));
 exit:
   i_array_free(result_temp);
   return (status);
@@ -268,24 +264,22 @@ status_t test_helper_interleave_ids(db_txn_t txn, db_ids_t ids_a, db_ids_t ids_b
   target_count = (i_array_length(ids_a) + i_array_length(ids_b));
   start_mixed = (target_count / 4);
   start_new = (target_count - start_mixed);
-  if (!i_array_allocate_db_ids_t((&ids_result), target_count)) {
-    status_set_id_goto(db_status_id_memory);
-  };
+  status_require((db_ids_new(target_count, (&ids_result))));
   for (i = 0; (i < target_count); i = (1 + i)) {
     if (i < start_mixed) {
-      i_array_add(ids_result, i_array_get(ids_a));
+      i_array_add(ids_result, (i_array_get(ids_a)));
       i_array_forward(ids_a);
     } else {
       if (i < start_new) {
         if (1 & i) {
-          i_array_add(ids_result, i_array_get(ids_a));
+          i_array_add(ids_result, (i_array_get(ids_a)));
           i_array_forward(ids_a);
         } else {
-          i_array_add(ids_result, i_array_get(ids_b));
+          i_array_add(ids_result, (i_array_get(ids_b)));
           i_array_forward(ids_b);
         };
       } else {
-        i_array_add(ids_result, i_array_get(ids_b));
+        i_array_add(ids_result, (i_array_get(ids_b)));
         i_array_forward(ids_b);
       };
     };
@@ -298,7 +292,7 @@ exit:
   return (status);
 };
 uint32_t test_helper_calculate_relation_count(uint32_t left_count, uint32_t right_count, uint32_t label_count) { return ((left_count * right_count * label_count)); };
-uint32_t test_helper_calculate_relation_count_from_ids(db_ids_t left, db_ids_t right, db_ids_t label) { return (test_helper_calculate_relation_count(i_array_length(left), i_array_length(right), i_array_length(label))); };
+uint32_t test_helper_calculate_relation_count_from_ids(db_ids_t left, db_ids_t right, db_ids_t label) { return ((test_helper_calculate_relation_count((i_array_length(left)), (i_array_length(right)), (i_array_length(label))))); };
 /** test if the result records contain all filter-ids,
   and the filter-ids contain all result record values for field "name". */
 status_t test_helper_graph_read_records_validate_one(uint8_t* name, db_ids_t e_ids, db_relations_t records) {
@@ -316,7 +310,7 @@ status_t test_helper_graph_read_records_validate_one(uint8_t* name, db_ids_t e_i
     record_get = test_helper_relation_get_label;
   };
   while (i_array_in_range(records)) {
-    if (!db_ids_contains(e_ids, record_get(i_array_get(records)))) {
+    if (!db_ids_contains(e_ids, (record_get((i_array_get(records)))))) {
       printf("\n result records contain inexistant %s ids\n", name);
       status_set_id_goto(1);
     };
@@ -324,7 +318,7 @@ status_t test_helper_graph_read_records_validate_one(uint8_t* name, db_ids_t e_i
   };
   i_array_rewind(records);
   while (i_array_in_range(e_ids)) {
-    if (!contains_at(records, i_array_get(e_ids))) {
+    if (!contains_at(records, (i_array_get(e_ids)))) {
       printf("\n  %s result records do not contain all existing-ids\n", name);
       status_set_id_goto(2);
     };
@@ -352,7 +346,7 @@ status_t test_helper_create_relations(db_txn_t txn, db_ids_t left, db_ids_t righ
   status_declare;
   db_ordinal_t ordinal_state_value;
   ordinal_state_value = 0;
-  status_require(db_graph_ensure(txn, left, right, label, test_helper_default_ordinal_generator, (&ordinal_state_value)));
+  status_require((db_graph_ensure(txn, left, right, label, test_helper_default_ordinal_generator, (&ordinal_state_value))));
 exit:
   return (status);
 };
@@ -397,7 +391,7 @@ status_t test_helper_graph_read_one(db_txn_t txn, test_helper_graph_read_data_t 
   expected_count = test_helper_estimate_graph_read_result_count((data.e_left_count), (data.e_right_count), (data.e_label_count), ordinal);
   printf("  %s", reader_suffix_string);
   free(reader_suffix_string);
-  status_require(db_graph_select(txn, left_pointer, right_pointer, label_pointer, ordinal, offset, (&state)));
+  status_require((db_graph_select(txn, left_pointer, right_pointer, label_pointer, ordinal, offset, (&state))));
   status_require_read((db_graph_read((&state), 2, (&(data.records)))));
   status_require_read((db_graph_read((&state), 0, (&(data.records)))));
   if (status.id == db_status_id_notfound) {
@@ -414,7 +408,7 @@ status_t test_helper_graph_read_one(db_txn_t txn, test_helper_graph_read_data_t 
     status_set_id_goto(1);
   };
   if (!ordinal) {
-    status_require(test_helper_graph_read_records_validate(data));
+    status_require((test_helper_graph_read_records_validate(data)));
   };
   db_graph_selection_finish((&state));
   db_status_success_if_notfound;
@@ -431,10 +425,11 @@ status_t test_helper_graph_read_setup(db_env_t* env, uint32_t e_left_count, uint
   i_array_declare(ne_left, db_ids_t);
   i_array_declare(ne_right, db_ids_t);
   i_array_declare(ne_label, db_ids_t);
-  if (!(i_array_allocate_db_relations_t((&(r->records)), (e_left_count * e_right_count * e_label_count)) && i_array_allocate_db_ids_t((&(r->e_left)), e_left_count) && i_array_allocate_db_ids_t((&(r->e_right)), e_right_count) && i_array_allocate_db_ids_t((&(r->e_label)), e_label_count))) {
-    status_set_id_goto(db_status_id_memory);
-  };
-  status_require(db_txn_write_begin((&txn)));
+  status_require((db_relations_new((e_left_count * e_right_count * e_label_count), (&(r->records)))));
+  status_require((db_ids_new(e_left_count, (&(r->e_left)))));
+  status_require((db_ids_new(e_right_count, (&(r->e_right)))));
+  status_require((db_ids_new(e_label_count, (&(r->e_label)))));
+  status_require((db_txn_write_begin((&txn))));
   test_helper_create_ids(txn, e_left_count, (&(r->e_left)));
   test_helper_create_ids(txn, e_right_count, (&(r->e_right)));
   test_helper_create_ids(txn, e_label_count, (&(r->e_label)));
@@ -446,7 +441,7 @@ status_t test_helper_graph_read_setup(db_env_t* env, uint32_t e_left_count, uint
   status_require((test_helper_interleave_ids(txn, (r->e_left), ne_left, (&(r->left)))));
   status_require((test_helper_interleave_ids(txn, (r->e_right), ne_right, (&(r->right)))));
   status_require((test_helper_interleave_ids(txn, (r->e_label), ne_label, (&(r->label)))));
-  status_require(db_txn_commit((&txn)));
+  status_require((db_txn_commit((&txn))));
   r->e_left_count = e_left_count;
   r->e_right_count = e_right_count;
   r->e_label_count = e_label_count;
@@ -492,30 +487,30 @@ status_t test_helper_graph_delete_one(test_helper_graph_delete_data_t data, bool
   ordinal = &ordinal_condition;
   read_count_before_expected = test_helper_estimate_graph_read_result_count((data.e_left_count), (data.e_right_count), (data.e_label_count), ordinal);
   btree_count_deleted_expected = test_helper_estimate_graph_read_btree_entry_count((data.e_left_count), (data.e_right_count), (data.e_label_count), ordinal);
-  i_array_allocate_db_ids_t((&left), (data.e_left_count));
-  i_array_allocate_db_ids_t((&right), (data.e_right_count));
-  i_array_allocate_db_ids_t((&label), (data.e_label_count));
-  i_array_allocate_db_relations_t((&records), (data.e_left_count * data.e_right_count * data.e_label_count));
-  status_require(db_txn_write_begin((&txn)));
+  status_require((db_ids_new((data.e_left_count), (&left))));
+  status_require((db_ids_new((data.e_right_count), (&right))));
+  status_require((db_ids_new((data.e_label_count), (&label))));
+  db_relations_new((data.e_left_count * data.e_right_count * data.e_label_count), (&records));
+  status_require((db_txn_write_begin((&txn))));
   test_helper_create_ids(txn, (data.e_left_count), (&left));
   test_helper_create_ids(txn, (data.e_right_count), (&right));
   test_helper_create_ids(txn, (data.e_label_count), (&label));
   db_debug_count_all_btree_entries(txn, (&btree_count_before_create));
-  status_require(test_helper_create_relations(txn, left, right, label));
-  status_require(db_txn_commit((&txn)));
-  status_require(db_txn_write_begin((&txn)));
+  status_require((test_helper_create_relations(txn, left, right, label)));
+  status_require((db_txn_commit((&txn))));
+  status_require((db_txn_write_begin((&txn))));
   /* delete */
-  status_require(db_graph_delete(txn, (use_left ? &left : 0), (use_right ? &right : 0), (use_label ? &label : 0), (use_ordinal ? ordinal : 0)));
-  status_require(db_txn_commit((&txn)));
-  status_require(db_txn_begin((&txn)));
+  status_require((db_graph_delete(txn, (use_left ? &left : 0), (use_right ? &right : 0), (use_label ? &label : 0), (use_ordinal ? ordinal : 0))));
+  status_require((db_txn_commit((&txn))));
+  status_require((db_txn_begin((&txn))));
   db_debug_count_all_btree_entries(txn, (&btree_count_after_delete));
-  status_require_read(db_graph_select(txn, (use_left ? &left : 0), (use_right ? &right : 0), (use_label ? &label : 0), (use_ordinal ? ordinal : 0), 0, (&state)));
+  status_require_read((db_graph_select(txn, (use_left ? &left : 0), (use_right ? &right : 0), (use_label ? &label : 0), (use_ordinal ? ordinal : 0), 0, (&state))));
   /* check that readers can handle empty selections */
-  status_require_read(db_graph_read((&state), 0, (&records)));
+  status_require_read((db_graph_read((&state), 0, (&records))));
   db_graph_selection_finish((&state));
   db_txn_abort((&txn));
   if (!(0 == i_array_length(records))) {
-    printf(("\n    failed deletion. %lu relations not deleted\n"), i_array_length(records));
+    printf(("\n    failed deletion. %lu relations not deleted\n"), (i_array_length(records)));
     db_debug_log_relations(records);
     status_set_id_goto(1);
   };
@@ -523,10 +518,10 @@ status_t test_helper_graph_delete_one(test_helper_graph_delete_data_t data, bool
   /* test only if not using ordinal condition because the expected counts arent estimated */
   if (!(use_ordinal || (btree_count_after_delete == btree_count_before_create))) {
     printf(("\n failed deletion. %lu btree entries not deleted\n"), (btree_count_after_delete - btree_count_before_create));
-    status_require(db_txn_begin((&txn)));
+    status_require((db_txn_begin((&txn))));
     db_debug_log_btree_counts(txn);
-    status_require_read(db_graph_select(txn, 0, 0, 0, 0, 0, (&state)));
-    status_require_read(db_graph_read((&state), 0, (&records)));
+    status_require_read((db_graph_select(txn, 0, 0, 0, 0, 0, (&state))));
+    status_require_read((db_graph_read((&state), 0, (&records))));
     printf("all remaining ");
     db_debug_log_relations(records);
     db_graph_selection_finish((&state));

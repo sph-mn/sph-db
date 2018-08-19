@@ -10,3 +10,4 @@
 #define db_fields_len_t uint8_t
 #define db_indices_len_t uint8_t
 #define db_count_t uint32_t
+#define db_batch_len 100

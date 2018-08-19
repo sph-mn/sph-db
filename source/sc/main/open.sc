@@ -1,7 +1,7 @@
 (sc-comment
   "system btree entry format. key -> value
-     type-label id -> 8b:name-len name db-field-len-t:field-len (uint8-t:field-type uint8-t:name-len name) ...
-     index-label db-type-id-t:type-id db-field-len-t:field-offset ... -> ()")
+     type-label type-id -> uint8_t:flags db-name-len-t:name-len name db-field-len-t:field-count (uint8-t:field-type uint8-t:name-len name) ...
+     index-label type-id db-field-len-t:field-offset ... -> ()")
 
 (pre-define db-env-types-extra-count 20)
 
@@ -310,7 +310,9 @@
     id (db-system-key-id system-key)
     type-pointer (+ id types)
     type-pointer:id id
-    type-pointer:sequence 1)
+    type-pointer:sequence 1
+    type-pointer:flags *system-value
+    system-value (+ 1 system-value))
   (status-require (db-read-name &system-value &type-pointer:name))
   (status-require (db-open-type-read-fields &system-value type-pointer))
   (set *result-type type-pointer)

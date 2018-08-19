@@ -1,7 +1,7 @@
 #define notfound_exit status_set_both_goto(db_status_group_db, db_status_id_notfound)
 #define db_graph_select_cursor_initialise(name, selection, selection_field_name) \
-  db_mdb_status_require(db_mdb_env_cursor_open(txn, name)); \
-  db_mdb_status_require(mdb_cursor_get(name, (&val_null), (&val_null), MDB_FIRST)); \
+  db_mdb_status_require((db_mdb_env_cursor_open(txn, name))); \
+  db_mdb_status_require((mdb_cursor_get(name, (&val_null), (&val_null), MDB_FIRST))); \
   if (!db_mdb_status_is_success) { \
     db_mdb_status_expect_notfound; \
     status_set_both_goto(db_status_group_db, db_status_id_notfound); \
@@ -30,7 +30,7 @@ status_t db_graph_read_1000(db_graph_selection_t* selection, db_count_t count, d
   db_ids_t left;
   graph_lr = selection->cursor;
   left = selection->left;
-  db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
+  db_mdb_status_require((mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT)));
   graph_key[0] = i_array_get(left);
   if (db_pointer_to_id((val_graph_key.mv_data)) == graph_key[0]) {
     goto each_data;
@@ -86,10 +86,10 @@ status_t db_graph_read_1010(db_graph_selection_t* selection, db_count_t count, d
   graph_lr = selection->cursor;
   left = selection->left;
   label = selection->label;
-  db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
+  db_mdb_status_require((mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT)));
   graph_key[0] = i_array_get(left);
   graph_key[1] = i_array_get(label);
-  if (db_graph_key_equal(graph_key, db_mdb_val_to_graph_key(val_graph_key))) {
+  if (db_graph_key_equal(graph_key, (db_mdb_val_to_graph_key(val_graph_key)))) {
     goto each_data;
   } else {
   set_key:
@@ -148,7 +148,7 @@ status_t db_graph_read_1100(db_graph_selection_t* selection, db_count_t count, d
   graph_rl = selection->cursor;
   left = selection->left;
   right = selection->right;
-  db_mdb_status_require(mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_CURRENT));
+  db_mdb_status_require((mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_CURRENT)));
   graph_key[0] = i_array_get(right);
   if (db_pointer_to_id((val_graph_key.mv_data)) == graph_key[0]) {
     goto each_left;
@@ -280,7 +280,7 @@ status_t db_graph_read_1001_1101(db_graph_selection_t* selection, db_count_t cou
   right = selection->ids_set;
   db_graph_reader_define_ordinal_variables(selection);
   db_graph_data_set_ordinal(graph_data, ordinal_min);
-  db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
+  db_mdb_status_require((mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT)));
   if (i_array_in_range(left)) {
     graph_key[0] = i_array_get(left);
   } else {
@@ -357,7 +357,7 @@ status_t db_graph_read_1011_1111(db_graph_selection_t* selection, db_count_t cou
   right = selection->ids_set;
   db_graph_reader_define_ordinal_variables(selection);
   db_graph_data_set_ordinal(graph_data, ordinal_min);
-  db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
+  db_mdb_status_require((mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT)));
   graph_key[0] = i_array_get(left);
   graph_key[1] = i_array_get(label);
 set_key:
@@ -425,8 +425,8 @@ status_t db_graph_read_0010(db_graph_selection_t* selection, db_count_t count, d
   graph_ll = selection->cursor;
   graph_lr = selection->cursor_2;
   label = selection->label;
-  db_mdb_status_require(mdb_cursor_get(graph_ll, (&val_id), (&val_id_2), MDB_GET_CURRENT));
-  db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
+  db_mdb_status_require((mdb_cursor_get(graph_ll, (&val_id), (&val_id_2), MDB_GET_CURRENT)));
+  db_mdb_status_require((mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT)));
   if (i_array_in_range(label)) {
     id_label = i_array_get(label);
   } else {
@@ -508,10 +508,10 @@ status_t db_graph_read_0110(db_graph_selection_t* selection, db_count_t count, d
   graph_rl = selection->cursor;
   label = selection->label;
   right = selection->right;
-  db_mdb_status_require(mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_CURRENT));
+  db_mdb_status_require((mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_CURRENT)));
   graph_key[1] = i_array_get(label);
   graph_key[0] = i_array_get(right);
-  if (db_graph_key_equal(graph_key, db_mdb_val_to_graph_key(val_graph_key))) {
+  if (db_graph_key_equal(graph_key, (db_mdb_val_to_graph_key(val_graph_key)))) {
     goto each_data;
   } else {
   set_key:
@@ -566,7 +566,7 @@ status_t db_graph_read_0100(db_graph_selection_t* selection, db_count_t count, d
   db_ids_t right;
   graph_rl = selection->cursor;
   right = selection->right;
-  db_mdb_status_require(mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_CURRENT));
+  db_mdb_status_require((mdb_cursor_get(graph_rl, (&val_graph_key), (&val_id), MDB_GET_CURRENT)));
   graph_key[0] = i_array_get(right);
   if (graph_key[0] == db_pointer_to_id((val_graph_key.mv_data))) {
     goto each_key;
@@ -630,7 +630,7 @@ status_t db_graph_read_0000(db_graph_selection_t* selection, db_count_t count, d
   db_mdb_declare_val_graph_data;
   MDB_cursor* graph_lr;
   graph_lr = selection->cursor;
-  db_mdb_status_require(mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT));
+  db_mdb_status_require((mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT)));
 each_key:
 each_data:
   stop_if_count_zero;
@@ -659,6 +659,7 @@ exit:
   return (status);
 };
 /** prepare the selection and select the reader.
+  selection must have been declared with db-graph-selection-declare.
   readers are specialised for filter combinations.
   the 1/0 pattern at the end of reader names corresponds to the filter combination the reader is supposed to handle.
   1 stands for filter given, 0 stands for not given. order is left, right, label, ordinal.
@@ -687,16 +688,12 @@ status_t db_graph_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t
   } else {
     i_array_set_null((selection->label));
   };
-  selection->ids_set = 0;
   selection->status = status;
   selection->ordinal = ordinal;
-  selection->cursor = 0;
-  selection->cursor_2 = 0;
-  selection->options = 0;
   if (left) {
     if (ordinal) {
       if (right) {
-        status_require(db_ids_to_set((*right), (&right_set)));
+        status_require((db_ids_to_set((*right), (&right_set))));
         selection->ids_set = right_set;
         selection->options = (db_graph_selection_flag_is_set_right | selection->options);
       };
@@ -762,8 +759,8 @@ exit:
   return (status);
 };
 void db_graph_selection_finish(db_graph_selection_t* selection) {
-  db_mdb_cursor_close((selection->cursor));
-  db_mdb_cursor_close((selection->cursor_2));
+  db_mdb_cursor_close_if_active((selection->cursor));
+  db_mdb_cursor_close_if_active((selection->cursor_2));
   if (db_graph_selection_flag_is_set_right & selection->options) {
     imht_set_destroy((selection->ids_set));
     selection->ids_set = 0;

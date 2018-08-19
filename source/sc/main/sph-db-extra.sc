@@ -24,7 +24,7 @@
   (db-system-key-id a)
   (pointer-get (convert-type (+ db-size-system-label (convert-type a uint8-t*)) db-type-id-t*))
   (db-status-memory-error-if-null variable)
-  (if (not variable) (status-set-both-goto db-status-group-db db-status-id-memory))
+ (if (not variable) (status-set-both-goto db-status-group-db db-status-id-memory))
   (db-malloc variable size)
   (begin
     (set variable (malloc size))

@@ -12,12 +12,13 @@
 /* "iteration array" - a fixed size array with variable length content that makes iteration easier to code. it is used similar to a linked list.
   most bindings are generic macros that will work on all i-array types. i-array-add and i-array-forward go from left to right.
   examples:
-    i-array-declare-type(my-type, int);
-    i-array-allocate-my-type(a, 4);
-    i-array-add(a, 1);
-    i-array-add(a, 2);
-    while(i-array-in-range(a)) { i-array-get(a); }
-    i-array-free(a); */
+    i_array_declare_type(my_type, int);
+    my_type a;
+    i_array_allocate_my_type(4, &a);
+    i_array_add(a, 1);
+    i_array_add(a, 2);
+    while(i_array_in_range(a)) { i_array_get(a); }
+    i_array_free(a); */
 #include <stdlib.h>
 /** .current: to avoid having to write for-loops. it is what would be the index variable in loops
      .unused: to have variable length content in a fixed length array. points outside the memory area after the last element has been added
@@ -30,7 +31,7 @@
     element_type* end; \
     element_type* start; \
   } name; \
-  uint8_t i_array_allocate_##name(name* a, size_t length) { \
+  uint8_t i_array_allocate_##name(size_t length, name* a) { \
     element_type* start; \
     start = malloc((length * sizeof(element_type))); \
     if (!start) { \
@@ -245,6 +246,7 @@ uint8_t* db_status_name(status_t a) {
 #define db_fields_len_t uint8_t
 #define db_indices_len_t uint8_t
 #define db_count_t uint32_t
+#define db_batch_len 100
 typedef struct {
   db_id_t left;
   db_id_t right;
@@ -260,8 +262,6 @@ i_array_declare_type(db_ids_t, db_id_t);
 i_array_declare_type(db_nodes_t, db_node_t);
 i_array_declare_type(db_relations_t, db_relation_t);
 #define boolean uint8_t
-#define db_ids_new i_array_allocate_db_ids_t
-#define db_relations_new i_array_allocate_db_relations_t
 #define db_size_graph_data (sizeof(db_ordinal_t) + sizeof(db_id_t))
 #define db_size_graph_key (2 * sizeof(db_id_t))
 #define db_null 0
@@ -283,13 +283,19 @@ i_array_declare_type(db_relations_t, db_relation_t);
 #define db_field_type_uint32 96
 #define db_field_type_uint64 128
 #define db_field_type_uint8 32
+#define db_type_flag_virtual 1
+#define db_type_get_by_id(env, type_id) (type_id + env->types)
+#define db_type_is_virtual(type) (db_type_flag_virtual & type->flags)
+#define db_node_is_virtual(env, node_id) db_type_is_virtual((db_type_get_by_id(env, (db_id_type(node_id)))))
 #define db_id_add_type(id, type_id) (id | (((db_id_t)(type_id)) << (8 * db_size_element_id)))
 /** get the type id part from a node id. a node id without element id */
 #define db_id_type(id) (id >> (8 * db_size_element_id))
 /** get the element id part from a node id. a node id without type id */
 #define db_id_element(id) (db_id_element_mask & id)
-/** db-id-t -> db-id-t */
-#define db_node_virtual_to_data(id) (id >> 2)
+/** get the data associated with a virtual node as a db-id-t */
+#define db_node_virtual_data(id) db_id_element(id)
+/** return a virtual node id */
+#define db_node_virtual(type_id, data) db_id_add_type(((db_id_t)(data)), type_id)
 #define db_txn_declare(env, name) db_txn_t name = { 0, env }
 #define db_txn_abort_if_active(a) \
   if (a.mdb_txn) { \
@@ -300,6 +306,24 @@ i_array_declare_type(db_relations_t, db_relation_t);
   a.type = a_type; \
   a.name = a_name; \
   a.name_len = a_name_len
+#define db_graph_selection_declare(name) \
+  /* declare so that *-finish succeeds even if it has not yet been initialised. \
+  for having cleanup tasks at one place like with a goto exit label */ \
+  db_graph_selection_t name; \
+  name.cursor = 0; \
+  name.cursor_2 = 0; \
+  name.options = 0; \
+  name.ids_set = 0
+#define db_node_selection_declare(name) \
+  db_node_selection_t name; \
+  name.cursor = 0
+#define db_index_selection_declare(name) \
+  db_index_selection_t name; \
+  name.cursor = 0
+#define db_node_index_selection_declare(name) \
+  db_node_index_selection_t name; \
+  name.nodes_cursor = 0; \
+  name.index_selection.cursor = 0
 typedef struct {
   uint8_t* name;
   db_name_len_t name_len;
@@ -414,6 +438,10 @@ uint8_t db_field_type_size(uint8_t a);
 uint8_t* db_status_description(status_t a);
 uint8_t* db_status_name(status_t a);
 uint8_t* db_status_group_id_to_name(status_id_t a);
+status_t db_ids_new(size_t length, db_ids_t* result_ids);
+status_t db_nodes_new(size_t length, db_nodes_t* result_nodes);
+status_t db_relations_new(size_t length, db_relations_t* result_relations);
+void db_nodes_to_ids(db_nodes_t nodes, db_ids_t* result_ids);
 void db_graph_selection_finish(db_graph_selection_t* selection);
 status_t db_graph_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal, db_count_t offset, db_graph_selection_t* result);
 status_t db_graph_read(db_graph_selection_t* selection, db_count_t count, db_relations_t* result);
@@ -426,18 +454,20 @@ status_t db_node_values_to_data(db_node_values_t values, db_node_t* result);
 status_t db_node_data_to_values(db_type_t* type, db_node_t data, db_node_values_t* result);
 status_t db_node_create(db_txn_t txn, db_node_values_t values, db_id_t* result);
 status_t db_node_get(db_txn_t txn, db_ids_t ids, db_nodes_t* result_nodes);
-status_t db_node_delete(db_txn_t txn, db_ids_t* ids);
+status_t db_node_delete(db_txn_t txn, db_ids_t ids);
+status_t db_node_delete_type(db_txn_t txn, db_type_id_t type_id);
 db_node_value_t db_node_ref(db_type_t* type, db_node_t node, db_fields_len_t field);
-status_t db_node_exists(db_txn_t txn, db_ids_t ids, boolean* result);
 status_t db_node_select(db_txn_t txn, db_type_t* type, db_count_t offset, db_node_matcher_t matcher, void* matcher_state, db_node_selection_t* result_selection);
-status_t db_node_read(db_node_selection_t* selection, db_count_t count, db_nodes_t* result_nodes);
-status_t db_node_skip(db_node_selection_t* selection, db_count_t count);
+status_t db_node_read(db_node_selection_t selection, db_count_t count, db_nodes_t* result_nodes);
+status_t db_node_skip(db_node_selection_t selection, db_count_t count);
 void db_node_selection_finish(db_node_selection_t* selection);
 status_t db_node_update(db_txn_t txn, db_id_t id, db_node_values_t values);
 status_t db_txn_write_begin(db_txn_t* a);
 status_t db_txn_begin(db_txn_t* a);
 status_t db_txn_commit(db_txn_t* a);
 void db_txn_abort(db_txn_t* a);
+status_t db_txn_begin_child(db_txn_t parent_txn, db_txn_t* a);
+status_t db_txn_write_begin_child(db_txn_t parent_txn, db_txn_t* a);
 db_index_t* db_index_get(db_type_t* type, db_fields_len_t* fields, db_fields_len_t fields_len);
 status_t db_index_create(db_env_t* env, db_type_t* type, db_fields_len_t* fields, db_fields_len_t fields_len);
 status_t db_index_delete(db_env_t* env, db_index_t* index);

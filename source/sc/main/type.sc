@@ -1,5 +1,3 @@
-(pre-define (db-type-get-by-id env type-id) (+ type-id env:types))
-
 (define (db-env-types-extend env type-id) (status-t db-env-t* db-type-id-t)
   "extend the size of the types array if type-id is an index out of bounds"
   status-declare
@@ -80,7 +78,7 @@
   (if (< db-name-len-max name-len)
     (status-set-both-goto db-status-group-db db-status-id-data-length))
   (sc-comment "allocate insert data")
-  (set data-size (+ (sizeof db-name-len-t) name-len (sizeof db-fields-len-t)))
+  (set data-size (+ 1 (sizeof db-name-len-t) name-len (sizeof db-fields-len-t)))
   (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
     (set data-size
       (+ data-size (sizeof db-field-type-t) (sizeof db-name-len-t) (: (+ i fields) name-len))))
@@ -88,6 +86,8 @@
   (sc-comment "set insert data")
   (set
     data-start data
+    *data flags
+    data (+ 1 data)
     (pointer-get (convert-type data db-name-len-t*)) name-len
     data (+ (sizeof db-name-len-t) data))
   (memcpy data name name-len)
@@ -133,7 +133,7 @@
     (return status)))
 
 (define (db-type-delete env type-id) (status-t db-env-t* db-type-id-t)
-  "delete system entry and/or all nodes and cache entries"
+  "delete system entry and all nodes and clear cache entries"
   status-declare
   db-mdb-declare-val-null
   (db-mdb-cursor-declare system)

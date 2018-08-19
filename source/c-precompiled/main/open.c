@@ -1,6 +1,6 @@
 /* system btree entry format. key -> value
-     type-label id -> 8b:name-len name db-field-len-t:field-len (uint8-t:field-type uint8-t:name-len name) ...
-     index-label db-type-id-t:type-id db-field-len-t:field-offset ... -> () */
+     type-label type-id -> uint8_t:flags db-name-len-t:name-len name db-field-len-t:field-count (uint8-t:field-type uint8-t:name-len name) ...
+     index-label type-id db-field-len-t:field-offset ... -> () */
 #define db_env_types_extra_count 20
 /** prepare the database filesystem root path.
   create the full directory path if it does not exist */
@@ -32,11 +32,11 @@ status_t db_open_mdb_env(db_env_t* env, db_open_options_t* options) {
   if (!data_path) {
     db_status_set_id_goto(db_status_id_memory);
   };
-  db_mdb_status_require(mdb_env_create((&mdb_env)));
+  db_mdb_status_require((mdb_env_create((&mdb_env))));
   db_mdb_status_require((mdb_env_set_maxdbs(mdb_env, (options->maximum_db_count))));
   db_mdb_status_require((mdb_env_set_mapsize(mdb_env, (options->maximum_size))));
   db_mdb_status_require((mdb_env_set_maxreaders(mdb_env, (options->maximum_reader_count))));
-  db_mdb_status_require((mdb_env_open(mdb_env, data_path, db_open_mdb_env_flags(options), (options->file_permissions))));
+  db_mdb_status_require((mdb_env_open(mdb_env, data_path, (db_open_mdb_env_flags(options)), (options->file_permissions))));
   env->maxkeysize = mdb_env_get_maxkeysize(mdb_env);
   env->mdb_env = mdb_env;
 exit:
@@ -72,9 +72,9 @@ status_t db_open_format(MDB_cursor* system, db_txn_t txn) {
       db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_system), (&stat_info))));
       if (1 == stat_info.ms_entries) {
         val_data.mv_data = format;
-        db_mdb_status_require(mdb_cursor_put(system, (&val_key), (&val_data), 0));
+        db_mdb_status_require((mdb_cursor_put(system, (&val_key), (&val_data), 0)));
       } else {
-        fprintf(stderr, "database sizes: (id %u) (type: %u) (ordinal %u)", (data[0]), (data[1]), (data[2]));
+        fprintf(stderr, ("database sizes: (id %u) (type: %u) (ordinal %u)"), (data[0]), (data[1]), (data[2]));
         db_status_set_id_goto(db_status_id_different_format);
       };
     };
@@ -82,7 +82,7 @@ status_t db_open_format(MDB_cursor* system, db_txn_t txn) {
     db_mdb_status_expect_notfound;
     /* no format entry exists yet */
     val_data.mv_data = format;
-    db_mdb_status_require(mdb_cursor_put(system, (&val_key), (&val_data), 0));
+    db_mdb_status_require((mdb_cursor_put(system, (&val_key), (&val_data), 0)));
   };
 exit:
   return (status);
@@ -202,7 +202,7 @@ status_t db_type_last_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* resul
   };
   /* database is not empty and the last key is not of searched type.
      type-id +1 is not greater than max possible type-id */
-  status_require(db_type_first_id(nodes, (1 + type_id), (&id)));
+  status_require((db_type_first_id(nodes, (1 + type_id), (&id))));
   if (!id) {
     /* no greater type-id found. since the searched type is not the last,
          all existing type-ids are smaller */
@@ -210,7 +210,7 @@ status_t db_type_last_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* resul
     goto exit;
   };
   /* greater type found, step back */
-  db_mdb_status_require(mdb_cursor_get(nodes, (&val_id), (&val_null), MDB_PREV));
+  db_mdb_status_require((mdb_cursor_get(nodes, (&val_id), (&val_null), MDB_PREV)));
   *result = ((type_id == db_id_type((db_pointer_to_id((val_id.mv_data))))) ? db_pointer_to_id((val_id.mv_data)) : 0);
 exit:
   return (status);
@@ -248,7 +248,7 @@ status_t db_open_type_read_fields(uint8_t** data_pointer, db_type_t* type) {
   offset = 0;
   count = *((db_fields_len_t*)(data));
   data = (sizeof(db_fields_len_t) + data);
-  db_calloc(fields, count, sizeof(db_field_t));
+  db_calloc(fields, count, (sizeof(db_field_t)));
   /* field */
   for (i = 0; (i < count); i = (1 + i)) {
     /* type */
@@ -291,8 +291,10 @@ status_t db_open_type(uint8_t* system_key, uint8_t* system_value, db_type_t* typ
   type_pointer = (id + types);
   type_pointer->id = id;
   type_pointer->sequence = 1;
+  type_pointer->flags = *system_value;
+  system_value = (1 + system_value);
   status_require((db_read_name((&system_value), (&(type_pointer->name)))));
-  status_require(db_open_type_read_fields((&system_value), type_pointer));
+  status_require((db_open_type_read_fields((&system_value), type_pointer)));
   *result_type = type_pointer;
 exit:
   return (status);
@@ -318,19 +320,19 @@ status_t db_open_types(MDB_cursor* system, MDB_cursor* nodes, db_txn_t txn) {
     status_set_both_goto(db_status_group_db, db_status_id_max_type_id_size);
   };
   /* initialise system sequence (type 0) */
-  status_require(db_open_system_sequence(system, (&system_sequence)));
+  status_require((db_open_system_sequence(system, (&system_sequence))));
   types_len = (db_type_id_limit - system_sequence);
   types_len = (system_sequence + ((db_env_types_extra_count < types_len) ? db_env_types_extra_count : types_len));
   db_system_key_label(key) = db_system_label_type;
   db_system_key_id(key) = 0;
   val_key.mv_data = key;
-  db_calloc(types, types_len, sizeof(db_type_t));
+  db_calloc(types, types_len, (sizeof(db_type_t)));
   types->sequence = system_sequence;
   /* node types */
   status.id = mdb_cursor_get(system, (&val_key), (&val_data), MDB_SET_RANGE);
   while ((db_mdb_status_is_success && (db_system_label_type == db_system_key_label((val_key.mv_data))))) {
     status_require((db_open_type((val_key.mv_data), (val_data.mv_data), types, nodes, (&type_pointer))));
-    status_require(db_open_sequence(nodes, type_pointer));
+    status_require((db_open_sequence(nodes, type_pointer)));
     status.id = mdb_cursor_get(system, (&val_key), (&val_data), MDB_NEXT);
   };
   if (db_mdb_status_is_notfound) {
@@ -392,10 +394,10 @@ status_t db_open_indices(MDB_cursor* system, db_txn_t txn) {
       current_type_id = type_id;
       indices_len = 1;
       indices_alloc_len = 10;
-      db_calloc(indices, indices_alloc_len, sizeof(db_index_t));
+      db_calloc(indices, indices_alloc_len, (sizeof(db_index_t)));
     };
     fields_len = ((val_key.mv_size - sizeof(db_system_label_index) - sizeof(db_type_id_t)) / sizeof(db_fields_len_t));
-    db_calloc(fields, fields_len, sizeof(db_fields_len_t));
+    db_calloc(fields, fields_len, (sizeof(db_fields_len_t)));
     (indices[(indices_len - 1)]).fields = fields;
     (indices[(indices_len - 1)]).fields_len = fields_len;
     status.id = mdb_cursor_get(system, (&val_key), (&val_null), MDB_NEXT);
@@ -422,10 +424,10 @@ status_t db_open_system(db_txn_t txn) {
   db_mdb_cursor_declare(nodes);
   db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), "system", MDB_CREATE, (&((txn.env)->dbi_system)))));
   db_mdb_env_cursor_open(txn, system);
-  status_require(db_open_format(system, txn));
+  status_require((db_open_format(system, txn)));
   db_mdb_env_cursor_open(txn, nodes);
-  status_require(db_open_types(system, nodes, txn));
-  status_require(db_open_indices(system, txn));
+  status_require((db_open_types(system, nodes, txn)));
+  status_require((db_open_indices(system, txn)));
 exit:
   db_mdb_cursor_close_if_active(system);
   db_mdb_cursor_close_if_active(nodes);
@@ -488,13 +490,13 @@ status_t db_open(uint8_t* path, db_open_options_t* options_pointer, db_env_t* en
   } else {
     db_open_options_set_defaults((&options));
   };
-  status_require(db_open_root(env, (&options), path));
-  status_require(db_open_mdb_env(env, (&options)));
-  status_require(db_txn_write_begin((&txn)));
-  status_require(db_open_nodes(txn));
-  status_require(db_open_system(txn));
-  status_require(db_open_graph(txn));
-  status_require(db_txn_commit((&txn)));
+  status_require((db_open_root(env, (&options), path)));
+  status_require((db_open_mdb_env(env, (&options))));
+  status_require((db_txn_write_begin((&txn))));
+  status_require((db_open_nodes(txn)));
+  status_require((db_open_system(txn)));
+  status_require((db_open_graph(txn)));
+  status_require((db_txn_commit((&txn))));
   pthread_mutex_init((&(env->mutex)), 0);
   env->open = 1;
 exit:

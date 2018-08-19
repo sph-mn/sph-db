@@ -35,8 +35,8 @@
 (pre-define (test-helper-define-relation-get field-name)
   (begin
     "define a function for getting a field from a graph record, to use with a function pointer"
-    (define ((pre-concat test-helper-relation-get_ field-name) record)
-      (db-id-t db-relation-t) (return record.field-name))))
+    (define ((pre-concat test-helper-relation-get_ field-name) record) (db-id-t db-relation-t)
+      (return record.field-name))))
 
 (declare test-helper-graph-read-data-t
   (type
@@ -105,7 +105,7 @@
   (declare
     records db-relations-t
     state db-graph-selection-t)
-  (i-array-allocate-db-relations-t &records (* left-count right-count label-count))
+  (status-require (db-relations-new (* left-count right-count label-count) &records))
   (status-require-read (db-graph-select txn 0 0 0 0 0 &state))
   (status-require-read (db-graph-read &state 0 &records))
   (printf "all ")
@@ -179,8 +179,7 @@
 (define (db-ids-reverse a result) (status-t db-ids-t db-ids-t*)
   status-declare
   (declare temp db-ids-t)
-  (if (not (i-array-allocate-db-ids-t &temp (i-array-length a)))
-    (status-set-id-goto db-status-id-memory))
+  (status-require (db-ids-new (i-array-length a) &temp))
   (while (i-array-in-range a)
     (i-array-add temp (i-array-get a))
     (i-array-forward a))
@@ -261,7 +260,7 @@
   (declare
     id db-id-t
     result-temp db-ids-t)
-  (if (not (i-array-allocate-db-ids-t &result-temp count)) (status-set-id-goto db-status-id-memory))
+  (status-require (db-ids-new count &result-temp))
   (while count
     (sc-comment "use type id zero to have small node ids for testing which are easier to debug")
     (status-require (db-sequence-next txn.env 0 &id))
@@ -288,8 +287,7 @@
     target-count (+ (i-array-length ids-a) (i-array-length ids-b))
     start-mixed (/ target-count 4)
     start-new (- target-count start-mixed))
-  (if (not (i-array-allocate-db-ids-t &ids-result target-count))
-    (status-set-id-goto db-status-id-memory))
+  (status-require (db-ids-new target-count &ids-result))
   (for ((set i 0) (< i target-count) (set i (+ 1 i)))
     (if (< i start-mixed)
       (begin
@@ -493,15 +491,10 @@
   (i-array-declare ne-left db-ids-t)
   (i-array-declare ne-right db-ids-t)
   (i-array-declare ne-label db-ids-t)
-  (if
-    (not
-      (and
-        (i-array-allocate-db-relations-t
-          &r:records (* e-left-count e-right-count e-label-count))
-        (i-array-allocate-db-ids-t &r:e-left e-left-count)
-        (i-array-allocate-db-ids-t &r:e-right e-right-count)
-        (i-array-allocate-db-ids-t &r:e-label e-label-count)))
-    (status-set-id-goto db-status-id-memory))
+  (status-require (db-relations-new (* e-left-count e-right-count e-label-count) &r:records))
+  (status-require (db-ids-new e-left-count &r:e-left))
+  (status-require (db-ids-new e-right-count &r:e-right))
+  (status-require (db-ids-new e-label-count &r:e-label))
   (status-require (db-txn-write-begin &txn))
   (test-helper-create-ids txn e-left-count &r:e-left)
   (test-helper-create-ids txn e-right-count &r:e-right)
@@ -574,11 +567,10 @@
       btree-count-deleted-expected
       (test-helper-estimate-graph-read-btree-entry-count
         data.e-left-count data.e-right-count data.e-label-count ordinal))
-    (i-array-allocate-db-ids-t &left data.e-left-count)
-    (i-array-allocate-db-ids-t &right data.e-right-count)
-    (i-array-allocate-db-ids-t &label data.e-label-count)
-    (i-array-allocate-db-relations-t
-      &records (* data.e-left-count data.e-right-count data.e-label-count))
+    (status-require (db-ids-new data.e-left-count &left))
+    (status-require (db-ids-new data.e-right-count &right))
+    (status-require (db-ids-new data.e-label-count &label))
+    (db-relations-new (* data.e-left-count data.e-right-count data.e-label-count) &records)
     (status-require (db-txn-write-begin &txn))
     (test-helper-create-ids txn data.e-left-count &left)
     (test-helper-create-ids txn data.e-right-count &right)
