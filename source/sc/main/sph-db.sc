@@ -49,7 +49,9 @@
   (db-type-is-virtual type) (bit-and db-type-flag-virtual type:flags)
   (db-node-is-virtual env node-id) (db-type-is-virtual (db-type-get-by-id env (db-id-type node-id)))
   (db-id-add-type id type-id)
-  (bit-or id (bit-shift-left (convert-type type-id db-id-t) (* 8 db-size-element-id)))
+  (bit-or
+    (db-id-element (convert-type id db-id-t))
+    (bit-shift-left (convert-type type-id db-id-t) (* 8 db-size-element-id)))
   (db-id-type id)
   (begin
     "get the type id part from a node id. a node id without element id"
@@ -65,7 +67,7 @@
   (db-node-virtual type-id data)
   (begin
     "return a virtual node id"
-    (db-id-add-type (convert-type data db-id-t) type-id))
+    (db-id-add-type data type-id))
   (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
   (db-txn-abort-if-active a) (if a.mdb-txn (db-txn-abort &a))
   (db-txn-is-active a)
@@ -212,7 +214,6 @@
   db-graph-selection-t
   (type
     (struct
-      (status status-t)
       (cursor (MDB-cursor* restrict))
       (cursor-2 (MDB-cursor* restrict))
       (left db-ids-t)

@@ -287,7 +287,7 @@ i_array_declare_type(db_relations_t, db_relation_t);
 #define db_type_get_by_id(env, type_id) (type_id + env->types)
 #define db_type_is_virtual(type) (db_type_flag_virtual & type->flags)
 #define db_node_is_virtual(env, node_id) db_type_is_virtual((db_type_get_by_id(env, (db_id_type(node_id)))))
-#define db_id_add_type(id, type_id) (id | (((db_id_t)(type_id)) << (8 * db_size_element_id)))
+#define db_id_add_type(id, type_id) (db_id_element(((db_id_t)(id))) | (((db_id_t)(type_id)) << (8 * db_size_element_id)))
 /** get the type id part from a node id. a node id without element id */
 #define db_id_type(id) (id >> (8 * db_size_element_id))
 /** get the element id part from a node id. a node id without type id */
@@ -295,7 +295,7 @@ i_array_declare_type(db_relations_t, db_relation_t);
 /** get the data associated with a virtual node as a db-id-t */
 #define db_node_virtual_data(id) db_id_element(id)
 /** return a virtual node id */
-#define db_node_virtual(type_id, data) db_id_add_type(((db_id_t)(data)), type_id)
+#define db_node_virtual(type_id, data) db_id_add_type(data, type_id)
 #define db_txn_declare(env, name) db_txn_t name = { 0, env }
 #define db_txn_abort_if_active(a) \
   if (a.mdb_txn) { \
@@ -414,7 +414,6 @@ typedef struct {
   db_type_t* type;
 } db_node_selection_t;
 typedef struct {
-  status_t status;
   MDB_cursor* restrict cursor;
   MDB_cursor* restrict cursor_2;
   db_ids_t left;

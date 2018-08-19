@@ -15,7 +15,7 @@
     status-declare
     db-mdb-declare-val-graph-key
     (db-declare-graph-key graph-key)
-    (db-declare-relation record)
+    (db-declare-relation relation)
     (declare skip boolean)
     (set skip (bit-and db-selection-flag-skip selection:options))))
 
@@ -23,7 +23,7 @@
   (begin
     status-declare
     db-mdb-declare-val-graph-key
-    (db-declare-relation record)
+    (db-declare-relation relation)
     (declare skip boolean)
     (set skip (bit-and db-selection-flag-skip selection:options))))
 
@@ -63,11 +63,11 @@
     (if (not skip)
       (begin
         (set
-          record.left (db-pointer->id val-graph-key.mv-data)
-          record.right (db-graph-data->id val-graph-data.mv-data)
-          record.label (db-pointer->id-at val-graph-key.mv-data 1)
-          record.ordinal (db-graph-data->ordinal val-graph-data.mv-data))
-        (i-array-add *result record)))
+          relation.left (db-pointer->id val-graph-key.mv-data)
+          relation.right (db-graph-data->id val-graph-data.mv-data)
+          relation.label (db-pointer->id-at val-graph-key.mv-data 1)
+          relation.ordinal (db-graph-data->ordinal val-graph-data.mv-data))
+        (i-array-add *result relation)))
     reduce-count
     (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
     (if db-mdb-status-is-success (goto each-data)
@@ -75,9 +75,7 @@
   (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-NODUP))
   (goto each-key)
   (label exit
-    (set
-      selection:left.current left.current
-      selection:status status)
+    (set selection:left.current left.current)
     (return status)))
 
 (define (db-graph-read-1010 selection count result)
@@ -123,11 +121,11 @@
     (if (not skip)
       (begin
         (set
-          record.left (db-pointer->id val-graph-key.mv-data)
-          record.right (db-graph-data->id val-graph-data.mv-data)
-          record.label (db-pointer->id-at val-graph-key.mv-data 1)
-          record.ordinal (db-graph-data->ordinal val-graph-data.mv-data))
-        (i-array-add *result record)))
+          relation.left (db-pointer->id val-graph-key.mv-data)
+          relation.right (db-graph-data->id val-graph-data.mv-data)
+          relation.label (db-pointer->id-at val-graph-key.mv-data 1)
+          relation.ordinal (db-graph-data->ordinal val-graph-data.mv-data))
+        (i-array-add *result relation)))
     reduce-count
     (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
     (if db-mdb-status-is-success (goto each-data)
@@ -135,8 +133,7 @@
   (label exit
     (set
       selection:left.current left.current
-      selection:label.current label.current
-      selection:status status)
+      selection:label.current label.current)
     (return status)))
 
 (define (db-graph-read-1100 selection count result)
@@ -174,10 +171,10 @@
         (if (not skip)
           (begin
             (set
-              record.left (db-pointer->id val-id.mv-data)
-              record.right (db-pointer->id val-graph-key.mv-data)
-              record.label (db-pointer->id-at val-graph-key.mv-data 1))
-            (i-array-add *result record)
+              relation.left (db-pointer->id val-id.mv-data)
+              relation.right (db-pointer->id val-graph-key.mv-data)
+              relation.label (db-pointer->id-at val-graph-key.mv-data 1))
+            (i-array-add *result relation)
             reduce-count)))
       db-mdb-status-expect-notfound)
     (i-array-forward left)
@@ -188,8 +185,7 @@
   (label exit
     (set
       selection:left.current left.current
-      selection:right.current right.current
-      selection:status status)
+      selection:right.current right.current)
     (return status)))
 
 (define (db-graph-read-1110 selection count result)
@@ -247,18 +243,17 @@
     (if (not skip)
       (begin
         (set
-          record.left (db-pointer->id val-id.mv-data)
-          record.right (db-pointer->id val-graph-key.mv-data)
-          record.label (db-pointer->id-at val-graph-key.mv-data 1))
-        (i-array-add *result record)))
+          relation.left (db-pointer->id val-id.mv-data)
+          relation.right (db-pointer->id val-graph-key.mv-data)
+          relation.label (db-pointer->id-at val-graph-key.mv-data 1))
+        (i-array-add *result relation)))
     reduce-count
     (goto next-query))
   (label exit
     (set
       selection:left.current left.current
       selection:right.current right.current
-      selection:label.current label.current
-      selection:status status)
+      selection:label.current label.current)
     (return status)))
 
 (define (db-graph-read-1001-1101 selection count result)
@@ -313,11 +308,11 @@
             (if (not skip)
               (begin
                 (set
-                  record.left (db-pointer->id val-graph-key.mv-data)
-                  record.label (db-pointer->id-at val-graph-key.mv-data 1)
-                  record.ordinal (db-graph-data->ordinal val-graph-data.mv-data)
-                  record.right (db-graph-data->id val-graph-data.mv-data))
-                (i-array-add *result record)))
+                  relation.left (db-pointer->id val-graph-key.mv-data)
+                  relation.label (db-pointer->id-at val-graph-key.mv-data 1)
+                  relation.ordinal (db-graph-data->ordinal val-graph-data.mv-data)
+                  relation.right (db-graph-data->id val-graph-data.mv-data))
+                (i-array-add *result relation)))
             reduce-count))
         (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
         (if db-mdb-status-is-success (goto each-data)
@@ -325,9 +320,7 @@
   (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-NODUP))
   (goto each-key)
   (label exit
-    (set
-      selection:left.current left.current
-      selection:status status)
+    (set selection:left.current left.current)
     (return status)))
 
 (define (db-graph-read-1011-1111 selection count result)
@@ -383,11 +376,11 @@
             (if (not skip)
               (begin
                 (set
-                  record.left (db-pointer->id val-graph-key.mv-data)
-                  record.right (db-graph-data->id val-graph-data.mv-data)
-                  record.label (db-pointer->id-at val-graph-key.mv-data 1)
-                  record.ordinal (db-graph-data->ordinal val-graph-data.mv-data))
-                (i-array-add *result record)))
+                  relation.left (db-pointer->id val-graph-key.mv-data)
+                  relation.right (db-graph-data->id val-graph-data.mv-data)
+                  relation.label (db-pointer->id-at val-graph-key.mv-data 1)
+                  relation.ordinal (db-graph-data->ordinal val-graph-data.mv-data))
+                (i-array-add *result relation)))
             reduce-count))
         (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
         (if db-mdb-status-is-success (goto each-data)
@@ -396,8 +389,7 @@
   (label exit
     (set
       selection:left.current left.current
-      selection:label.current label.current
-      selection:status status)
+      selection:label.current label.current)
     (return status)))
 
 (define (db-graph-read-0010 selection count result)
@@ -451,10 +443,10 @@
       (if (not skip)
         (begin
           (set
-            record.left id-left
-            record.right (db-graph-data->id val-graph-data.mv-data)
-            record.label id-label)
-          (i-array-add *result record)))
+            relation.left id-left
+            relation.right (db-graph-data->id val-graph-data.mv-data)
+            relation.label id-label)
+          (i-array-add *result relation)))
       reduce-count
       (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
       (if db-mdb-status-is-success (goto each-left-data)
@@ -467,9 +459,7 @@
           notfound-exit)
         (goto set-label-key))))
   (label exit
-    (set
-      selection:status status
-      selection:label.current label.current)
+    (set selection:label.current label.current)
     (return status)))
 
 (define (db-graph-read-0110 selection count result)
@@ -512,10 +502,10 @@
     (if (not skip)
       (begin
         (set
-          record.left (db-pointer->id val-id.mv-data)
-          record.right (array-get graph-key 0)
-          record.label (array-get graph-key 1))
-        (i-array-add *result record)))
+          relation.left (db-pointer->id val-id.mv-data)
+          relation.right (array-get graph-key 0)
+          relation.label (array-get graph-key 1))
+        (i-array-add *result relation)))
     reduce-count
     (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-NEXT-DUP))
     (if db-mdb-status-is-success (goto each-data)
@@ -523,8 +513,7 @@
   (label exit
     (set
       selection:right.current right.current
-      selection:label.current label.current
-      selection:status status)
+      selection:label.current label.current)
     (return status)))
 
 (define (db-graph-read-0100 selection count result)
@@ -556,10 +545,10 @@
       (if (not skip)
         (begin
           (set
-            record.left (db-pointer->id val-id.mv-data)
-            record.right (db-pointer->id val-graph-key.mv-data)
-            record.label (db-pointer->id-at val-graph-key.mv-data 1))
-          (i-array-add *result record)))
+            relation.left (db-pointer->id val-id.mv-data)
+            relation.right (db-pointer->id val-graph-key.mv-data)
+            relation.label (db-pointer->id-at val-graph-key.mv-data 1))
+          (i-array-add *result relation)))
       reduce-count
       (set status.id (mdb-cursor-get graph-rl &val-graph-key &val-id MDB-NEXT-DUP))
       (if db-mdb-status-is-success (goto each-data)
@@ -573,9 +562,7 @@
       notfound-exit)
     (goto set-range))
   (label exit
-    (set
-      selection:status status
-      selection:right.current right.current)
+    (set selection:right.current right.current)
     (return status)))
 
 (define (db-graph-read-0000 selection count result)
@@ -591,11 +578,11 @@
       (if (not skip)
         (begin
           (set
-            record.left (db-pointer->id val-graph-key.mv-data)
-            record.right (db-graph-data->id val-graph-data.mv-data)
-            record.label (db-pointer->id-at val-graph-key.mv-data 1)
-            record.ordinal (db-graph-data->ordinal val-graph-data.mv-data))
-          (i-array-add *result record)))
+            relation.left (db-pointer->id val-graph-key.mv-data)
+            relation.right (db-graph-data->id val-graph-data.mv-data)
+            relation.label (db-pointer->id-at val-graph-key.mv-data 1)
+            relation.ordinal (db-graph-data->ordinal val-graph-data.mv-data))
+          (i-array-add *result relation)))
       reduce-count
       (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
       (if db-mdb-status-is-success (goto each-data)
@@ -604,7 +591,6 @@
     (if db-mdb-status-is-success (goto each-key)
       db-mdb-status-expect-notfound))
   (label exit
-    (set selection:status status)
     (return status)))
 
 (define (db-graph-select txn left right label ordinal offset selection)
@@ -630,9 +616,7 @@
     (i-array-set-null selection:right))
   (if label (set selection:label *label)
     (i-array-set-null selection:label))
-  (set
-    selection:status status
-    selection:ordinal ordinal)
+  (set selection:ordinal ordinal)
   (if left
     (if ordinal
       (begin
@@ -677,14 +661,12 @@
       (set selection:options (bit-xor db-selection-flag-skip selection:options))))
   (label exit
     db-mdb-status-notfound-if-notfound
-    (set selection:status status)
     (return status)))
 
 (define (db-graph-read selection count result)
   (status-t db-graph-selection-t* db-count-t db-relations-t*)
   "result memory is to be allocated by the caller"
   status-declare
-  (status-require selection:status)
   (set status
     ( (convert-type selection:reader db-graph-reader-t)
       selection

@@ -156,7 +156,7 @@ status_t test_graph_read(db_env_t* env) {
   db_txn_declare(env, txn);
   test_helper_graph_read_data_t data;
   status_require((test_helper_graph_read_setup(env, common_element_count, common_element_count, common_label_count, (&data))));
-  db_txn_begin((&txn));
+  status_require((db_txn_begin((&txn))));
   status_require((test_helper_graph_read_one(txn, data, 0, 0, 0, 0, 0)));
   status_require((test_helper_graph_read_one(txn, data, 1, 0, 0, 0, 0)));
   status_require((test_helper_graph_read_one(txn, data, 0, 1, 0, 0, 0)));
@@ -280,10 +280,10 @@ status_t test_node_select(db_env_t* env) {
   db_txn_declare(env, txn);
   i_array_declare(ids, db_ids_t);
   i_array_declare(nodes, db_nodes_t);
+  db_node_selection_declare(selection);
   uint8_t value_1;
   uint8_t matcher_state;
   db_node_value_t node_value;
-  db_node_selection_t selection;
   uint32_t btree_size_before_delete;
   uint32_t btree_size_after_delete;
   db_type_t* type;
@@ -354,10 +354,51 @@ status_t test_helper_dbi_entry_count(db_txn_t txn, MDB_dbi dbi, size_t* result) 
 exit:
   return (status);
 };
+void display_id_bits(db_id_t a) {
+  db_id_t index;
+  printf("%u", (1 & a));
+  for (index = 1; (index < (8 * sizeof(db_id_t))); index = (1 + index)) {
+    printf("%u", (((((db_id_t)(1)) << index) & a) ? 1 : 0));
+  };
+  printf("\n");
+};
+void display_int8_bits(int8_t a) {
+  uint8_t index;
+  printf("%u", (1 & a));
+  for (index = 1; (index < (8 * sizeof(int8_t))); index = (1 + index)) {
+    printf("%u", (((((uint8_t)(1)) << index) & a) ? 1 : 0));
+  };
+  printf("\n");
+};
+/** float data currently not implemented because it is unknown how to store it in the id */
+status_t test_node_virtual(db_env_t* env) {
+  status_declare;
+  test_helper_assert("configured sizes", ((sizeof(db_id_t) - sizeof(db_type_id_t)) >= sizeof(float)));
+  db_type_t* type;
+  db_id_t id;
+  int8_t data_int;
+  uint8_t data_uint;
+  float data_float32;
+  data_uint = 123;
+  data_int = -123;
+  db_field_t fields[1];
+  db_field_set((fields[0]), db_field_type_int8, 0, 0);
+  status_require((db_type_create(env, "test-type-v", fields, 1, db_type_flag_virtual, (&type))));
+  test_helper_assert("db-type-is-virtual", (db_type_is_virtual(type)));
+  id = db_node_virtual((type->id), data_int);
+  test_helper_assert("db-node-is-virtual int", (db_node_is_virtual(env, id)));
+  test_helper_assert("db-node-virtual-data int", (data_int == ((int8_t)(db_node_virtual_data(id)))));
+  id = db_node_virtual((type->id), data_uint);
+  test_helper_assert("db-node-is-virtual uint", (db_node_is_virtual(env, id)));
+  test_helper_assert("db-node-virtual-data uint", (data_uint == ((uint8_t)(db_node_virtual_data(id)))));
+exit:
+  return (status);
+};
 status_t test_index(db_env_t* env) {
   status_declare;
   db_txn_declare(env, txn);
   i_array_declare(ids, db_ids_t);
+  db_index_selection_declare(selection);
   db_fields_len_t fields[2] = { 1, 2 };
   db_fields_len_t fields_len;
   db_type_t* type;
@@ -370,7 +411,6 @@ status_t test_index(db_env_t* env) {
   size_t key_size;
   db_id_t* node_ids;
   uint32_t node_ids_len;
-  db_index_selection_t selection;
   uint8_t* index_name_expected = "i-1-1-2";
   fields_len = 2;
   status_require((test_helper_create_type_1(env, (&type))));
@@ -398,7 +438,7 @@ status_t test_index(db_env_t* env) {
   index = db_index_get(type, fields, fields_len);
   test_helper_assert("index-get not null 2", index);
   /* test index select */
-  db_txn_begin((&txn));
+  status_require((db_txn_begin((&txn))));
   status_require((db_index_select(txn, (*index), (values[1]), (&selection))));
   db_ids_new(4, (&ids));
   status_require_read((db_index_read(selection, 2, (&ids))));
@@ -409,14 +449,14 @@ status_t test_index(db_env_t* env) {
   status.id = status_id_success;
   db_index_selection_finish((&selection));
   db_txn_abort((&txn));
-  db_txn_begin((&txn));
+  status_require((db_txn_begin((&txn))));
   status_require((db_index_rebuild(env, index)));
   status_require((db_index_select(txn, (*index), (values[0]), (&selection))));
   i_array_clear(ids);
   status_require_read((db_index_read(selection, 1, (&ids))));
   test_helper_assert("index-select type-id 1", ((1 == i_array_length(ids)) && (type->id == db_id_type((i_array_get(ids))))));
   db_txn_abort((&txn));
-  db_txn_begin((&txn));
+  status_require((db_txn_begin((&txn))));
   db_node_index_selection_declare(node_index_selection);
   status_require((db_node_index_select(txn, (*index), (values[0]), (&node_index_selection))));
   db_node_index_selection_finish((&node_index_selection));
@@ -429,7 +469,19 @@ int main() {
   db_env_t* env;
   status_declare;
   db_env_new((&env));
+  test_helper_test_one(test_node_virtual, env);
+  test_helper_test_one(test_open_empty, env);
+  test_helper_test_one(test_statistics, env);
+  test_helper_test_one(test_id_construction, env);
+  test_helper_test_one(test_sequence, env);
+  test_helper_test_one(test_type_create_get_delete, env);
+  test_helper_test_one(test_type_create_many, env);
+  test_helper_test_one(test_open_nonempty, env);
   test_helper_test_one(test_graph_read, env);
+  test_helper_test_one(test_graph_delete, env);
+  test_helper_test_one(test_node_create, env);
+  test_helper_test_one(test_node_select, env);
+  test_helper_test_one(test_index, env);
 exit:
   if (status_is_success) {
     printf(("--\ntests finished successfully.\n"));

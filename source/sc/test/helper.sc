@@ -22,14 +22,14 @@
 
 (pre-define (test-helper-define-relations-contains-at field-name)
   (begin
-    "define a function that searches for an id in an array of records at field"
-    (define ((pre-concat db-debug-relations-contains-at_ field-name) records id)
+    "define a function that searches for an id in an array of relations at field"
+    (define ((pre-concat db-debug-relations-contains-at_ field-name) relations id)
       (boolean db-relations-t db-id-t)
       (declare record db-relation-t)
-      (while (i-array-in-range records)
-        (set record (i-array-get records))
+      (while (i-array-in-range relations)
+        (set record (i-array-get relations))
         (if (= id record.field-name) (return #t))
-        (i-array-forward records))
+        (i-array-forward relations))
       (return #f))))
 
 (pre-define (test-helper-define-relation-get field-name)
@@ -42,7 +42,7 @@
   (type
     (struct
       (txn db-txn-t)
-      (records db-relations-t)
+      (relations db-relations-t)
       (e-left db-ids-t)
       (e-right db-ids-t)
       (e-label db-ids-t)
@@ -102,16 +102,15 @@
 (define (test-helper-display-all-relations txn left-count right-count label-count)
   (status-t db-txn-t uint32-t uint32-t uint32-t)
   status-declare
-  (declare
-    records db-relations-t
-    state db-graph-selection-t)
-  (status-require (db-relations-new (* left-count right-count label-count) &records))
-  (status-require-read (db-graph-select txn 0 0 0 0 0 &state))
-  (status-require-read (db-graph-read &state 0 &records))
+  (db-graph-selection-declare selection)
+  (i-array-declare relations db-relations-t)
+  (status-require (db-relations-new (* left-count right-count label-count) &relations))
+  (status-require-read (db-graph-select txn 0 0 0 0 0 &selection))
+  (status-require-read (db-graph-read &selection 0 &relations))
   (printf "all ")
-  (db-graph-selection-finish &state)
-  (db-debug-log-relations records)
-  (i-array-free records)
+  (db-graph-selection-finish &selection)
+  (db-debug-log-relations relations)
+  (i-array-free relations)
   (label exit
     (return status)))
 
@@ -318,9 +317,9 @@
     (test-helper-calculate-relation-count
       (i-array-length left) (i-array-length right) (i-array-length label))))
 
-(define (test-helper-graph-read-records-validate-one name e-ids records)
+(define (test-helper-graph-read-relations-validate-one name e-ids relations)
   (status-t uint8-t* db-ids-t db-relations-t)
-  "test if the result records contain all filter-ids,
+  "test if the result relations contain all filter-ids,
   and the filter-ids contain all result record values for field \"name\"."
   status-declare
   (declare
@@ -339,34 +338,36 @@
       (set
         contains-at db-debug-relations-contains-at-label
         record-get test-helper-relation-get-label)))
-  (while (i-array-in-range records)
-    (if (not (db-ids-contains e-ids (record-get (i-array-get records))))
+  (while (i-array-in-range relations)
+    (if (not (db-ids-contains e-ids (record-get (i-array-get relations))))
       (begin
-        (printf "\n result records contain inexistant %s ids\n" name)
-        ;(db-debug-log-relations records)
+        (printf "\n result relations contain inexistant %s ids\n" name)
+        ;(db-debug-log-relations relations)
         (status-set-id-goto 1)))
-    (i-array-forward records))
-  (i-array-rewind records)
+    (i-array-forward relations))
+  (i-array-rewind relations)
   (while (i-array-in-range e-ids)
-    (if (not (contains-at records (i-array-get e-ids)))
+    (if (not (contains-at relations (i-array-get e-ids)))
       (begin
-        (printf "\n  %s result records do not contain all existing-ids\n" name)
-        ;(db-debug-log-relations records)
+        (printf "\n  %s result relations do not contain all existing-ids\n" name)
+        ;(db-debug-log-relations relations)
         (status-set-id-goto 2)))
     (i-array-forward e-ids))
   (label exit
     (return status)))
 
-(define (test-helper-graph-read-records-validate data) (status-t test-helper-graph-read-data-t)
+(define (test-helper-graph-read-relations-validate data) (status-t test-helper-graph-read-data-t)
   status-declare
-  (status-require (test-helper-graph-read-records-validate-one "left" data.e-left data.records))
-  (status-require (test-helper-graph-read-records-validate-one "right" data.e-right data.records))
-  (status-require (test-helper-graph-read-records-validate-one "label" data.e-label data.records))
+  (status-require (test-helper-graph-read-relations-validate-one "left" data.e-left data.relations))
+  (status-require
+    (test-helper-graph-read-relations-validate-one "right" data.e-right data.relations))
+  (status-require
+    (test-helper-graph-read-relations-validate-one "label" data.e-label data.relations))
   (label exit
     (return status)))
 
-(define (test-helper-default-ordinal-generator state) (db-ordinal-t void*)
-  (define ordinal-pointer db-ordinal-t* state)
+(define (test-helper-default-ordinal-generator ordinal-state) (db-ordinal-t void*)
+  (define ordinal-pointer db-ordinal-t* ordinal-state)
   (define result db-ordinal-t (+ 1 (pointer-get ordinal-pointer)))
   (set (pointer-get ordinal-pointer) result)
   (return result))
@@ -406,11 +407,11 @@
 (define (test-helper-graph-read-one txn data use-left use-right use-label use-ordinal offset)
   (status-t db-txn-t test-helper-graph-read-data-t boolean boolean boolean boolean uint32-t)
   status-declare
+  (db-graph-selection-declare selection)
   (declare
     left-pointer db-ids-t*
     right-pointer db-ids-t*
     label-pointer db-ids-t*
-    state db-graph-selection-t
     ordinal-min uint32-t
     ordinal-max uint32-t
     ordinal-condition db-ordinal-condition-t
@@ -452,32 +453,32 @@
   (printf "  %s" reader-suffix-string)
   (free reader-suffix-string)
   (status-require
-    (db-graph-select txn left-pointer right-pointer label-pointer ordinal offset &state))
-  (status-require-read (db-graph-read &state 2 &data.records))
-  (status-require-read (db-graph-read &state 0 &data.records))
+    (db-graph-select txn left-pointer right-pointer label-pointer ordinal offset &selection))
+  (status-require (db-graph-read &selection 2 &data.relations))
+  (status-require-read (db-graph-read &selection 0 &data.relations))
   (if (= status.id db-status-id-notfound) (set status.id status-id-success)
     (begin
       (printf "\n  final read result does not indicate that there is no more data")
       (status-set-id-goto 1)))
-  (if (not (= (i-array-length data.records) expected-count))
+  (if (not (= (i-array-length data.relations) expected-count))
     (begin
       (printf
         "\n  expected %lu read %lu. ordinal min %d max %d\n"
         expected-count
-        (i-array-length data.records)
+        (i-array-length data.relations)
         (if* ordinal ordinal-min
           0)
         (if* ordinal ordinal-max
           0))
       (printf "read ")
-      (db-debug-log-relations data.records)
+      (db-debug-log-relations data.relations)
       (test-helper-display-all-relations
         txn data.e-left-count data.e-right-count data.e-label-count)
       (status-set-id-goto 1)))
-  (if (not ordinal) (status-require (test-helper-graph-read-records-validate data)))
-  (db-graph-selection-finish &state)
+  (if (not ordinal) (status-require (test-helper-graph-read-relations-validate data)))
+  (db-graph-selection-finish &selection)
   db-status-success-if-notfound
-  (i-array-rewind data.records)
+  (i-array-rewind data.relations)
   (label exit
     (printf "\n")
     (return status)))
@@ -491,7 +492,7 @@
   (i-array-declare ne-left db-ids-t)
   (i-array-declare ne-right db-ids-t)
   (i-array-declare ne-label db-ids-t)
-  (status-require (db-relations-new (* e-left-count e-right-count e-label-count) &r:records))
+  (status-require (db-relations-new (* e-left-count e-right-count e-label-count) &r:relations))
   (status-require (db-ids-new e-left-count &r:e-left))
   (status-require (db-ids-new e-right-count &r:e-right))
   (status-require (db-ids-new e-label-count &r:e-label))
@@ -519,7 +520,7 @@
     (return status)))
 
 (define (test-helper-graph-read-teardown data) (void test-helper-graph-read-data-t*)
-  (i-array-free data:records)
+  (i-array-free data:relations)
   (i-array-free data:e-left)
   (i-array-free data:e-right)
   (i-array-free data:e-label)
@@ -549,9 +550,9 @@
     (i-array-declare left db-ids-t)
     (i-array-declare right db-ids-t)
     (i-array-declare label db-ids-t)
-    (i-array-declare records db-relations-t)
+    (i-array-declare relations db-relations-t)
+    (db-graph-selection-declare selection)
     (declare
-      state db-graph-selection-t
       read-count-before-expected uint32-t
       btree-count-after-delete uint32-t
       btree-count-before-create uint32-t
@@ -570,7 +571,7 @@
     (status-require (db-ids-new data.e-left-count &left))
     (status-require (db-ids-new data.e-right-count &right))
     (status-require (db-ids-new data.e-label-count &label))
-    (db-relations-new (* data.e-left-count data.e-right-count data.e-label-count) &records)
+    (db-relations-new (* data.e-left-count data.e-right-count data.e-label-count) &relations)
     (status-require (db-txn-write-begin &txn))
     (test-helper-create-ids txn data.e-left-count &left)
     (test-helper-create-ids txn data.e-right-count &right)
@@ -605,20 +606,18 @@
           0)
         (if* use-ordinal ordinal
           0)
-        0 &state))
-    (sc-comment "check that readers can handle empty selections")
-    (status-require-read (db-graph-read &state 0 &records))
-    (db-graph-selection-finish &state)
+        0 &selection))
+    (db-graph-selection-finish &selection)
     (db-txn-abort &txn)
-    (if (not (= 0 (i-array-length records)))
+    (if (not (= 0 (i-array-length relations)))
       (begin
-        (printf "\n    failed deletion. %lu relations not deleted\n" (i-array-length records))
-        (db-debug-log-relations records)
+        (printf "\n    failed deletion. %lu relations not deleted\n" (i-array-length relations))
+        (db-debug-log-relations relations)
         ;(status-require (db-txn-begin &txn))
         ;(test-helper-display-all-relations txn common-element-count common-element-count common-label-count)
         ;(db-txn-abort &txn)
         (status-set-id-goto 1)))
-    (i-array-clear records)
+    (i-array-clear relations)
     (sc-comment
       "test only if not using ordinal condition because the expected counts arent estimated")
     (if (not (or use-ordinal (= btree-count-after-delete btree-count-before-create)))
@@ -628,11 +627,11 @@
           (- btree-count-after-delete btree-count-before-create))
         (status-require (db-txn-begin &txn))
         (db-debug-log-btree-counts txn)
-        (status-require-read (db-graph-select txn 0 0 0 0 0 &state))
-        (status-require-read (db-graph-read &state 0 &records))
+        (status-require-read (db-graph-select txn 0 0 0 0 0 &selection))
+        (status-require-read (db-graph-read &selection 0 &relations))
         (printf "all remaining ")
-        (db-debug-log-relations records)
-        (db-graph-selection-finish &state)
+        (db-debug-log-relations relations)
+        (db-graph-selection-finish &selection)
         (db-txn-abort &txn)
         (status-set-id-goto 1)))
     db-status-success-if-notfound
@@ -641,5 +640,5 @@
       (i-array-free left)
       (i-array-free right)
       (i-array-free label)
-      (i-array-free records)
+      (i-array-free relations)
       (return status))))

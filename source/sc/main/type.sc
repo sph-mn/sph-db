@@ -71,6 +71,8 @@
     type-id db-type-id-t
     val-data MDB-val
     val-key MDB-val)
+  (if (and (bit-and db-type-flag-virtual flags) (not (= 1 fields-len)))
+    (status-set-id-goto db-status-id-not-implemented))
   (sc-comment "check if type with name exists")
   (if (db-type-get txn.env name) (status-set-both-goto db-status-group-db db-status-id-duplicate))
   (sc-comment "check name length")

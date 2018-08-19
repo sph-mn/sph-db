@@ -190,7 +190,7 @@
   (status-require
     (test-helper-graph-read-setup
       env common-element-count common-element-count common-label-count &data))
-  (db-txn-begin &txn)
+  (status-require (db-txn-begin &txn))
   (status-require (test-helper-graph-read-one txn data 0 0 0 0 0))
   (status-require (test-helper-graph-read-one txn data 1 0 0 0 0))
   (status-require (test-helper-graph-read-one txn data 0 1 0 0 0))
@@ -360,11 +360,11 @@
   (db-txn-declare env txn)
   (i-array-declare ids db-ids-t)
   (i-array-declare nodes db-nodes-t)
+  (db-node-selection-declare selection)
   (declare
     value-1 uint8-t
     matcher-state uint8-t
     node-value db-node-value-t
-    selection db-node-selection-t
     btree-size-before-delete uint32-t
     btree-size-after-delete uint32-t
     type db-type-t*
@@ -439,10 +439,75 @@
   (label exit
     (return status)))
 
+#;(define (test-nested-transaction env) (status-t db-env-t*)
+  "wip. -30782 MDB_BAD_TXN: Transaction must abort, has a child, or is invalid"
+  status-declare
+  (declare
+    t1 MDB-txn*
+    t2 MDB-txn*)
+  (db-mdb-status-require (mdb-txn-begin env:mdb-env 0 0 &t1))
+  (debug-log "%d" 0)
+  (db-mdb-status-require (mdb-txn-begin env:mdb-env t1 0 &t2))
+  (debug-log "%d" 1)
+  ;(status-require (db-txn-write-begin &parent))
+  ;(status-require (db-txn-write-begin-child parent &child))
+  ;(status-require (db-txn-commit &child))
+  ;(status-require (db-txn-commit &parent))
+  (label exit
+    (return status)))
+
+(define (display-id-bits a) (void db-id-t)
+  (declare index db-id-t)
+  (printf "%u" (bit-and 1 a))
+  (for ((set index 1) (< index (* 8 (sizeof db-id-t))) (set index (+ 1 index)))
+    (printf "%u"
+      (if* (bit-and (bit-shift-left (convert-type 1 db-id-t) index) a) 1
+        0)))
+  (printf "\n"))
+
+(define (display-int8-bits a) (void int8-t)
+  (declare index uint8-t)
+  (printf "%u" (bit-and 1 a))
+  (for ((set index 1) (< index (* 8 (sizeof int8-t))) (set index (+ 1 index)))
+    (printf "%u"
+      (if* (bit-and (bit-shift-left (convert-type 1 uint8-t) index) a) 1
+        0)))
+  (printf "\n"))
+
+(define (test-node-virtual env) (status-t db-env-t*)
+  "float data currently not implemented because it is unknown how to store it in the id"
+  status-declare
+  (test-helper-assert
+    "configured sizes" (>= (- (sizeof db-id-t) (sizeof db-type-id-t)) (sizeof float)))
+  (declare
+    type db-type-t*
+    id db-id-t
+    data-int int8-t
+    data-uint uint8-t
+    data-float32 float)
+  (set
+    data-uint 123
+    data-int -123)
+  (declare fields (array db-field-t 1))
+  (db-field-set (array-get fields 0) db-field-type-int8 0 0)
+  (status-require (db-type-create env "test-type-v" fields 1 db-type-flag-virtual &type))
+  (test-helper-assert "db-type-is-virtual" (db-type-is-virtual type))
+  (set id (db-node-virtual type:id data-int))
+  (test-helper-assert "db-node-is-virtual int" (db-node-is-virtual env id))
+  (test-helper-assert
+    "db-node-virtual-data int" (= data-int (convert-type (db-node-virtual-data id) int8-t)))
+  (set id (db-node-virtual type:id data-uint))
+  (test-helper-assert "db-node-is-virtual uint" (db-node-is-virtual env id))
+  (test-helper-assert
+    "db-node-virtual-data uint" (= data-uint (convert-type (db-node-virtual-data id) uint8-t)))
+  (label exit
+    (return status)))
+
 (define (test-index env) (status-t db-env-t*)
   status-declare
   (db-txn-declare env txn)
   (i-array-declare ids db-ids-t)
+  (db-index-selection-declare selection)
   (declare
     fields (array db-fields-len-t 2 1 2)
     fields-len db-fields-len-t
@@ -455,8 +520,7 @@
     key-data void*
     key-size size-t
     node-ids db-id-t*
-    node-ids-len uint32-t
-    selection db-index-selection-t)
+    node-ids-len uint32-t)
   (define index-name-expected uint8-t* "i-1-1-2")
   (set fields-len 2)
   (status-require (test-helper-create-type-1 env &type))
@@ -485,7 +549,7 @@
   (set index (db-index-get type fields fields-len))
   (test-helper-assert "index-get not null 2" index)
   (sc-comment "test index select")
-  (db-txn-begin &txn)
+  (status-require (db-txn-begin &txn))
   (status-require (db-index-select txn *index (array-get values 1) &selection))
   (db-ids-new 4 &ids)
   (status-require-read (db-index-read selection 2 &ids))
@@ -496,7 +560,7 @@
   (set status.id status-id-success)
   (db-index-selection-finish &selection)
   (db-txn-abort &txn)
-  (db-txn-begin &txn)
+  (status-require (db-txn-begin &txn))
   (status-require (db-index-rebuild env index))
   (status-require (db-index-select txn *index (array-get values 0) &selection))
   (i-array-clear ids)
@@ -505,7 +569,7 @@
     "index-select type-id 1"
     (and (= 1 (i-array-length ids)) (= type:id (db-id-type (i-array-get ids)))))
   (db-txn-abort &txn)
-  (db-txn-begin &txn)
+  (status-require (db-txn-begin &txn))
   (db-node-index-selection-declare node-index-selection)
   (status-require (db-node-index-select txn *index (array-get values 0) &node-index-selection))
   (db-node-index-selection-finish &node-index-selection)
@@ -518,18 +582,20 @@
   (declare env db-env-t*)
   status-declare
   (db-env-new &env)
-  ;(test-helper-test-one test-open-empty env)
-  ;(test-helper-test-one test-statistics env)
-  ;(test-helper-test-one test-id-construction env)
-  ;(test-helper-test-one test-sequence env)
-  ;(test-helper-test-one test-type-create-get-delete env)
-  ;(test-helper-test-one test-type-create-many env)
-  ;(test-helper-test-one test-open-nonempty env)
+  (test-helper-test-one test-node-virtual env)
+  ;(test-helper-test-one test-nested-transaction env)
+  (test-helper-test-one test-open-empty env)
+  (test-helper-test-one test-statistics env)
+  (test-helper-test-one test-id-construction env)
+  (test-helper-test-one test-sequence env)
+  (test-helper-test-one test-type-create-get-delete env)
+  (test-helper-test-one test-type-create-many env)
+  (test-helper-test-one test-open-nonempty env)
   (test-helper-test-one test-graph-read env)
-  ;(test-helper-test-one test-graph-delete env)
-  ;(test-helper-test-one test-node-create env)
-  ;(test-helper-test-one test-node-select env)
-  ;(test-helper-test-one test-index env)
+  (test-helper-test-one test-graph-delete env)
+  (test-helper-test-one test-node-create env)
+  (test-helper-test-one test-node-select env)
+  (test-helper-test-one test-index env)
   (label exit
     (if status-is-success (printf "--\ntests finished successfully.\n")
       (printf "\ntests failed. %d %s\n" status.id (db-status-description status)))
