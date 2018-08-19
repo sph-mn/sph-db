@@ -147,6 +147,9 @@ status_require(db_node_create(txn, values, &id_2));
 db_node_values_free(&values);
 ```
 
+## the i_array types
+
+
 ## read nodes
 if no results are found or the end of results has been reached, status is set to ``db_status_id_notfound``. here is one example of how to handle this
 ```c
@@ -578,6 +581,7 @@ these values can be set before compilation in ``c-precompiled/main/config.c``. o
 |db_fields_len_t|uint8_t|for field indices. limits the number of possible fields|
 |db_indices_len_t|uint8_t|limits the number of possible indices per type|
 |db_count_t|uint32_t|for values like the count of elements to read. does not need to be larger than half size_t|
+|db_batch_len|uint32_t|number of elements to process at once intternally for example in db-node-select-delete. mostly db-id-t|
 
 # additional features and caveats
 * the maximum number of type creations is currently 65535
