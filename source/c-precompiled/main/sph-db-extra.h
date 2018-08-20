@@ -206,6 +206,7 @@ imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
   db_graph_data_set_id(id)
 status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result);
 status_t db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result);
+void db_debug_log_id_bits(db_id_t a);
 void db_debug_log_ids(db_ids_t a);
 void db_debug_log_ids_set(imht_set_t a);
 void db_debug_log_relations(db_relations_t records);

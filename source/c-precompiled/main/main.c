@@ -101,6 +101,14 @@ status_t db_txn_commit(db_txn_t* a) {
 exit:
   return (status);
 };
+void db_debug_log_id_bits(db_id_t a) {
+  db_id_t index;
+  printf("%u", (1 & a));
+  for (index = 1; (index < (8 * sizeof(db_id_t))); index = (1 + index)) {
+    printf("%u", (((((db_id_t)(1)) << index) & a) ? 1 : 0));
+  };
+  printf("\n");
+};
 /** display an ids array */
 void db_debug_log_ids(db_ids_t a) {
   printf(("ids (%lu):"), (i_array_length(a)));
@@ -159,6 +167,12 @@ uint8_t db_field_type_size(uint8_t a) {
   } else {
     return (0);
   };
+};
+/** create a virtual node with data of any type equal or smaller in size than db-size-id-element */
+db_id_t db_node_virtual_from_any(db_type_id_t type_id, void* data, uint8_t data_size) {
+  db_id_t id;
+  memcpy((&id), data, data_size);
+  return ((db_id_add_type(id, type_id)));
 };
 status_t db_ids_to_set(db_ids_t a, imht_set_t** result) {
   status_declare;
@@ -320,7 +334,7 @@ void db_close(db_env_t* env) {
   if (env->root) {
     free_and_set_null((env->root));
   };
-  env->open = 0;
+  env->is_open = 0;
   pthread_mutex_destroy((&(env->mutex)));
 };
 #include "./open.c"

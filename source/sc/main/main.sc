@@ -102,6 +102,15 @@
   (label exit
     (return status)))
 
+(define (db-debug-log-id-bits a) (void db-id-t)
+  (declare index db-id-t)
+  (printf "%u" (bit-and 1 a))
+  (for ((set index 1) (< index (* 8 (sizeof db-id-t))) (set index (+ 1 index)))
+    (printf "%u"
+      (if* (bit-and (bit-shift-left (convert-type 1 db-id-t) index) a) 1
+        0)))
+  (printf "\n"))
+
 (define (db-debug-log-ids a) (void db-ids-t)
   "display an ids array"
   (printf "ids (%lu):" (i-array-length a))
@@ -161,6 +170,12 @@
     ((db-field-type-int16 db-field-type-uint16 db-field-type-string16) (return 2))
     ((db-field-type-int8 db-field-type-uint8 db-field-type-string8) (return 1))
     (else (return 0))))
+
+(define (db-node-virtual-from-any type-id data data-size) (db-id-t db-type-id-t void* uint8-t)
+  "create a virtual node with data of any type equal or smaller in size than db-size-id-element"
+  (declare id db-id-t)
+  (memcpy &id data data-size)
+  (return (db-id-add-type id type-id)))
 
 (define (db-ids->set a result) (status-t db-ids-t imht-set-t**)
   status-declare
@@ -312,7 +327,7 @@
       (set env:mdb-env 0)))
   (db-free-env-types &env:types env:types-len)
   (if env:root (free-and-set-null env:root))
-  (set env:open #f)
+  (set env:is-open #f)
   (pthread-mutex-destroy &env:mutex))
 
 (pre-include "./open.c" "./type.c" "./index.c" "./node.c" "./graph.c")

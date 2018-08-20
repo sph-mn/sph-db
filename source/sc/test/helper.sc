@@ -143,7 +143,7 @@
 
 (define (test-helper-reset env re-use) (status-t db-env-t* boolean)
   status-declare
-  (if env:open (db-close env))
+  (if env:is-open (db-close env))
   (if (and (not re-use) (file-exists? test-helper-path-data))
     (begin
       (set status.id (system (pre-string-concat "rm " test-helper-path-data)))

@@ -7,6 +7,7 @@
     db_close;
     db_debug_count_all_btree_entries;
     db_debug_log_btree_counts;
+    db_debug_log_id_bits;
     db_debug_log_ids;
     db_debug_log_ids_set;
     db_debug_log_relations;
@@ -45,6 +46,7 @@
     db_node_values_new;
     db_node_values_set;
     db_node_values_to_data;
+    db_node_virtual_from_any;
     db_open;
     db_open_options_set_defaults;
     db_read;

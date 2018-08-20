@@ -261,6 +261,42 @@ typedef struct {
 i_array_declare_type(db_ids_t, db_id_t);
 i_array_declare_type(db_nodes_t, db_node_t);
 i_array_declare_type(db_relations_t, db_relation_t);
+#define db_ids_add i_array_add
+#define db_ids_clear i_array_clear
+#define db_ids_forward i_array_forward
+#define db_ids_free i_array_free
+#define db_ids_get i_array_get
+#define db_ids_get_at i_array_get_at
+#define db_ids_in_range i_array_in_range
+#define db_ids_length i_array_length
+#define db_ids_max_length i_array_max_length
+#define db_ids_remove i_array_remove
+#define db_ids_rewind i_array_rewind
+#define db_ids_set_null i_array_set_null
+#define db_relations_add i_array_add
+#define db_relations_clear i_array_clear
+#define db_relations_forward i_array_forward
+#define db_relations_free i_array_free
+#define db_relations_get i_array_get
+#define db_relations_get_at i_array_get_at
+#define db_relations_in_range i_array_in_range
+#define db_relations_length i_array_length
+#define db_relations_max_length i_array_max_length
+#define db_relations_remove i_array_remove
+#define db_relations_rewind i_array_rewind
+#define db_relations_set_null i_array_set_null
+#define db_nodes_add i_array_add
+#define db_nodes_clear i_array_clear
+#define db_nodes_forward i_array_forward
+#define db_nodes_free i_array_free
+#define db_nodes_get i_array_get
+#define db_nodes_get_at i_array_get_at
+#define db_nodes_in_range i_array_in_range
+#define db_nodes_length i_array_length
+#define db_nodes_max_length i_array_max_length
+#define db_nodes_remove i_array_remove
+#define db_nodes_rewind i_array_rewind
+#define db_nodes_set_null i_array_set_null
 #define boolean uint8_t
 #define db_size_graph_data (sizeof(db_ordinal_t) + sizeof(db_id_t))
 #define db_size_graph_key (2 * sizeof(db_id_t))
@@ -284,18 +320,24 @@ i_array_declare_type(db_relations_t, db_relation_t);
 #define db_field_type_uint64 128
 #define db_field_type_uint8 32
 #define db_type_flag_virtual 1
+#define db_ids_declare(name) i_array_declare(name, db_ids_t)
+#define db_relations_declare(name) i_array_declare(name, db_relations_t)
+#define db_nodes_declare(name) i_array_declare(name, db_nodes_t)
 #define db_type_get_by_id(env, type_id) (type_id + env->types)
 #define db_type_is_virtual(type) (db_type_flag_virtual & type->flags)
 #define db_node_is_virtual(env, node_id) db_type_is_virtual((db_type_get_by_id(env, (db_id_type(node_id)))))
+/** convert id and type-id to db-id-t to be able to pass c literals which might be initialised with some other type */
 #define db_id_add_type(id, type_id) (db_id_element(((db_id_t)(id))) | (((db_id_t)(type_id)) << (8 * db_size_element_id)))
 /** get the type id part from a node id. a node id without element id */
 #define db_id_type(id) (id >> (8 * db_size_element_id))
 /** get the element id part from a node id. a node id without type id */
 #define db_id_element(id) (db_id_element_mask & id)
-/** get the data associated with a virtual node as a db-id-t */
-#define db_node_virtual_data(id) db_id_element(id)
-/** return a virtual node id */
-#define db_node_virtual(type_id, data) db_id_add_type(data, type_id)
+/** create a virtual node, which is a db-id-t */
+#define db_node_virtual_from_uint(type_id, data) db_id_add_type(data, type_id)
+#define db_node_virtual_from_int db_node_virtual_from_uint
+/** get the data associated with a virtual node as a db-id-t
+    this only works because the target type should be equal or smaller than db-size-id-element */
+#define db_node_virtual_data(id, type_name) *((type_name*)(&id))
 #define db_txn_declare(env, name) db_txn_t name = { 0, env }
 #define db_txn_abort_if_active(a) \
   if (a.mdb_txn) { \
@@ -357,10 +399,11 @@ typedef struct {
   MDB_dbi dbi_graph_rl;
   MDB_dbi dbi_system;
   MDB_env* mdb_env;
-  boolean open;
+  boolean is_open;
   uint8_t* root;
   pthread_mutex_t mutex;
   int maxkeysize;
+  uint32_t format;
   db_type_t* types;
   db_type_id_t types_len;
 } db_env_t;
@@ -461,6 +504,7 @@ status_t db_node_read(db_node_selection_t selection, db_count_t count, db_nodes_
 status_t db_node_skip(db_node_selection_t selection, db_count_t count);
 void db_node_selection_finish(db_node_selection_t* selection);
 status_t db_node_update(db_txn_t txn, db_id_t id, db_node_values_t values);
+db_id_t db_node_virtual_from_any(db_type_id_t type_id, void* data, uint8_t data_size);
 status_t db_txn_write_begin(db_txn_t* a);
 status_t db_txn_begin(db_txn_t* a);
 status_t db_txn_commit(db_txn_t* a);
@@ -474,6 +518,6 @@ status_t db_index_rebuild(db_env_t* env, db_index_t* index);
 status_t db_index_read(db_index_selection_t selection, db_count_t count, db_ids_t* result_ids);
 void db_index_selection_finish(db_index_selection_t* selection);
 status_t db_index_select(db_txn_t txn, db_index_t index, db_node_values_t values, db_index_selection_t* result);
-status_t db_node_index_read(db_node_index_selection_t selection, db_count_t count, db_ids_t temp_ids, db_nodes_t* result_nodes);
+status_t db_node_index_read(db_node_index_selection_t selection, db_count_t count, db_nodes_t* result_nodes);
 status_t db_node_index_select(db_txn_t txn, db_index_t index, db_node_values_t values, db_node_index_selection_t* result);
 void db_node_index_selection_finish(db_node_index_selection_t* selection);

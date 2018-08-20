@@ -63,11 +63,16 @@
   (declare
     data uint8-t*
     label uint8-t
-    format (array uint8-t (3) (sizeof db-id-t) (sizeof db-type-id-t) (sizeof db-ordinal-t))
+    format-data uint32-t
+    format uint8-t*
     val-key MDB-val
     val-data MDB-val
     stat-info MDB-stat)
   (set
+    format (convert-type &format-data uint8-t*)
+    (array-get format 0) (sizeof db-id-t)
+    (array-get format 1) (sizeof db-type-id-t)
+    (array-get format 2) (sizeof db-ordinal-t)
     val-key.mv-size 1
     val-data.mv-size 3
     label db-system-label-format
@@ -102,6 +107,7 @@
       (sc-comment "no format entry exists yet")
       (set val-data.mv-data format)
       (db-mdb-status-require (mdb-cursor-put system &val-key &val-data 0))))
+  (set txn.env:format format-data)
   (label exit
     (return status)))
 
@@ -510,7 +516,7 @@
   (if (not (> (sizeof db-id-t) (sizeof db-type-id-t)))
     (status-set-both-goto db-status-group-db db-status-id-max-type-id-size))
   (db-txn-declare env txn)
-  (if env:open (return status))
+  (if env:is-open (return status))
   (if (not path) (db-status-set-id-goto db-status-id-missing-argument-db-root))
   (if options-pointer (set options *options-pointer)
     (db-open-options-set-defaults &options))
@@ -522,7 +528,7 @@
   (status-require (db-open-graph txn))
   (status-require (db-txn-commit &txn))
   (pthread-mutex-init &env:mutex 0)
-  (set env:open #t)
+  (set env:is-open #t)
   (label exit
     (if status-is-failure
       (begin

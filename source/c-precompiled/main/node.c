@@ -402,10 +402,12 @@ exit:
   i_array_free(nodes);
   return (status);
 };
-status_t db_node_index_read(db_node_index_selection_t selection, db_count_t count, db_ids_t temp_ids, db_nodes_t* result_nodes) {
+status_t db_node_index_read(db_node_index_selection_t selection, db_count_t count, db_nodes_t* result_nodes) {
   status_declare;
-  status_require_read((db_index_read((selection.index_selection), count, (&temp_ids))));
-  status_require((db_node_get_internal((selection.nodes_cursor), temp_ids, result_nodes)));
+  db_ids_declare(ids);
+  db_ids_new(count, (&ids));
+  status_require_read((db_index_read((selection.index_selection), count, (&ids))));
+  status_require((db_node_get_internal((selection.nodes_cursor), ids, result_nodes)));
 exit:
   return (status);
 };

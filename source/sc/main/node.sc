@@ -424,11 +424,13 @@
     (i-array-free nodes)
     (return status)))
 
-(define (db-node-index-read selection count temp-ids result-nodes)
-  (status-t db-node-index-selection-t db-count-t db-ids-t db-nodes-t*)
+(define (db-node-index-read selection count result-nodes)
+  (status-t db-node-index-selection-t db-count-t db-nodes-t*)
   status-declare
-  (status-require-read (db-index-read selection.index-selection count &temp-ids))
-  (status-require (db-node-get-internal selection.nodes-cursor temp-ids result-nodes))
+  (db-ids-declare ids)
+  (db-ids-new count &ids)
+  (status-require-read (db-index-read selection.index-selection count &ids))
+  (status-require (db-node-get-internal selection.nodes-cursor ids result-nodes))
   (label exit
     (return status)))
 

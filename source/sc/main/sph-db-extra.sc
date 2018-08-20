@@ -56,6 +56,7 @@
   (db-sequence-next-system env result) (status-t db-env-t* db-type-id-t*)
   (db-sequence-next env type-id result) (status-t db-env-t* db-type-id-t db-id-t*)
   ; db-debug
+  (db-debug-log-id-bits a) (void db-id-t)
   (db-debug-log-ids a) (void db-ids-t)
   (db-debug-log-ids-set a) (void imht-set-t)
   (db-debug-log-relations records) (void db-relations-t)

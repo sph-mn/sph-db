@@ -11,7 +11,7 @@
 
 (define (test-open-empty env) (status-t db-env-t*)
   status-declare
-  (test-helper-assert "env.open is true" (= #t env:open))
+  (test-helper-assert "env.is_open is true" (= #t env:is-open))
   (test-helper-assert "env.root is set" (= 0 (strcmp env:root test-helper-db-root)))
   (label exit
     (return status)))
@@ -456,24 +456,6 @@
   (label exit
     (return status)))
 
-(define (display-id-bits a) (void db-id-t)
-  (declare index db-id-t)
-  (printf "%u" (bit-and 1 a))
-  (for ((set index 1) (< index (* 8 (sizeof db-id-t))) (set index (+ 1 index)))
-    (printf "%u"
-      (if* (bit-and (bit-shift-left (convert-type 1 db-id-t) index) a) 1
-        0)))
-  (printf "\n"))
-
-(define (display-int8-bits a) (void int8-t)
-  (declare index uint8-t)
-  (printf "%u" (bit-and 1 a))
-  (for ((set index 1) (< index (* 8 (sizeof int8-t))) (set index (+ 1 index)))
-    (printf "%u"
-      (if* (bit-and (bit-shift-left (convert-type 1 uint8-t) index) a) 1
-        0)))
-  (printf "\n"))
-
 (define (test-node-virtual env) (status-t db-env-t*)
   "float data currently not implemented because it is unknown how to store it in the id"
   status-declare
@@ -487,19 +469,27 @@
     data-float32 float)
   (set
     data-uint 123
-    data-int -123)
+    data-int -123
+    data-float32 1.23)
   (declare fields (array db-field-t 1))
   (db-field-set (array-get fields 0) db-field-type-int8 0 0)
   (status-require (db-type-create env "test-type-v" fields 1 db-type-flag-virtual &type))
-  (test-helper-assert "db-type-is-virtual" (db-type-is-virtual type))
-  (set id (db-node-virtual type:id data-int))
-  (test-helper-assert "db-node-is-virtual int" (db-node-is-virtual env id))
-  (test-helper-assert
-    "db-node-virtual-data int" (= data-int (convert-type (db-node-virtual-data id) int8-t)))
-  (set id (db-node-virtual type:id data-uint))
-  (test-helper-assert "db-node-is-virtual uint" (db-node-is-virtual env id))
-  (test-helper-assert
-    "db-node-virtual-data uint" (= data-uint (convert-type (db-node-virtual-data id) uint8-t)))
+  (test-helper-assert "is-virtual" (db-type-is-virtual type))
+  (sc-comment "int")
+  (set id (db-node-virtual-from-int type:id data-int))
+  (test-helper-assert "is-virtual int" (db-node-is-virtual env id))
+  (test-helper-assert "type-id int" (= type:id (db-id-type id)))
+  (test-helper-assert "data int" (= data-int (db-node-virtual-data id int8-t)))
+  (sc-comment "uint")
+  (set id (db-node-virtual-from-uint type:id data-uint))
+  (test-helper-assert "is-virtual uint" (db-node-is-virtual env id))
+  (test-helper-assert "type-id uint" (= type:id (db-id-type id)))
+  (test-helper-assert "data uint" (= data-uint (db-node-virtual-data id uint8-t)))
+  (sc-comment "float")
+  (set id (db-node-virtual-from-any type:id &data-float32 (sizeof float)))
+  (test-helper-assert "is-virtual float" (db-node-is-virtual env id))
+  (test-helper-assert "type-id float" (= type:id (db-id-type id)))
+  (test-helper-assert "data float" (= data-float32 (db-node-virtual-data id float)))
   (label exit
     (return status)))
 
@@ -582,11 +572,10 @@
   (declare env db-env-t*)
   status-declare
   (db-env-new &env)
+  (test-helper-test-one test-id-construction env)
   (test-helper-test-one test-node-virtual env)
-  ;(test-helper-test-one test-nested-transaction env)
   (test-helper-test-one test-open-empty env)
   (test-helper-test-one test-statistics env)
-  (test-helper-test-one test-id-construction env)
   (test-helper-test-one test-sequence env)
   (test-helper-test-one test-type-create-get-delete env)
   (test-helper-test-one test-type-create-many env)

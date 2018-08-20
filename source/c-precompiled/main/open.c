@@ -55,10 +55,15 @@ status_t db_open_format(MDB_cursor* system, db_txn_t txn) {
   status_declare;
   uint8_t* data;
   uint8_t label;
-  uint8_t format[3] = { sizeof(db_id_t), sizeof(db_type_id_t), sizeof(db_ordinal_t) };
+  uint32_t format_data;
+  uint8_t* format;
   MDB_val val_key;
   MDB_val val_data;
   MDB_stat stat_info;
+  format = ((uint8_t*)(&format_data));
+  format[0] = sizeof(db_id_t);
+  format[1] = sizeof(db_type_id_t);
+  format[2] = sizeof(db_ordinal_t);
   val_key.mv_size = 1;
   val_data.mv_size = 3;
   label = db_system_label_format;
@@ -84,6 +89,7 @@ status_t db_open_format(MDB_cursor* system, db_txn_t txn) {
     val_data.mv_data = format;
     db_mdb_status_require((mdb_cursor_put(system, (&val_key), (&val_data), 0)));
   };
+  (txn.env)->format = format_data;
 exit:
   return (status);
 };
@@ -479,7 +485,7 @@ status_t db_open(uint8_t* path, db_open_options_t* options_pointer, db_env_t* en
     status_set_both_goto(db_status_group_db, db_status_id_max_type_id_size);
   };
   db_txn_declare(env, txn);
-  if (env->open) {
+  if (env->is_open) {
     return (status);
   };
   if (!path) {
@@ -498,7 +504,7 @@ status_t db_open(uint8_t* path, db_open_options_t* options_pointer, db_env_t* en
   status_require((db_open_graph(txn)));
   status_require((db_txn_commit((&txn))));
   pthread_mutex_init((&(env->mutex)), 0);
-  env->open = 1;
+  env->is_open = 1;
 exit:
   if (status_is_failure) {
     db_txn_abort_if_active(txn);

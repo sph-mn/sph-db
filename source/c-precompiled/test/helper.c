@@ -123,7 +123,7 @@ test_helper_define_relation_get(right);
 test_helper_define_relation_get(label);
 status_t test_helper_reset(db_env_t* env, boolean re_use) {
   status_declare;
-  if (env->open) {
+  if (env->is_open) {
     db_close(env);
   };
   if (!re_use && file_exists_p(test_helper_path_data)) {

@@ -7,7 +7,7 @@ uint32_t common_label_count = 3;
 #define db_env_types_extra_count 20
 status_t test_open_empty(db_env_t* env) {
   status_declare;
-  test_helper_assert(("env.open is true"), (1 == env->open));
+  test_helper_assert(("env.is_open is true"), (1 == env->is_open));
   test_helper_assert(("env.root is set"), (0 == strcmp((env->root), test_helper_db_root)));
 exit:
   return (status);
@@ -354,22 +354,6 @@ status_t test_helper_dbi_entry_count(db_txn_t txn, MDB_dbi dbi, size_t* result) 
 exit:
   return (status);
 };
-void display_id_bits(db_id_t a) {
-  db_id_t index;
-  printf("%u", (1 & a));
-  for (index = 1; (index < (8 * sizeof(db_id_t))); index = (1 + index)) {
-    printf("%u", (((((db_id_t)(1)) << index) & a) ? 1 : 0));
-  };
-  printf("\n");
-};
-void display_int8_bits(int8_t a) {
-  uint8_t index;
-  printf("%u", (1 & a));
-  for (index = 1; (index < (8 * sizeof(int8_t))); index = (1 + index)) {
-    printf("%u", (((((uint8_t)(1)) << index) & a) ? 1 : 0));
-  };
-  printf("\n");
-};
 /** float data currently not implemented because it is unknown how to store it in the id */
 status_t test_node_virtual(db_env_t* env) {
   status_declare;
@@ -381,16 +365,26 @@ status_t test_node_virtual(db_env_t* env) {
   float data_float32;
   data_uint = 123;
   data_int = -123;
+  data_float32 = 1.23;
   db_field_t fields[1];
   db_field_set((fields[0]), db_field_type_int8, 0, 0);
   status_require((db_type_create(env, "test-type-v", fields, 1, db_type_flag_virtual, (&type))));
-  test_helper_assert("db-type-is-virtual", (db_type_is_virtual(type)));
-  id = db_node_virtual((type->id), data_int);
-  test_helper_assert("db-node-is-virtual int", (db_node_is_virtual(env, id)));
-  test_helper_assert("db-node-virtual-data int", (data_int == ((int8_t)(db_node_virtual_data(id)))));
-  id = db_node_virtual((type->id), data_uint);
-  test_helper_assert("db-node-is-virtual uint", (db_node_is_virtual(env, id)));
-  test_helper_assert("db-node-virtual-data uint", (data_uint == ((uint8_t)(db_node_virtual_data(id)))));
+  test_helper_assert("is-virtual", (db_type_is_virtual(type)));
+  /* int */
+  id = db_node_virtual_from_int((type->id), data_int);
+  test_helper_assert("is-virtual int", (db_node_is_virtual(env, id)));
+  test_helper_assert("type-id int", (type->id == db_id_type(id)));
+  test_helper_assert("data int", (data_int == db_node_virtual_data(id, int8_t)));
+  /* uint */
+  id = db_node_virtual_from_uint((type->id), data_uint);
+  test_helper_assert("is-virtual uint", (db_node_is_virtual(env, id)));
+  test_helper_assert("type-id uint", (type->id == db_id_type(id)));
+  test_helper_assert("data uint", (data_uint == db_node_virtual_data(id, uint8_t)));
+  /* float */
+  id = db_node_virtual_from_any((type->id), (&data_float32), (sizeof(float)));
+  test_helper_assert("is-virtual float", (db_node_is_virtual(env, id)));
+  test_helper_assert("type-id float", (type->id == db_id_type(id)));
+  test_helper_assert("data float", (data_float32 == db_node_virtual_data(id, float)));
 exit:
   return (status);
 };
@@ -469,10 +463,10 @@ int main() {
   db_env_t* env;
   status_declare;
   db_env_new((&env));
+  test_helper_test_one(test_id_construction, env);
   test_helper_test_one(test_node_virtual, env);
   test_helper_test_one(test_open_empty, env);
   test_helper_test_one(test_statistics, env);
-  test_helper_test_one(test_id_construction, env);
   test_helper_test_one(test_sequence, env);
   test_helper_test_one(test_type_create_get_delete, env);
   test_helper_test_one(test_type_create_many, env);
