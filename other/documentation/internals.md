@@ -1,3 +1,25 @@
+# internals
+* ``sph-db-extra.h`` contains declarations for internally used things
+* the code assumes that "mdb_cursor_close" can be called with null pointers at some places
+
+## db-graph-select
+* chooses the reader, relevant databases and other values to use for the search
+* positions every relevant mdb cursor at the first entry of the dbi or exits with an error status if the database is empty
+* chooses the appropiate reader routine
+* applies the read offset
+
+## db-graph-read
+* supports partial reads. for example reading up to ten matches at a time. this is why a selection object is used. this has many subtle consequences, like having to get the current cursor value at the beginning of the reader code, to check if the right key or data is already set
+* supports skipping: matching but not copying the result. this is used for reading from an offset
+* cursors as arguments are assumed to be in position at a valid entry on call
+* readers must not be called after db-status-id-notfound
+* readers and deleters are built using stacked goto labels because this makes it much easier for this case to control the execution flow, compared to the alternative of nested while loops. especially for choosing the best place for evaluating the read-count stop condition
+* db-graph-read-1001-1101 is a good example of how queries with ordinals make the code more complicated (range lookups) and why using ordinals is only supported when a filter on "left" is given
+
+## db-graph-delete
+* db-graph-delete differs from db-graph-read in that it does not need a state because it does not support partial processing
+* it also differs in that it always needs to use all three relation dbi to complete the deletion instead of just any dbi necessary to match relations
+
 nodes
   identifiers
     include type information

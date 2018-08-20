@@ -2,7 +2,6 @@
 
 sph-db is a database as a shared library for records and relations. sph-db is in beta as of 2018-08, please try it and report any issues
 
-* [design](http://sph.mn/c/view/si)
 * license: lgpl3+
 
 # project goals
@@ -147,43 +146,70 @@ status_require(db_node_create(txn, values, &id_2));
 db_node_values_free(&values);
 ```
 
-## the i_array types
+## array data types
+db_ids_t, db_nodes_t, db_relations_t store and pass collections of db_id_t, db_node_t and db_relation_t respectively and are special arrays with a fixed maximum size but variable length
+content. they make iteration easier to code and have a currently selected element.
+it is possible to get, remove or add elements without specifying an index, as the corresponding bindings will act on the current, last or next after the last element.
+memory for these arrays has to be allocated before use.
 
+usage
+```c
+// declare a new ids array variable
+db_ids_declare(ids);
+// allocate memory for three db_id_t elements
+status_require(db_ids_new(3, &ids));
+// add ids from left to right
+db_ids_add(ids, 10);
+db_ids_add(ids, 15);
+db_ids_add(ids, 28);
+// get the first element
+db_ids_get(ids);
+// the second element
+db_ids_forward(ids);
+db_ids_get(ids);
+// reset current element to the first element
+db_ids_rewind(ids);
+// get element at specific index
+db_ids_get_at(ids, 2);
+db_ids_free(ids);
+```
+
+db_nodes_* and db_relations_* bindings work the same. see the api documentation for more features
 
 ## read nodes
-if no results are found or the end of results has been reached, status is set to ``db_status_id_notfound``. here is one example of how to handle this
+if no results are found or the end of results has been reached, the returned status id is ``db_status_id_notfound``. here is one example of how to handle this
 ```c
 // like status_require but tolerates notfound
 status_require_read(db_node_read(selection, count, &results));
 if(db_status_id_notfound != status.id) {
-  field_data = db_node_ref(i_array_get_at(results, 0), 0);
+  field_data = db_node_ref(db_node_get_at(results, 0), 0);
 }
 ```
 
 by unique identifier
 ```c
-i_array_declare(ids, db_ids_t);
-i_array_declare(nodes, db_nodes_t);
+db_ids_declare(ids);
+db_nodes_declare(nodes);
 db_node_value_t field_data;
 status_require(db_nodes_new(2, &nodes));
 status_require(db_ids_new(3, &ids));
-i_array_add(ids, 10);
-i_array_add(ids, 15);
-i_array_add(ids, 28);
+db_ids_add(ids, 10);
+db_ids_add(ids, 15);
+db_ids_add(ids, 28);
 status_require_read(db_node_get(txn, ids, &nodes));
 if(db_status_id_notfound != status.id) {
   // arguments: type, db-node-t, field_index
-  field_data = db_node_ref(type, i_array_get_at(nodes, 0), 1);
+  field_data = db_node_ref(type, db_nodes_get_at(nodes, 0), 1);
   // field_data.data: void*, field_data.size: size_t
 }
-i_array_free(ids);
-i_array_free(nodes);
+db_ids_free(ids);
+db_nodes_free(nodes);
 ```
 
 all of type
 ```c
 db_node_selection_declare(selection);
-i_array_declare(nodes, db_nodes_t);
+db_nodes_declare(nodes, db_nodes_t);
 db_node_value_t field_data;
 status_require(db_nodes_new(1, &nodes));
 // arguments: db_txn_t, db_type_t*, offset, matcher, matcher_state, selection_address));
@@ -191,10 +217,10 @@ status_require(db_node_select(txn, type, 0, 0, 0, &selection));
 status_require_read(db_node_read(selection, 1, &nodes));
 if(db_status_id_notfound != status.id) {
   // arguments: selection, field_index
-  field_data = db_node_ref(i_array_get(nodes), 0);
+  field_data = db_node_ref(db_nodes_get(nodes), 0);
 }
 db_node_selection_finish(&selection);
-i_array_free(nodes);
+db_nodes_free(nodes);
 ```
 
 by custom matcher function and optionally either type or ids list
@@ -211,33 +237,33 @@ status_require(db_node_select(txn, type, 0, node_matcher, &matcher_state, &selec
 
 ## create relations
 ```c
-db_ids_t left;
-db_ids_t right;
-db_ids_t label;
-status_require(db_ids_new(left, 5));
-status_require(db_ids_new(right, 5));
-status_require(db_ids_new(label, 2));
+db_ids_declare(left);
+db_ids_declare(right);
+db_ids_declare(label);
+status_require(db_ids_new(5, &left));
+status_require(db_ids_new(5, &right));
+status_require(db_ids_new(2, &label));
 // ... add ids to left, right and label ...
 // create relations between all given left and right nodes for each label. relations = left * right * label
 status_require(db_graph_ensure(txn, left, right, label, 0, 0));
-i_array_free(left);
-i_array_free(right);
-i_array_free(label);
+db_ids_free(left);
+db_ids_free(right);
+db_ids_free(label);
 ```
 
 ## read relations
 ```c
-db_ids_t ids_left;
-db_ids_t ids_label;
-db_relations_t relations;
+db_ids_declare(ids_left);
+db_ids_declare(ids_label);
+db_relations_declare(relations);
 db_relation_t relation;
 db_graph_selection_declare(selection);
-status_require(db_ids_new(ids_left, 1));
-status_require(db_ids_new(ids_label, 1));
-db_relations_new(relations, 10);
+status_require(db_ids_new(1, &ids_left));
+status_require(db_ids_new(1, &ids_label));
+db_relations_new(10, &relations);
 // node ids to be used to filter
-ids_left = i_array_add(ids_left, 123);
-ids_label = i_array_add(ids_label, 456);
+ids_left = db_ids_add(ids_left, 123);
+ids_label = db_ids_add(ids_label, 456);
 // select relations whose left side is in "ids_left" and label in "ids_label".
 status_require(db_graph_select(txn, &ids_left, 0, &ids_label, 0, 0, &selection));
 // read 2 of the selected relations
@@ -246,14 +272,14 @@ status_require(db_graph_read(&selection, 2, &relations));
 status_require_read(db_graph_read(&selection, 0, &relations));
 db_graph_selection_finish(&selection);
 // display relations. "ordinal" might not be set unless a filter for left was used
-while(i_array_in_range(relations)) {
-  relation = i_array_get(relations);
+while(db_relations_in_range(relations)) {
+  relation = db_relations_get(relations);
   printf("relation: %lu %lu %lu %lu\n", relation.left, relation.label, relation.ordinal, relation.right);
-  i_array_forward(relations);
+  db_relations_forward(relations);
 };
-i_array_free(ids_left);
-i_array_free(ids_label);
-i_array_free(relations);
+db_ids_free(ids_left);
+db_ids_free(ids_label);
+db_relations_free(relations);
 ```
 
 ## create indices
@@ -271,7 +297,7 @@ status_require(db_index_create(env, type, fields, 2));
 ## read node ids from indices
 ```c
 db_index_selection_declare(selection);
-i_array_declare(ids, db_ids_t);
+db_ids_declare(ids);
 db_node_values_t values;
 uint8_t value_1 = 11;
 uint8_t* value_2 = "abc";
@@ -279,27 +305,35 @@ status_require(db_ids_new(2, &ids));
 status_require(db_node_values_new(type, &values));
 db_node_values_set(&values, 1, &value_1, 0);
 db_node_values_set(&values, 2, &value_2, 3);
-// values for other fields will be ignored.
-// unlike node_ and graph_select, db_index_select already searches for the first match on call
+// values for unused fields will be ignored.
 status_require(db_index_select(txn, *index, values, &selection));
 status_require(db_index_read(selection, 2, &ids));
-id = selection.current;
-status_require(db_index_next(selection));
 db_index_selection_finish(&selection);
 ```
 
 ## read nodes via indices
 ```c
 db_node_t node;
-i_array_declare(temp, db_ids_t);
-i_array_declare(nodes, db_nodes_t);
+db_nodes_declare(nodes);
 db_node_index_selection_declare(selection);
-status_require(db_ids_new(2, &temp));
 status_require(db_nodes_new(2, &nodes));
 status_require(db_node_index_select(txn, *index, values, &selection));
 status_require(db_node_index_read(selection, 1, temp, &nodes))
-node = i_array_get(nodes);
+node = db_nodes_get(nodes);
 db_node_index_selection_finish(&selection);
+```
+
+## virtual nodes
+virtual nodes carry the data in the identifier and only exist in relations or field data. one use-case are relations with a possibly large number of numeric values that dont need a separate data record, for example timestamps. they are to save space and processing costs. they can store data of any type that is equal to or smaller than id-size minus type-size
+to create a virtual node type, pass db_type_flag_virtual to db_type_create and only a single field
+
+```c
+db_id_t id;
+uint32_t data;
+data = 123;
+id = db_node_virtual_from_uint(type_id, data);
+data = db_node_virtual_data(id, uint32_t);
+db_type_is_virtual(type_id);
 ```
 
 # api
@@ -326,7 +360,7 @@ db_node_data_to_values :: db_type_t*:type db_node_t:data db_node_values_t*:resul
 db_node_delete :: db_txn_t:txn db_ids_t:ids -> status_t
 db_node_delete_type :: db_txn_t:txn db_type_id_t:type_id -> status_t
 db_node_get :: db_txn_t:txn db_ids_t:ids db_nodes_t*:result_nodes -> status_t
-db_node_index_read :: db_node_index_selection_t:selection db_count_t:count db_ids_t:temp_ids db_nodes_t*:result_nodes -> status_t
+db_node_index_read :: db_node_index_selection_t:selection db_count_t:count db_nodes_t*:result_nodes -> status_t
 db_node_index_select :: db_txn_t:txn db_index_t:index db_node_values_t:values db_node_index_selection_t*:result -> status_t
 db_node_index_selection_finish :: db_node_index_selection_t*:selection -> void
 db_node_read :: db_node_selection_t:selection db_count_t:count db_nodes_t*:result_nodes -> status_t
@@ -339,6 +373,7 @@ db_node_values_to_data :: db_node_values_t:values db_node_t*:result -> status_t
 db_node_values_free :: db_node_values_t*:a -> void
 db_node_values_new :: db_type_t*:type db_node_values_t*:result -> status_t
 db_node_values_set :: db_node_values_t*:values db_fields_len_t:field_index void*:data size_t:size -> void
+db_node_virtual_from_any :: db_type_id_t:type_id void*:data uint8_t:data_size -> db_id_t
 db_nodes_to_ids :: db_nodes_t:nodes db_ids_t*:result_ids -> void
 db_nodes_new :: size_t:length db_nodes_t*:result_nodes -> status_t
 db_open :: uint8_t*:root db_open_options_t*:options db_env_t*:env -> status_t
@@ -394,6 +429,19 @@ db_id_element(id)
 db_id_mask
 db_id_t
 db_id_type(id)
+db_ids_add
+db_ids_clear
+db_ids_declare(name)
+db_ids_forward
+db_ids_free
+db_ids_get
+db_ids_get_at
+db_ids_in_range
+db_ids_length
+db_ids_max_length
+db_ids_remove
+db_ids_rewind
+db_ids_set_null
 db_index_selection_declare(name)
 db_indices_len_t
 db_name_len_max
@@ -401,10 +449,34 @@ db_name_len_t
 db_node_index_selection_declare(name)
 db_node_is_virtual(env, node_id)
 db_node_selection_declare(name)
-db_node_virtual(type_id, data)
-db_node_virtual_data(id)
+db_nodes_add
+db_nodes_clear
+db_nodes_declare(name)
+db_nodes_forward
+db_nodes_free
+db_nodes_get
+db_nodes_get_at
+db_nodes_in_range
+db_nodes_length
+db_nodes_max_length
+db_nodes_remove
+db_nodes_rewind
+db_nodes_set_null
 db_null
 db_ordinal_t
+db_relations_add
+db_relations_clear
+db_relations_declare(name)
+db_relations_forward
+db_relations_free
+db_relations_get
+db_relations_get_at
+db_relations_in_range
+db_relations_length
+db_relations_max_length
+db_relations_remove
+db_relations_rewind
+db_relations_set_null
 db_size_element_id
 db_size_graph_data
 db_size_graph_key
@@ -418,18 +490,6 @@ db_type_get_by_id(env, type_id)
 db_type_id_mask
 db_type_id_t
 db_type_is_virtual(type)
-i_array_add(a, value)
-i_array_clear(a)
-i_array_forward(a)
-i_array_free(a)
-i_array_get(a)
-i_array_get_at(a, index)
-i_array_in_range(a)
-i_array_length(a)
-i_array_max_length(a)
-i_array_remove(a)
-i_array_rewind(a)
-i_array_set_null(a)
 status_declare
 status_declare_group(group)
 status_goto
@@ -460,10 +520,11 @@ db_env_t: struct
   dbi_graph_rl: MDB_dbi
   dbi_system: MDB_dbi
   mdb_env: MDB_env*
-  open: boolean
+  is_open: boolean
   root: uint8_t*
   mutex: pthread_mutex_t
   maxkeysize: int
+  format: uint32_t
   types: db_type_t*
   types_len: db_type_id_t
 db_field_t: struct
@@ -592,19 +653,18 @@ these values can be set before compilation in ``c-precompiled/main/config.c``. o
 
 # possible enhancements
 * currently index inserts with data too large are rejected. add an option to truncate instead
-* make it possible to increase the maximum number of types. needs a new data structure for types for that
+* make it possible to increase the maximum number of types. would need a new data structure for the type cache
 * validator functions for indices and graph data consistency
-* float values as ordinals has not yet been tested
+* float values as ordinals has not been tested
 * at some places MDB_SET_RANGE and MDB_GET_BOTH_RANGE is used in succession. maybe get-both-range includes set-range and the latter can be left out
-* search in index keys
-* partial indices. data filter function given at index definition
-* float values for virtual nodes not implemented
-* find solution to nested transactions lmdb issue
-* reduce use of mixed i_array_* and db_ids_new, db_nodes_new, etc api complication
+* search with matcher functions in index keys
+* partial indices. with a data filter function given at index definition
+* nested transactions. supposedly possible in lmdb but not working
+* simplified status bindings. status_require is a long word to be written frequently
 
 # development
 this section is for when you want to change sph-db itself.
-the primary source code is currently under source/sc. source/c-precompiled is updated by ``exe/compile-sc``. code files from submodules are copied into source/sc/foreign before compiling from sc to c.
+the primary source code is currently under source/sc. source/c-precompiled is updated by ``exe/compile-sc``. code files from submodules are copied into source/sc/foreign before compilation from sc to c.
 depending on circumstances, in the future, the sc dependency could be dropped and the c code could be made primary.
 the general development stages for new sph-db features is design, basic code implementation, tests that use the new features, debugging, memory-leak tests (``exe/valgrind-test``) and documentation
 
@@ -617,24 +677,5 @@ the general development stages for new sph-db features is design, basic code imp
 * send feature requests, patches or pull requests via issues or e-mail and they will be considered
 * bug reports or design commentaries are welcome
 
-# internals
-* ``sph-db-extra.h`` contains declarations for internally used things
-* the code assumes that "mdb_cursor_close" can be called with null pointers at some places
-
-## db-graph-select
-* chooses the reader, relevant databases and other values to use for the search
-* positions every relevant mdb cursor at the first entry of the dbi or exits with an error status if the database is empty
-* chooses the appropiate reader routine
-* applies the read offset
-
-## db-graph-read
-* supports partial reads. for example reading up to ten matches at a time. this is why a selection object is used. this has many subtle consequences, like having to get the current cursor value at the beginning of the reader code, to check if the right key or data is already set
-* supports skipping: matching but not copying the result. this is used for reading from an offset
-* cursors as arguments are assumed to be in position at a valid entry on call
-* readers must not be called after db-status-id-notfound
-* readers and deleters are built using stacked goto labels because this makes it much easier for this case to control the execution flow, compared to the alternative of nested while loops. especially for choosing the best place for evaluating the read-count stop condition
-* db-graph-read-1001-1101 is a good example of how queries with ordinals make the code more complicated (range lookups) and why using ordinals is only supported when a filter on "left" is given
-
-## db-graph-delete
-* db-graph-delete differs from db-graph-read in that it does not need a state because it does not support partial processing
-* it also differs in that it always needs to use all three relation dbi to complete the deletion instead of just any dbi necessary to match relations
+# further reading
+see [other/documentation](other/documentation) for more details about internals and design considerations
