@@ -59,10 +59,11 @@
   * information about types, sequences and indices is loaded on open and cached
   * type structs are cached in a dynamically resized array with the type-id as index ("arrays are the fastest hash tables")
 * relations
-  * there must only be one relation for every combination of left, label and right. cyclic relations may be allowed. relational integrity may be ignored when creating relations to avoid existence checks
+  * there must only be one relation for every combination of left, label and right. cyclic relations are allowed. relational integrity may be ignored when creating relations to avoid existence checks
   * when a node is deleted then all relations that contain its id must be deleted
   * targets are stored ordered by ordinal value. ordinal values are stored only for the right part of the left-to-right direction to save space
   * by convention, left to right corresponds to general to specific
+  * terminology for relation start and end point: left and right, or source and target for unspecified direction
 
 # search performance
 * nodes and relations are stored in b+trees with a basic o(log n) time complexity for search/insert/delete (average and worst case)
@@ -96,7 +97,6 @@ not supported
 # space requirements
 * nodes and relations are stored in b+trees with a basic o(log n) space complexity (average and worst case)
 * the required space depends on the chosen dg_id_t and dg_ordinal_t types. the maximum possible size for these types is restricted by the largest available c type supported by the compiler that is used to compile sph-db. the commonly available range is 0 to 64 bit. the minimum possible size is 8 bit for identifiers and 0 bit for ordinals (untested)
-
 * nodes
   * node-size = id-size + data-size
   * virtual-node-size = 0 (only exist in relations)
@@ -138,7 +138,7 @@ not supported
 * it also differs in that it always needs to use all three relation dbi to complete the deletion instead of just any dbi necessary to match relations
 
 ## conventions/principles
-* batch processing by taking collections, and eventually processing multiple elements in one call, is preferred when call overhead like declarations, allocations and preparations are saved. one element collections can still be used
+* batch processing by taking collections, and eventually processing multiple elements in one call, is preferred when call overhead like declarations, allocations and preparations are saved. single element collections can still be used
 * call by contract is assumed strictly. a program might crash if the contract is broken. pro: few checks, efficiency
 * output arguments come last
 * acted-on arguments come first
