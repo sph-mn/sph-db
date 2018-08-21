@@ -112,7 +112,7 @@ difference to graph read: less filters
   * get-type(state, col-index)
   * choose get-value function then get-value(state, col-index)
 
-# # how to return reader results
+## how to return reader results
 * option - selected
   * multiple using array type
   * pro
