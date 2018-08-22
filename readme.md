@@ -72,7 +72,7 @@ db_env_new(&env);
 // the database file will be created if it does not exist
 status_require(db_open("/tmp/example", 0, env));
 // code that makes use of the database ...
-db_close(env);
+db_close(&env);
 ```
 
 ## transactions
@@ -642,18 +642,18 @@ these values can be set before compilation in ``c-precompiled/main/config.c``. o
 |db_fields_len_t|uint8_t|for field indices. limits the number of possible fields|
 |db_indices_len_t|uint8_t|limits the number of possible indices per type|
 |db_count_t|uint32_t|for values like the count of elements to read. does not need to be larger than half size_t|
-|db_batch_len|uint32_t|number of elements to process at once intternally for example in db-node-select-delete. mostly db-id-t|
+|db_batch_len|uint32_t|number of elements to process at once internally for example in db-node-select-delete. mostly for db-id-t|
 
 # additional features and caveats
-* the maximum number of type creations is currently 65535
 * make sure that you do not try to insert ordinals or ids bigger than what is defined to be possible by the data types for ordinals and node identifiers. otherwise numerical overflows might occur
 * ordinals are primarily intended to store data in a pre-calculated order for fast ordered retrieval
 * to use db_graph_select and a filter by ordinal, "left" filter values must be given
 * readers can return results and indicate the end of results in the same call
+* the maximum number of type creations is currently 65535. this limit is to be removed in the future
 
 # possible enhancements
 * currently index inserts with data too large are rejected. add an option to truncate instead
-* make it possible to increase the maximum number of types. would need a new data structure for the type cache
+* lift the type creation limit. allow all unsigned integer datatypes for type ids and reclaim unused ids
 * validator functions for indices and graph data consistency
 * float values as ordinals has not been tested
 * at some places MDB_SET_RANGE and MDB_GET_BOTH_RANGE is used in succession. maybe get-both-range includes set-range and the latter can be left out

@@ -7,4 +7,4 @@
 (import (sph install))
 
 (install-cli-guile ("/usr/lib" 493 "temp/libsph-db.so")
-  ("/usr/include" 493 "source/c-precompiled/sph-db.h"))
+  ("/usr/include" 493 "source/c-precompiled/main/sph-db.h"))

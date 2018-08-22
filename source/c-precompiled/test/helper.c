@@ -6,7 +6,7 @@
 #include "../main/sph-db-extra.h"
 #include "../main/lib/lmdb.c"
 #include "../foreign/sph/one.c"
-#define test_helper_db_root "/tmp/test-sph-db"
+#define test_helper_db_root "/tmp/sph-db-test"
 #define test_helper_path_data test_helper_db_root "/data"
 #define test_helper_test_one(f, env) \
   printf("%s\n", #f); \

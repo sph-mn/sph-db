@@ -10,6 +10,10 @@ a_dest="$prefix/usr/lib"
 b_dest="$prefix/usr/include"
 
 mkdir -p "$a_dest" "$b_dest" &&
+echo "copying $a to $a_dest ..." &&
 cp -t "$a_dest" "$a" &&
+echo "copying $b to $b_dest ..." &&
 cp -t "$b_dest" "$b" &&
-chmod 644 "$a_dest/libsph-db.so" "$b_dest/sph-db.h"
+echo set permissions rw-r--r-- for "$a_dest/libsph-db.so" "$b_dest/sph-db.h" "..." &&
+chmod 644 "$a_dest/libsph-db.so" "$b_dest/sph-db.h" &&
+echo "installation complete"

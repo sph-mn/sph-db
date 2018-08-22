@@ -5,7 +5,7 @@
   "pthread.h" "../main/sph-db.h" "../main/sph-db-extra.h" "../main/lib/lmdb.c" "../foreign/sph/one.c")
 
 (pre-define
-  test-helper-db-root "/tmp/test-sph-db"
+  test-helper-db-root "/tmp/sph-db-test"
   test-helper-path-data (pre-string-concat test-helper-db-root "/data"))
 
 (pre-define (test-helper-test-one f env)

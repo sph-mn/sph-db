@@ -1,5 +1,5 @@
 (sc-comment
-  "\"iteration array\" - a fixed size array with variable length content that makes iteration easier to code. it is used similar to a linked list.
+  "\"iteration array\" - an array with variable length content that makes iteration easier to code.
   most bindings are generic macros that will work on all i-array types. i-array-add and i-array-forward go from left to right.
   examples:
     i_array_declare_type(my_type, int);
@@ -7,7 +7,10 @@
     i_array_allocate_my_type(4, &a);
     i_array_add(a, 1);
     i_array_add(a, 2);
-    while(i_array_in_range(a)) { i_array_get(a); }
+    while(i_array_in_range(a)) {
+      i_array_get(a);
+      i_array_forward(a);
+    }
     i_array_free(a);")
 
 (pre-include "stdlib.h")
@@ -15,7 +18,7 @@
 (pre-define
   (i-array-declare-type name element-type)
   (begin
-    ".current: to avoid having to write for-loops. it is what would be the index variable in loops
+    ".current: to avoid having to write for-loops. this would correspond to the index variable in loops
      .unused: to have variable length content in a fixed length array. points outside the memory area after the last element has been added
      .end: a boundary for iterations
      .start: the beginning of the allocated array and used for rewind and free"
