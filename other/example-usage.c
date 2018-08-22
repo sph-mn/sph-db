@@ -1,21 +1,13 @@
 // work in progress, not yet working.
 // example tutorial code for sph-db.
-// compile like "gcc example.c -o sph-db-example -llmdb -lsph-db"
+// compile like "gcc example-usage.c -o /tmp/sph-db-example -lsph-db"
 
-#include "<sph-db.h>"
+#include <sph-db.h>
+#include <stdio.h>
 
-int main() {
+status_t create_type(db_env_t* env, db_type_t** result_type) {
+  printf("create type\n");
   status_declare;
-
-  // initialisation
-  db_env_t* env;
-  db_env_new(&env);
-  // the database file will be created if it does not exist
-  status_require(db_open("/tmp/example", 0, env));
-  // code that makes use of the database ...
-  db_close(&env);
-
-  // create a type
   db_field_t fields[4];
   db_type_t* type;
   // set field.type, field.name and field.name_len
@@ -25,13 +17,21 @@ int main() {
   db_field_set(fields[3], db_field_type_string, "field-name-4", 12);
   // arguments: db_env_t*, type_name, db_field_t*, field_count, flags, result
   status_require(db_type_create(env, "test-type", fields, 4, 0, &type));
+  *result_type = type;
+  printf("type id: %u\n", type->id);
+exit:
+  return status;
+}
 
-  // create nodes
-  db_node_values_t values;
+status_t create_nodes(db_env_t* env, db_type_t* type) {
+  printf("create nodes\n");
+  status_declare;
+  db_txn_declare(env, txn);
+  db_node_values_declare(values);
   db_id_t id_1;
   db_id_t id_2;
   uint8_t value_1 = 11;
-  i8 value_2 = -128;
+  int8_t value_2 = -128;
   uint8_t* value_3 = "abc";
   uint8_t* value_4 = "abcde";
   status_require(db_node_values_new(type, &values));
@@ -42,50 +42,80 @@ int main() {
   // strings can be stored with or without a trailing null character
   db_node_values_set(&values, 2, value_3, 3);
   db_node_values_set(&values, 3, value_4, 5);
+  status_require(db_txn_write_begin(&txn));
   status_require(db_node_create(txn, values, &id_1));
-  db_node_values_set(&values, 1, &value_1, 0);
+  printf("created node with id %u\n", id_1);
+  value_2 = 123;
+  db_node_values_set(&values, 1, &value_2, 0);
   status_require(db_node_create(txn, values, &id_2));
+  printf("created node with id %u\n", id_2);
+  db_txn_commit(&txn);
+exit:
   db_node_values_free(&values);
+  return status;
+}
 
-  // array data types
-// declare a new ids array variable
+status_t collections() {
+  status_declare;
+  // declare a new ids array variable
   db_ids_declare(ids);
-// allocate memory for three db_id_t elements
+  // allocate memory for three db_id_t elements
   status_require(db_ids_new(3, &ids));
-// add ids from left to right
+  // add ids from left to right
   db_ids_add(ids, 10);
   db_ids_add(ids, 15);
   db_ids_add(ids, 28);
-// get the first element
+  // get the first element
   db_ids_get(ids);
-// the second element
+  // the second element
   db_ids_forward(ids);
   db_ids_get(ids);
-// reset current element to the first element
+  // reset current element to the first element
   db_ids_rewind(ids);
-// get element at specific index
+  // get element at specific index
   db_ids_get_at(ids, 2);
   db_ids_free(ids);
+exit:
+  return status;
+}
 
-// read nodes
-// by unique identifier
+status_t read_nodes(db_env_t* env, db_type_t* type) {
+  // by unique identifier
+  status_declare;
+  db_txn_declare(env, txn);
   db_ids_declare(ids);
   db_nodes_declare(nodes);
   db_node_value_t field_data;
   status_require(db_nodes_new(2, &nodes));
   status_require(db_ids_new(3, &ids));
-  db_ids_add(ids, 10);
-  db_ids_add(ids, 15);
-  db_ids_add(ids, 28);
+  db_ids_add(ids, 1);
+  db_ids_add(ids, 2);
+  db_ids_add(ids, 3);
   status_require_read(db_node_get(txn, ids, &nodes));
   if(db_status_id_notfound != status.id) {
-  // arguments: type, db-node-t, field_index
-  field_data = db_node_ref(type, db_nodes_get_at(nodes, 0), 1);
-  // field_data.data: void*, field_data.size: size_t
-}
-db_ids_free(ids);
-db_nodes_free(nodes);
-
+    // arguments: type, db-node-t, field_index
+    field_data = db_node_ref(type, db_nodes_get_at(nodes, 0), 1);
+    // field_data.data: void*, field_data.size: size_t
+  }
+  db_ids_free(ids);
+  db_nodes_free(nodes);
 exit:
+  return status;
+}
+
+int main() {
+  status_declare;
+  db_env_declare(env);
+  status_require(db_env_new(&env));
+  // the database file will be created if it does not exist
+  status_require(db_open("/tmp", 0, env));
+
+  db_type_t* type;
+  status_require(create_type(env, &type));
+  status_require(create_nodes(env, type));
+  //status_require(read_nodes(env, &type));
+exit:
+  db_close(env);
+  printf("%s\n", db_status_description(status));
   return status.id;
 }

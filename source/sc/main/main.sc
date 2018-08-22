@@ -67,6 +67,71 @@
     *result-len (- size 1))
   (return result))
 
+(define (db-status-group-id->name a) (uint8-t* status-id-t)
+  (declare b char*)
+  (case = a
+    (db-status-group-db (set b "sph-db"))
+    (db-status-group-lmdb (set b "lmdb"))
+    (db-status-group-libc (set b "libc"))
+    (else (set b "")))
+  (return b))
+
+(define (db-status-description a) (uint8-t* status-t)
+  "get the description if available for a status"
+  (declare b char*)
+  (case = a.group
+    (db-status-group-lmdb (set b (mdb-strerror a.id)))
+    (else
+      (case = a.id
+        (db-status-id-success (set b "success"))
+        (db-status-id-invalid-argument (set b "input argument is of wrong type"))
+        (db-status-id-input-type (set b "input argument is of wrong type"))
+        (db-status-id-data-length (set b "data too large"))
+        (db-status-id-duplicate (set b "element already exists"))
+        (db-status-id-not-implemented (set b "not implemented"))
+        (db-status-id-missing-argument-db-root (set b "missing argument 'db-root'"))
+        (db-status-id-path-not-accessible-db-root (set b "root not accessible"))
+        (db-status-id-memory (set b "not enough memory or other memory allocation error"))
+        (db-status-id-max-element-id
+          (set b "maximum element identifier value has been reached for the type"))
+        (db-status-id-max-type-id (set b "maximum type identifier value has been reached"))
+        (db-status-id-max-type-id-size
+          (set b
+            "type identifier size is either configured to be greater than 16 bit, which is currently not supported, or is not smaller than node id size"))
+        (db-status-id-condition-unfulfilled (set b "condition unfulfilled"))
+        (db-status-id-notfound (set b "no more data to read"))
+        (db-status-id-different-format
+          (set b "configured format differs from the format the database was created with"))
+        (db-status-id-index-keysize (set b "index key to be inserted exceeds mdb maxkeysize"))
+        (else (set b "")))))
+  (return (convert-type b uint8-t*)))
+
+(define (db-status-name a) (uint8-t* status-t)
+  "get the name if available for a status"
+  (declare b char*)
+  (case = a.group
+    (db-status-group-lmdb (set b (mdb-strerror a.id)))
+    (else
+      (case = a.id
+        (db-status-id-success (set b "success"))
+        (db-status-id-invalid-argument (set b "invalid-argument"))
+        (db-status-id-input-type (set b "input-type"))
+        (db-status-id-data-length (set b "data-length"))
+        (db-status-id-duplicate (set b "duplicate"))
+        (db-status-id-not-implemented (set b "not-implemented"))
+        (db-status-id-missing-argument-db-root (set b "missing-argument-db-root"))
+        (db-status-id-path-not-accessible-db-root (set b "path-not-accessible-db-root"))
+        (db-status-id-memory (set b "memory"))
+        (db-status-id-max-element-id (set b "max-element-id-reached"))
+        (db-status-id-max-type-id (set b "max-type-id-reached"))
+        (db-status-id-max-type-id-size (set b "type-id-size-too-big"))
+        (db-status-id-condition-unfulfilled (set b "condition-unfulfilled"))
+        (db-status-id-notfound (set b "notfound"))
+        (db-status-id-different-format (set b "differing-db-format"))
+        (db-status-id-index-keysize (set b "index-key-mdb-keysize"))
+        (else (set b "unknown")))))
+  (return (convert-type b uint8-t*)))
+
 (define (db-txn-begin a) (status-t db-txn-t*)
   status-declare
   (db-mdb-status-require (mdb-txn-begin a:env:mdb-env 0 MDB-RDONLY &a:mdb-txn))

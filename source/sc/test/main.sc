@@ -249,7 +249,6 @@
     value-2 int8-t
     values-1 db-node-values-t
     values-2 db-node-values-t)
-  (define value-3 uint8-t* (convert-type "abc" uint8-t*))
   (define value-4 uint8-t* (convert-type "abcde" uint8-t*))
   (status-require (test-helper-create-type-1 env &type))
   (sc-comment "prepare node values")
@@ -259,7 +258,7 @@
     value-2 -128)
   (db-node-values-set &values-1 0 &value-1 0)
   (db-node-values-set &values-1 1 &value-2 0)
-  (db-node-values-set &values-1 2 value-3 3)
+  (sc-comment "empty field in between, field 2 left out")
   (db-node-values-set &values-1 3 value-4 5)
   (sc-comment "test node values/data conversion")
   (db-node-values->data values-1 &node-1)
@@ -279,9 +278,7 @@
         (struct-get (array-get values-1.data 3) size) (struct-get (array-get values-2.data 3) size))))
   (test-helper-assert
     "node-data->values data equal 1"
-    (and
-      (= 0 (memcmp value-3 (struct-get (array-get values-1.data 2) data) 3))
-      (= 0 (memcmp value-4 (struct-get (array-get values-1.data 3) data) 5))))
+    (= 0 (memcmp value-4 (struct-get (array-get values-1.data 3) data) 5)))
   (for ((set field-index 0) (< field-index type:fields-len) (set field-index (+ 1 field-index)))
     (set
       size-1 (struct-get (array-get values-1.data field-index) size)
@@ -307,6 +304,10 @@
           node-2.data
           (if* (< node-1.size node-2.size) node-2.size
             node-1.size)))))
+  (db-node-values-free &values-2)
+  (db-node-values-new type &values-2)
+  (db-node-values->data values-2 &node-2)
+  (test-helper-assert "node-values->data empty" (= 0 node-2.size))
   (sc-comment "test node-ref")
   (set field-data (db-node-ref type node-1 3))
   (test-helper-assert

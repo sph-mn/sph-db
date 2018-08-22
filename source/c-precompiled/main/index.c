@@ -89,6 +89,7 @@ exit:
   return (status);
 };
 /** create entries in all indices of type for id and values.
+  assumes that values has at least one entry set (values.extent unequal zero).
   index entry: field-value ... -> id */
 status_t db_indices_entry_ensure(db_txn_t txn, db_node_values_t values, db_id_t id) {
   status_declare;

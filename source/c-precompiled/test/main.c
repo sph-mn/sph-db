@@ -212,7 +212,6 @@ status_t test_node_create(db_env_t* env) {
   int8_t value_2;
   db_node_values_t values_1;
   db_node_values_t values_2;
-  uint8_t* value_3 = ((uint8_t*)("abc"));
   uint8_t* value_4 = ((uint8_t*)("abcde"));
   status_require((test_helper_create_type_1(env, (&type))));
   /* prepare node values */
@@ -221,7 +220,7 @@ status_t test_node_create(db_env_t* env) {
   value_2 = -128;
   db_node_values_set((&values_1), 0, (&value_1), 0);
   db_node_values_set((&values_1), 1, (&value_2), 0);
-  db_node_values_set((&values_1), 2, value_3, 3);
+  /* empty field in between, field 2 left out */
   db_node_values_set((&values_1), 3, value_4, 5);
   /* test node values/data conversion */
   db_node_values_to_data(values_1, (&node_1));
@@ -229,7 +228,7 @@ status_t test_node_create(db_env_t* env) {
   db_node_data_to_values(type, node_1, (&values_2));
   test_helper_assert(("node-data->values type equal"), (values_1.type == values_2.type));
   test_helper_assert(("node-data->values size equal"), ((((values_1.data)[0]).size == ((values_2.data)[0]).size) && (((values_1.data)[1]).size == ((values_2.data)[1]).size) && (((values_1.data)[2]).size == ((values_2.data)[2]).size) && (((values_1.data)[3]).size == ((values_2.data)[3]).size)));
-  test_helper_assert(("node-data->values data equal 1"), ((0 == memcmp(value_3, (((values_1.data)[2]).data), 3)) && (0 == memcmp(value_4, (((values_1.data)[3]).data), 5))));
+  test_helper_assert(("node-data->values data equal 1"), (0 == memcmp(value_4, (((values_1.data)[3]).data), 5)));
   for (field_index = 0; (field_index < type->fields_len); field_index = (1 + field_index)) {
     size_1 = ((values_1.data)[field_index]).size;
     size_2 = ((values_2.data)[field_index]).size;
@@ -237,6 +236,10 @@ status_t test_node_create(db_env_t* env) {
   };
   db_node_values_to_data(values_2, (&node_2));
   test_helper_assert(("node-values->data"), ((node_1.size == node_2.size) && (0 == memcmp((node_1.data), (node_2.data), ((node_1.size < node_2.size) ? node_2.size : node_1.size)))));
+  db_node_values_free((&values_2));
+  db_node_values_new(type, (&values_2));
+  db_node_values_to_data(values_2, (&node_2));
+  test_helper_assert(("node-values->data empty"), (0 == node_2.size));
   /* test node-ref */
   field_data = db_node_ref(type, node_1, 3);
   test_helper_assert("node-ref-1", ((5 == field_data.size) && (0 == memcmp(value_4, (field_data.data), (field_data.size)))));

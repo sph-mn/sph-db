@@ -99,6 +99,7 @@
 
 (define (db-indices-entry-ensure txn values id) (status-t db-txn-t db-node-values-t db-id-t)
   "create entries in all indices of type for id and values.
+  assumes that values has at least one entry set (values.extent unequal zero).
   index entry: field-value ... -> id"
   status-declare
   db-mdb-declare-val-id

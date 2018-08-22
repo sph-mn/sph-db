@@ -66,6 +66,107 @@ uint8_t* string_join(uint8_t** strings, size_t strings_len, uint8_t* delimiter, 
   *result_len = (size - 1);
   return (result);
 };
+uint8_t* db_status_group_id_to_name(status_id_t a) {
+  char* b;
+  if (db_status_group_db == a) {
+    b = "sph-db";
+  } else if (db_status_group_lmdb == a) {
+    b = "lmdb";
+  } else if (db_status_group_libc == a) {
+    b = "libc";
+  } else {
+    b = "";
+  };
+  return (b);
+};
+/** get the description if available for a status */
+uint8_t* db_status_description(status_t a) {
+  char* b;
+  if (db_status_group_lmdb == a.group) {
+    b = mdb_strerror((a.id));
+  } else {
+    if (db_status_id_success == a.id) {
+      b = "success";
+    } else if (db_status_id_invalid_argument == a.id) {
+      b = "input argument is of wrong type";
+    } else if (db_status_id_input_type == a.id) {
+      b = "input argument is of wrong type";
+    } else if (db_status_id_data_length == a.id) {
+      b = "data too large";
+    } else if (db_status_id_duplicate == a.id) {
+      b = "element already exists";
+    } else if (db_status_id_not_implemented == a.id) {
+      b = "not implemented";
+    } else if (db_status_id_missing_argument_db_root == a.id) {
+      b = "missing argument 'db-root'";
+    } else if (db_status_id_path_not_accessible_db_root == a.id) {
+      b = "root not accessible";
+    } else if (db_status_id_memory == a.id) {
+      b = "not enough memory or other memory allocation error";
+    } else if (db_status_id_max_element_id == a.id) {
+      b = "maximum element identifier value has been reached for the type";
+    } else if (db_status_id_max_type_id == a.id) {
+      b = "maximum type identifier value has been reached";
+    } else if (db_status_id_max_type_id_size == a.id) {
+      b = "type identifier size is either configured to be greater than 16 bit, which is currently not supported, or is not smaller than node id size";
+    } else if (db_status_id_condition_unfulfilled == a.id) {
+      b = "condition unfulfilled";
+    } else if (db_status_id_notfound == a.id) {
+      b = "no more data to read";
+    } else if (db_status_id_different_format == a.id) {
+      b = "configured format differs from the format the database was created with";
+    } else if (db_status_id_index_keysize == a.id) {
+      b = "index key to be inserted exceeds mdb maxkeysize";
+    } else {
+      b = "";
+    };
+  };
+  return (((uint8_t*)(b)));
+};
+/** get the name if available for a status */
+uint8_t* db_status_name(status_t a) {
+  char* b;
+  if (db_status_group_lmdb == a.group) {
+    b = mdb_strerror((a.id));
+  } else {
+    if (db_status_id_success == a.id) {
+      b = "success";
+    } else if (db_status_id_invalid_argument == a.id) {
+      b = "invalid-argument";
+    } else if (db_status_id_input_type == a.id) {
+      b = "input-type";
+    } else if (db_status_id_data_length == a.id) {
+      b = "data-length";
+    } else if (db_status_id_duplicate == a.id) {
+      b = "duplicate";
+    } else if (db_status_id_not_implemented == a.id) {
+      b = "not-implemented";
+    } else if (db_status_id_missing_argument_db_root == a.id) {
+      b = "missing-argument-db-root";
+    } else if (db_status_id_path_not_accessible_db_root == a.id) {
+      b = "path-not-accessible-db-root";
+    } else if (db_status_id_memory == a.id) {
+      b = "memory";
+    } else if (db_status_id_max_element_id == a.id) {
+      b = "max-element-id-reached";
+    } else if (db_status_id_max_type_id == a.id) {
+      b = "max-type-id-reached";
+    } else if (db_status_id_max_type_id_size == a.id) {
+      b = "type-id-size-too-big";
+    } else if (db_status_id_condition_unfulfilled == a.id) {
+      b = "condition-unfulfilled";
+    } else if (db_status_id_notfound == a.id) {
+      b = "notfound";
+    } else if (db_status_id_different_format == a.id) {
+      b = "differing-db-format";
+    } else if (db_status_id_index_keysize == a.id) {
+      b = "index-key-mdb-keysize";
+    } else {
+      b = "unknown";
+    };
+  };
+  return (((uint8_t*)(b)));
+};
 status_t db_txn_begin(db_txn_t* a) {
   status_declare;
   db_mdb_status_require((mdb_txn_begin((a->env->mdb_env), 0, MDB_RDONLY, (&(a->mdb_txn)))));

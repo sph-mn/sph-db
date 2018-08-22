@@ -1,6 +1,6 @@
 (sc-comment "this file is for declarations and macros needed to use sph-db as a shared library")
 (pre-include "inttypes.h" "math.h" "pthread.h" "lmdb.h")
-(sc-include "foreign/sph" "foreign/sph/i-array" "main/lib/status" "main/config")
+(sc-include "foreign/sph" "foreign/sph/status" "foreign/sph/i-array" "main/config")
 
 (declare
   db-relation-t
@@ -81,6 +81,15 @@
   db-field-type-uint64 128
   db-field-type-uint8 32
   db-type-flag-virtual 1
+  (db-status-set-id-goto status-id) (status-set-both-goto db-status-group-db status-id)
+  (status-require-read expression)
+  (begin
+    (set status expression)
+    (if (not (or status-is-success (= status.id db-status-id-notfound))) status-goto))
+  db-status-success-if-notfound
+  (if (= status.id db-status-id-notfound) (set status.id status-id-success))
+  (db-node-values-declare name) (define name db-node-values-t (struct-literal 0 0 0))
+  (db-env-declare name) (define env db-env-t* 0)
   (db-ids-declare name) (i-array-declare name db-ids-t)
   (db-relations-declare name) (i-array-declare name db-relations-t)
   (db-nodes-declare name) (i-array-declare name db-nodes-t)
@@ -146,6 +155,25 @@
     (set
       name.nodes-cursor 0
       name.index-selection.cursor 0)))
+
+(enum
+  (db-status-id-success
+    db-status-id-undefined
+    db-status-id-condition-unfulfilled
+    db-status-id-data-length
+    db-status-id-different-format
+    db-status-id-duplicate
+    db-status-id-input-type
+    db-status-id-invalid-argument
+    db-status-id-max-element-id
+    db-status-id-max-type-id
+    db-status-id-max-type-id-size
+    db-status-id-memory
+    db-status-id-missing-argument-db-root
+    db-status-id-notfound
+    db-status-id-not-implemented
+    db-status-id-path-not-accessible-db-root
+    db-status-id-index-keysize db-status-group-db db-status-group-lmdb db-status-group-libc))
 
 (declare
   ; types
@@ -235,7 +263,7 @@
   (type
     (struct
       (data db-node-value-t*)
-      (last db-fields-len-t)
+      (extent db-fields-len-t)
       (type db-type-t*)))
   db-node-matcher-t (type (function-pointer boolean db-node-t void*))
   db-index-selection-t

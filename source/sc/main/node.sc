@@ -5,13 +5,14 @@
   (declare
     data void*
     data-temp uint8-t*
+    field-data void*
     field-size uint8-t
     field-type db-field-type-t
     i db-fields-len-t
     size size-t)
   (set size 0)
   (sc-comment "prepare size information")
-  (for ((set i 0) (<= i values.last) (set i (+ 1 i)))
+  (for ((set i 0) (< i values.extent) (set i (+ 1 i)))
     (if (< i values.type:fields-fixed-count)
       (begin
         (sc-comment "fixed length field")
@@ -27,16 +28,20 @@
         (sc-comment "check if data is larger than the size prefix can specify")
         (if (> field-size db-data-len-max)
           (status-set-both-goto db-status-group-db db-status-id-data-length)))))
-  (db-malloc data size)
+  (if size (db-malloc data size)
+    (set data 0))
   (set data-temp data)
   (sc-comment "copy data")
-  (for ((set i 0) (<= i values.last) (set i (+ 1 i)))
+  (for ((set i 0) (< i values.extent) (set i (+ 1 i)))
     (set field-size (struct-get (array-get values.data i) size))
     (if (>= i values.type:fields-fixed-count)
       (set
         (pointer-get (convert-type data-temp db-data-len-t*)) field-size
         data-temp (+ (sizeof db-data-len-t) data-temp)))
-    (memcpy data-temp (struct-get (array-get values.data i) data) field-size)
+    (set field-data (struct-get (array-get values.data i) data))
+    (sc-comment "field-data pointer is zero for unset fields")
+    (if (not field-data) (memset data-temp 0 field-size)
+      (memcpy data-temp field-data field-size))
     (set data-temp (+ field-size data-temp)))
   (set
     result:data data
@@ -45,14 +50,15 @@
     (return status)))
 
 (define (db-node-values-new type result) (status-t db-type-t* db-node-values-t*)
-  "allocate memory for a new node values array"
+  "allocate memory for a new node values array.
+  extent is last field index plus one"
   status-declare
   (declare data db-node-value-t*)
   (db-calloc data type:fields-len (sizeof db-node-value-t))
   (struct-set *result
     type type
     data data
-    last 0)
+    extent 0)
   (label exit
     (return status)))
 
@@ -73,7 +79,8 @@
     size
     (if* (db-field-type-is-fixed field-type) (db-field-type-size field-type)
       size))
-  (if (or (not values-temp.last) (> field values-temp.last)) (set values-temp.last field))
+  (if (or (= 0 values-temp.extent) (>= field values-temp.extent))
+    (set values-temp.extent (+ 1 field)))
   (set *values values-temp))
 
 (define (db-node-create txn values result) (status-t db-txn-t db-node-values-t db-id-t*)
@@ -96,7 +103,7 @@
   (status-require (db-sequence-next txn.env values.type:id &id))
   (db-mdb-status-require (mdb-cursor-put nodes &val-id &val-data 0))
   (db-mdb-cursor-close nodes)
-  (status-require (db-indices-entry-ensure txn values id))
+  (if values.extent (status-require (db-indices-entry-ensure txn values id)))
   (set *result id)
   (label exit
     (db-mdb-cursor-close-if-active nodes)

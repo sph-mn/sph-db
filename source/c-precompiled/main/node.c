@@ -4,13 +4,14 @@ status_t db_node_values_to_data(db_node_values_t values, db_node_t* result) {
   status_declare;
   void* data;
   uint8_t* data_temp;
+  void* field_data;
   uint8_t field_size;
   db_field_type_t field_type;
   db_fields_len_t i;
   size_t size;
   size = 0;
   /* prepare size information */
-  for (i = 0; (i <= values.last); i = (1 + i)) {
+  for (i = 0; (i < values.extent); i = (1 + i)) {
     if (i < (values.type)->fields_fixed_count) {
       /* fixed length field */
       field_type = (((values.type)->fields)[i]).type;
@@ -26,16 +27,26 @@ status_t db_node_values_to_data(db_node_values_t values, db_node_t* result) {
       };
     };
   };
-  db_malloc(data, size);
+  if (size) {
+    db_malloc(data, size);
+  } else {
+    data = 0;
+  };
   data_temp = data;
   /* copy data */
-  for (i = 0; (i <= values.last); i = (1 + i)) {
+  for (i = 0; (i < values.extent); i = (1 + i)) {
     field_size = ((values.data)[i]).size;
     if (i >= (values.type)->fields_fixed_count) {
       *((db_data_len_t*)(data_temp)) = field_size;
       data_temp = (sizeof(db_data_len_t) + data_temp);
     };
-    memcpy(data_temp, (((values.data)[i]).data), field_size);
+    field_data = ((values.data)[i]).data;
+    /* field-data pointer is zero for unset fields */
+    if (!field_data) {
+      memset(data_temp, 0, field_size);
+    } else {
+      memcpy(data_temp, field_data, field_size);
+    };
     data_temp = (field_size + data_temp);
   };
   result->data = data;
@@ -43,14 +54,15 @@ status_t db_node_values_to_data(db_node_values_t values, db_node_t* result) {
 exit:
   return (status);
 };
-/** allocate memory for a new node values array */
+/** allocate memory for a new node values array.
+  extent is last field index plus one */
 status_t db_node_values_new(db_type_t* type, db_node_values_t* result) {
   status_declare;
   db_node_value_t* data;
   db_calloc(data, (type->fields_len), (sizeof(db_node_value_t)));
   (*result).type = type;
   (*result).data = data;
-  (*result).last = 0;
+  (*result).extent = 0;
 exit:
   return (status);
 };
@@ -64,8 +76,8 @@ void db_node_values_set(db_node_values_t* values, db_fields_len_t field, void* d
   field_type = (((values_temp.type)->fields)[field]).type;
   ((values_temp.data)[field]).data = data;
   ((values_temp.data)[field]).size = (db_field_type_is_fixed(field_type) ? db_field_type_size(field_type) : size);
-  if (!values_temp.last || (field > values_temp.last)) {
-    values_temp.last = field;
+  if ((0 == values_temp.extent) || (field >= values_temp.extent)) {
+    values_temp.extent = (1 + field);
   };
   *values = values_temp;
 };
@@ -86,7 +98,9 @@ status_t db_node_create(db_txn_t txn, db_node_values_t values, db_id_t* result) 
   status_require((db_sequence_next((txn.env), ((values.type)->id), (&id))));
   db_mdb_status_require((mdb_cursor_put(nodes, (&val_id), (&val_data), 0)));
   db_mdb_cursor_close(nodes);
-  status_require((db_indices_entry_ensure(txn, values, id)));
+  if (values.extent) {
+    status_require((db_indices_entry_ensure(txn, values, id)));
+  };
   *result = id;
 exit:
   db_mdb_cursor_close_if_active(nodes);

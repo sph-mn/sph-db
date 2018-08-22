@@ -9,6 +9,50 @@
     otherwise like printf */
 #define debug_log(format, ...) fprintf(stdout, "%s:%d " format "\n", __func__, __LINE__, __VA_ARGS__)
 ;
+/* return status code and error handling. uses a local variable named "status" and a goto label named "exit".
+   a status has an identifier and a group to discern between status identifiers of different libraries.
+   status id 0 is success, everything else can be considered a failure or special case.
+   status ids are 32 bit signed integers for compatibility with error return codes from many other existing libraries */
+/** like status declare but with a default group */
+#define status_declare_group(group) status_t status = { status_id_success, group }
+#define status_id_success 0
+#define status_group_undefined 0
+#define status_declare status_t status = { status_id_success, status_group_undefined }
+#define status_reset status_set_both(status_group_undefined, status_id_success)
+#define status_is_success (status_id_success == status.id)
+#define status_is_failure !status_is_success
+#define status_goto goto exit
+#define status_set_both(group_id, status_id) \
+  status.group = group_id; \
+  status.id = status_id
+/** update status with the result of expression and goto error on failure */
+#define status_require(expression) \
+  status = expression; \
+  if (status_is_failure) { \
+    status_goto; \
+  }
+/** set the status id and goto error */
+#define status_set_id_goto(status_id) \
+  status.id = status_id; \
+  status_goto
+#define status_set_group_goto(group_id) \
+  status.group = group_id; \
+  status_goto
+#define status_set_both_goto(group_id, status_id) \
+  status_set_both(group_id, status_id); \
+  status_goto
+/** like status-require but expression returns only status.id */
+#define status_id_require(expression) \
+  status.id = expression; \
+  if (status_is_failure) { \
+    status_goto; \
+  }
+;
+typedef int32_t status_id_t;
+typedef struct {
+  status_id_t id;
+  uint8_t group;
+} status_t;
 /* "iteration array" - an array with variable length content that makes iteration easier to code.
   most bindings are generic macros that will work on all i-array types. i-array-add and i-array-forward go from left to right.
   examples:
@@ -65,178 +109,6 @@
 #define i_array_length(a) (a.unused - a.start)
 #define i_array_max_length(a) (a.end - a.start)
 #define i_array_free(a) free((a.start));
-/* return status and error handling */
-/* return status code and error handling. uses a local variable named "status" and a goto label named "exit".
-   a status has an identifier and a group to discern between status identifiers of different libraries.
-   status id 0 is success, everything else can be considered a failure or special case.
-   status ids are 32 bit signed integers for compatibility with error return codes from many other existing libraries */
-/** like status declare but with a default group */
-#define status_declare_group(group) status_t status = { status_id_success, group }
-#define status_id_success 0
-#define status_group_undefined 0
-#define status_declare status_t status = { status_id_success, status_group_undefined }
-#define status_reset status_set_both(status_group_undefined, status_id_success)
-#define status_is_success (status_id_success == status.id)
-#define status_is_failure !status_is_success
-#define status_goto goto exit
-#define status_set_both(group_id, status_id) \
-  status.group = group_id; \
-  status.id = status_id
-/** update status with the result of expression and goto error on failure */
-#define status_require(expression) \
-  status = expression; \
-  if (status_is_failure) { \
-    status_goto; \
-  }
-/** set the status id and goto error */
-#define status_set_id_goto(status_id) \
-  status.id = status_id; \
-  status_goto
-#define status_set_group_goto(group_id) \
-  status.group = group_id; \
-  status_goto
-#define status_set_both_goto(group_id, status_id) \
-  status_set_both(group_id, status_id); \
-  status_goto
-/** like status-require but expression returns only status.id */
-#define status_id_require(expression) \
-  status.id = expression; \
-  if (status_is_failure) { \
-    status_goto; \
-  }
-;
-typedef int32_t status_id_t;
-typedef struct {
-  status_id_t id;
-  uint8_t group;
-} status_t;
-enum { db_status_id_success,
-  db_status_id_undefined,
-  db_status_id_condition_unfulfilled,
-  db_status_id_data_length,
-  db_status_id_different_format,
-  db_status_id_duplicate,
-  db_status_id_input_type,
-  db_status_id_invalid_argument,
-  db_status_id_max_element_id,
-  db_status_id_max_type_id,
-  db_status_id_max_type_id_size,
-  db_status_id_memory,
-  db_status_id_missing_argument_db_root,
-  db_status_id_notfound,
-  db_status_id_not_implemented,
-  db_status_id_path_not_accessible_db_root,
-  db_status_id_index_keysize,
-  db_status_group_db,
-  db_status_group_lmdb,
-  db_status_group_libc };
-#define db_status_set_id_goto(status_id) status_set_both_goto(db_status_group_db, status_id)
-#define status_require_read(expression) \
-  status = expression; \
-  if (!(status_is_success || (status.id == db_status_id_notfound))) { \
-    status_goto; \
-  }
-#define db_status_success_if_notfound \
-  if (status.id == db_status_id_notfound) { \
-    status.id = status_id_success; \
-  }
-uint8_t* db_status_group_id_to_name(status_id_t a) {
-  char* b;
-  if (db_status_group_db == a) {
-    b = "sph-db";
-  } else if (db_status_group_lmdb == a) {
-    b = "lmdb";
-  } else if (db_status_group_libc == a) {
-    b = "libc";
-  } else {
-    b = "";
-  };
-  return (b);
-};
-/** get the description if available for a status */
-uint8_t* db_status_description(status_t a) {
-  char* b;
-  if (db_status_group_lmdb == a.group) {
-    b = mdb_strerror((a.id));
-  } else {
-    if (db_status_id_invalid_argument == a.id) {
-      b = "input argument is of wrong type";
-    } else if (db_status_id_input_type == a.id) {
-      b = "input argument is of wrong type";
-    } else if (db_status_id_data_length == a.id) {
-      b = "data too large";
-    } else if (db_status_id_duplicate == a.id) {
-      b = "element already exists";
-    } else if (db_status_id_not_implemented == a.id) {
-      b = "not implemented";
-    } else if (db_status_id_missing_argument_db_root == a.id) {
-      b = "missing argument 'db-root'";
-    } else if (db_status_id_path_not_accessible_db_root == a.id) {
-      b = "root not accessible";
-    } else if (db_status_id_memory == a.id) {
-      b = "not enough memory or other memory allocation error";
-    } else if (db_status_id_max_element_id == a.id) {
-      b = "maximum element identifier value has been reached for the type";
-    } else if (db_status_id_max_type_id == a.id) {
-      b = "maximum type identifier value has been reached";
-    } else if (db_status_id_max_type_id_size == a.id) {
-      b = "type identifier size is either configured to be greater than 16 bit, which is currently not supported, or is not smaller than node id size";
-    } else if (db_status_id_condition_unfulfilled == a.id) {
-      b = "condition unfulfilled";
-    } else if (db_status_id_notfound == a.id) {
-      b = "no more data to read";
-    } else if (db_status_id_different_format == a.id) {
-      b = "configured format differs from the format the database was created with";
-    } else if (db_status_id_index_keysize == a.id) {
-      b = "index key to be inserted exceeds mdb maxkeysize";
-    } else {
-      b = "";
-    };
-  };
-  return (((uint8_t*)(b)));
-};
-/** get the name if available for a status */
-uint8_t* db_status_name(status_t a) {
-  char* b;
-  if (db_status_group_lmdb == a.group) {
-    b = mdb_strerror((a.id));
-  } else {
-    if (db_status_id_invalid_argument == a.id) {
-      b = "invalid-argument";
-    } else if (db_status_id_input_type == a.id) {
-      b = "input-type";
-    } else if (db_status_id_data_length == a.id) {
-      b = "data-length";
-    } else if (db_status_id_duplicate == a.id) {
-      b = "duplicate";
-    } else if (db_status_id_not_implemented == a.id) {
-      b = "not-implemented";
-    } else if (db_status_id_missing_argument_db_root == a.id) {
-      b = "missing-argument-db-root";
-    } else if (db_status_id_path_not_accessible_db_root == a.id) {
-      b = "path-not-accessible-db-root";
-    } else if (db_status_id_memory == a.id) {
-      b = "memory";
-    } else if (db_status_id_max_element_id == a.id) {
-      b = "max-element-id-reached";
-    } else if (db_status_id_max_type_id == a.id) {
-      b = "max-type-id-reached";
-    } else if (db_status_id_max_type_id_size == a.id) {
-      b = "type-id-size-too-big";
-    } else if (db_status_id_condition_unfulfilled == a.id) {
-      b = "condition-unfulfilled";
-    } else if (db_status_id_notfound == a.id) {
-      b = "notfound";
-    } else if (db_status_id_different_format == a.id) {
-      b = "differing-db-format";
-    } else if (db_status_id_index_keysize == a.id) {
-      b = "index-key-mdb-keysize";
-    } else {
-      b = "unknown";
-    };
-  };
-  return (((uint8_t*)(b)));
-};
 #define db_id_t uint64_t
 #define db_type_id_t uint16_t
 #define db_ordinal_t uint32_t
@@ -323,6 +195,18 @@ i_array_declare_type(db_relations_t, db_relation_t);
 #define db_field_type_uint64 128
 #define db_field_type_uint8 32
 #define db_type_flag_virtual 1
+#define db_status_set_id_goto(status_id) status_set_both_goto(db_status_group_db, status_id)
+#define status_require_read(expression) \
+  status = expression; \
+  if (!(status_is_success || (status.id == db_status_id_notfound))) { \
+    status_goto; \
+  }
+#define db_status_success_if_notfound \
+  if (status.id == db_status_id_notfound) { \
+    status.id = status_id_success; \
+  }
+#define db_node_values_declare(name) db_node_values_t name = { 0, 0, 0 }
+#define db_env_declare(name) db_env_t* env = 0
 #define db_ids_declare(name) i_array_declare(name, db_ids_t)
 #define db_relations_declare(name) i_array_declare(name, db_relations_t)
 #define db_nodes_declare(name) i_array_declare(name, db_nodes_t)
@@ -369,6 +253,26 @@ i_array_declare_type(db_relations_t, db_relation_t);
   db_node_index_selection_t name; \
   name.nodes_cursor = 0; \
   name.index_selection.cursor = 0
+enum { db_status_id_success,
+  db_status_id_undefined,
+  db_status_id_condition_unfulfilled,
+  db_status_id_data_length,
+  db_status_id_different_format,
+  db_status_id_duplicate,
+  db_status_id_input_type,
+  db_status_id_invalid_argument,
+  db_status_id_max_element_id,
+  db_status_id_max_type_id,
+  db_status_id_max_type_id_size,
+  db_status_id_memory,
+  db_status_id_missing_argument_db_root,
+  db_status_id_notfound,
+  db_status_id_not_implemented,
+  db_status_id_path_not_accessible_db_root,
+  db_status_id_index_keysize,
+  db_status_group_db,
+  db_status_group_lmdb,
+  db_status_group_libc };
 typedef struct {
   uint8_t* name;
   db_name_len_t name_len;
@@ -441,7 +345,7 @@ typedef struct {
 } db_node_value_t;
 typedef struct {
   db_node_value_t* data;
-  db_fields_len_t last;
+  db_fields_len_t extent;
   db_type_t* type;
 } db_node_values_t;
 typedef boolean (*db_node_matcher_t)(db_node_t, void*);
