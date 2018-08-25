@@ -184,6 +184,7 @@
 
 (define (db-node-read selection count result-nodes)
   (status-t db-node-selection-t db-count-t db-nodes-t*)
+  "try to read db_nodes_max_length(result_nodes) if count is zero"
   status-declare
   db-mdb-declare-val-id
   (declare
@@ -208,7 +209,7 @@
         node.id (db-pointer->id val-id.mv-data)
         node.data val-data.mv-data
         node.size val-data.mv-size
-        match (matcher node matcher-state))
+        match (matcher selection.type node matcher-state))
       (set match #t))
     (if match
       (begin

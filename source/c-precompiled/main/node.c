@@ -175,6 +175,7 @@ exit:
   };
   return (status);
 };
+/** try to read db_nodes_max_length(result_nodes) if count is zero */
 status_t db_node_read(db_node_selection_t selection, db_count_t count, db_nodes_t* result_nodes) {
   status_declare;
   db_mdb_declare_val_id;
@@ -196,7 +197,7 @@ status_t db_node_read(db_node_selection_t selection, db_count_t count, db_nodes_
       node.id = db_pointer_to_id((val_id.mv_data));
       node.data = val_data.mv_data;
       node.size = val_data.mv_size;
-      match = matcher(node, matcher_state);
+      match = matcher((selection.type), node, matcher_state);
     } else {
       match = 1;
     };

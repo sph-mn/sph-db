@@ -10,8 +10,6 @@
   db-selection-flag-skip 1
   db-graph-selection-flag-is-set-left 2
   db-graph-selection-flag-is-set-right 4
-  db-id-type-mask (bit-shift-left (convert-type db-type-id-mask db-id-t) (* 8 db-size-element-id))
-  db-id-element-mask (bit-not db-id-type-mask)
   db-type-id-limit db-type-id-mask
   db-element-id-limit db-id-element-mask
   db-type-flag-virtual 1

@@ -167,8 +167,6 @@ imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
 #define db_selection_flag_skip 1
 #define db_graph_selection_flag_is_set_left 2
 #define db_graph_selection_flag_is_set_right 4
-#define db_id_type_mask (((db_id_t)(db_type_id_mask)) << (8 * db_size_element_id))
-#define db_id_element_mask ~db_id_type_mask
 #define db_type_id_limit db_type_id_mask
 #define db_element_id_limit db_id_element_mask
 #define db_type_flag_virtual 1

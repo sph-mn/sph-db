@@ -195,6 +195,8 @@ i_array_declare_type(db_relations_t, db_relation_t);
 #define db_field_type_uint64 128
 #define db_field_type_uint8 32
 #define db_type_flag_virtual 1
+#define db_id_type_mask (((db_id_t)(db_type_id_mask)) << (8 * db_size_element_id))
+#define db_id_element_mask ~db_id_type_mask
 #define db_status_set_id_goto(status_id) status_set_both_goto(db_status_group_db, status_id)
 #define status_require_read(expression) \
   status = expression; \
@@ -348,7 +350,7 @@ typedef struct {
   db_fields_len_t extent;
   db_type_t* type;
 } db_node_values_t;
-typedef boolean (*db_node_matcher_t)(db_node_t, void*);
+typedef boolean (*db_node_matcher_t)(db_type_t*, db_node_t, void*);
 typedef struct {
   MDB_cursor* cursor;
 } db_index_selection_t;

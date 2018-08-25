@@ -224,7 +224,7 @@ status_t test_node_create(db_env_t* env) {
   db_node_values_set((&values_1), 3, value_4, 5);
   /* test node values/data conversion */
   db_node_values_to_data(values_1, (&node_1));
-  test_helper_assert(("node-values->data size"), (((2 * sizeof(db_data_len_t)) + 10) == node_1.size));
+  test_helper_assert(("node-values->data size"), (((2 * sizeof(db_data_len_t)) + 7) == node_1.size));
   db_node_data_to_values(type, node_1, (&values_2));
   test_helper_assert(("node-data->values type equal"), (values_1.type == values_2.type));
   test_helper_assert(("node-data->values size equal"), ((((values_1.data)[0]).size == ((values_2.data)[0]).size) && (((values_1.data)[1]).size == ((values_2.data)[1]).size) && (((values_1.data)[2]).size == ((values_2.data)[2]).size) && (((values_1.data)[3]).size == ((values_2.data)[3]).size)));
@@ -274,7 +274,7 @@ exit:
   db_txn_abort_if_active(txn);
   return (status);
 };
-boolean node_matcher(db_node_t data, void* matcher_state) {
+boolean node_matcher(db_type_t* type, db_node_t node, void* matcher_state) {
   *((uint8_t*)(matcher_state)) = 1;
   return (1);
 };

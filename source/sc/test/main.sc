@@ -262,7 +262,7 @@
   (db-node-values-set &values-1 3 value-4 5)
   (sc-comment "test node values/data conversion")
   (db-node-values->data values-1 &node-1)
-  (test-helper-assert "node-values->data size" (= (+ (* 2 (sizeof db-data-len-t)) 10) node-1.size))
+  (test-helper-assert "node-values->data size" (= (+ (* 2 (sizeof db-data-len-t)) 7) node-1.size))
   (db-node-data->values type node-1 &values-2)
   (test-helper-assert "node-data->values type equal" (= values-1.type values-2.type))
   (test-helper-assert
@@ -352,7 +352,7 @@
     (db-txn-abort-if-active txn)
     (return status)))
 
-(define (node-matcher data matcher-state) (boolean db-node-t void*)
+(define (node-matcher type node matcher-state) (boolean db-type-t* db-node-t void*)
   (set (pointer-get (convert-type matcher-state uint8-t*)) 1)
   (return #t))
 

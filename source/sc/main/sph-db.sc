@@ -81,6 +81,8 @@
   db-field-type-uint64 128
   db-field-type-uint8 32
   db-type-flag-virtual 1
+  db-id-type-mask (bit-shift-left (convert-type db-type-id-mask db-id-t) (* 8 db-size-element-id))
+  db-id-element-mask (bit-not db-id-type-mask)
   (db-status-set-id-goto status-id) (status-set-both-goto db-status-group-db status-id)
   (status-require-read expression)
   (begin
@@ -265,7 +267,7 @@
       (data db-node-value-t*)
       (extent db-fields-len-t)
       (type db-type-t*)))
-  db-node-matcher-t (type (function-pointer boolean db-node-t void*))
+  db-node-matcher-t (type (function-pointer boolean db-type-t* db-node-t void*))
   db-index-selection-t
   (type
     (struct
