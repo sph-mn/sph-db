@@ -6,8 +6,8 @@
    tip: reduce when debugging to make tests run faster. but dont forget to increase it again to 20 or something
    or otherwise the small count will mask potential errors")
 
-(define common-element-count uint32-t 4)
-(define common-label-count uint32-t 1)
+(define common-element-count uint32-t 20)
+(define common-label-count uint32-t 20)
 (pre-define db-env-types-extra-count 20)
 
 (define (test-open-empty env) (status-t db-env-t*)

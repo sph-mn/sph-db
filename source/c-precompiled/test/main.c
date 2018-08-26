@@ -3,8 +3,8 @@
    the values should also not be so high that the linearly created ordinals exceed the size of the ordinal type.
    tip: reduce when debugging to make tests run faster. but dont forget to increase it again to 20 or something
    or otherwise the small count will mask potential errors */
-uint32_t common_element_count = 4;
-uint32_t common_label_count = 1;
+uint32_t common_element_count = 20;
+uint32_t common_label_count = 20;
 #define db_env_types_extra_count 20
 status_t test_open_empty(db_env_t* env) {
   status_declare;
