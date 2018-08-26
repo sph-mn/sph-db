@@ -41,7 +41,7 @@ sph-db is a database as a shared library for records and relations. sph-db is in
 optionally execute ``./exe/test`` to see if the tests run successful
 
 # usage in c
-the example code can be found in ![other/examples/example-code.c](other/examples/example-code.c)
+the example code can be found in ![other/examples/example-usage.c](other/examples/example-usage.c)
 
 ## compilation of programs using sph-db
 for example with gcc:
