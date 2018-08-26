@@ -142,13 +142,13 @@ could technically encode multiple 8 bit fields or similar
 
 # database handles or one open database per process
 * option - selected
-* handles
-* can use multiple databases in one process
-* almost all api routines require a transaction object which encapsulates the environment
+  * handles
+  * can use multiple databases in one process
+  * almost all api routines require a transaction object which encapsulates the environment
 * option
-* process, global variable
-* dont have to pass handle argument to any api routine
-* must use separate processes and ipc to work with multiple databases
+  * process, global variable
+  * dont have to pass handle argument to any api routine
+  * must use separate processes and ipc to work with multiple databases
 
 # should complex filter conditions be supported for node selection
 * for example conditions in a nestable linked list with comparison operators. and/or/not/begins/ends/contains/equals/etc
@@ -167,30 +167,30 @@ initially not supported
 
 # unidirectional relations to save space
 * maybe later
-* how to garbage collect unidirectional relations
+* how to garbage collect unidirectional relations in an application
   * option (favorite): go by label. label must be connected
   * option: maybe decay factor and regular refresh but it should completely be an application issue at this point
 
 # database network distribution and scaling
 * there are ideas, but takes more resources to implement
-* rudimentary implementation (read scaling): a hook for each modification that gets passed the current write transaction and an extension that manages a commit log and applies it on another host
+* rudimentary implementation (read scaling): a hook for each modification that gets passed the current write transaction and an extension that manages a commit log that is used on another host
 
 # are custom extra relation fields needed
-* change of the default btree would add considerable complexity
+* change of the default relation database layout would add considerable complexity
 * possible with labels that are compound data structure node ids
 * example situation: "when every ingredient can be added in different amounts to different recipes"
 
-# sequences per table or one global
+# sequences per type or one global
 * option - selected
-  * per-table
+  * per-type
     * can theoretically be shorter
-    * need to query every table to load current sequence number on startup
+    * need to query every type to load current sequence number on startup
 * option
   * database global
     * fast load on startup
     * exhausts much sooner
 * option
-  * custom-size per-table
+  * custom-size per-type
     * size loaded from schema variable
 
 # what happens on concurrent delete and update for a row
@@ -200,24 +200,24 @@ initially not supported
 * "update might prevent deletion"
 
 # how to create custom virtual types
-set the corresponding flag with db-type-new
+set the corresponding flag with db-type-create
 
 # how to select type ids by name
 * option - current choice
-  * cache data scan
+  * search in cache
   * no extra work
   * relatively fast operation
 * option
   * index btree
 * option
-  * system data scan
+  * search in system database
 
 # how to alter a type
 * initially not supported
 * planned to require complete rewrite of all rows unless append
 * reason is maximum space saving and performance for the row encoding
 * an option might be to create new types for the changed versions,
-* use multiple as if one and merge at some point (might never become fully merged)
+* use multiple types as if being one and merge at some point (might never become fully merged)
 
 # one sequence for all types or one per type
 * 64 bit keys seem desirable because it is the biggest native c datatype. but with that size and a reasonable 16 bit type identifier, only 48 bit are left for row ids
@@ -240,7 +240,7 @@ node first/last/prev/range etc seem not needed because of the data model (ids to
   * matcher function will differ anyway per type
   * easily extendable to any matcher if needed
   * pro
-  * most needed option
+    * most needed option
 * option
   * any
   * list of types to match
@@ -264,11 +264,11 @@ node first/last/prev/range etc seem not needed because of the data model (ids to
   * 0 type: all nodes of type
   * i dont see a purpose for 00 and 11 filters, so i tend towards having it unsupported for now
   * what would one be searching for with 0 0? to match algorithmically you need shared properties
-  * how could it be useful to filter by ids and type, since ids contain the type. it is just filtering the plain list and checking existence
+  * how could it be useful to filter by ids and type, since ids contain the type. it would be just filtering the plain list and checking existence
 
 # allow mixed-type node-select
-* for example with an ids-list, then read from graph relations
-* usually databases cant select cross type, they can also not read fields cross type
+* for example with an ids-list that has been read from graph relations
+* usually databases cant select cross type, they can also not match fields cross type
 * always possible to go type by type with separate searches
 * would be a feature that might be lost with a slightly different base design
 * checking for type after match is cheaper than calling node-select for each type
@@ -296,7 +296,7 @@ node first/last/prev/range etc seem not needed because of the data model (ids to
     * costly to check if data already set
     * malloc per element
 
-# why implement db-node-get or db-node-exists
+# why implement db-node-get
 * faster for externally retrieved ids list, for example page id or file ids, to quickly check if even exists before loading details
 
 # copy or reference selected fields
