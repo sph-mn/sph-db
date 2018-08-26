@@ -1,7 +1,7 @@
 # internals
 
-# btrees
-* system: config-label [id/custom ...] -> data
+# overview of lmdb databases (b+trees)
+* system: config-label [custom ...] -> data
   * format-label -> id-size id-type-size ordinal-size
   * type-label id -> name-len name field-count (field-type name-len name) ...
   * index-label type-id field-index ... -> null
@@ -17,10 +17,10 @@
   * field-data ... node-id -> null
 
 # nodes
-* all nodes are stored in one btree
+* all nodes are stored in one lmdb database
 * ids include type information
   * to cluster nodes by type because nodes are stored sorted by id
-  * to filter relation targets by type cheaply
+  * to filter lists of relation target node ids by type cheaply
   * node-id: type-id element-id
   * zero is the null identifier. use case: unspecified relation labels, sources or targets
 * sequences
@@ -28,9 +28,9 @@
   * new identifiers are increments
   * counter initialised on open from finding max used identifier
 * types
+  * registered in the system lmdb database
   * have names
   * have information about fields
-  * persist in the system btree
 * fields
   * fields have names
   * fields are accessed by field index/offset and optionally name via translation function
@@ -53,14 +53,14 @@
       * string
 * indices
   * associate node field data with node ids
-  * one separate btree per index
+  * one separate lmdb database per index
   * update on each change of the associated node using the same transaction
 * system cache
-  * information about types, sequences and indices is loaded on open and cached
+  * information about types, sequences and indices is loaded on open and cached in memory in the db_env_t struct
   * type structs are cached in a dynamically resized array with the type-id as index ("arrays are the fastest hash tables")
 * relations
   * there must only be one relation for every combination of left, label and right. cyclic relations are allowed. relational integrity may be ignored when creating relations to avoid existence checks
-  * when a node is deleted then all relations that contain its id must be deleted
+  * when a node is deleted then all relations that contain its id are deleted with it
   * targets are stored ordered by ordinal value. ordinal values are stored only for the right part of the left-to-right direction to save space
   * by convention, left to right corresponds to general to specific
   * terminology for relation start and end point: left and right, or source and target for unspecified direction
@@ -68,9 +68,9 @@
 # search performance
 * nodes and relations are stored in b+trees with a basic o(log n) time complexity for search/insert/delete (average and worst case)
 * node data: getting data from node identifiers requires only one basic b+tree search. it is as fast as it gets. data fields can be indexed
-* relations: relations are filtered by giving lists of ids to match as arguments. 16 different filter combinations for left/label/ordinal/right, the parts of relations, are theoretically possible with dg_relation_select. 2 are unsupported: all combinations that contain a filter for right and ordinal but not left. because the number of all possible combinations is relatively low, pre-compiled code optimised for the exact combination is used when executing queries. the sph-db relation functionality is specifically designed for queries with these combinations
+* relations: relations are filtered by giving lists of ids to match as arguments. 16 different filter combinations for left/label/ordinal/right, the parts of relations, are theoretically possible with db_relation_select. 2 are unsupported: all combinations that contain a filter for right and ordinal but not left. because the number of the possible combinations is small, pre-compiled code optimised for the exact filter combination is used when executing queries. the sph-db relation functionality is specifically designed for queries with these filters
 
-here is a list of estimated relative dg_relation_read performance for each filter combination from best (fastest execution per element matched) to worst (slowest), some are equal:
+here is a list of estimated, relative db_relation_read performance for each filter combination from best (fastest execution per element matched) to worst (slowest), some are equal:
 ```
 * * * *
 left * * *
@@ -96,25 +96,25 @@ not supported
 
 # space requirements
 * nodes and relations are stored in b+trees with a basic o(log n) space complexity (average and worst case)
-* the required space depends on the chosen dg_id_t and dg_ordinal_t types. the maximum possible size for these types is restricted by the largest available c type supported by the compiler that is used to compile sph-db. the commonly available range is 0 to 64 bit. the minimum possible size is 8 bit for identifiers and 0 bit for ordinals (untested)
+* the required space depends on the chosen db_id_t and db_ordinal_t types. the maximum possible size for these types is restricted by the largest available c type supported by the compiler that is used to compile sph-db because pointers are not supported. the commonly supported range is 0 to 64 bit. the minimum possible size is 8 bit for identifiers and 0 bit for ordinals (untested)
 * nodes
   * node-size = id-size + data-size
-  * virtual-node-size = 0 (only exist in relations)
+  * virtual-node-size = 0 (only exist in relations or field data)
 * relations
   * relation-size = 8 * id-size + ordinal-size
   * example 1
     * id-size = 64, ordinal-size = 32
     * relation-size = 8 * 64 + 32 = 544
     * 544 bit per relation
-    * 3e9 relations: 1.632 terabit of storage
-    * 3e6 relations: 1.632 gigabit of storage
+    * 3e9 relations: 1632 gigabit of storage
+    * 3e6 relations: 1632 megabit of storage
   * example 2
     * id-size = 32, ordinal-size = 0
     * relation-size = 8 * 32 + 0 = 256
     * 256 bit per relation
     * 3e9 relations: 768 gigabit
     * 3e6 relations: 768 megabit
-  * implementation of unidirectional relations and omitted label-to-left indexing could reduce the required size per relation to (2 * id-size + ordinal-size)
+  * implementation of unidirectional relations and omitted label-to-left indexing in the future can reduce the required size per relation to (2 * id-size + ordinal-size)
 
 # code
 * ``sph-db-extra.h`` contains declarations for internally used things

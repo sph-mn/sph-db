@@ -685,15 +685,15 @@ these values can be set before compilation in ``c-precompiled/main/config.c``. o
 * the maximum number of type creations is currently 65535. this limit is to be removed in the future
 
 # possible enhancements
-* currently index inserts with data too large are rejected. add an option to truncate instead
-* lift the type creation limit. allow all unsigned integer datatypes for type ids and reclaim unused ids
-* validator functions for indices and graph data consistency
 * float values as ordinals has not been tested
+* lift the type creation limit. allow all unsigned integer datatypes for type ids and reclaim unused ids
+* nested transactions. supposedly possible in lmdb but not working
+* validator functions for indices and graph data consistency
+* partial indices. with a data filter function given at index definition
+* currently index inserts with data too large are rejected. maybe add an option to truncate instead
 * at some places MDB_SET_RANGE and MDB_GET_BOTH_RANGE is used in succession. maybe get-both-range includes set-range and the latter can be left out
 * search with matcher functions in index keys
-* partial indices. with a data filter function given at index definition
-* nested transactions. supposedly possible in lmdb but not working
-* simplified status bindings. status_require is a long word to be written frequently
+* simplified naming for status bindings. status_require is a long word to be written frequently
 
 # development
 this section is for when you want to change sph-db itself.
