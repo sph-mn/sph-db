@@ -192,7 +192,6 @@
     matcher db-node-matcher-t
     matcher-state void*
     node db-node-t
-    id db-id-t
     skip boolean
     match boolean
     type-id db-type-id-t)

@@ -4,5 +4,5 @@
 
 #--suppressions=other/valgrind-test/custom.supp
 
-options="--leak-check=yes"
+options="--leak-check=yes --leak-check=full --show-leak-kinds=all"
 valgrind --tool=memcheck $options ./exe/test $@

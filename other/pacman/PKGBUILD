@@ -1,12 +1,12 @@
 _name=sph-db
 pkgname=sph-db-git
-pkgver=0
+pkgver=80
 pkgrel=1
-pkgdesc="record and graph database as a shared library"
+pkgdesc="database as a shared library for records and relations"
 arch=(any)
-license=(gpl3+)
+license=(lgpl3+)
 makedepends=(git gcc)
-depends=(liblmdb)
+depends=(lmdb)
 provides=(sph-db)
 url="git://github.com/sph-mn/sph-db"
 source=("$url")

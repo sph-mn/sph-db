@@ -741,7 +741,6 @@ exit:
 status_t db_graph_read(db_graph_selection_t* selection, db_count_t count, db_relations_t* result) {
   status_declare;
   status = ((db_graph_reader_t)(selection->reader))(selection, (!count ? i_array_max_length((*result)) : count), result);
-exit:
   db_mdb_status_notfound_if_notfound;
   return (status);
 };

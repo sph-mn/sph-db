@@ -1,9 +1,9 @@
 #include "./helper.c"
-/* these values should not be below 3, or important cases would not be tested.
+/* the following values should not be below 3, or important cases would not be tested.
    the values should also not be so high that the linearly created ordinals exceed the size of the ordinal type.
-   tip: reduce when debugging to make tests run faster */
-uint32_t common_element_count = 3;
-uint32_t common_label_count = 3;
+   tip: reduce when debugging to make tests run faster. but dont forget to increase it again to 20 or something */
+uint32_t common_element_count = 4;
+uint32_t common_label_count = 4;
 #define db_env_types_extra_count 20
 status_t test_open_empty(db_env_t* env) {
   status_declare;
@@ -206,7 +206,6 @@ status_t test_node_create(db_env_t* env) {
   db_node_t node_2;
   size_t size_1;
   size_t size_2;
-  boolean exists;
   db_type_t* type;
   uint8_t value_1;
   int8_t value_2;

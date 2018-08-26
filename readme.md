@@ -34,14 +34,14 @@ sph-db is a database as a shared library for records and relations. sph-db is in
 
 # setup
 1. install run-time and quick build dependencies
-1. eventually adjust source/c-precompiled/main/config.c
+1. eventually ``adjust source/c-precompiled/main/config.c``
 1. change into the project directory and execute ``./exe/compile-c``
 1. execute ``./exe/install``. this supports one optional argument: a path prefix to install to
 
 optionally execute ``./exe/test`` to see if the tests run successful
 
 # usage in c
-"other/example-code/example-code.c" contains the following example code
+the example code can be found in ![other/examples/example-code.c](other/examples/example-code.c)
 
 ## compilation of programs using sph-db
 for example with gcc:

@@ -468,8 +468,11 @@ status_t test_helper_graph_delete_setup(db_env_t* env, uint32_t e_left_count, ui
   r->e_label_count = e_label_count;
   return (status);
 };
+/** for any given argument permutation:
+     * checks btree entry count difference
+     * checks read result count after deletion, using the same search query
+    relations are assumed to be created with linearly incremented ordinals starting with 1 */
 status_t test_helper_graph_delete_one(test_helper_graph_delete_data_t data, boolean use_left, boolean use_right, boolean use_label, boolean use_ordinal) {
-  "for any given argument permutation:\n     * checks btree entry count difference\n     * checks read result count after deletion, using the same search query\n    relations are assumed to be created with linearly incremented ordinals starting with 1";
   status_declare;
   db_txn_declare((data.env), txn);
   i_array_declare(left, db_ids_t);

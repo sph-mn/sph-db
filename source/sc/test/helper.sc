@@ -540,105 +540,104 @@
 
 (define (test-helper-graph-delete-one data use-left use-right use-label use-ordinal)
   (status-t test-helper-graph-delete-data-t boolean boolean boolean boolean)
-  (begin
-    "for any given argument permutation:
+  "for any given argument permutation:
      * checks btree entry count difference
      * checks read result count after deletion, using the same search query
     relations are assumed to be created with linearly incremented ordinals starting with 1"
-    status-declare
-    (db-txn-declare data.env txn)
-    (i-array-declare left db-ids-t)
-    (i-array-declare right db-ids-t)
-    (i-array-declare label db-ids-t)
-    (i-array-declare relations db-relations-t)
-    (db-graph-selection-declare selection)
-    (declare
-      read-count-before-expected uint32-t
-      btree-count-after-delete uint32-t
-      btree-count-before-create uint32-t
-      btree-count-deleted-expected uint32-t
-      ordinal db-ordinal-condition-t*)
-    (define ordinal-condition db-ordinal-condition-t (struct-literal 2 5))
-    (printf "  %d%d%d%d" use-left use-right use-label use-ordinal)
-    (set
-      ordinal &ordinal-condition
-      read-count-before-expected
-      (test-helper-estimate-graph-read-result-count
-        data.e-left-count data.e-right-count data.e-label-count ordinal)
-      btree-count-deleted-expected
-      (test-helper-estimate-graph-read-btree-entry-count
-        data.e-left-count data.e-right-count data.e-label-count ordinal))
-    (status-require (db-ids-new data.e-left-count &left))
-    (status-require (db-ids-new data.e-right-count &right))
-    (status-require (db-ids-new data.e-label-count &label))
-    (db-relations-new (* data.e-left-count data.e-right-count data.e-label-count) &relations)
-    (status-require (db-txn-write-begin &txn))
-    (test-helper-create-ids txn data.e-left-count &left)
-    (test-helper-create-ids txn data.e-right-count &right)
-    (test-helper-create-ids txn data.e-label-count &label)
-    (db-debug-count-all-btree-entries txn &btree-count-before-create)
-    (status-require (test-helper-create-relations txn left right label))
-    (status-require (db-txn-commit &txn))
-    (status-require (db-txn-write-begin &txn))
-    (sc-comment "delete")
-    (status-require
-      (db-graph-delete
-        txn
-        (if* use-left &left
-          0)
-        (if* use-right &right
-          0)
-        (if* use-label &label
-          0)
-        (if* use-ordinal ordinal
-          0)))
-    (status-require (db-txn-commit &txn))
-    (status-require (db-txn-begin &txn))
-    (db-debug-count-all-btree-entries txn &btree-count-after-delete)
-    (status-require-read
-      (db-graph-select
-        txn
-        (if* use-left &left
-          0)
-        (if* use-right &right
-          0)
-        (if* use-label &label
-          0)
-        (if* use-ordinal ordinal
-          0)
-        0 &selection))
-    (db-graph-selection-finish &selection)
-    (db-txn-abort &txn)
-    (if (not (= 0 (i-array-length relations)))
-      (begin
-        (printf "\n    failed deletion. %lu relations not deleted\n" (i-array-length relations))
-        (db-debug-log-relations relations)
-        ;(status-require (db-txn-begin &txn))
-        ;(test-helper-display-all-relations txn common-element-count common-element-count common-label-count)
-        ;(db-txn-abort &txn)
-        (status-set-id-goto 1)))
-    (i-array-clear relations)
-    (sc-comment
-      "test only if not using ordinal condition because the expected counts arent estimated")
-    (if (not (or use-ordinal (= btree-count-after-delete btree-count-before-create)))
-      (begin
-        (printf
-          "\n failed deletion. %lu btree entries not deleted\n"
-          (- btree-count-after-delete btree-count-before-create))
-        (status-require (db-txn-begin &txn))
-        (db-debug-log-btree-counts txn)
-        (status-require-read (db-graph-select txn 0 0 0 0 0 &selection))
-        (status-require-read (db-graph-read &selection 0 &relations))
-        (printf "all remaining ")
-        (db-debug-log-relations relations)
-        (db-graph-selection-finish &selection)
-        (db-txn-abort &txn)
-        (status-set-id-goto 1)))
-    db-status-success-if-notfound
-    (label exit
-      (printf "\n")
-      (i-array-free left)
-      (i-array-free right)
-      (i-array-free label)
-      (i-array-free relations)
-      (return status))))
+  status-declare
+  (db-txn-declare data.env txn)
+  (i-array-declare left db-ids-t)
+  (i-array-declare right db-ids-t)
+  (i-array-declare label db-ids-t)
+  (i-array-declare relations db-relations-t)
+  (db-graph-selection-declare selection)
+  (declare
+    read-count-before-expected uint32-t
+    btree-count-after-delete uint32-t
+    btree-count-before-create uint32-t
+    btree-count-deleted-expected uint32-t
+    ordinal db-ordinal-condition-t*)
+  (define ordinal-condition db-ordinal-condition-t (struct-literal 2 5))
+  (printf "  %d%d%d%d" use-left use-right use-label use-ordinal)
+  (set
+    ordinal &ordinal-condition
+    read-count-before-expected
+    (test-helper-estimate-graph-read-result-count
+      data.e-left-count data.e-right-count data.e-label-count ordinal)
+    btree-count-deleted-expected
+    (test-helper-estimate-graph-read-btree-entry-count
+      data.e-left-count data.e-right-count data.e-label-count ordinal))
+  (status-require (db-ids-new data.e-left-count &left))
+  (status-require (db-ids-new data.e-right-count &right))
+  (status-require (db-ids-new data.e-label-count &label))
+  (db-relations-new (* data.e-left-count data.e-right-count data.e-label-count) &relations)
+  (status-require (db-txn-write-begin &txn))
+  (test-helper-create-ids txn data.e-left-count &left)
+  (test-helper-create-ids txn data.e-right-count &right)
+  (test-helper-create-ids txn data.e-label-count &label)
+  (db-debug-count-all-btree-entries txn &btree-count-before-create)
+  (status-require (test-helper-create-relations txn left right label))
+  (status-require (db-txn-commit &txn))
+  (status-require (db-txn-write-begin &txn))
+  (sc-comment "delete")
+  (status-require
+    (db-graph-delete
+      txn
+      (if* use-left &left
+        0)
+      (if* use-right &right
+        0)
+      (if* use-label &label
+        0)
+      (if* use-ordinal ordinal
+        0)))
+  (status-require (db-txn-commit &txn))
+  (status-require (db-txn-begin &txn))
+  (db-debug-count-all-btree-entries txn &btree-count-after-delete)
+  (status-require-read
+    (db-graph-select
+      txn
+      (if* use-left &left
+        0)
+      (if* use-right &right
+        0)
+      (if* use-label &label
+        0)
+      (if* use-ordinal ordinal
+        0)
+      0 &selection))
+  (db-graph-selection-finish &selection)
+  (db-txn-abort &txn)
+  (if (not (= 0 (i-array-length relations)))
+    (begin
+      (printf "\n    failed deletion. %lu relations not deleted\n" (i-array-length relations))
+      (db-debug-log-relations relations)
+      ;(status-require (db-txn-begin &txn))
+      ;(test-helper-display-all-relations txn common-element-count common-element-count common-label-count)
+      ;(db-txn-abort &txn)
+      (status-set-id-goto 1)))
+  (i-array-clear relations)
+  (sc-comment
+    "test only if not using ordinal condition because the expected counts arent estimated")
+  (if (not (or use-ordinal (= btree-count-after-delete btree-count-before-create)))
+    (begin
+      (printf
+        "\n failed deletion. %lu btree entries not deleted\n"
+        (- btree-count-after-delete btree-count-before-create))
+      (status-require (db-txn-begin &txn))
+      (db-debug-log-btree-counts txn)
+      (status-require-read (db-graph-select txn 0 0 0 0 0 &selection))
+      (status-require-read (db-graph-read &selection 0 &relations))
+      (printf "all remaining ")
+      (db-debug-log-relations relations)
+      (db-graph-selection-finish &selection)
+      (db-txn-abort &txn)
+      (status-set-id-goto 1)))
+  db-status-success-if-notfound
+  (label exit
+    (printf "\n")
+    (i-array-free left)
+    (i-array-free right)
+    (i-array-free label)
+    (i-array-free relations)
+    (return status)))

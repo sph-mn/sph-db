@@ -1,12 +1,12 @@
 (pre-include "./helper.c")
 
 (sc-comment
-  "these values should not be below 3, or important cases would not be tested.
+  "the following values should not be below 3, or important cases would not be tested.
    the values should also not be so high that the linearly created ordinals exceed the size of the ordinal type.
-   tip: reduce when debugging to make tests run faster")
+   tip: reduce when debugging to make tests run faster. but dont forget to increase it again to 20 or something")
 
-(define common-element-count uint32-t 3)
-(define common-label-count uint32-t 3)
+(define common-element-count uint32-t 4)
+(define common-label-count uint32-t 4)
 (pre-define db-env-types-extra-count 20)
 
 (define (test-open-empty env) (status-t db-env-t*)
@@ -243,7 +243,6 @@
     node-2 db-node-t
     size-1 size-t
     size-2 size-t
-    exists boolean
     type db-type-t*
     value-1 uint8-t
     value-2 int8-t

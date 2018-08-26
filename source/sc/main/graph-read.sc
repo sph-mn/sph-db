@@ -673,9 +673,8 @@
       (if* (not count) (i-array-max-length *result)
         count)
       result))
-  (label exit
-    db-mdb-status-notfound-if-notfound
-    (return status)))
+  db-mdb-status-notfound-if-notfound
+  (return status))
 
 (define (db-graph-selection-finish selection) (void db-graph-selection-t*)
   (db-mdb-cursor-close-if-active selection:cursor)

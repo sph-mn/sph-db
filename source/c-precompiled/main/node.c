@@ -183,7 +183,6 @@ status_t db_node_read(db_node_selection_t selection, db_count_t count, db_nodes_
   db_node_matcher_t matcher;
   void* matcher_state;
   db_node_t node;
-  db_id_t id;
   boolean skip;
   boolean match;
   db_type_id_t type_id;
