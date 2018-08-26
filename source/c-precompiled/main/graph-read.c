@@ -266,6 +266,7 @@ exit:
 };
 status_t db_graph_read_1001_1101(db_graph_selection_t* selection, db_count_t count, db_relations_t* result) {
   db_graph_reader_header(selection);
+  graph_key[1] = 0;
   db_mdb_declare_val_graph_data;
   db_declare_graph_data(graph_data);
   MDB_cursor* graph_lr;
@@ -274,16 +275,13 @@ status_t db_graph_read_1001_1101(db_graph_selection_t* selection, db_count_t cou
   graph_lr = selection->cursor;
   left = selection->left;
   right = selection->ids_set;
+  graph_key[0] = i_array_get(left);
   db_graph_reader_define_ordinal_variables(selection);
   db_graph_data_set_ordinal(graph_data, ordinal_min);
   db_mdb_status_require((mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT)));
-  if (i_array_in_range(left)) {
-    graph_key[0] = i_array_get(left);
-  } else {
-    notfound_exit;
-  };
+  /* already set from select or previous call */
   if (db_pointer_to_id((val_graph_key.mv_data)) == graph_key[0]) {
-    goto each_key;
+    goto each_data;
   };
 each_left:
   val_graph_key.mv_data = graph_key;
@@ -313,9 +311,9 @@ each_key:
   goto each_left;
 each_data:
   stop_if_count_zero;
-  /* check ordinal-min for if the first element, which graph-select initialises to, matches */
-  if ((!ordinal_min || (db_graph_data_to_ordinal((val_graph_data.mv_data)) >= ordinal_min)) && (!ordinal_max || (db_graph_data_to_ordinal((val_graph_data.mv_data)) <= ordinal_max))) {
-    if (!right || imht_set_contains(right, (db_graph_data_to_id((val_graph_data.mv_data))))) {
+  if (!ordinal_max || (db_graph_data_to_ordinal((val_graph_data.mv_data)) <= ordinal_max)) {
+    /* ordinal-min is checked because the set-range can be skipped */
+    if ((!ordinal_min || (db_graph_data_to_ordinal((val_graph_data.mv_data)) >= ordinal_min)) && (!right || imht_set_contains(right, (db_graph_data_to_id((val_graph_data.mv_data)))))) {
       if (!skip) {
         relation.left = db_pointer_to_id((val_graph_key.mv_data));
         relation.label = db_pointer_to_id_at((val_graph_key.mv_data), 1);
@@ -350,11 +348,14 @@ status_t db_graph_read_1011_1111(db_graph_selection_t* selection, db_count_t cou
   left = selection->left;
   label = selection->label;
   right = selection->ids_set;
+  graph_key[0] = i_array_get(left);
+  graph_key[1] = i_array_get(label);
   db_graph_reader_define_ordinal_variables(selection);
   db_graph_data_set_ordinal(graph_data, ordinal_min);
   db_mdb_status_require((mdb_cursor_get(graph_lr, (&val_graph_key), (&val_graph_data), MDB_GET_CURRENT)));
-  graph_key[0] = i_array_get(left);
-  graph_key[1] = i_array_get(label);
+  if ((db_pointer_to_id((val_graph_key.mv_data)) == graph_key[0]) && (db_pointer_to_id_at((val_graph_key.mv_data), 1) == graph_key[1])) {
+    goto each_data;
+  };
 set_key:
   val_graph_key.mv_data = graph_key;
   val_graph_data.mv_data = graph_data;
@@ -381,13 +382,14 @@ set_key:
   };
 each_data:
   stop_if_count_zero;
-  if ((!ordinal_min || (db_graph_data_to_ordinal((val_graph_data.mv_data)) >= ordinal_min)) && (!ordinal_max || (db_graph_data_to_ordinal((val_graph_data.mv_data)) <= ordinal_max))) {
-    if (!right || imht_set_contains(right, (db_graph_data_to_id((val_graph_data.mv_data))))) {
+  if (!ordinal_max || (db_graph_data_to_ordinal((val_graph_data.mv_data)) <= ordinal_max)) {
+    /* ordinal-min is checked because the get-both-range can be skipped */
+    if ((!ordinal_min || (db_graph_data_to_ordinal((val_graph_data.mv_data)) >= ordinal_min)) && (!right || imht_set_contains(right, (db_graph_data_to_id((val_graph_data.mv_data)))))) {
       if (!skip) {
         relation.left = db_pointer_to_id((val_graph_key.mv_data));
-        relation.right = db_graph_data_to_id((val_graph_data.mv_data));
         relation.label = db_pointer_to_id_at((val_graph_key.mv_data), 1);
         relation.ordinal = db_graph_data_to_ordinal((val_graph_data.mv_data));
+        relation.right = db_graph_data_to_id((val_graph_data.mv_data));
         i_array_add((*result), relation);
       };
       reduce_count;
@@ -396,11 +398,10 @@ each_data:
     if (db_mdb_status_is_success) {
       goto each_data;
     } else {
-      goto each_key;
+      db_mdb_status_expect_notfound;
     };
-  } else {
-    goto each_key;
   };
+  goto each_key;
 exit:
   selection->left.current = left.current;
   selection->label.current = label.current;

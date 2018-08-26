@@ -392,6 +392,7 @@ status_t test_helper_graph_read_one(db_txn_t txn, test_helper_graph_read_data_t 
   printf("  %s", reader_suffix_string);
   free(reader_suffix_string);
   status_require((db_graph_select(txn, left_pointer, right_pointer, label_pointer, ordinal, offset, (&selection))));
+  /* test multiple read calls */
   status_require((db_graph_read((&selection), 2, (&(data.relations)))));
   status_require_read((db_graph_read((&selection), 0, (&(data.relations)))));
   if (status.id == db_status_id_notfound) {

@@ -454,6 +454,7 @@
   (free reader-suffix-string)
   (status-require
     (db-graph-select txn left-pointer right-pointer label-pointer ordinal offset &selection))
+  (sc-comment "test multiple read calls")
   (status-require (db-graph-read &selection 2 &data.relations))
   (status-require-read (db-graph-read &selection 0 &data.relations))
   (if (= status.id db-status-id-notfound) (set status.id status-id-success)

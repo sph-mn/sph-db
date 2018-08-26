@@ -3,10 +3,11 @@
 (sc-comment
   "the following values should not be below 3, or important cases would not be tested.
    the values should also not be so high that the linearly created ordinals exceed the size of the ordinal type.
-   tip: reduce when debugging to make tests run faster. but dont forget to increase it again to 20 or something")
+   tip: reduce when debugging to make tests run faster. but dont forget to increase it again to 20 or something
+   or otherwise the small count will mask potential errors")
 
 (define common-element-count uint32-t 4)
-(define common-label-count uint32-t 4)
+(define common-label-count uint32-t 1)
 (pre-define db-env-types-extra-count 20)
 
 (define (test-open-empty env) (status-t db-env-t*)
@@ -191,6 +192,7 @@
     (test-helper-graph-read-setup
       env common-element-count common-element-count common-label-count &data))
   (status-require (db-txn-begin &txn))
+
   (status-require (test-helper-graph-read-one txn data 0 0 0 0 0))
   (status-require (test-helper-graph-read-one txn data 1 0 0 0 0))
   (status-require (test-helper-graph-read-one txn data 0 1 0 0 0))
@@ -572,6 +574,7 @@
   (declare env db-env-t*)
   status-declare
   (db-env-new &env)
+  (test-helper-test-one test-graph-read env)
   (test-helper-test-one test-id-construction env)
   (test-helper-test-one test-node-virtual env)
   (test-helper-test-one test-open-empty env)
@@ -580,7 +583,6 @@
   (test-helper-test-one test-type-create-get-delete env)
   (test-helper-test-one test-type-create-many env)
   (test-helper-test-one test-open-nonempty env)
-  (test-helper-test-one test-graph-read env)
   (test-helper-test-one test-graph-delete env)
   (test-helper-test-one test-node-create env)
   (test-helper-test-one test-node-select env)

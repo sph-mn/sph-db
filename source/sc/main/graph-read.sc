@@ -259,6 +259,7 @@
 (define (db-graph-read-1001-1101 selection count result)
   (status-t db-graph-selection-t* db-count-t db-relations-t*)
   (db-graph-reader-header selection)
+  (set (array-get graph-key 1) 0)
   db-mdb-declare-val-graph-data
   (db-declare-graph-data graph-data)
   (declare
@@ -268,13 +269,13 @@
   (set
     graph-lr selection:cursor
     left selection:left
-    right selection:ids-set)
+    right selection:ids-set
+    (array-get graph-key 0) (i-array-get left))
   (db-graph-reader-define-ordinal-variables selection)
   (db-graph-data-set-ordinal graph-data ordinal-min)
   (db-mdb-status-require (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
-  (if (i-array-in-range left) (set (array-get graph-key 0) (i-array-get left))
-    notfound-exit)
-  (if (= (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0)) (goto each-key))
+  (sc-comment "already set from select or previous call")
+  (if (= (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0)) (goto each-data))
   (label each-left
     (set val-graph-key.mv-data graph-key)
     (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-SET-RANGE))
@@ -296,14 +297,13 @@
       (goto each-left)))
   (label each-data
     stop-if-count-zero
-    (sc-comment
-      "check ordinal-min for if the first element, which graph-select initialises to, matches")
-    (if
-      (and
-        (or (not ordinal-min) (>= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-min))
-        (or (not ordinal-max) (<= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-max)))
+    (if (or (not ordinal-max) (<= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-max))
       (begin
-        (if (or (not right) (imht-set-contains right (db-graph-data->id val-graph-data.mv-data)))
+        (sc-comment "ordinal-min is checked because the set-range can be skipped")
+        (if
+          (and
+            (or (not ordinal-min) (>= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-min))
+            (or (not right) (imht-set-contains right (db-graph-data->id val-graph-data.mv-data))))
           (begin
             (if (not skip)
               (begin
@@ -337,18 +337,22 @@
     graph-lr selection:cursor
     left selection:left
     label selection:label
-    right selection:ids-set)
+    right selection:ids-set
+    (array-get graph-key 0) (i-array-get left)
+    (array-get graph-key 1) (i-array-get label))
   (db-graph-reader-define-ordinal-variables selection)
   (db-graph-data-set-ordinal graph-data ordinal-min)
   (db-mdb-status-require (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-CURRENT))
-  (set
-    (array-get graph-key 0) (i-array-get left)
-    (array-get graph-key 1) (i-array-get label))
+  (if
+    (and
+      (= (db-pointer->id val-graph-key.mv-data) (array-get graph-key 0))
+      (= (db-pointer->id-at val-graph-key.mv-data 1) (array-get graph-key 1)))
+    (goto each-data))
   (label set-key
     (set
       val-graph-key.mv-data graph-key
-      val-graph-data.mv-data graph-data)
-    (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-BOTH-RANGE))
+      val-graph-data.mv-data graph-data
+      status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-GET-BOTH-RANGE))
     (if db-mdb-status-is-success (goto each-data)
       (begin
         db-mdb-status-expect-notfound
@@ -366,26 +370,27 @@
           (goto set-key)))))
   (label each-data
     stop-if-count-zero
-    (if
-      (and
-        (or (not ordinal-min) (>= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-min))
-        (or (not ordinal-max) (<= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-max)))
+    (if (or (not ordinal-max) (<= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-max))
       (begin
-        (if (or (not right) (imht-set-contains right (db-graph-data->id val-graph-data.mv-data)))
+        (sc-comment "ordinal-min is checked because the get-both-range can be skipped")
+        (if
+          (and
+            (or (not ordinal-min) (>= (db-graph-data->ordinal val-graph-data.mv-data) ordinal-min))
+            (or (not right) (imht-set-contains right (db-graph-data->id val-graph-data.mv-data))))
           (begin
             (if (not skip)
               (begin
                 (set
                   relation.left (db-pointer->id val-graph-key.mv-data)
-                  relation.right (db-graph-data->id val-graph-data.mv-data)
                   relation.label (db-pointer->id-at val-graph-key.mv-data 1)
-                  relation.ordinal (db-graph-data->ordinal val-graph-data.mv-data))
+                  relation.ordinal (db-graph-data->ordinal val-graph-data.mv-data)
+                  relation.right (db-graph-data->id val-graph-data.mv-data))
                 (i-array-add *result relation)))
             reduce-count))
         (set status.id (mdb-cursor-get graph-lr &val-graph-key &val-graph-data MDB-NEXT-DUP))
         (if db-mdb-status-is-success (goto each-data)
-          (goto each-key)))
-      (goto each-key)))
+          db-mdb-status-expect-notfound)))
+    (goto each-key))
   (label exit
     (set
       selection:left.current left.current
