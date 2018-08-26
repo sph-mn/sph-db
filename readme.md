@@ -41,10 +41,12 @@ sph-db is a database as a shared library for records and relations. sph-db is in
 optionally execute ``./exe/test`` to see if the tests run successful
 
 # usage in c
+"other/example-code/example-code.c" contains the following example code
+
 ## compilation of programs using sph-db
 for example with gcc:
 ```bash
-gcc example.c -o example-executable -llmdb -lsph-db
+gcc example.c -o example-executable -lsph-db
 ```
 
 ## inclusion of api declarations
@@ -67,9 +69,9 @@ exit:
 
 ## initialisation
 ```c
-db_env_t* env;
-db_env_new(&env);
-// the database file will be created if it does not exist
+db_env_declare(env);
+status_require(db_env_new(&env));
+// the directory and database will be created if it does not exist
 status_require(db_open("/tmp/example", 0, env));
 // code that makes use of the database ...
 db_close(&env);
@@ -118,31 +120,39 @@ db_field_set(fields[1], db_field_type_int8, "field-name-2", 12);
 db_field_set(fields[2], db_field_type_string, "field-name-3", 12);
 db_field_set(fields[3], db_field_type_string, "field-name-4", 12);
 // arguments: db_env_t*, type_name, db_field_t*, field_count, flags, result
-status_require(db_type_create(env, "test-type", fields, 4, 0, &type));
+status_require(db_type_create(env, "test-type-name", fields, 4, 0, &type));
 ```
+
 fields can be fixed length (for example for integers and floating point values) or variable length. possible field types are db_field_type_* macro variables, see api reference below.
 apart from indicating storage type and size, field types are mostly a hint because no conversions take place
 
 ## create nodes
 ```c
-db_node_values_t values;
+// declarations
+db_node_values_declare(values);
 db_id_t id_1;
 db_id_t id_2;
 uint8_t value_1 = 11;
-i8 value_2 = -128;
+int8_t value_2 = -128;
 uint8_t* value_3 = "abc";
 uint8_t* value_4 = "abcde";
+// memory allocation
 status_require(db_node_values_new(type, &values));
+// set field values.
+// size argument is ignored for fixed length types.
+// strings can be stored with or without a trailing null character.
 // arguments: db_node_values_t*, field_index, value_address, size.
-// size is ignored for fixed length types
 db_node_values_set(&values, 0, &value_1, 0);
 db_node_values_set(&values, 1, &value_2, 0);
-// strings can be stored with or without a trailing null character
 db_node_values_set(&values, 2, value_3, 3);
 db_node_values_set(&values, 3, value_4, 5);
+// create one entry
 status_require(db_node_create(txn, values, &id_1));
-db_node_values_set(&values, 1, &value_1, 0);
+// create a second entry with a different value for the second field
+value_2 = 123;
+db_node_values_set(&values, 1, &value_2, 0);
 status_require(db_node_create(txn, values, &id_2));
+// memory deallocation
 db_node_values_free(&values);
 ```
 
@@ -154,6 +164,7 @@ memory for these arrays has to be allocated before use.
 
 usage
 ```c
+status_declare;
 // declare a new ids array variable
 db_ids_declare(ids);
 // allocate memory for three db_id_t elements
@@ -174,7 +185,7 @@ db_ids_get_at(ids, 2);
 db_ids_free(ids);
 ```
 
-db_nodes_* and db_relations_* bindings work the same. see the api documentation for more features
+db_nodes_* and db_relations_* bindings work the same. see the api documentation for more features. you can always access the data in a plain c array of db_id_t, db_node_t or db_relation_t with the struct field ``data``, for example ``ids.data``
 
 ## read nodes
 if no results are found or the end of results has been reached, the returned status id is ``db_status_id_notfound``. here is one example of how to handle this
@@ -184,6 +195,8 @@ status_require_read(db_node_read(selection, count, &results));
 if(db_status_id_notfound != status.id) {
   field_data = db_node_ref(db_node_get_at(results, 0), 0);
 }
+// sets status.id to zero if the current status is db_status_id_notfound
+db_status_success_if_notfound;
 ```
 
 by unique identifier
@@ -191,16 +204,18 @@ by unique identifier
 db_ids_declare(ids);
 db_nodes_declare(nodes);
 db_node_value_t field_data;
-status_require(db_nodes_new(2, &nodes));
+db_node_t node;
+status_require(db_nodes_new(3, &nodes));
 status_require(db_ids_new(3, &ids));
-db_ids_add(ids, 10);
-db_ids_add(ids, 15);
-db_ids_add(ids, 28);
+db_ids_add(ids, 1);
+db_ids_add(ids, 2);
+db_ids_add(ids, 3);
 status_require_read(db_node_get(txn, ids, &nodes));
-if(db_status_id_notfound != status.id) {
+if(db_nodes_length(nodes)) {
+  node = db_nodes_get_at(nodes, 0);
   // arguments: type, db-node-t, field_index
-  field_data = db_node_ref(type, db_nodes_get_at(nodes, 0), 1);
-  // field_data.data: void*, field_data.size: size_t
+  field_data = db_node_ref(type, node, 1);
+  // field_data: void* .data, size_t .size
 }
 db_ids_free(ids);
 db_nodes_free(nodes);
@@ -208,24 +223,19 @@ db_nodes_free(nodes);
 
 all of type
 ```c
-db_node_selection_declare(selection);
-db_nodes_declare(nodes, db_nodes_t);
-db_node_value_t field_data;
-status_require(db_nodes_new(1, &nodes));
 // arguments: db_txn_t, db_type_t*, offset, matcher, matcher_state, selection_address));
 status_require(db_node_select(txn, type, 0, 0, 0, &selection));
-status_require_read(db_node_read(selection, 1, &nodes));
-if(db_status_id_notfound != status.id) {
-  // arguments: selection, field_index
-  field_data = db_node_ref(db_nodes_get(nodes), 0);
+status_require_read(db_node_read(selection, 3, &nodes));
+while(db_nodes_in_range(nodes)) {
+  node = db_nodes_get(nodes);
+  field_data = db_node_ref(type, node, 0);
+  db_nodes_forward(nodes);
 }
-db_node_selection_finish(&selection);
-db_nodes_free(nodes);
 ```
 
 by custom matcher function and optionally either type or ids list
 ```c
-boolean node_matcher(db_node_t node, void* matcher_state) {
+boolean node_matcher(db_type_t* type, db_node_t node, void* matcher_state) {
   db_node_value_t field_data;
   field_data = db_node_ref(type, node, 2);
   *((uint8_t*)(matcher_state)) = 1;
@@ -240,10 +250,16 @@ status_require(db_node_select(txn, type, 0, node_matcher, &matcher_state, &selec
 db_ids_declare(left);
 db_ids_declare(right);
 db_ids_declare(label);
-status_require(db_ids_new(5, &left));
-status_require(db_ids_new(5, &right));
+status_require(db_ids_new(3, &left));
+status_require(db_ids_new(2, &right));
 status_require(db_ids_new(2, &label));
-// ... add ids to left, right and label ...
+db_ids_add(left, 1);
+db_ids_add(left, 2);
+db_ids_add(left, 3);
+db_ids_add(right, 4);
+db_ids_add(right, 5);
+db_ids_add(label, 6);
+db_ids_add(label, 7);
 // create relations between all given left and right nodes for each label. relations = left * right * label
 status_require(db_graph_ensure(txn, left, right, label, 0, 0));
 db_ids_free(left);
@@ -253,22 +269,24 @@ db_ids_free(label);
 
 ## read relations
 ```c
+// declarations
 db_ids_declare(ids_left);
 db_ids_declare(ids_label);
 db_relations_declare(relations);
-db_relation_t relation;
 db_graph_selection_declare(selection);
+db_relation_t relation;
+// memory allocation
 status_require(db_ids_new(1, &ids_left));
 status_require(db_ids_new(1, &ids_label));
 db_relations_new(10, &relations);
 // node ids to be used to filter
-ids_left = db_ids_add(ids_left, 123);
-ids_label = db_ids_add(ids_label, 456);
+db_ids_add(ids_left, 123);
+db_ids_add(ids_label, 456);
 // select relations whose left side is in "ids_left" and label in "ids_label".
 status_require(db_graph_select(txn, &ids_left, 0, &ids_label, 0, 0, &selection));
 // read 2 of the selected relations
 status_require(db_graph_read(&selection, 2, &relations));
-// read as many remaining matches as fit into the relations array
+// read as many remaining matches as there still fit into the relations array
 status_require_read(db_graph_read(&selection, 0, &relations));
 db_graph_selection_finish(&selection);
 // display relations. "ordinal" might not be set unless a filter for left was used
@@ -282,12 +300,13 @@ db_ids_free(ids_label);
 db_relations_free(relations);
 ```
 
-## create indices
+## create index
 ```c
 db_index_t* index;
 // array of field indices to index
 db_fields_len_t fields[2] = {1, 2};
 status_require(db_index_create(env, type, fields, 2));
+index = db_index_get(type, fields, 2);
 ```
 
 * existing nodes will be indexed on index creation
@@ -298,29 +317,33 @@ status_require(db_index_create(env, type, fields, 2));
 ```c
 db_index_selection_declare(selection);
 db_ids_declare(ids);
-db_node_values_t values;
+db_node_values_declare(values);
 uint8_t value_1 = 11;
 uint8_t* value_2 = "abc";
+// allocate memory
 status_require(db_ids_new(2, &ids));
 status_require(db_node_values_new(type, &values));
+// set indexed values to search with. unused fields will be ignored
 db_node_values_set(&values, 1, &value_1, 0);
 db_node_values_set(&values, 2, &value_2, 3);
-// values for unused fields will be ignored.
-status_require(db_index_select(txn, *index, values, &selection));
-status_require(db_index_read(selection, 2, &ids));
+status_require_read(db_index_select(txn, *index, values, &selection));
+if(db_status_id_notfound != status.id) {
+  status_require_read(db_index_read(selection, 2, &ids));
+}
+db_status_success_if_notfound;
 db_index_selection_finish(&selection);
+db_ids_free(ids);
+db_node_values_free(&values);
 ```
 
 ## read nodes via indices
 ```c
-db_node_t node;
-db_nodes_declare(nodes);
 db_node_index_selection_declare(selection);
-status_require(db_nodes_new(2, &nodes));
-status_require(db_node_index_select(txn, *index, values, &selection));
-status_require(db_node_index_read(selection, 1, temp, &nodes))
-node = db_nodes_get(nodes);
-db_node_index_selection_finish(&selection);
+status_require_read(db_node_index_select(txn, *index, values, &selection));
+if(db_status_id_notfound != status.id) {
+  status_require_read(db_node_index_read(selection, 1, &nodes));
+  node = db_nodes_get(nodes);
+}
 ```
 
 ## virtual nodes
@@ -330,10 +353,16 @@ to create a virtual node type, pass db_type_flag_virtual to db_type_create and o
 ```c
 db_id_t id;
 uint32_t data;
+db_field_t fields;
+db_type_t* type;
+// create virtual node type. must have only one field
+db_field_set(fields, db_field_type_uint16, 0, 0);
+status_require(db_type_create(env, "test-vtype", &fields, 1, db_type_flag_virtual, &type));
+// create node. exists only as id
 data = 123;
-id = db_node_virtual_from_uint(type_id, data);
+id = db_node_virtual_from_uint(type->id, data);
+// get data. arguments: id, datatype
 data = db_node_virtual_data(id, uint32_t);
-db_type_is_virtual(type_id);
 ```
 
 # api
@@ -380,10 +409,7 @@ db_open :: uint8_t*:root db_open_options_t*:options db_env_t*:env -> status_t
 db_relations_new :: size_t:length db_relations_t*:result_relations -> status_t
 db_statistics :: db_txn_t:txn db_statistics_t*:result -> status_t
 db_status_description :: status_t:a -> uint8_t*
-db_status_description :: status_t:a -> uint8_t*
 db_status_group_id_to_name :: status_id_t:a -> uint8_t*
-db_status_group_id_to_name :: status_id_t:a -> uint8_t*
-db_status_name :: status_t:a -> uint8_t*
 db_status_name :: status_t:a -> uint8_t*
 db_txn_abort :: db_txn_t*:a -> void
 db_txn_begin :: db_txn_t*:a -> status_t
@@ -404,6 +430,7 @@ db_batch_len
 db_count_t
 db_data_len_max
 db_data_len_t
+db_env_declare(name)
 db_field_set(a, a_type, a_name, a_name_len)
 db_field_type_binary
 db_field_type_float32
@@ -426,9 +453,11 @@ db_fields_len_t
 db_graph_selection_declare(name)
 db_id_add_type(id, type_id)
 db_id_element(id)
+db_id_element_mask
 db_id_mask
 db_id_t
 db_id_type(id)
+db_id_type_mask
 db_ids_add
 db_ids_clear
 db_ids_declare(name)
@@ -449,6 +478,10 @@ db_name_len_t
 db_node_index_selection_declare(name)
 db_node_is_virtual(env, node_id)
 db_node_selection_declare(name)
+db_node_values_declare(name)
+db_node_virtual_data(id, type_name)
+db_node_virtual_from_int
+db_node_virtual_from_uint(type_id, data)
 db_nodes_add
 db_nodes_clear
 db_nodes_declare(name)
@@ -512,7 +545,7 @@ status_set_id_goto(status_id)
 status_id_t: int32_t
 db_graph_ordinal_generator_t: void* -> db_ordinal_t
 db_graph_reader_t: db_graph_selection_t* db_count_t db_relations_t* -> status_t
-db_node_matcher_t: db_node_t void* -> boolean
+db_node_matcher_t: db_type_t* db_node_t void* -> boolean
 db_env_t: struct
   dbi_nodes: MDB_dbi
   dbi_graph_ll: MDB_dbi
@@ -567,7 +600,7 @@ db_node_value_t: struct
   data: void*
 db_node_values_t: struct
   data: db_node_value_t*
-  last: db_fields_len_t
+  extent: db_fields_len_t
   type: db_type_t*
 db_open_options_t: struct
   is_read_only: boolean

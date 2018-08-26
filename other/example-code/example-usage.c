@@ -1,8 +1,10 @@
-// work in progress, not yet working.
 // example tutorial code for sph-db.
-// compile like "gcc example-usage.c -o /tmp/sph-db-example -lsph-db"
+// compile like "gcc example-usage.c -o /tmp/sph-db-example -lsph-db".
+// see "compile-and-run.sh"
 
 #include <sph-db.h>
+
+// only needed for printf
 #include <stdio.h>
 
 status_t collections() {
@@ -41,7 +43,7 @@ status_t create_type(db_env_t* env, db_type_t** result_type) {
   db_field_set(fields[2], db_field_type_string, "field-name-3", 12);
   db_field_set(fields[3], db_field_type_string, "field-name-4", 12);
   // arguments: db_env_t*, type_name, db_field_t*, field_count, flags, result
-  status_require(db_type_create(env, "test-type", fields, 4, 0, &type));
+  status_require(db_type_create(env, "test-type-name", fields, 4, 0, &type));
   *result_type = type;
   printf("type id: %u\n", type->id);
 exit:
@@ -50,6 +52,7 @@ exit:
 
 status_t create_nodes(db_env_t* env, db_type_t* type) {
   printf("create nodes\n");
+  // declarations
   status_declare;
   db_txn_declare(env, txn);
   db_node_values_declare(values);
@@ -60,8 +63,9 @@ status_t create_nodes(db_env_t* env, db_type_t* type) {
   uint8_t* value_3 = "abc";
   uint8_t* value_4 = "abcde";
   status_require(db_node_values_new(type, &values));
+  // set field values.
+  // size argument is ignored for fixed length types
   // arguments: db_node_values_t*, field_index, value_address, size.
-  // size is ignored for fixed length types
   db_node_values_set(&values, 0, &value_1, 0);
   db_node_values_set(&values, 1, &value_2, 0);
   // strings can be stored with or without a trailing null character
@@ -124,6 +128,7 @@ status_t read_nodes(db_env_t* env, db_type_t* type) {
     field_data = db_node_ref(type, node, 0);
     db_nodes_forward(nodes);
   }
+
   // by type and custom matcher function
   printf("read nodes by matcher function\n");
   uint8_t matcher_state = 0;
@@ -214,6 +219,7 @@ exit:
 
 status_t read_ids_from_index(db_env_t* env, db_type_t* type, db_index_t* index) {
   printf("read ids from index\n");
+  // declarations
   status_declare;
   db_txn_declare(env, txn);
   db_index_selection_declare(selection);
@@ -221,60 +227,77 @@ status_t read_ids_from_index(db_env_t* env, db_type_t* type, db_index_t* index) 
   db_node_values_declare(values);
   uint8_t value_1 = 11;
   uint8_t* value_2 = "abc";
+  // allocate memory
   status_require(db_ids_new(2, &ids));
   status_require(db_node_values_new(type, &values));
+  // set indexed values to search with. unused fields will be ignored
   db_node_values_set(&values, 1, &value_1, 0);
   db_node_values_set(&values, 2, &value_2, 3);
-  // values for unused fields will be ignored.
+  // start transaction and read from index
   db_txn_begin(&txn);
   status_require_read(db_index_select(txn, *index, values, &selection));
-  status_require_read(db_index_read(selection, 2, &ids));
-  db_index_selection_finish(&selection);
+  if(db_status_id_notfound != status.id) {
+    status_require_read(db_index_read(selection, 2, &ids));
+  }
+  db_status_success_if_notfound;
 exit:
+  db_txn_abort_if_active(txn);
+  db_index_selection_finish(&selection);
+  db_ids_free(ids);
+  db_node_values_free(&values);
   return status;
 }
 
 status_t read_nodes_from_index(db_env_t* env, db_type_t* type, db_index_t* index) {
   printf("read nodes from index\n");
+  // declarations
   status_declare;
   db_txn_declare(env, txn);
   db_nodes_declare(nodes);
   db_node_values_declare(values);
   db_node_index_selection_declare(selection);
-  status_require(db_nodes_new(2, &nodes));
-  status_require(db_node_values_new(type, &values));
   db_node_t node;
   uint8_t value_1 = 11;
   uint8_t* value_2 = "abc";
+  // allocate memory
+  status_require(db_nodes_new(2, &nodes));
+  status_require(db_node_values_new(type, &values));
+  // set indexed values to search with
   db_node_values_set(&values, 1, &value_1, 0);
   db_node_values_set(&values, 2, &value_2, 3);
+  // begin transaction and read
   db_txn_begin(&txn);
-  status_require(db_node_index_select(txn, *index, values, &selection));
-  status_require(db_node_index_read(selection, 1, &nodes));
-  node = db_nodes_get(nodes);
-  db_node_index_selection_finish(&selection);
+  status_require_read(db_node_index_select(txn, *index, values, &selection));
+  if(db_status_id_notfound != status.id) {
+    status_require_read(db_node_index_read(selection, 1, &nodes));
+    node = db_nodes_get(nodes);
+  }
+  db_status_success_if_notfound;
 exit:
   db_txn_abort_if_active(txn);
+  db_ids_free(nodes);
+  db_node_index_selection_finish(&selection);
   return status;
 }
 
 status_t create_virtual_nodes(db_env_t* env) {
   printf("create virtual nodes\n");
+  status_declare;
   db_id_t id;
   uint32_t data;
-  // create virtual node type
-  status_declare;
   db_field_t fields;
   db_type_t* type;
-  // set field.type, field.name and field.name_len
+  // create virtual node type. must have only one field
   db_field_set(fields, db_field_type_uint16, 0, 0);
-  // arguments: db_env_t*, type_name, db_field_t*, field_count, flags, result
-  status_require(db_type_create(env, "test-type", &fields, 1, 0, &type));
-  // create nodes
+  status_require(db_type_create(env, "test-vtype", &fields, 1, db_type_flag_virtual, &type));
+  if(db_type_is_virtual(type)) {
+    printf("type is a virtual node type\n");
+  }
+  // create node. exists only as id
   data = 123;
   id = db_node_virtual_from_uint(type->id, data);
+  // get data. arguments: id, datatype
   data = db_node_virtual_data(id, uint32_t);
-  db_type_is_virtual(type);
 exit:
   return status;
 }
