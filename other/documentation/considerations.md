@@ -21,9 +21,9 @@ notes on considered questions and decisions made while developing sph-db
     * sph-db gives access to data without copying
     * direct lmdb btree access support. custom key-value btrees can be added to the environment
     * no junction tables with specific layout, naming and indices need to be managed
-    * automatic deletion of dependent relations when deleting nodes instead of first having to create triggers
-* graph databases
-  * graph databases typically store relations in an adjacency list, which tends to be efficient for traversing long paths from node to node. but adjacency lists alone arent particularly well suited for frequent random access to nodes as if they are records or finding all relations a node is in. sph-db uses b+trees instead because its focus is on mapping data to identifiers (random access) and filtering on the set of all relations (optimised for queries such as "is x related to y" and "which nodes are adjacent to x" but not optimised for long path traversals)
+    * automatic deletion of dependent relations when deleting records instead of first having to create triggers
+* relation databases
+  * relation databases typically store relations in an adjacency list, which tends to be efficient for traversing long paths from record to record. but adjacency lists alone arent particularly well suited for frequent random access to records as if they are records or finding all relations a record is in. sph-db uses b+trees instead because its focus is on mapping data to identifiers (random access) and filtering on the set of all relations (optimised for queries such as "is x related to y" and "which records are adjacent to x" but not optimised for long path traversals)
 * relational databases
   * for relations between various types, the type has to be carried anyway with ids
   * one btree for each table because space saving. acts like a prefix to a data collection
@@ -32,21 +32,21 @@ notes on considered questions and decisions made while developing sph-db
 * use as key-value database
   * possible with native lmdb features. lmdb data structures available in the various types
 * use as traditional table/record database
-  * possible with types and nodes
+  * possible with types and records
 
-# how to type nodes
+# how to type records
 * option - selected
   * store type in identifier
   * con
-    * increased node identifier length. affects every node. affects every relation times four (source and target in two directions)
+    * increased record identifier length. affects every record. affects every relation times four (source and target in two directions)
   * pro
-    * node id is enough to know the type. selecting just relations allows to filter by node type before accessing the nodes
+    * record id is enough to know the type. selecting just relations allows to filter by record type before accessing the records
     * cheap type filtering
     * relations between all types possible in one btree. no type combination-specific btree selection/creation process or need to access multiple btrees for a query
 * option
-  * group node types by using separate btrees
+  * group record types by using separate btrees
   * con
-    * types need to be carried with node references to find relevant grouping btrees and read record fields
+    * types need to be carried with record references to find relevant grouping btrees and read record fields
     * one btree for each type combination necessary. has to be found for queries, possible multiple have to be accessed for different types
   * pro
     * space saving as not every row needs to store type information
@@ -54,12 +54,12 @@ notes on considered questions and decisions made while developing sph-db
   * store type with the data
   * con
     * store type in data. makes get-all-of-type-x more difficult. possibly needs additional index
-    * duplicated with each node
+    * duplicated with each record
     * have to read data to find type
   * pro
     * smaller relations
 
-# how to cluster nodes of the same type
+# how to cluster records of the same type
 archieved by having sorted keys and the type at the beginning of keys
 
 # should readers possibly return results and end-of-data in one call
@@ -78,8 +78,8 @@ archieved by having sorted keys and the type at the beginning of keys
   * pro
     * readers behave more predictably with read actually only reading the next
 
-# multiple rows or one result at a time with node-read
-difference to graph read: less filters
+# multiple rows or one result at a time with record-read
+difference to relation read: less filters
 
 * option
   * read returns next one
@@ -126,7 +126,7 @@ difference to graph read: less filters
   * con
     * malloc per added list element
 
-# should virtual nodes support multiple fields
+# should virtual records support multiple fields
 could technically encode multiple 8 bit fields or similar
 
 * option - selected
@@ -137,7 +137,7 @@ could technically encode multiple 8 bit fields or similar
 # how to choose and use indices
 * option - selected
 * manually
-* either selecting only node ids or nodes via ids from index
+* either selecting only record ids or records via ids from index
 * custom btree searches possible with lmdb features or extension
 
 # database handles or one open database per process
@@ -150,7 +150,7 @@ could technically encode multiple 8 bit fields or similar
   * dont have to pass handle argument to any api routine
   * must use separate processes and ipc to work with multiple databases
 
-# should complex filter conditions be supported for node selection
+# should complex filter conditions be supported for record selection
 * for example conditions in a nestable linked list with comparison operators. and/or/not/begins/ends/contains/equals/etc
 * or custom tests and branches
 * more complex searchers could be an extension
@@ -177,7 +177,7 @@ initially not supported
 
 # are custom extra relation fields needed
 * change of the default relation database layout would add considerable complexity
-* possible with labels that are compound data structure node ids
+* possible with labels that are compound data structure record ids
 * example situation: "when every ingredient can be added in different amounts to different recipes"
 
 # sequences per type or one global
@@ -227,10 +227,10 @@ set the corresponding flag with db-type-create
 # selecting from multiple indices
 intersection of multiple index search results
 
-# are more node operations needed
-node first/last/prev/range etc seem not needed because of the data model (ids to for the user unsorted data)
+# are more record operations needed
+record first/last/prev/range etc seem not needed because of the data model (ids to for the user unsorted data)
 
-# how to filter with node-select
+# how to filter with record-select
 * options: by id, by type, by matcher
 *  type filter
 * option - selected
@@ -251,27 +251,27 @@ node first/last/prev/range etc seem not needed because of the data model (ids to
   * call of matcher function for each existing row
   * vs returning and allowing re-call
   * pro
-    * saves node-next call costs
+    * saves record-next call costs
 * option
   * built-in matchers for fields
   * probably special match structure/config needed
     * con
       * considerable extra complexity
 * combinations (ids, type):
-  * 0 0: all nodes of any type. unsupported
-  * ids type: all nodes of ids and type. unsupported
-  * ids 0: nodes of ids
-  * 0 type: all nodes of type
+  * 0 0: all records of any type. unsupported
+  * ids type: all records of ids and type. unsupported
+  * ids 0: records of ids
+  * 0 type: all records of type
   * i dont see a purpose for 00 and 11 filters, so i tend towards having it unsupported for now
   * what would one be searching for with 0 0? to match algorithmically you need shared properties
   * how could it be useful to filter by ids and type, since ids contain the type. it would be just filtering the plain list and checking existence
 
-# allow mixed-type node-select
-* for example with an ids-list that has been read from graph relations
+# allow mixed-type record-select
+* for example with an ids-list that has been read from relation relations
 * usually databases cant select cross type, they can also not match fields cross type
 * always possible to go type by type with separate searches
 * would be a feature that might be lost with a slightly different base design
-* checking for type after match is cheaper than calling node-select for each type
+* checking for type after match is cheaper than calling record-select for each type
 * option - selected
   * call db select once with mixed-type ids then check types of results
 * option
@@ -281,7 +281,7 @@ node first/last/prev/range etc seem not needed because of the data model (ids to
   * call db select multiple times with mixed-type ids and specify a type filter for each
   * in effect filtering the list multiple times but not reallocating
 
-# node values datatype
+# record values datatype
 * option - selected
   * array of field count length
   * pro
@@ -296,7 +296,7 @@ node first/last/prev/range etc seem not needed because of the data model (ids to
     * costly to check if data already set
     * malloc per element
 
-# why implement db-node-get
+# why implement db-record-get
 * faster for externally retrieved ids list, for example page id or file ids, to quickly check if even exists before loading details
 
 # copy or reference selected fields
@@ -363,7 +363,7 @@ other active transactions might be trying to use the schema and for example inse
 
 # other
 * should label/ordinal be optional
-* if separate type-to-type btrees are used, should graph relations of both directions be kept in the sys-info cache
+* if separate type-to-type btrees are used, should relation relations of both directions be kept in the sys-info cache
 * custom primary keys
   * a dictionary, a one to one association, could be considered a subset of plain tables. yet rows might have row identifiers identifying a pairing even if that is not needed. this points to custom primary keys
   * con: ambiguity of auto-increment and provided keys. each insert requires additional checks if auto-increment and eventually if key has been provided. id key potentially quicker to join as primary and foreign key because efficient data type

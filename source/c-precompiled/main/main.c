@@ -108,7 +108,7 @@ uint8_t* db_status_description(status_t a) {
     } else if (db_status_id_max_type_id == a.id) {
       b = "maximum type identifier value has been reached";
     } else if (db_status_id_max_type_id_size == a.id) {
-      b = "type identifier size is either configured to be greater than 16 bit, which is currently not supported, or is not smaller than node id size";
+      b = "type identifier size is either configured to be greater than 16 bit, which is currently not supported, or is not smaller than record id size";
     } else if (db_status_id_condition_unfulfilled == a.id) {
       b = "condition unfulfilled";
     } else if (db_status_id_notfound == a.id) {
@@ -231,7 +231,7 @@ void db_debug_log_ids_set(imht_set_t a) {
 };
 void db_debug_log_relations(db_relations_t a) {
   db_relation_t b;
-  printf(("graph records (ll -> or)\n"));
+  printf(("relation records (ll -> or)\n"));
   while (i_array_in_range(a)) {
     b = i_array_get(a);
     printf(("  %lu %lu -> %lu %lu\n"), (b.left), (b.label), (b.ordinal), (b.right));
@@ -242,7 +242,7 @@ status_t db_debug_log_btree_counts(db_txn_t txn) {
   status_declare;
   db_statistics_t stat;
   status_require((db_statistics(txn, (&stat))));
-  printf("btree entry count: system %zu, nodes %zu, graph-lr %zu, graph-rl %zu, graph-ll %zu\n", (stat.system.ms_entries), (stat.nodes.ms_entries), (stat.graph_lr.ms_entries), (stat.graph_rl.ms_entries), (stat.graph_ll.ms_entries));
+  printf("btree entry count: system %zu, records %zu, relation-lr %zu, relation-rl %zu, relation-ll %zu\n", (stat.system.ms_entries), (stat.records.ms_entries), (stat.relation_lr.ms_entries), (stat.relation_rl.ms_entries), (stat.relation_ll.ms_entries));
 exit:
   return (status);
 };
@@ -251,7 +251,7 @@ status_t db_debug_count_all_btree_entries(db_txn_t txn, uint32_t* result) {
   status_declare;
   db_statistics_t stat;
   status_require((db_statistics(txn, (&stat))));
-  *result = (stat.system.ms_entries + stat.nodes.ms_entries + stat.graph_lr.ms_entries + stat.graph_rl.ms_entries + stat.graph_ll.ms_entries);
+  *result = (stat.system.ms_entries + stat.records.ms_entries + stat.relation_lr.ms_entries + stat.relation_rl.ms_entries + stat.relation_ll.ms_entries);
 exit:
   return (status);
 };
@@ -269,8 +269,8 @@ uint8_t db_field_type_size(uint8_t a) {
     return (0);
   };
 };
-/** create a virtual node with data of any type equal or smaller in size than db-size-id-element */
-db_id_t db_node_virtual_from_any(db_type_id_t type_id, void* data, uint8_t data_size) {
+/** create a virtual record with data of any type equal or smaller in size than db-size-id-element */
+db_id_t db_record_virtual_from_any(db_type_id_t type_id, void* data, uint8_t data_size) {
   db_id_t id;
   memcpy((&id), data, data_size);
   return ((db_id_add_type(id, type_id)));
@@ -313,23 +313,23 @@ exit:
     return (status); \
   }
 db_define_i_array_new(db_ids_new, db_ids_t);
-db_define_i_array_new(db_nodes_new, db_nodes_t);
+db_define_i_array_new(db_records_new, db_records_t);
 db_define_i_array_new(db_relations_new, db_relations_t);
-/** copies to a db-ids-t array all ids from a db-nodes-t array. result-ids is allocated by the caller */
-void db_nodes_to_ids(db_nodes_t nodes, db_ids_t* result_ids) {
-  while (i_array_in_range(nodes)) {
-    i_array_add((*result_ids), ((i_array_get(nodes)).id));
-    i_array_forward(nodes);
+/** copies to a db-ids-t array all ids from a db-records-t array. result-ids is allocated by the caller */
+void db_records_to_ids(db_records_t records, db_ids_t* result_ids) {
+  while (i_array_in_range(records)) {
+    i_array_add((*result_ids), ((i_array_get(records)).id));
+    i_array_forward(records);
   };
 };
 /** expects an allocated db-statistics-t */
 status_t db_statistics(db_txn_t txn, db_statistics_t* result) {
   status_declare;
   db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_system), (&(result->system)))));
-  db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_nodes), (&(result->nodes)))));
-  db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_graph_lr), (&(result->graph_lr)))));
-  db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_graph_ll), (&(result->graph_ll)))));
-  db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_graph_rl), (&(result->graph_rl)))));
+  db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_records), (&(result->records)))));
+  db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_relation_lr), (&(result->relation_lr)))));
+  db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_relation_ll), (&(result->relation_ll)))));
+  db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_relation_rl), (&(result->relation_rl)))));
 exit:
   return (status);
 };
@@ -351,7 +351,7 @@ status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result) {
 exit:
   return (status);
 };
-/** return one new unique type node identifier.
+/** return one new unique type record identifier.
   the maximum identifier returned is db-id-limit minus one */
 status_t db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result) {
   status_declare;
@@ -424,10 +424,10 @@ void db_close(db_env_t* env) {
   MDB_env* mdb_env = env->mdb_env;
   if (mdb_env) {
     mdb_dbi_close(mdb_env, (env->dbi_system));
-    mdb_dbi_close(mdb_env, (env->dbi_nodes));
-    mdb_dbi_close(mdb_env, (env->dbi_graph_lr));
-    mdb_dbi_close(mdb_env, (env->dbi_graph_rl));
-    mdb_dbi_close(mdb_env, (env->dbi_graph_ll));
+    mdb_dbi_close(mdb_env, (env->dbi_records));
+    mdb_dbi_close(mdb_env, (env->dbi_relation_lr));
+    mdb_dbi_close(mdb_env, (env->dbi_relation_rl));
+    mdb_dbi_close(mdb_env, (env->dbi_relation_ll));
     mdb_env_close(mdb_env);
     env->mdb_env = 0;
   };
@@ -441,5 +441,5 @@ void db_close(db_env_t* env) {
 #include "./open.c"
 #include "./type.c"
 #include "./index.c"
-#include "./node.c"
-#include "./graph.c"
+#include "./record.c"
+#include "./relation.c"

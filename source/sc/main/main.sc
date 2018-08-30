@@ -97,7 +97,7 @@
         (db-status-id-max-type-id (set b "maximum type identifier value has been reached"))
         (db-status-id-max-type-id-size
           (set b
-            "type identifier size is either configured to be greater than 16 bit, which is currently not supported, or is not smaller than node id size"))
+            "type identifier size is either configured to be greater than 16 bit, which is currently not supported, or is not smaller than record id size"))
         (db-status-id-condition-unfulfilled (set b "condition unfulfilled"))
         (db-status-id-notfound (set b "no more data to read"))
         (db-status-id-different-format
@@ -195,7 +195,7 @@
 
 (define (db-debug-log-relations a) (void db-relations-t)
   (declare b db-relation-t)
-  (printf "graph records (ll -> or)\n")
+  (printf "relation records (ll -> or)\n")
   (while (i-array-in-range a)
     (set b (i-array-get a))
     (printf "  %lu %lu -> %lu %lu\n" b.left b.label b.ordinal b.right)
@@ -206,9 +206,9 @@
   (declare stat db-statistics-t)
   (status-require (db-statistics txn &stat))
   (printf
-    "btree entry count: system %zu, nodes %zu, graph-lr %zu, graph-rl %zu, graph-ll %zu\n"
+    "btree entry count: system %zu, records %zu, relation-lr %zu, relation-rl %zu, relation-ll %zu\n"
     stat.system.ms_entries
-    stat.nodes.ms_entries stat.graph-lr.ms_entries stat.graph-rl.ms_entries stat.graph-ll.ms_entries)
+    stat.records.ms_entries stat.relation-lr.ms_entries stat.relation-rl.ms_entries stat.relation-ll.ms_entries)
   (label exit
     (return status)))
 
@@ -220,8 +220,8 @@
   (set *result
     (+
       stat.system.ms_entries
-      stat.nodes.ms_entries
-      stat.graph-lr.ms_entries stat.graph-rl.ms_entries stat.graph-ll.ms_entries))
+      stat.records.ms_entries
+      stat.relation-lr.ms_entries stat.relation-rl.ms_entries stat.relation-ll.ms_entries))
   (label exit
     (return status)))
 
@@ -236,8 +236,8 @@
     ((db-field-type-int8 db-field-type-uint8 db-field-type-string8) (return 1))
     (else (return 0))))
 
-(define (db-node-virtual-from-any type-id data data-size) (db-id-t db-type-id-t void* uint8-t)
-  "create a virtual node with data of any type equal or smaller in size than db-size-id-element"
+(define (db-record-virtual-from-any type-id data data-size) (db-id-t db-type-id-t void* uint8-t)
+  "create a virtual record with data of any type equal or smaller in size than db-size-id-element"
   (declare id db-id-t)
   (memcpy &id data data-size)
   (return (db-id-add-type id type-id)))
@@ -282,23 +282,23 @@
     (return status)))
 
 (db-define-i-array-new db-ids-new db-ids-t)
-(db-define-i-array-new db-nodes-new db-nodes-t)
+(db-define-i-array-new db-records-new db-records-t)
 (db-define-i-array-new db-relations-new db-relations-t)
 
-(define (db-nodes->ids nodes result-ids) (void db-nodes-t db-ids-t*)
-  "copies to a db-ids-t array all ids from a db-nodes-t array. result-ids is allocated by the caller"
-  (while (i-array-in-range nodes)
-    (i-array-add *result-ids (struct-get (i-array-get nodes) id))
-    (i-array-forward nodes)))
+(define (db-records->ids records result-ids) (void db-records-t db-ids-t*)
+  "copies to a db-ids-t array all ids from a db-records-t array. result-ids is allocated by the caller"
+  (while (i-array-in-range records)
+    (i-array-add *result-ids (struct-get (i-array-get records) id))
+    (i-array-forward records)))
 
 (define (db-statistics txn result) (status-t db-txn-t db-statistics-t*)
   "expects an allocated db-statistics-t"
   status-declare
   (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-system &result:system))
-  (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-nodes &result:nodes))
-  (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-graph-lr &result:graph-lr))
-  (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-graph-ll &result:graph-ll))
-  (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-graph-rl &result:graph-rl))
+  (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-records &result:records))
+  (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-relation-lr &result:relation-lr))
+  (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-relation-ll &result:relation-ll))
+  (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-relation-rl &result:relation-rl))
   (label exit
     (return status)))
 
@@ -321,7 +321,7 @@
     (return status)))
 
 (define (db-sequence-next env type-id result) (status-t db-env-t* db-type-id-t db-id-t*)
-  "return one new unique type node identifier.
+  "return one new unique type record identifier.
   the maximum identifier returned is db-id-limit minus one"
   status-declare
   (declare sequence db-id-t)
@@ -384,10 +384,10 @@
   (if mdb-env
     (begin
       (mdb-dbi-close mdb-env env:dbi-system)
-      (mdb-dbi-close mdb-env env:dbi-nodes)
-      (mdb-dbi-close mdb-env env:dbi-graph-lr)
-      (mdb-dbi-close mdb-env env:dbi-graph-rl)
-      (mdb-dbi-close mdb-env env:dbi-graph-ll)
+      (mdb-dbi-close mdb-env env:dbi-records)
+      (mdb-dbi-close mdb-env env:dbi-relation-lr)
+      (mdb-dbi-close mdb-env env:dbi-relation-rl)
+      (mdb-dbi-close mdb-env env:dbi-relation-ll)
       (mdb-env-close mdb-env)
       (set env:mdb-env 0)))
   (db-free-env-types &env:types env:types-len)
@@ -395,4 +395,4 @@
   (set env:is-open #f)
   (pthread-mutex-destroy &env:mutex))
 
-(pre-include "./open.c" "./type.c" "./index.c" "./node.c" "./graph.c")
+(pre-include "./open.c" "./type.c" "./index.c" "./record.c" "./relation.c")

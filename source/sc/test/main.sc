@@ -126,7 +126,7 @@
     prev-type-id db-type-id-t
     type db-type-t*
     type-id db-type-id-t)
-  (sc-comment "node sequence. note that sequences only persist through data inserts")
+  (sc-comment "record sequence. note that sequences only persist through data inserts")
   (status-require (db-type-create env "test-type" 0 0 0 &type))
   (set
     type:sequence (- db-element-id-limit 100)
@@ -135,10 +135,10 @@
     (set status (db-sequence-next env type:id &id))
     (if (<= db-element-id-limit (db-id-element (+ 1 prev-id)))
       (begin
-        (test-helper-assert "node sequence is limited" (= db-status-id-max-element-id status.id))
+        (test-helper-assert "record sequence is limited" (= db-status-id-max-element-id status.id))
         (set status.id status-id-success))
       (test-helper-assert
-        "node sequence is monotonically increasing" (and status-is-success (= 1 (- id prev-id)))))
+        "record sequence is monotonically increasing" (and status-is-success (= 1 (- id prev-id)))))
     (set prev-id id))
   (sc-comment "system sequence. test last, otherwise type ids would be exhausted")
   (set prev-type-id type:id)
@@ -164,7 +164,7 @@
     (return status)))
 
 (define (test-id-construction env) (status-t db-env-t*)
-  "test features related to the combination of element and type id to node id"
+  "test features related to the combination of element and type id to record id"
   status-declare
   (sc-comment "id creation")
   (declare type-id db-type-id-t)
@@ -184,90 +184,90 @@
   (label exit
     (return status)))
 
-(define (test-graph-read env) (status-t db-env-t*)
+(define (test-relation-read env) (status-t db-env-t*)
   status-declare
   (db-txn-declare env txn)
-  (declare data test-helper-graph-read-data-t)
+  (declare data test-helper-relation-read-data-t)
   (status-require
-    (test-helper-graph-read-setup
+    (test-helper-relation-read-setup
       env common-element-count common-element-count common-label-count &data))
   (status-require (db-txn-begin &txn))
 
-  (status-require (test-helper-graph-read-one txn data 0 0 0 0 0))
-  (status-require (test-helper-graph-read-one txn data 1 0 0 0 0))
-  (status-require (test-helper-graph-read-one txn data 0 1 0 0 0))
-  (status-require (test-helper-graph-read-one txn data 1 1 0 0 0))
-  (status-require (test-helper-graph-read-one txn data 0 0 1 0 0))
-  (status-require (test-helper-graph-read-one txn data 1 0 1 0 0))
-  (status-require (test-helper-graph-read-one txn data 0 1 1 0 0))
-  (status-require (test-helper-graph-read-one txn data 1 1 1 0 0))
-  (status-require (test-helper-graph-read-one txn data 1 0 0 1 0))
-  (status-require (test-helper-graph-read-one txn data 1 1 0 1 0))
-  (status-require (test-helper-graph-read-one txn data 1 0 1 1 0))
-  (status-require (test-helper-graph-read-one txn data 1 1 1 1 0))
+  (status-require (test-helper-relation-read-one txn data 0 0 0 0 0))
+  (status-require (test-helper-relation-read-one txn data 1 0 0 0 0))
+  (status-require (test-helper-relation-read-one txn data 0 1 0 0 0))
+  (status-require (test-helper-relation-read-one txn data 1 1 0 0 0))
+  (status-require (test-helper-relation-read-one txn data 0 0 1 0 0))
+  (status-require (test-helper-relation-read-one txn data 1 0 1 0 0))
+  (status-require (test-helper-relation-read-one txn data 0 1 1 0 0))
+  (status-require (test-helper-relation-read-one txn data 1 1 1 0 0))
+  (status-require (test-helper-relation-read-one txn data 1 0 0 1 0))
+  (status-require (test-helper-relation-read-one txn data 1 1 0 1 0))
+  (status-require (test-helper-relation-read-one txn data 1 0 1 1 0))
+  (status-require (test-helper-relation-read-one txn data 1 1 1 1 0))
   (label exit
     (db-txn-abort-if-active txn)
-    (test-helper-graph-read-teardown &data)
+    (test-helper-relation-read-teardown &data)
     (return status)))
 
-(define (test-graph-delete env) (status-t db-env-t*)
-  "some assertions depend on the correctness of graph-read"
+(define (test-relation-delete env) (status-t db-env-t*)
+  "some assertions depend on the correctness of relation-read"
   status-declare
-  (declare data test-helper-graph-delete-data-t)
+  (declare data test-helper-relation-delete-data-t)
   (status-require
-    (test-helper-graph-delete-setup
+    (test-helper-relation-delete-setup
       env common-element-count common-element-count common-label-count &data))
-  (status-require (test-helper-graph-delete-one data 1 0 0 0))
-  (status-require (test-helper-graph-delete-one data 0 1 0 0))
-  (status-require (test-helper-graph-delete-one data 1 1 0 0))
-  (status-require (test-helper-graph-delete-one data 0 0 1 0))
-  (status-require (test-helper-graph-delete-one data 1 0 1 0))
-  (status-require (test-helper-graph-delete-one data 0 1 1 0))
-  (status-require (test-helper-graph-delete-one data 1 1 1 0))
-  (status-require (test-helper-graph-delete-one data 1 0 0 1))
-  (status-require (test-helper-graph-delete-one data 1 1 0 1))
-  (status-require (test-helper-graph-delete-one data 1 0 1 1))
-  (status-require (test-helper-graph-delete-one data 1 1 1 1))
+  (status-require (test-helper-relation-delete-one data 1 0 0 0))
+  (status-require (test-helper-relation-delete-one data 0 1 0 0))
+  (status-require (test-helper-relation-delete-one data 1 1 0 0))
+  (status-require (test-helper-relation-delete-one data 0 0 1 0))
+  (status-require (test-helper-relation-delete-one data 1 0 1 0))
+  (status-require (test-helper-relation-delete-one data 0 1 1 0))
+  (status-require (test-helper-relation-delete-one data 1 1 1 0))
+  (status-require (test-helper-relation-delete-one data 1 0 0 1))
+  (status-require (test-helper-relation-delete-one data 1 1 0 1))
+  (status-require (test-helper-relation-delete-one data 1 0 1 1))
+  (status-require (test-helper-relation-delete-one data 1 1 1 1))
   (label exit
     (return status)))
 
-(define (test-node-create env) (status-t db-env-t*)
+(define (test-record-create env) (status-t db-env-t*)
   status-declare
   (db-txn-declare env txn)
   (i-array-declare ids db-ids-t)
-  (i-array-declare nodes db-nodes-t)
+  (i-array-declare records db-records-t)
   (declare
-    field-data db-node-value-t
+    field-data db-record-value-t
     field-index db-fields-len-t
     id-1 db-id-t
     id-2 db-id-t
-    node-1 db-node-t
-    node-2 db-node-t
+    record-1 db-record-t
+    record-2 db-record-t
     size-1 size-t
     size-2 size-t
     type db-type-t*
     value-1 uint8-t
     value-2 int8-t
-    values-1 db-node-values-t
-    values-2 db-node-values-t)
+    values-1 db-record-values-t
+    values-2 db-record-values-t)
   (define value-4 uint8-t* (convert-type "abcde" uint8-t*))
   (status-require (test-helper-create-type-1 env &type))
-  (sc-comment "prepare node values")
-  (status-require (db-node-values-new type &values-1))
+  (sc-comment "prepare record values")
+  (status-require (db-record-values-new type &values-1))
   (set
     value-1 11
     value-2 -128)
-  (db-node-values-set &values-1 0 &value-1 0)
-  (db-node-values-set &values-1 1 &value-2 0)
+  (db-record-values-set &values-1 0 &value-1 0)
+  (db-record-values-set &values-1 1 &value-2 0)
   (sc-comment "empty field in between, field 2 left out")
-  (db-node-values-set &values-1 3 value-4 5)
-  (sc-comment "test node values/data conversion")
-  (db-node-values->data values-1 &node-1)
-  (test-helper-assert "node-values->data size" (= (+ (* 2 (sizeof db-data-len-t)) 7) node-1.size))
-  (db-node-data->values type node-1 &values-2)
-  (test-helper-assert "node-data->values type equal" (= values-1.type values-2.type))
+  (db-record-values-set &values-1 3 value-4 5)
+  (sc-comment "test record values/data conversion")
+  (db-record-values->data values-1 &record-1)
+  (test-helper-assert "record-values->data size" (= (+ (* 2 (sizeof db-data-len-t)) 7) record-1.size))
+  (db-record-data->values type record-1 &values-2)
+  (test-helper-assert "record-data->values type equal" (= values-1.type values-2.type))
   (test-helper-assert
-    "node-data->values size equal"
+    "record-data->values size equal"
     (and
       (=
         (struct-get (array-get values-1.data 0) size) (struct-get (array-get values-2.data 0) size))
@@ -278,14 +278,14 @@
       (=
         (struct-get (array-get values-1.data 3) size) (struct-get (array-get values-2.data 3) size))))
   (test-helper-assert
-    "node-data->values data equal 1"
+    "record-data->values data equal 1"
     (= 0 (memcmp value-4 (struct-get (array-get values-1.data 3) data) 5)))
   (for ((set field-index 0) (< field-index type:fields-len) (set field-index (+ 1 field-index)))
     (set
       size-1 (struct-get (array-get values-1.data field-index) size)
       size-2 (struct-get (array-get values-2.data field-index) size))
     (test-helper-assert
-      "node-data->values data equal 2"
+      "record-data->values data equal 2"
       (=
         0
         (memcmp
@@ -293,136 +293,136 @@
           (struct-get (array-get values-2.data field-index) data)
           (if* (< size-1 size-2) size-2
             size-1)))))
-  (db-node-values->data values-2 &node-2)
+  (db-record-values->data values-2 &record-2)
   (test-helper-assert
-    "node-values->data"
+    "record-values->data"
     (and
-      (= node-1.size node-2.size)
+      (= record-1.size record-2.size)
       (=
         0
         (memcmp
-          node-1.data
-          node-2.data
-          (if* (< node-1.size node-2.size) node-2.size
-            node-1.size)))))
-  (db-node-values-free &values-2)
-  (db-node-values-new type &values-2)
-  (db-node-values->data values-2 &node-2)
-  (test-helper-assert "node-values->data empty" (= 0 node-2.size))
-  (sc-comment "test node-ref")
-  (set field-data (db-node-ref type node-1 3))
+          record-1.data
+          record-2.data
+          (if* (< record-1.size record-2.size) record-2.size
+            record-1.size)))))
+  (db-record-values-free &values-2)
+  (db-record-values-new type &values-2)
+  (db-record-values->data values-2 &record-2)
+  (test-helper-assert "record-values->data empty" (= 0 record-2.size))
+  (sc-comment "test record-ref")
+  (set field-data (db-record-ref type record-1 3))
   (test-helper-assert
-    "node-ref-1" (and (= 5 field-data.size) (= 0 (memcmp value-4 field-data.data field-data.size))))
-  (sc-comment "test actual node creation")
+    "record-ref-1" (and (= 5 field-data.size) (= 0 (memcmp value-4 field-data.data field-data.size))))
+  (sc-comment "test actual record creation")
   (status-require (db-txn-write-begin &txn))
-  (status-require (db-node-create txn values-1 &id-1))
+  (status-require (db-record-create txn values-1 &id-1))
   (test-helper-assert "element id 1" (= 1 (db-id-element id-1)))
-  (status-require (db-node-create txn values-1 &id-2))
+  (status-require (db-record-create txn values-1 &id-2))
   (test-helper-assert "element id 2" (= 2 (db-id-element id-2)))
   (status-require (db-txn-commit &txn))
   (status-require (db-txn-begin &txn))
-  (sc-comment "test node-get")
+  (sc-comment "test record-get")
   (status-require (db-ids-new 3 &ids))
-  (status-require (db-nodes-new 3 &nodes))
+  (status-require (db-records-new 3 &records))
   (i-array-add ids id-1)
   (i-array-add ids id-2)
-  (status-require (db-node-get txn ids &nodes))
-  (test-helper-assert "node-get result length" (= 2 (i-array-length nodes)))
+  (status-require (db-record-get txn ids &records))
+  (test-helper-assert "record-get result length" (= 2 (i-array-length records)))
   (test-helper-assert
-    "node-get result ids"
+    "record-get result ids"
     (and
-      (= id-1 (struct-get (i-array-get-at nodes 0) id))
-      (= id-2 (struct-get (i-array-get-at nodes 1) id))))
-  (set field-data (db-node-ref type (i-array-get-at nodes 0) 1))
+      (= id-1 (struct-get (i-array-get-at records 0) id))
+      (= id-2 (struct-get (i-array-get-at records 1) id))))
+  (set field-data (db-record-ref type (i-array-get-at records 0) 1))
   (test-helper-assert
-    "node-ref-2"
+    "record-ref-2"
     (and
       (= (sizeof int8-t) field-data.size)
       (= value-2 (pointer-get (convert-type field-data.data int8-t*)))))
-  (set field-data (db-node-ref type (i-array-get-at nodes 0) 3))
+  (set field-data (db-record-ref type (i-array-get-at records 0) 3))
   (test-helper-assert
-    "node-ref-3" (and (= 5 field-data.size) (= 0 (memcmp value-4 field-data.data field-data.size))))
+    "record-ref-3" (and (= 5 field-data.size) (= 0 (memcmp value-4 field-data.data field-data.size))))
   (i-array-clear ids)
-  (i-array-clear nodes)
+  (i-array-clear records)
   (i-array-add ids 9999)
-  (set status (db-node-get txn ids &nodes))
-  (test-helper-assert "node-get non-existing" (= db-status-id-notfound status.id))
+  (set status (db-record-get txn ids &records))
+  (test-helper-assert "record-get non-existing" (= db-status-id-notfound status.id))
   (set status.id status-id-success)
   (db-txn-abort &txn)
   (label exit
     (db-txn-abort-if-active txn)
     (return status)))
 
-(define (node-matcher type node matcher-state) (boolean db-type-t* db-node-t void*)
+(define (record-matcher type record matcher-state) (boolean db-type-t* db-record-t void*)
   (set (pointer-get (convert-type matcher-state uint8-t*)) 1)
   (return #t))
 
-(define (test-node-select env) (status-t db-env-t*)
+(define (test-record-select env) (status-t db-env-t*)
   status-declare
   (db-txn-declare env txn)
   (i-array-declare ids db-ids-t)
-  (i-array-declare nodes db-nodes-t)
-  (db-node-selection-declare selection)
+  (i-array-declare records db-records-t)
+  (db-record-selection-declare selection)
   (declare
     value-1 uint8-t
     matcher-state uint8-t
-    node-value db-node-value-t
+    record-value db-record-value-t
     btree-size-before-delete uint32-t
     btree-size-after-delete uint32-t
     type db-type-t*
-    values db-node-values-t*
-    node-ids db-id-t*
-    node-ids-len uint32-t
+    values db-record-values-t*
+    record-ids db-id-t*
+    record-ids-len uint32-t
     values-len uint32-t)
-  (sc-comment "create nodes")
+  (sc-comment "create records")
   (status-require (test-helper-create-type-1 env &type))
   (status-require (test-helper-create-values-1 env type &values &values-len))
-  (status-require (test-helper-create-nodes-1 env values &node-ids &node-ids-len))
+  (status-require (test-helper-create-records-1 env values &record-ids &record-ids-len))
   (set value-1
     (pointer-get
       (convert-type (struct-get (array-get (struct-get (array-get values 0) data) 0) data) uint8-t*)))
   (status-require (db-txn-begin &txn))
   (sc-comment "type")
-  (status-require (db-nodes-new 4 &nodes))
-  (status-require (db-node-select txn type 0 0 0 &selection))
-  (status-require (db-node-read selection 1 &nodes))
-  (test-helper-assert "node-read size" (= 1 (i-array-length nodes)))
-  (set node-value (db-node-ref type (i-array-get nodes) 0))
-  (test-helper-assert "node-ref size" (= 1 node-value.size))
+  (status-require (db-records-new 4 &records))
+  (status-require (db-record-select txn type 0 0 0 &selection))
+  (status-require (db-record-read selection 1 &records))
+  (test-helper-assert "record-read size" (= 1 (i-array-length records)))
+  (set record-value (db-record-ref type (i-array-get records) 0))
+  (test-helper-assert "record-ref size" (= 1 record-value.size))
   (test-helper-assert
-    "node-ref value" (= value-1 (pointer-get (convert-type node-value.data uint8-t*))))
-  (test-helper-assert "current id set" (db-id-element (struct-get (i-array-get nodes) id)))
-  (status-require (db-node-read selection 1 &nodes))
-  (status-require (db-node-read selection 1 &nodes))
-  (set status (db-node-read selection 1 &nodes))
+    "record-ref value" (= value-1 (pointer-get (convert-type record-value.data uint8-t*))))
+  (test-helper-assert "current id set" (db-id-element (struct-get (i-array-get records) id)))
+  (status-require (db-record-read selection 1 &records))
+  (status-require (db-record-read selection 1 &records))
+  (set status (db-record-read selection 1 &records))
   (test-helper-assert
-    "all type entries found" (and (= db-status-id-notfound status.id) (= 4 (i-array-length nodes))))
+    "all type entries found" (and (= db-status-id-notfound status.id) (= 4 (i-array-length records))))
   (set status.id status-id-success)
-  (db-node-selection-finish &selection)
+  (db-record-selection-finish &selection)
   (sc-comment "matcher")
-  (i-array-clear nodes)
+  (i-array-clear records)
   (set matcher-state 0)
-  (status-require (db-node-select txn type 0 node-matcher &matcher-state &selection))
-  (status-require (db-node-read selection 1 &nodes))
-  (set node-value (db-node-ref type (i-array-get nodes) 0))
-  (test-helper-assert "node-ref size" (= 1 node-value.size))
+  (status-require (db-record-select txn type 0 record-matcher &matcher-state &selection))
+  (status-require (db-record-read selection 1 &records))
+  (set record-value (db-record-ref type (i-array-get records) 0))
+  (test-helper-assert "record-ref size" (= 1 record-value.size))
   (test-helper-assert "matcher-state" (= 1 matcher-state))
-  (db-node-selection-finish &selection)
+  (db-record-selection-finish &selection)
   (sc-comment "type and skip")
-  (status-require (db-node-select txn type 0 0 0 &selection))
-  (status-require (db-node-skip selection 3))
-  (set status (db-node-read selection 1 &nodes))
+  (status-require (db-record-select txn type 0 0 0 &selection))
+  (status-require (db-record-skip selection 3))
+  (set status (db-record-read selection 1 &records))
   (test-helper-assert "entries skipped" (= db-status-id-notfound status.id))
   (set status.id status-id-success)
-  (db-node-selection-finish &selection)
+  (db-record-selection-finish &selection)
   (db-txn-abort &txn)
   (status-require (db-txn-write-begin &txn))
   (db-debug-count-all-btree-entries txn &btree-size-before-delete)
-  (status-require (db-node-update txn (array-get node-ids 1) (array-get values 1)))
+  (status-require (db-record-update txn (array-get record-ids 1) (array-get values 1)))
   (status-require (db-ids-new 4 &ids))
-  (i-array-add ids (array-get node-ids 0))
-  (i-array-add ids (array-get node-ids 2))
-  (status-require (db-node-delete txn ids))
+  (i-array-add ids (array-get record-ids 0))
+  (i-array-add ids (array-get record-ids 2))
+  (status-require (db-record-delete txn ids))
   (status-require (db-txn-commit &txn))
   (status-require (db-txn-begin &txn))
   (db-debug-count-all-btree-entries txn &btree-size-after-delete)
@@ -458,7 +458,7 @@
   (label exit
     (return status)))
 
-(define (test-node-virtual env) (status-t db-env-t*)
+(define (test-record-virtual env) (status-t db-env-t*)
   "float data currently not implemented because it is unknown how to store it in the id"
   status-declare
   (test-helper-assert
@@ -478,20 +478,20 @@
   (status-require (db-type-create env "test-type-v" fields 1 db-type-flag-virtual &type))
   (test-helper-assert "is-virtual" (db-type-is-virtual type))
   (sc-comment "int")
-  (set id (db-node-virtual-from-int type:id data-int))
-  (test-helper-assert "is-virtual int" (db-node-is-virtual env id))
+  (set id (db-record-virtual-from-int type:id data-int))
+  (test-helper-assert "is-virtual int" (db-record-is-virtual env id))
   (test-helper-assert "type-id int" (= type:id (db-id-type id)))
-  (test-helper-assert "data int" (= data-int (db-node-virtual-data id int8-t)))
+  (test-helper-assert "data int" (= data-int (db-record-virtual-data id int8-t)))
   (sc-comment "uint")
-  (set id (db-node-virtual-from-uint type:id data-uint))
-  (test-helper-assert "is-virtual uint" (db-node-is-virtual env id))
+  (set id (db-record-virtual-from-uint type:id data-uint))
+  (test-helper-assert "is-virtual uint" (db-record-is-virtual env id))
   (test-helper-assert "type-id uint" (= type:id (db-id-type id)))
-  (test-helper-assert "data uint" (= data-uint (db-node-virtual-data id uint8-t)))
+  (test-helper-assert "data uint" (= data-uint (db-record-virtual-data id uint8-t)))
   (sc-comment "float")
-  (set id (db-node-virtual-from-any type:id &data-float32 (sizeof float)))
-  (test-helper-assert "is-virtual float" (db-node-is-virtual env id))
+  (set id (db-record-virtual-from-any type:id &data-float32 (sizeof float)))
+  (test-helper-assert "is-virtual float" (db-record-is-virtual env id))
   (test-helper-assert "type-id float" (= type:id (db-id-type id)))
-  (test-helper-assert "data float" (= data-float32 (db-node-virtual-data id float)))
+  (test-helper-assert "data float" (= data-float32 (db-record-virtual-data id float)))
   (label exit
     (return status)))
 
@@ -507,17 +507,17 @@
     index db-index-t*
     index-name uint8-t*
     index-name-len size-t
-    values db-node-values-t*
+    values db-record-values-t*
     values-len uint32-t
     key-data void*
     key-size size-t
-    node-ids db-id-t*
-    node-ids-len uint32-t)
+    record-ids db-id-t*
+    record-ids-len uint32-t)
   (define index-name-expected uint8-t* "i-1-1-2")
   (set fields-len 2)
   (status-require (test-helper-create-type-1 env &type))
   (status-require (test-helper-create-values-1 env type &values &values-len))
-  (sc-comment "test with no existing nodes")
+  (sc-comment "test with no existing records")
   (status-require (db-index-name type:id fields fields-len &index-name &index-name-len))
   (test-helper-assert "index name" (= 0 (strcmp index-name-expected index-name)))
   (status-require (db-index-create env type fields fields-len))
@@ -529,12 +529,12 @@
   (status-require (db-index-key env *index (array-get values 0) &key-data &key-size))
   (test-helper-assert "key size" (= 4 key-size))
   (test-helper-assert "key memory ref" (array-get (convert-type key-data uint8-t*) 3))
-  (sc-comment "test node index update")
-  (status-require (test-helper-create-nodes-1 env values &node-ids &node-ids-len))
+  (sc-comment "test record index update")
+  (status-require (test-helper-create-records-1 env values &record-ids &record-ids-len))
   (sc-comment "test delete")
   (status-require (db-index-delete env index))
   (test-helper-assert "index-delete" (not (db-index-get type fields fields-len)))
-  (sc-comment "test with existing nodes")
+  (sc-comment "test with existing records")
   (status-require (db-index-create env type fields fields-len))
   (sc-comment "this call exposed a memory error before")
   (status-require (db-index-name type:id fields fields-len &index-name &index-name-len))
@@ -562,9 +562,9 @@
     (and (= 1 (i-array-length ids)) (= type:id (db-id-type (i-array-get ids)))))
   (db-txn-abort &txn)
   (status-require (db-txn-begin &txn))
-  (db-node-index-selection-declare node-index-selection)
-  (status-require (db-node-index-select txn *index (array-get values 0) &node-index-selection))
-  (db-node-index-selection-finish &node-index-selection)
+  (db-record-index-selection-declare record-index-selection)
+  (status-require (db-record-index-select txn *index (array-get values 0) &record-index-selection))
+  (db-record-index-selection-finish &record-index-selection)
   (db-txn-abort &txn)
   (label exit
     (db-txn-abort-if-active txn)
@@ -574,18 +574,18 @@
   (declare env db-env-t*)
   status-declare
   (db-env-new &env)
-  (test-helper-test-one test-graph-read env)
+  (test-helper-test-one test-relation-read env)
   (test-helper-test-one test-id-construction env)
-  (test-helper-test-one test-node-virtual env)
+  (test-helper-test-one test-record-virtual env)
   (test-helper-test-one test-open-empty env)
   (test-helper-test-one test-statistics env)
   (test-helper-test-one test-sequence env)
   (test-helper-test-one test-type-create-get-delete env)
   (test-helper-test-one test-type-create-many env)
   (test-helper-test-one test-open-nonempty env)
-  (test-helper-test-one test-graph-delete env)
-  (test-helper-test-one test-node-create env)
-  (test-helper-test-one test-node-select env)
+  (test-helper-test-one test-relation-delete env)
+  (test-helper-test-one test-record-create env)
+  (test-helper-test-one test-record-select env)
   (test-helper-test-one test-index env)
   (label exit
     (if status-is-success (printf "--\ntests finished successfully.\n")

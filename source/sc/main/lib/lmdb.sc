@@ -49,7 +49,7 @@
       (set status.id (mdb-cursor-get cursor &val-key &val-value MDB-NEXT-NODUP)))
     db-mdb-status-expect-notfound)
   ; other
-  (db-mdb-val->graph-key a) (convert-type a.mv-data db-id-t*)
+  (db-mdb-val->relation-key a) (convert-type a.mv-data db-id-t*)
   db-mdb-declare-val-id
   (begin
     (declare val-id MDB-val)
@@ -62,32 +62,32 @@
   (begin
     (declare val-null MDB-val)
     (set val-null.mv-size 0))
-  db-mdb-declare-val-graph-data
+  db-mdb-declare-val-relation-data
   (begin
-    (declare val-graph-data MDB-val)
-    (set val-graph-data.mv-size db-size-graph-data))
-  db-mdb-declare-val-graph-key
+    (declare val-relation-data MDB-val)
+    (set val-relation-data.mv-size db-size-relation-data))
+  db-mdb-declare-val-relation-key
   (begin
-    (declare val-graph-key MDB-val)
-    (set val-graph-key.mv-size db-size-graph-key))
+    (declare val-relation-key MDB-val)
+    (set val-relation-key.mv-size db-size-relation-key))
   db-mdb-reset-val-null (set val-null.mv-size 0))
 
 (define (db-mdb-compare-id a b) ((static int) (const MDB-val*) (const MDB-val*))
   "mdb comparison routines are used by lmdb for search, insert and delete"
   (return (db-id-compare (db-pointer->id a:mv-data) (db-pointer->id b:mv-data))))
 
-(define (db-mdb-compare-graph-key a b) ((static int) (const MDB-val*) (const MDB-val*))
+(define (db-mdb-compare-relation-key a b) ((static int) (const MDB-val*) (const MDB-val*))
   (cond
     ((< (db-pointer->id a:mv-data) (db-pointer->id b:mv-data)) (return -1))
     ((> (db-pointer->id a:mv-data) (db-pointer->id b:mv-data)) (return 1))
     (else (return (db-id-compare (db-pointer->id-at a:mv-data 1) (db-pointer->id-at b:mv-data 1))))))
 
-(define (db-mdb-compare-graph-data a b) ((static int) (const MDB-val*) (const MDB-val*))
+(define (db-mdb-compare-relation-data a b) ((static int) (const MDB-val*) (const MDB-val*))
   "memcmp does not work here, gives -1 for 256 vs 1"
   (cond
-    ((< (db-graph-data->ordinal a:mv-data) (db-graph-data->ordinal b:mv-data)) (return -1))
-    ((> (db-graph-data->ordinal a:mv-data) (db-graph-data->ordinal b:mv-data)) (return 1))
-    (else (return (db-id-compare (db-graph-data->id a:mv-data) (db-graph-data->id b:mv-data))))))
+    ((< (db-relation-data->ordinal a:mv-data) (db-relation-data->ordinal b:mv-data)) (return -1))
+    ((> (db-relation-data->ordinal a:mv-data) (db-relation-data->ordinal b:mv-data)) (return 1))
+    (else (return (db-id-compare (db-relation-data->id a:mv-data) (db-relation-data->id b:mv-data))))))
 
 (define (db-mdb-compare-data a b) ((static int) (const MDB-val*) (const MDB-val*))
   (define length-difference ssize-t

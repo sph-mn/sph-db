@@ -145,7 +145,7 @@ exit:
   return (status);
 };
 /** get the first data id of type and save it in result. result is set to zero if none has been found */
-status_t db_type_first_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* result) {
+status_t db_type_first_id(MDB_cursor* records, db_type_id_t type_id, db_id_t* result) {
   status_declare;
   db_mdb_declare_val_null;
   db_mdb_declare_val_id;
@@ -153,7 +153,7 @@ status_t db_type_first_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* resu
   *result = 0;
   id = db_id_add_type(0, type_id);
   val_id.mv_data = &id;
-  status.id = mdb_cursor_get(nodes, (&val_id), (&val_null), MDB_SET_RANGE);
+  status.id = mdb_cursor_get(records, (&val_id), (&val_null), MDB_SET_RANGE);
   if (db_mdb_status_is_success) {
     if (type_id == db_id_type((db_pointer_to_id((val_id.mv_data))))) {
       *result = db_pointer_to_id((val_id.mv_data));
@@ -170,28 +170,28 @@ exit:
 };
 /** sets result to the last key id if the last key is of type, otherwise sets result to zero.
   leaves cursor at last key. status is mdb-notfound if database is empty */
-status_t db_type_last_key_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* result) {
+status_t db_type_last_key_id(MDB_cursor* records, db_type_id_t type_id, db_id_t* result) {
   status_declare;
   db_mdb_declare_val_id;
   db_mdb_declare_val_null;
   *result = 0;
-  status.id = mdb_cursor_get(nodes, (&val_id), (&val_null), MDB_LAST);
+  status.id = mdb_cursor_get(records, (&val_id), (&val_null), MDB_LAST);
   if (db_mdb_status_is_success && (type_id == db_id_type((db_pointer_to_id((val_id.mv_data)))))) {
     *result = db_pointer_to_id((val_id.mv_data));
   };
   return (status);
 };
-/** get the last existing node id for type or zero if none exist.
+/** get the last existing record id for type or zero if none exist.
    algorithm: check if data of type exists, if yes then check if last key is of type or
    position next type and step back */
-status_t db_type_last_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* result) {
+status_t db_type_last_id(MDB_cursor* records, db_type_id_t type_id, db_id_t* result) {
   status_declare;
   db_mdb_declare_val_id;
   db_mdb_declare_val_null;
   db_id_t id;
   /* if last key is of type then there are no greater type-ids and data of type exists.
     if there is no last key, the database is empty */
-  status = db_type_last_key_id(nodes, type_id, (&id));
+  status = db_type_last_key_id(records, type_id, (&id));
   if (db_mdb_status_is_success) {
     if (id) {
       *result = id;
@@ -208,7 +208,7 @@ status_t db_type_last_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* resul
   };
   /* database is not empty and the last key is not of searched type.
      type-id +1 is not greater than max possible type-id */
-  status_require((db_type_first_id(nodes, (1 + type_id), (&id))));
+  status_require((db_type_first_id(records, (1 + type_id), (&id))));
   if (!id) {
     /* no greater type-id found. since the searched type is not the last,
          all existing type-ids are smaller */
@@ -216,7 +216,7 @@ status_t db_type_last_id(MDB_cursor* nodes, db_type_id_t type_id, db_id_t* resul
     goto exit;
   };
   /* greater type found, step back */
-  db_mdb_status_require((mdb_cursor_get(nodes, (&val_id), (&val_null), MDB_PREV)));
+  db_mdb_status_require((mdb_cursor_get(records, (&val_id), (&val_null), MDB_PREV)));
   *result = ((type_id == db_id_type((db_pointer_to_id((val_id.mv_data))))) ? db_pointer_to_id((val_id.mv_data)) : 0);
 exit:
   return (status);
@@ -226,10 +226,10 @@ exit:
    algorithm:
      check if any entry for type exists, then position at max or first next type key,
      take or step back to previous key */
-status_t db_open_sequence(MDB_cursor* nodes, db_type_t* type) {
+status_t db_open_sequence(MDB_cursor* records, db_type_t* type) {
   status_declare;
   db_id_t id;
-  status_require((db_type_last_id(nodes, (type->id), (&id))));
+  status_require((db_type_last_id(records, (type->id), (&id))));
   id = db_id_element(id);
   type->sequence = ((id < db_element_id_limit) ? (1 + id) : id);
 exit:
@@ -289,7 +289,7 @@ exit:
   };
   return (status);
 };
-status_t db_open_type(uint8_t* system_key, uint8_t* system_value, db_type_t* types, MDB_cursor* nodes, db_type_t** result_type) {
+status_t db_open_type(uint8_t* system_key, uint8_t* system_value, db_type_t* types, MDB_cursor* records, db_type_t** result_type) {
   status_declare;
   db_type_id_t id;
   db_type_t* type_pointer;
@@ -310,7 +310,7 @@ exit:
    instead of a slower hash table which would be needed otherwise.
    the type array has free space at the end for possible new types.
    type id zero is the system btree */
-status_t db_open_types(MDB_cursor* system, MDB_cursor* nodes, db_txn_t txn) {
+status_t db_open_types(MDB_cursor* system, MDB_cursor* records, db_txn_t txn) {
   status_declare;
   MDB_val val_key;
   MDB_val val_data;
@@ -334,11 +334,11 @@ status_t db_open_types(MDB_cursor* system, MDB_cursor* nodes, db_txn_t txn) {
   val_key.mv_data = key;
   db_calloc(types, types_len, (sizeof(db_type_t)));
   types->sequence = system_sequence;
-  /* node types */
+  /* record types */
   status.id = mdb_cursor_get(system, (&val_key), (&val_data), MDB_SET_RANGE);
   while ((db_mdb_status_is_success && (db_system_label_type == db_system_key_label((val_key.mv_data))))) {
-    status_require((db_open_type((val_key.mv_data), (val_data.mv_data), types, nodes, (&type_pointer))));
-    status_require((db_open_sequence(nodes, type_pointer)));
+    status_require((db_open_type((val_key.mv_data), (val_data.mv_data), types, records, (&type_pointer))));
+    status_require((db_open_sequence(records, type_pointer)));
     status.id = mdb_cursor_get(system, (&val_key), (&val_data), MDB_NEXT);
   };
   if (db_mdb_status_is_notfound) {
@@ -427,38 +427,38 @@ exit:
 status_t db_open_system(db_txn_t txn) {
   status_declare;
   db_mdb_cursor_declare(system);
-  db_mdb_cursor_declare(nodes);
+  db_mdb_cursor_declare(records);
   db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), "system", MDB_CREATE, (&((txn.env)->dbi_system)))));
   db_mdb_env_cursor_open(txn, system);
   status_require((db_open_format(system, txn)));
-  db_mdb_env_cursor_open(txn, nodes);
-  status_require((db_open_types(system, nodes, txn)));
+  db_mdb_env_cursor_open(txn, records);
+  status_require((db_open_types(system, records, txn)));
   status_require((db_open_indices(system, txn)));
 exit:
   db_mdb_cursor_close_if_active(system);
-  db_mdb_cursor_close_if_active(nodes);
+  db_mdb_cursor_close_if_active(records);
   return (status);
 };
-/** ensure that the trees used for the graph exist, configure and open dbi */
-status_t db_open_graph(db_txn_t txn) {
+/** ensure that the trees used for the relation exist, configure and open dbi */
+status_t db_open_relation(db_txn_t txn) {
   status_declare;
   uint32_t db_options;
-  MDB_dbi dbi_graph_lr;
-  MDB_dbi dbi_graph_rl;
-  MDB_dbi dbi_graph_ll;
+  MDB_dbi dbi_relation_lr;
+  MDB_dbi dbi_relation_rl;
+  MDB_dbi dbi_relation_ll;
   db_options = (MDB_CREATE | MDB_DUPSORT | MDB_DUPFIXED);
-  db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), "graph-lr", db_options, (&dbi_graph_lr))));
-  db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), "graph-rl", db_options, (&dbi_graph_rl))));
-  db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), "graph-ll", db_options, (&dbi_graph_ll))));
-  db_mdb_status_require((mdb_set_compare((txn.mdb_txn), dbi_graph_lr, ((MDB_cmp_func*)(db_mdb_compare_graph_key)))));
-  db_mdb_status_require((mdb_set_compare((txn.mdb_txn), dbi_graph_rl, ((MDB_cmp_func*)(db_mdb_compare_graph_key)))));
-  db_mdb_status_require((mdb_set_compare((txn.mdb_txn), dbi_graph_ll, ((MDB_cmp_func*)(db_mdb_compare_id)))));
-  db_mdb_status_require((mdb_set_dupsort((txn.mdb_txn), dbi_graph_lr, ((MDB_cmp_func*)(db_mdb_compare_graph_data)))));
-  db_mdb_status_require((mdb_set_dupsort((txn.mdb_txn), dbi_graph_rl, ((MDB_cmp_func*)(db_mdb_compare_id)))));
-  db_mdb_status_require((mdb_set_dupsort((txn.mdb_txn), dbi_graph_ll, ((MDB_cmp_func*)(db_mdb_compare_id)))));
-  (txn.env)->dbi_graph_lr = dbi_graph_lr;
-  (txn.env)->dbi_graph_rl = dbi_graph_rl;
-  (txn.env)->dbi_graph_ll = dbi_graph_ll;
+  db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), "relation-lr", db_options, (&dbi_relation_lr))));
+  db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), "relation-rl", db_options, (&dbi_relation_rl))));
+  db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), "relation-ll", db_options, (&dbi_relation_ll))));
+  db_mdb_status_require((mdb_set_compare((txn.mdb_txn), dbi_relation_lr, ((MDB_cmp_func*)(db_mdb_compare_relation_key)))));
+  db_mdb_status_require((mdb_set_compare((txn.mdb_txn), dbi_relation_rl, ((MDB_cmp_func*)(db_mdb_compare_relation_key)))));
+  db_mdb_status_require((mdb_set_compare((txn.mdb_txn), dbi_relation_ll, ((MDB_cmp_func*)(db_mdb_compare_id)))));
+  db_mdb_status_require((mdb_set_dupsort((txn.mdb_txn), dbi_relation_lr, ((MDB_cmp_func*)(db_mdb_compare_relation_data)))));
+  db_mdb_status_require((mdb_set_dupsort((txn.mdb_txn), dbi_relation_rl, ((MDB_cmp_func*)(db_mdb_compare_id)))));
+  db_mdb_status_require((mdb_set_dupsort((txn.mdb_txn), dbi_relation_ll, ((MDB_cmp_func*)(db_mdb_compare_id)))));
+  (txn.env)->dbi_relation_lr = dbi_relation_lr;
+  (txn.env)->dbi_relation_rl = dbi_relation_rl;
+  (txn.env)->dbi_relation_ll = dbi_relation_ll;
 exit:
   return (status);
 };
@@ -471,10 +471,10 @@ db_open_options_t db_open_options_set_defaults(db_open_options_t* a) {
   a->filesystem_has_ordered_writes = 1;
   a->file_permissions = 384;
 };
-status_t db_open_nodes(db_txn_t txn) {
+status_t db_open_records(db_txn_t txn) {
   status_declare;
-  db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), "nodes", MDB_CREATE, (&((txn.env)->dbi_nodes)))));
-  db_mdb_status_require((mdb_set_compare((txn.mdb_txn), ((txn.env)->dbi_nodes), ((MDB_cmp_func*)(db_mdb_compare_id)))));
+  db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), "records", MDB_CREATE, (&((txn.env)->dbi_records)))));
+  db_mdb_status_require((mdb_set_compare((txn.mdb_txn), ((txn.env)->dbi_records), ((MDB_cmp_func*)(db_mdb_compare_id)))));
 exit:
   return (status);
 };
@@ -499,9 +499,9 @@ status_t db_open(uint8_t* path, db_open_options_t* options_pointer, db_env_t* en
   status_require((db_open_root(env, (&options), path)));
   status_require((db_open_mdb_env(env, (&options))));
   status_require((db_txn_write_begin((&txn))));
-  status_require((db_open_nodes(txn)));
+  status_require((db_open_records(txn)));
   status_require((db_open_system(txn)));
-  status_require((db_open_graph(txn)));
+  status_require((db_open_relation(txn)));
   status_require((db_txn_commit((&txn))));
   pthread_mutex_init((&(env->mutex)), 0);
   env->is_open = 1;

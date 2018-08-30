@@ -1,5 +1,5 @@
 (sc-comment "secondary api for dealing with internals")
-(sc-comment "imht-set is used for example for matching ids in graph-read")
+(sc-comment "imht-set is used for example for matching ids in relation-read")
 (pre-define imht-set-key-t db-id-t)
 (sc-include "foreign/sph/imht-set")
 
@@ -8,8 +8,8 @@
   db-system-label-type 1
   db-system-label-index 2
   db-selection-flag-skip 1
-  db-graph-selection-flag-is-set-left 2
-  db-graph-selection-flag-is-set-right 4
+  db-relation-selection-flag-is-set-left 2
+  db-relation-selection-flag-is-set-right 4
   db-type-id-limit db-type-id-mask
   db-element-id-limit db-id-element-mask
   db-type-flag-virtual 1
@@ -41,14 +41,14 @@
     (set variable-temp (realloc variable size))
     (db-status-memory-error-if-null variable-temp)
     (set variable variable-temp))
-  (db-graph-data->id a) (db-pointer->id (+ 1 (convert-type a db-ordinal-t*)))
-  (db-graph-data->ordinal a) (pointer-get (convert-type a db-ordinal-t*))
-  (db-graph-data-set-id a value) (set (db-graph-data->id a) value)
-  (db-graph-data-set-ordinal a value) (set (db-graph-data->ordinal a) value)
-  (db-graph-data-set-both a ordinal id)
+  (db-relation-data->id a) (db-pointer->id (+ 1 (convert-type a db-ordinal-t*)))
+  (db-relation-data->ordinal a) (pointer-get (convert-type a db-ordinal-t*))
+  (db-relation-data-set-id a value) (set (db-relation-data->id a) value)
+  (db-relation-data-set-ordinal a value) (set (db-relation-data->ordinal a) value)
+  (db-relation-data-set-both a ordinal id)
   (begin
-    (db-graph-data-set-ordinal ordinal)
-    (db-graph-data-set-id id)))
+    (db-relation-data-set-ordinal ordinal)
+    (db-relation-data-set-id id)))
 
 (declare
   (db-sequence-next-system env result) (status-t db-env-t* db-type-id-t*)
@@ -62,8 +62,8 @@
   (db-debug-count-all-btree-entries txn result) (status-t db-txn-t db-count-t*)
   ; index
   (db-index-key env index values result-data result-size)
-  (status-t db-env-t* db-index-t db-node-values-t void** size-t*)
-  (db-indices-entry-ensure txn values id) (status-t db-txn-t db-node-values-t db-id-t)
+  (status-t db-env-t* db-index-t db-record-values-t void** size-t*)
+  (db-indices-entry-ensure txn values id) (status-t db-txn-t db-record-values-t db-id-t)
   (db-index-name type-id fields fields-len result result-size)
   (status-t db-type-id-t db-fields-len-t* db-fields-len-t uint8-t** size-t*)
-  (db-indices-entry-delete txn values id) (status-t db-txn-t db-node-values-t db-id-t))
+  (db-indices-entry-delete txn values id) (status-t db-txn-t db-record-values-t db-id-t))

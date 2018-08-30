@@ -5,23 +5,23 @@
   * format-label -> id-size id-type-size ordinal-size
   * type-label id -> name-len name field-count (field-type name-len name) ...
   * index-label type-id field-index ... -> null
-* nodes
-  * node-id: fixed-size-data ... (variable-size-len variable-size-data) ...
-* graph-lr
-  * left:node-id label:node-id -> ordinal:number right:node-id
-* graph-rl
-  * right:node-id label:node-id -> left:node-id
-* graph-ll
-  * label:node-id -> left:node-id
+* records
+  * record-id: fixed-size-data ... (variable-size-len variable-size-data) ...
+* relation-lr
+  * left:record-id label:record-id -> ordinal:number right:record-id
+* relation-rl
+  * right:record-id label:record-id -> left:record-id
+* relation-ll
+  * label:record-id -> left:record-id
 * i-{type-id}-{field-offset}[-{field-offset} ...]
-  * field-data ... node-id -> null
+  * field-data ... record-id -> null
 
-# nodes
-* all nodes are stored in one lmdb database
+# records
+* all records are stored in one lmdb database
 * ids include type information
-  * to cluster nodes by type because nodes are stored sorted by id
-  * to filter lists of relation target node ids by type cheaply
-  * node-id: type-id element-id
+  * to cluster records by type because records are stored sorted by id
+  * to filter lists of relation target record ids by type cheaply
+  * record-id: type-id element-id
   * zero is the null identifier. use case: unspecified relation labels, sources or targets
 * sequences
   * one sequence per type
@@ -52,22 +52,22 @@
       * binary
       * string
 * indices
-  * associate node field data with node ids
+  * associate record field data with record ids
   * one separate lmdb database per index
-  * update on each change of the associated node using the same transaction
+  * update on each change of the associated record using the same transaction
 * system cache
   * information about types, sequences and indices is loaded on open and cached in memory in the db_env_t struct
   * type structs are cached in a dynamically resized array with the type-id as index ("arrays are the fastest hash tables")
 * relations
   * there must only be one relation for every combination of left, label and right. cyclic relations are allowed. relational integrity may be ignored when creating relations to avoid existence checks
-  * when a node is deleted then all relations that contain its id are deleted with it
+  * when a record is deleted then all relations that contain its id are deleted with it
   * targets are stored ordered by ordinal value. ordinal values are stored only for the right part of the left-to-right direction to save space
   * by convention, left to right corresponds to general to specific
   * terminology for relation start and end point: left and right, or source and target for unspecified direction
 
 # search performance
-* nodes and relations are stored in b+trees with a basic o(log n) time complexity for search/insert/delete (average and worst case)
-* node data: getting data from node identifiers requires only one basic b+tree search. it is as fast as it gets. data fields can be indexed
+* records and relations are stored in b+trees with a basic o(log n) time complexity for search/insert/delete (average and worst case)
+* record data: getting data from record identifiers requires only one basic b+tree search. it is as fast as it gets. data fields can be indexed
 * relations: relations are filtered by giving lists of ids to match as arguments. 16 different filter combinations for left/label/ordinal/right, the parts of relations, are theoretically possible with db_relation_select. 2 are unsupported: all combinations that contain a filter for right and ordinal but not left. because the number of the possible combinations is small, pre-compiled code optimised for the exact filter combination is used when executing queries. the sph-db relation functionality is specifically designed for queries with these filters
 
 here is a list of estimated, relative db_relation_read performance for each filter combination from best (fastest execution per element matched) to worst (slowest), some are equal:
@@ -95,11 +95,11 @@ not supported
 ```
 
 # space requirements
-* nodes and relations are stored in b+trees with a basic o(log n) space complexity (average and worst case)
+* records and relations are stored in b+trees with a basic o(log n) space complexity (average and worst case)
 * the required space depends on the chosen db_id_t and db_ordinal_t types. the maximum possible size for these types is restricted by the largest available c type supported by the compiler that is used to compile sph-db because pointers are not supported. the commonly supported range is 0 to 64 bit. the minimum possible size is 8 bit for identifiers and 0 bit for ordinals (untested)
-* nodes
-  * node-size = id-size + data-size
-  * virtual-node-size = 0 (only exist in relations or field data)
+* records
+  * record-size = id-size + data-size
+  * virtual-record-size = 0 (only exist in relations or field data)
 * relations
   * relation-size = 8 * id-size + ordinal-size
   * example 1
@@ -120,21 +120,21 @@ not supported
 * ``sph-db-extra.h`` contains declarations for internally used things
 * the code assumes that "mdb_cursor_close" can be called with null pointers at some places
 
-## db-graph-select
+## db-relation-select
 * chooses the reader, relevant databases and other values to use for the search
 * checks if the database is empty
 * applies the read offset
 
-## db-graph-read
+## db-relation-read
 * supports partial reads. for example reading up to ten matches at a time. this is why a selection object is used. this has many subtle consequences, like having to get the current cursor value at the beginning of the reader code, to check if the right key or data is already set
 * supports skipping: matching but not copying the result. this is used for reading from an offset
 * cursors as arguments are assumed to be in position at the current entry on call
 * readers must not be called after any failure status
 * readers and deleters are built using stacked goto labels because this makes it much easier in this case to control the execution flow, compared to the alternative of nested while loops, particularly for choosing the best place for evaluating the read-count stop condition
-* db-graph-read-1001-1101 is a good example of how queries with ordinals make the code more complicated (range lookups) and why using ordinals is only supported when a filter on "left" is given
+* db-relation-read-1001-1101 is a good example of how queries with ordinals make the code more complicated (range lookups) and why using ordinals is only supported when a filter on "left" is given
 
-## db-graph-delete
-* db-graph-delete differs from db-graph-read in that it does not need a state because it does not support partial processing
+## db-relation-delete
+* db-relation-delete differs from db-relation-read in that it does not need a state because it does not support partial processing
 * it also differs in that it always needs to use all three relation dbi to complete the deletion instead of just any dbi necessary to match relations
 
 ## conventions/principles

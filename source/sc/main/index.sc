@@ -1,6 +1,6 @@
 (declare
-  (db-node-data->values type data result) (status-t db-type-t* db-node-t db-node-values-t*)
-  (db-free-node-values values) (void db-node-values-t*))
+  (db-record-data->values type data result) (status-t db-type-t* db-record-t db-record-values-t*)
+  (db-free-record-values values) (void db-record-values-t*))
 
 (define (db-index-system-key type-id fields fields-len result-data result-size)
   (status-t db-type-id-t db-fields-len-t* db-fields-len-t void** size-t*)
@@ -70,7 +70,7 @@
     (return status)))
 
 (define (db-index-key env index values result-data result-size)
-  (status-t db-env-t* db-index-t db-node-values-t void** size-t*)
+  (status-t db-env-t* db-index-t db-record-values-t void** size-t*)
   "create a key to be used in an index btree.
   key-format: field-value ..."
   status-declare
@@ -97,69 +97,69 @@
   (label exit
     (return status)))
 
-(define (db-indices-entry-ensure txn values id) (status-t db-txn-t db-node-values-t db-id-t)
+(define (db-indices-entry-ensure txn values id) (status-t db-txn-t db-record-values-t db-id-t)
   "create entries in all indices of type for id and values.
   assumes that values has at least one entry set (values.extent unequal zero).
   index entry: field-value ... -> id"
   status-declare
   db-mdb-declare-val-id
-  (db-mdb-cursor-declare node-index-cursor)
+  (db-mdb-cursor-declare record-index-cursor)
   (declare
     data void*
     val-data MDB-val
     i db-indices-len-t
-    node-index db-index-t
-    node-indices db-index-t*
-    node-indices-len db-indices-len-t)
+    record-index db-index-t
+    record-indices db-index-t*
+    record-indices-len db-indices-len-t)
   (set
     val-id.mv-data &id
     data 0
-    node-indices-len values.type:indices-len
-    node-indices values.type:indices)
-  (for ((set i 0) (< i node-indices-len) (set i (+ 1 i)))
-    (set node-index (array-get node-indices i))
-    (if (not node-index.fields-len) continue)
-    (status-require (db-index-key txn.env node-index values &data &val-data.mv-size))
+    record-indices-len values.type:indices-len
+    record-indices values.type:indices)
+  (for ((set i 0) (< i record-indices-len) (set i (+ 1 i)))
+    (set record-index (array-get record-indices i))
+    (if (not record-index.fields-len) continue)
+    (status-require (db-index-key txn.env record-index values &data &val-data.mv-size))
     (set val-data.mv-data data)
-    (db-mdb-status-require (mdb-cursor-open txn.mdb-txn node-index.dbi &node-index-cursor))
-    (db-mdb-status-require (mdb-cursor-put node-index-cursor &val-data &val-id 0))
-    (db-mdb-cursor-close node-index-cursor))
+    (db-mdb-status-require (mdb-cursor-open txn.mdb-txn record-index.dbi &record-index-cursor))
+    (db-mdb-status-require (mdb-cursor-put record-index-cursor &val-data &val-id 0))
+    (db-mdb-cursor-close record-index-cursor))
   (label exit
-    (db-mdb-cursor-close-if-active node-index-cursor)
+    (db-mdb-cursor-close-if-active record-index-cursor)
     (free data)
     (return status)))
 
-(define (db-indices-entry-delete txn values id) (status-t db-txn-t db-node-values-t db-id-t)
+(define (db-indices-entry-delete txn values id) (status-t db-txn-t db-record-values-t db-id-t)
   "delete all entries from all indices of type for id and values"
   status-declare
   db-mdb-declare-val-id
-  (db-mdb-cursor-declare node-index-cursor)
+  (db-mdb-cursor-declare record-index-cursor)
   (declare
     data uint8-t*
     val-data MDB-val
     i db-indices-len-t
-    node-index db-index-t
-    node-indices db-index-t*
-    node-indices-len db-indices-len-t)
+    record-index db-index-t
+    record-indices db-index-t*
+    record-indices-len db-indices-len-t)
   (set
     val-id.mv-data &id
     data 0
-    node-indices-len values.type:indices-len
-    node-indices values.type:indices)
-  (for ((set i 0) (< i node-indices-len) (set i (+ 1 i)))
-    (set node-index (array-get node-indices i))
-    (if (not node-index.fields-len) continue)
+    record-indices-len values.type:indices-len
+    record-indices values.type:indices)
+  (for ((set i 0) (< i record-indices-len) (set i (+ 1 i)))
+    (set record-index (array-get record-indices i))
+    (if (not record-index.fields-len) continue)
     (status-require
-      (db-index-key txn.env node-index values (convert-type &data void**) &val-data.mv-size))
+      (db-index-key txn.env record-index values (convert-type &data void**) &val-data.mv-size))
     (set val-data.mv-data data)
     ; delete
-    (db-mdb-status-require (mdb-cursor-open txn.mdb-txn node-index.dbi &node-index-cursor))
-    (db-mdb-status-require (mdb-cursor-put node-index-cursor &val-data &val-id 0))
-    (db-mdb-status-require (mdb-cursor-get node-index-cursor &val-data &val-id MDB-GET-BOTH))
-    (if status-is-success (db-mdb-status-require (mdb-cursor-del node-index-cursor 0)))
-    (db-mdb-cursor-close node-index-cursor))
+    (db-mdb-status-require (mdb-cursor-open txn.mdb-txn record-index.dbi &record-index-cursor))
+    (db-mdb-status-require (mdb-cursor-put record-index-cursor &val-data &val-id 0))
+    (db-mdb-status-require (mdb-cursor-get record-index-cursor &val-data &val-id MDB-GET-BOTH))
+    (if status-is-success (db-mdb-status-require (mdb-cursor-del record-index-cursor 0)))
+    (db-mdb-cursor-close record-index-cursor))
   (label exit
-    (db-mdb-cursor-close-if-active node-index-cursor)
+    (db-mdb-cursor-close-if-active record-index-cursor)
     (free data)
     (return status)))
 
@@ -168,15 +168,15 @@
   status-declare
   db-mdb-declare-val-id
   (db-txn-declare env txn)
-  (db-mdb-cursor-declare nodes)
+  (db-mdb-cursor-declare records)
   (db-mdb-cursor-declare index-cursor)
   (declare
     val-data MDB-val
     data void*
     id db-id-t
     type db-type-t
-    node db-node-t
-    values db-node-values-t)
+    record db-record-t
+    values db-record-values-t)
   (set
     values.data 0
     data 0
@@ -185,26 +185,26 @@
     val-id.mv-data &id)
   (status-require (db-txn-write-begin &txn))
   (db-mdb-status-require (mdb-cursor-open txn.mdb-txn index.dbi &index-cursor))
-  (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
-  (db-mdb-status-require (mdb-cursor-get nodes &val-id &val-data MDB-SET-RANGE))
-  (sc-comment "for each node of type")
+  (db-mdb-status-require (db-mdb-env-cursor-open txn records))
+  (db-mdb-status-require (mdb-cursor-get records &val-id &val-data MDB-SET-RANGE))
+  (sc-comment "for each record of type")
   (while (and db-mdb-status-is-success (= type.id (db-id-type (db-pointer->id val-id.mv-data))))
     (set
-      node.data val-data.mv-data
-      node.size val-data.mv-size)
-    (status-require (db-node-data->values &type node &values))
+      record.data val-data.mv-data
+      record.size val-data.mv-size)
+    (status-require (db-record-data->values &type record &values))
     (status-require (db-index-key env index values &data &val-data.mv-size))
-    (db-free-node-values &values)
+    (db-free-record-values &values)
     (set val-data.mv-data data)
     (db-mdb-status-require (mdb-cursor-put index-cursor &val-data &val-id 0))
-    (set status.id (mdb-cursor-get nodes &val-id &val-data MDB-NEXT-NODUP)))
+    (set status.id (mdb-cursor-get records &val-id &val-data MDB-NEXT-NODUP)))
   db-mdb-status-expect-read
   (status-require (db-txn-commit &txn))
   (label exit
     (db-mdb-cursor-close-if-active index-cursor)
-    (db-mdb-cursor-close-if-active nodes)
+    (db-mdb-cursor-close-if-active records)
     (db-txn-abort-if-active txn)
-    (db-free-node-values &values)
+    (db-free-record-values &values)
     (free data)
     db-mdb-status-success-if-notfound
     (return status)))
@@ -276,7 +276,7 @@
     name uint8-t*
     name-len size-t
     indices-temp db-index-t*
-    node-index db-index-t)
+    record-index db-index-t)
   (if (not fields-len)
     (begin
       (set status.id db-status-id-invalid-argument)
@@ -301,17 +301,17 @@
   (db-mdb-status-require (mdb-cursor-put system &val-data &val-null 0))
   (db-mdb-cursor-close system)
   (sc-comment "add data btree")
-  (db-mdb-status-require (mdb-dbi-open txn.mdb-txn name MDB-CREATE &node-index.dbi))
+  (db-mdb-status-require (mdb-dbi-open txn.mdb-txn name MDB-CREATE &record-index.dbi))
   (sc-comment "update cache. fields might be stack allocated")
   (db-malloc fields-copy (* fields-len (sizeof db-fields-len-t)))
   (memcpy fields-copy fields (* fields-len (sizeof db-fields-len-t)))
-  (struct-set node-index
+  (struct-set record-index
     fields fields-copy
     fields-len fields-len
     type type)
-  (status-require (db-type-indices-add type node-index))
+  (status-require (db-type-indices-add type record-index))
   (status-require (db-txn-commit &txn))
-  (status-require (db-index-build env node-index))
+  (status-require (db-index-build env record-index))
   (label exit
     (db-mdb-cursor-close-if-active system)
     (db-txn-abort-if-active txn)
@@ -357,7 +357,7 @@
     (return status)))
 
 (define (db-index-rebuild env index) (status-t db-env-t* db-index-t*)
-  "clear index and fill with data from existing nodes"
+  "clear index and fill with data from existing records"
   status-declare
   (db-txn-declare env txn)
   (declare
@@ -377,7 +377,7 @@
 
 (define (db-index-read selection count result-ids)
   (status-t db-index-selection-t db-count-t db-ids-t*)
-  "read index values (node ids).
+  "read index values (record ids).
   count must be positive.
   if no more value is found, status is db-notfound.
   status must be success on call"
@@ -397,7 +397,7 @@
   (db-mdb-cursor-close-if-active selection:cursor))
 
 (define (db-index-select txn index values result)
-  (status-t db-txn-t db-index-t db-node-values-t db-index-selection-t*)
+  (status-t db-txn-t db-index-t db-record-values-t db-index-selection-t*)
   "open the cursor and set to the index key matching values.
   selection is positioned at the first match.
   if no match found then status is db-notfound"

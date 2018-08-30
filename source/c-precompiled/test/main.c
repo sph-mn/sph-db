@@ -101,17 +101,17 @@ status_t test_sequence(db_env_t* env) {
   db_type_id_t prev_type_id;
   db_type_t* type;
   db_type_id_t type_id;
-  /* node sequence. note that sequences only persist through data inserts */
+  /* record sequence. note that sequences only persist through data inserts */
   status_require((db_type_create(env, "test-type", 0, 0, 0, (&type))));
   type->sequence = (db_element_id_limit - 100);
   prev_id = db_id_add_type((db_element_id_limit - 100 - 1), (type->id));
   for (i = db_element_id_limit; (i <= db_element_id_limit); i = (i + 1)) {
     status = db_sequence_next(env, (type->id), (&id));
     if (db_element_id_limit <= db_id_element((1 + prev_id))) {
-      test_helper_assert("node sequence is limited", (db_status_id_max_element_id == status.id));
+      test_helper_assert("record sequence is limited", (db_status_id_max_element_id == status.id));
       status.id = status_id_success;
     } else {
-      test_helper_assert("node sequence is monotonically increasing", (status_is_success && (1 == (id - prev_id))));
+      test_helper_assert("record sequence is monotonically increasing", (status_is_success && (1 == (id - prev_id))));
     };
     prev_id = id;
   };
@@ -137,7 +137,7 @@ status_t test_open_nonempty(db_env_t* env) {
 exit:
   return (status);
 };
-/** test features related to the combination of element and type id to node id */
+/** test features related to the combination of element and type id to record id */
 status_t test_id_construction(db_env_t* env) {
   status_declare;
   /* id creation */
@@ -152,193 +152,193 @@ status_t test_id_construction(db_env_t* env) {
 exit:
   return (status);
 };
-status_t test_graph_read(db_env_t* env) {
+status_t test_relation_read(db_env_t* env) {
   status_declare;
   db_txn_declare(env, txn);
-  test_helper_graph_read_data_t data;
-  status_require((test_helper_graph_read_setup(env, common_element_count, common_element_count, common_label_count, (&data))));
+  test_helper_relation_read_data_t data;
+  status_require((test_helper_relation_read_setup(env, common_element_count, common_element_count, common_label_count, (&data))));
   status_require((db_txn_begin((&txn))));
-  status_require((test_helper_graph_read_one(txn, data, 0, 0, 0, 0, 0)));
-  status_require((test_helper_graph_read_one(txn, data, 1, 0, 0, 0, 0)));
-  status_require((test_helper_graph_read_one(txn, data, 0, 1, 0, 0, 0)));
-  status_require((test_helper_graph_read_one(txn, data, 1, 1, 0, 0, 0)));
-  status_require((test_helper_graph_read_one(txn, data, 0, 0, 1, 0, 0)));
-  status_require((test_helper_graph_read_one(txn, data, 1, 0, 1, 0, 0)));
-  status_require((test_helper_graph_read_one(txn, data, 0, 1, 1, 0, 0)));
-  status_require((test_helper_graph_read_one(txn, data, 1, 1, 1, 0, 0)));
-  status_require((test_helper_graph_read_one(txn, data, 1, 0, 0, 1, 0)));
-  status_require((test_helper_graph_read_one(txn, data, 1, 1, 0, 1, 0)));
-  status_require((test_helper_graph_read_one(txn, data, 1, 0, 1, 1, 0)));
-  status_require((test_helper_graph_read_one(txn, data, 1, 1, 1, 1, 0)));
+  status_require((test_helper_relation_read_one(txn, data, 0, 0, 0, 0, 0)));
+  status_require((test_helper_relation_read_one(txn, data, 1, 0, 0, 0, 0)));
+  status_require((test_helper_relation_read_one(txn, data, 0, 1, 0, 0, 0)));
+  status_require((test_helper_relation_read_one(txn, data, 1, 1, 0, 0, 0)));
+  status_require((test_helper_relation_read_one(txn, data, 0, 0, 1, 0, 0)));
+  status_require((test_helper_relation_read_one(txn, data, 1, 0, 1, 0, 0)));
+  status_require((test_helper_relation_read_one(txn, data, 0, 1, 1, 0, 0)));
+  status_require((test_helper_relation_read_one(txn, data, 1, 1, 1, 0, 0)));
+  status_require((test_helper_relation_read_one(txn, data, 1, 0, 0, 1, 0)));
+  status_require((test_helper_relation_read_one(txn, data, 1, 1, 0, 1, 0)));
+  status_require((test_helper_relation_read_one(txn, data, 1, 0, 1, 1, 0)));
+  status_require((test_helper_relation_read_one(txn, data, 1, 1, 1, 1, 0)));
 exit:
   db_txn_abort_if_active(txn);
-  test_helper_graph_read_teardown((&data));
+  test_helper_relation_read_teardown((&data));
   return (status);
 };
-/** some assertions depend on the correctness of graph-read */
-status_t test_graph_delete(db_env_t* env) {
+/** some assertions depend on the correctness of relation-read */
+status_t test_relation_delete(db_env_t* env) {
   status_declare;
-  test_helper_graph_delete_data_t data;
-  status_require((test_helper_graph_delete_setup(env, common_element_count, common_element_count, common_label_count, (&data))));
-  status_require((test_helper_graph_delete_one(data, 1, 0, 0, 0)));
-  status_require((test_helper_graph_delete_one(data, 0, 1, 0, 0)));
-  status_require((test_helper_graph_delete_one(data, 1, 1, 0, 0)));
-  status_require((test_helper_graph_delete_one(data, 0, 0, 1, 0)));
-  status_require((test_helper_graph_delete_one(data, 1, 0, 1, 0)));
-  status_require((test_helper_graph_delete_one(data, 0, 1, 1, 0)));
-  status_require((test_helper_graph_delete_one(data, 1, 1, 1, 0)));
-  status_require((test_helper_graph_delete_one(data, 1, 0, 0, 1)));
-  status_require((test_helper_graph_delete_one(data, 1, 1, 0, 1)));
-  status_require((test_helper_graph_delete_one(data, 1, 0, 1, 1)));
-  status_require((test_helper_graph_delete_one(data, 1, 1, 1, 1)));
+  test_helper_relation_delete_data_t data;
+  status_require((test_helper_relation_delete_setup(env, common_element_count, common_element_count, common_label_count, (&data))));
+  status_require((test_helper_relation_delete_one(data, 1, 0, 0, 0)));
+  status_require((test_helper_relation_delete_one(data, 0, 1, 0, 0)));
+  status_require((test_helper_relation_delete_one(data, 1, 1, 0, 0)));
+  status_require((test_helper_relation_delete_one(data, 0, 0, 1, 0)));
+  status_require((test_helper_relation_delete_one(data, 1, 0, 1, 0)));
+  status_require((test_helper_relation_delete_one(data, 0, 1, 1, 0)));
+  status_require((test_helper_relation_delete_one(data, 1, 1, 1, 0)));
+  status_require((test_helper_relation_delete_one(data, 1, 0, 0, 1)));
+  status_require((test_helper_relation_delete_one(data, 1, 1, 0, 1)));
+  status_require((test_helper_relation_delete_one(data, 1, 0, 1, 1)));
+  status_require((test_helper_relation_delete_one(data, 1, 1, 1, 1)));
 exit:
   return (status);
 };
-status_t test_node_create(db_env_t* env) {
+status_t test_record_create(db_env_t* env) {
   status_declare;
   db_txn_declare(env, txn);
   i_array_declare(ids, db_ids_t);
-  i_array_declare(nodes, db_nodes_t);
-  db_node_value_t field_data;
+  i_array_declare(records, db_records_t);
+  db_record_value_t field_data;
   db_fields_len_t field_index;
   db_id_t id_1;
   db_id_t id_2;
-  db_node_t node_1;
-  db_node_t node_2;
+  db_record_t record_1;
+  db_record_t record_2;
   size_t size_1;
   size_t size_2;
   db_type_t* type;
   uint8_t value_1;
   int8_t value_2;
-  db_node_values_t values_1;
-  db_node_values_t values_2;
+  db_record_values_t values_1;
+  db_record_values_t values_2;
   uint8_t* value_4 = ((uint8_t*)("abcde"));
   status_require((test_helper_create_type_1(env, (&type))));
-  /* prepare node values */
-  status_require((db_node_values_new(type, (&values_1))));
+  /* prepare record values */
+  status_require((db_record_values_new(type, (&values_1))));
   value_1 = 11;
   value_2 = -128;
-  db_node_values_set((&values_1), 0, (&value_1), 0);
-  db_node_values_set((&values_1), 1, (&value_2), 0);
+  db_record_values_set((&values_1), 0, (&value_1), 0);
+  db_record_values_set((&values_1), 1, (&value_2), 0);
   /* empty field in between, field 2 left out */
-  db_node_values_set((&values_1), 3, value_4, 5);
-  /* test node values/data conversion */
-  db_node_values_to_data(values_1, (&node_1));
-  test_helper_assert(("node-values->data size"), (((2 * sizeof(db_data_len_t)) + 7) == node_1.size));
-  db_node_data_to_values(type, node_1, (&values_2));
-  test_helper_assert(("node-data->values type equal"), (values_1.type == values_2.type));
-  test_helper_assert(("node-data->values size equal"), ((((values_1.data)[0]).size == ((values_2.data)[0]).size) && (((values_1.data)[1]).size == ((values_2.data)[1]).size) && (((values_1.data)[2]).size == ((values_2.data)[2]).size) && (((values_1.data)[3]).size == ((values_2.data)[3]).size)));
-  test_helper_assert(("node-data->values data equal 1"), (0 == memcmp(value_4, (((values_1.data)[3]).data), 5)));
+  db_record_values_set((&values_1), 3, value_4, 5);
+  /* test record values/data conversion */
+  db_record_values_to_data(values_1, (&record_1));
+  test_helper_assert(("record-values->data size"), (((2 * sizeof(db_data_len_t)) + 7) == record_1.size));
+  db_record_data_to_values(type, record_1, (&values_2));
+  test_helper_assert(("record-data->values type equal"), (values_1.type == values_2.type));
+  test_helper_assert(("record-data->values size equal"), ((((values_1.data)[0]).size == ((values_2.data)[0]).size) && (((values_1.data)[1]).size == ((values_2.data)[1]).size) && (((values_1.data)[2]).size == ((values_2.data)[2]).size) && (((values_1.data)[3]).size == ((values_2.data)[3]).size)));
+  test_helper_assert(("record-data->values data equal 1"), (0 == memcmp(value_4, (((values_1.data)[3]).data), 5)));
   for (field_index = 0; (field_index < type->fields_len); field_index = (1 + field_index)) {
     size_1 = ((values_1.data)[field_index]).size;
     size_2 = ((values_2.data)[field_index]).size;
-    test_helper_assert(("node-data->values data equal 2"), (0 == memcmp((((values_1.data)[field_index]).data), (((values_2.data)[field_index]).data), ((size_1 < size_2) ? size_2 : size_1))));
+    test_helper_assert(("record-data->values data equal 2"), (0 == memcmp((((values_1.data)[field_index]).data), (((values_2.data)[field_index]).data), ((size_1 < size_2) ? size_2 : size_1))));
   };
-  db_node_values_to_data(values_2, (&node_2));
-  test_helper_assert(("node-values->data"), ((node_1.size == node_2.size) && (0 == memcmp((node_1.data), (node_2.data), ((node_1.size < node_2.size) ? node_2.size : node_1.size)))));
-  db_node_values_free((&values_2));
-  db_node_values_new(type, (&values_2));
-  db_node_values_to_data(values_2, (&node_2));
-  test_helper_assert(("node-values->data empty"), (0 == node_2.size));
-  /* test node-ref */
-  field_data = db_node_ref(type, node_1, 3);
-  test_helper_assert("node-ref-1", ((5 == field_data.size) && (0 == memcmp(value_4, (field_data.data), (field_data.size)))));
-  /* test actual node creation */
+  db_record_values_to_data(values_2, (&record_2));
+  test_helper_assert(("record-values->data"), ((record_1.size == record_2.size) && (0 == memcmp((record_1.data), (record_2.data), ((record_1.size < record_2.size) ? record_2.size : record_1.size)))));
+  db_record_values_free((&values_2));
+  db_record_values_new(type, (&values_2));
+  db_record_values_to_data(values_2, (&record_2));
+  test_helper_assert(("record-values->data empty"), (0 == record_2.size));
+  /* test record-ref */
+  field_data = db_record_ref(type, record_1, 3);
+  test_helper_assert("record-ref-1", ((5 == field_data.size) && (0 == memcmp(value_4, (field_data.data), (field_data.size)))));
+  /* test actual record creation */
   status_require((db_txn_write_begin((&txn))));
-  status_require((db_node_create(txn, values_1, (&id_1))));
+  status_require((db_record_create(txn, values_1, (&id_1))));
   test_helper_assert("element id 1", (1 == db_id_element(id_1)));
-  status_require((db_node_create(txn, values_1, (&id_2))));
+  status_require((db_record_create(txn, values_1, (&id_2))));
   test_helper_assert("element id 2", (2 == db_id_element(id_2)));
   status_require((db_txn_commit((&txn))));
   status_require((db_txn_begin((&txn))));
-  /* test node-get */
+  /* test record-get */
   status_require((db_ids_new(3, (&ids))));
-  status_require((db_nodes_new(3, (&nodes))));
+  status_require((db_records_new(3, (&records))));
   i_array_add(ids, id_1);
   i_array_add(ids, id_2);
-  status_require((db_node_get(txn, ids, (&nodes))));
-  test_helper_assert("node-get result length", (2 == i_array_length(nodes)));
-  test_helper_assert("node-get result ids", ((id_1 == (i_array_get_at(nodes, 0)).id) && (id_2 == (i_array_get_at(nodes, 1)).id)));
-  field_data = db_node_ref(type, (i_array_get_at(nodes, 0)), 1);
-  test_helper_assert("node-ref-2", ((sizeof(int8_t) == field_data.size) && (value_2 == *((int8_t*)(field_data.data)))));
-  field_data = db_node_ref(type, (i_array_get_at(nodes, 0)), 3);
-  test_helper_assert("node-ref-3", ((5 == field_data.size) && (0 == memcmp(value_4, (field_data.data), (field_data.size)))));
+  status_require((db_record_get(txn, ids, (&records))));
+  test_helper_assert("record-get result length", (2 == i_array_length(records)));
+  test_helper_assert("record-get result ids", ((id_1 == (i_array_get_at(records, 0)).id) && (id_2 == (i_array_get_at(records, 1)).id)));
+  field_data = db_record_ref(type, (i_array_get_at(records, 0)), 1);
+  test_helper_assert("record-ref-2", ((sizeof(int8_t) == field_data.size) && (value_2 == *((int8_t*)(field_data.data)))));
+  field_data = db_record_ref(type, (i_array_get_at(records, 0)), 3);
+  test_helper_assert("record-ref-3", ((5 == field_data.size) && (0 == memcmp(value_4, (field_data.data), (field_data.size)))));
   i_array_clear(ids);
-  i_array_clear(nodes);
+  i_array_clear(records);
   i_array_add(ids, 9999);
-  status = db_node_get(txn, ids, (&nodes));
-  test_helper_assert("node-get non-existing", (db_status_id_notfound == status.id));
+  status = db_record_get(txn, ids, (&records));
+  test_helper_assert("record-get non-existing", (db_status_id_notfound == status.id));
   status.id = status_id_success;
   db_txn_abort((&txn));
 exit:
   db_txn_abort_if_active(txn);
   return (status);
 };
-boolean node_matcher(db_type_t* type, db_node_t node, void* matcher_state) {
+boolean record_matcher(db_type_t* type, db_record_t record, void* matcher_state) {
   *((uint8_t*)(matcher_state)) = 1;
   return (1);
 };
-status_t test_node_select(db_env_t* env) {
+status_t test_record_select(db_env_t* env) {
   status_declare;
   db_txn_declare(env, txn);
   i_array_declare(ids, db_ids_t);
-  i_array_declare(nodes, db_nodes_t);
-  db_node_selection_declare(selection);
+  i_array_declare(records, db_records_t);
+  db_record_selection_declare(selection);
   uint8_t value_1;
   uint8_t matcher_state;
-  db_node_value_t node_value;
+  db_record_value_t record_value;
   uint32_t btree_size_before_delete;
   uint32_t btree_size_after_delete;
   db_type_t* type;
-  db_node_values_t* values;
-  db_id_t* node_ids;
-  uint32_t node_ids_len;
+  db_record_values_t* values;
+  db_id_t* record_ids;
+  uint32_t record_ids_len;
   uint32_t values_len;
-  /* create nodes */
+  /* create records */
   status_require((test_helper_create_type_1(env, (&type))));
   status_require((test_helper_create_values_1(env, type, (&values), (&values_len))));
-  status_require((test_helper_create_nodes_1(env, values, (&node_ids), (&node_ids_len))));
+  status_require((test_helper_create_records_1(env, values, (&record_ids), (&record_ids_len))));
   value_1 = *((uint8_t*)((((values[0]).data)[0]).data));
   status_require((db_txn_begin((&txn))));
   /* type */
-  status_require((db_nodes_new(4, (&nodes))));
-  status_require((db_node_select(txn, type, 0, 0, 0, (&selection))));
-  status_require((db_node_read(selection, 1, (&nodes))));
-  test_helper_assert("node-read size", (1 == i_array_length(nodes)));
-  node_value = db_node_ref(type, (i_array_get(nodes)), 0);
-  test_helper_assert("node-ref size", (1 == node_value.size));
-  test_helper_assert("node-ref value", (value_1 == *((uint8_t*)(node_value.data))));
-  test_helper_assert("current id set", (db_id_element(((i_array_get(nodes)).id))));
-  status_require((db_node_read(selection, 1, (&nodes))));
-  status_require((db_node_read(selection, 1, (&nodes))));
-  status = db_node_read(selection, 1, (&nodes));
-  test_helper_assert("all type entries found", ((db_status_id_notfound == status.id) && (4 == i_array_length(nodes))));
+  status_require((db_records_new(4, (&records))));
+  status_require((db_record_select(txn, type, 0, 0, 0, (&selection))));
+  status_require((db_record_read(selection, 1, (&records))));
+  test_helper_assert("record-read size", (1 == i_array_length(records)));
+  record_value = db_record_ref(type, (i_array_get(records)), 0);
+  test_helper_assert("record-ref size", (1 == record_value.size));
+  test_helper_assert("record-ref value", (value_1 == *((uint8_t*)(record_value.data))));
+  test_helper_assert("current id set", (db_id_element(((i_array_get(records)).id))));
+  status_require((db_record_read(selection, 1, (&records))));
+  status_require((db_record_read(selection, 1, (&records))));
+  status = db_record_read(selection, 1, (&records));
+  test_helper_assert("all type entries found", ((db_status_id_notfound == status.id) && (4 == i_array_length(records))));
   status.id = status_id_success;
-  db_node_selection_finish((&selection));
+  db_record_selection_finish((&selection));
   /* matcher */
-  i_array_clear(nodes);
+  i_array_clear(records);
   matcher_state = 0;
-  status_require((db_node_select(txn, type, 0, node_matcher, (&matcher_state), (&selection))));
-  status_require((db_node_read(selection, 1, (&nodes))));
-  node_value = db_node_ref(type, (i_array_get(nodes)), 0);
-  test_helper_assert("node-ref size", (1 == node_value.size));
+  status_require((db_record_select(txn, type, 0, record_matcher, (&matcher_state), (&selection))));
+  status_require((db_record_read(selection, 1, (&records))));
+  record_value = db_record_ref(type, (i_array_get(records)), 0);
+  test_helper_assert("record-ref size", (1 == record_value.size));
   test_helper_assert("matcher-state", (1 == matcher_state));
-  db_node_selection_finish((&selection));
+  db_record_selection_finish((&selection));
   /* type and skip */
-  status_require((db_node_select(txn, type, 0, 0, 0, (&selection))));
-  status_require((db_node_skip(selection, 3)));
-  status = db_node_read(selection, 1, (&nodes));
+  status_require((db_record_select(txn, type, 0, 0, 0, (&selection))));
+  status_require((db_record_skip(selection, 3)));
+  status = db_record_read(selection, 1, (&records));
   test_helper_assert("entries skipped", (db_status_id_notfound == status.id));
   status.id = status_id_success;
-  db_node_selection_finish((&selection));
+  db_record_selection_finish((&selection));
   db_txn_abort((&txn));
   status_require((db_txn_write_begin((&txn))));
   db_debug_count_all_btree_entries(txn, (&btree_size_before_delete));
-  status_require((db_node_update(txn, (node_ids[1]), (values[1]))));
+  status_require((db_record_update(txn, (record_ids[1]), (values[1]))));
   status_require((db_ids_new(4, (&ids))));
-  i_array_add(ids, (node_ids[0]));
-  i_array_add(ids, (node_ids[2]));
-  status_require((db_node_delete(txn, ids)));
+  i_array_add(ids, (record_ids[0]));
+  i_array_add(ids, (record_ids[2]));
+  status_require((db_record_delete(txn, ids)));
   status_require((db_txn_commit((&txn))));
   status_require((db_txn_begin((&txn))));
   db_debug_count_all_btree_entries(txn, (&btree_size_after_delete));
@@ -358,7 +358,7 @@ exit:
   return (status);
 };
 /** float data currently not implemented because it is unknown how to store it in the id */
-status_t test_node_virtual(db_env_t* env) {
+status_t test_record_virtual(db_env_t* env) {
   status_declare;
   test_helper_assert("configured sizes", ((sizeof(db_id_t) - sizeof(db_type_id_t)) >= sizeof(float)));
   db_type_t* type;
@@ -374,20 +374,20 @@ status_t test_node_virtual(db_env_t* env) {
   status_require((db_type_create(env, "test-type-v", fields, 1, db_type_flag_virtual, (&type))));
   test_helper_assert("is-virtual", (db_type_is_virtual(type)));
   /* int */
-  id = db_node_virtual_from_int((type->id), data_int);
-  test_helper_assert("is-virtual int", (db_node_is_virtual(env, id)));
+  id = db_record_virtual_from_int((type->id), data_int);
+  test_helper_assert("is-virtual int", (db_record_is_virtual(env, id)));
   test_helper_assert("type-id int", (type->id == db_id_type(id)));
-  test_helper_assert("data int", (data_int == db_node_virtual_data(id, int8_t)));
+  test_helper_assert("data int", (data_int == db_record_virtual_data(id, int8_t)));
   /* uint */
-  id = db_node_virtual_from_uint((type->id), data_uint);
-  test_helper_assert("is-virtual uint", (db_node_is_virtual(env, id)));
+  id = db_record_virtual_from_uint((type->id), data_uint);
+  test_helper_assert("is-virtual uint", (db_record_is_virtual(env, id)));
   test_helper_assert("type-id uint", (type->id == db_id_type(id)));
-  test_helper_assert("data uint", (data_uint == db_node_virtual_data(id, uint8_t)));
+  test_helper_assert("data uint", (data_uint == db_record_virtual_data(id, uint8_t)));
   /* float */
-  id = db_node_virtual_from_any((type->id), (&data_float32), (sizeof(float)));
-  test_helper_assert("is-virtual float", (db_node_is_virtual(env, id)));
+  id = db_record_virtual_from_any((type->id), (&data_float32), (sizeof(float)));
+  test_helper_assert("is-virtual float", (db_record_is_virtual(env, id)));
   test_helper_assert("type-id float", (type->id == db_id_type(id)));
-  test_helper_assert("data float", (data_float32 == db_node_virtual_data(id, float)));
+  test_helper_assert("data float", (data_float32 == db_record_virtual_data(id, float)));
 exit:
   return (status);
 };
@@ -402,17 +402,17 @@ status_t test_index(db_env_t* env) {
   db_index_t* index;
   uint8_t* index_name;
   size_t index_name_len;
-  db_node_values_t* values;
+  db_record_values_t* values;
   uint32_t values_len;
   void* key_data;
   size_t key_size;
-  db_id_t* node_ids;
-  uint32_t node_ids_len;
+  db_id_t* record_ids;
+  uint32_t record_ids_len;
   uint8_t* index_name_expected = "i-1-1-2";
   fields_len = 2;
   status_require((test_helper_create_type_1(env, (&type))));
   status_require((test_helper_create_values_1(env, type, (&values), (&values_len))));
-  /* test with no existing nodes */
+  /* test with no existing records */
   status_require((db_index_name((type->id), fields, fields_len, (&index_name), (&index_name_len))));
   test_helper_assert("index name", (0 == strcmp(index_name_expected, index_name)));
   status_require((db_index_create(env, type, fields, fields_len)));
@@ -423,12 +423,12 @@ status_t test_index(db_env_t* env) {
   status_require((db_index_key(env, (*index), (values[0]), (&key_data), (&key_size))));
   test_helper_assert("key size", (4 == key_size));
   test_helper_assert("key memory ref", (((uint8_t*)(key_data))[3]));
-  /* test node index update */
-  status_require((test_helper_create_nodes_1(env, values, (&node_ids), (&node_ids_len))));
+  /* test record index update */
+  status_require((test_helper_create_records_1(env, values, (&record_ids), (&record_ids_len))));
   /* test delete */
   status_require((db_index_delete(env, index)));
   test_helper_assert("index-delete", (!db_index_get(type, fields, fields_len)));
-  /* test with existing nodes */
+  /* test with existing records */
   status_require((db_index_create(env, type, fields, fields_len)));
   /* this call exposed a memory error before */
   status_require((db_index_name((type->id), fields, fields_len, (&index_name), (&index_name_len))));
@@ -454,9 +454,9 @@ status_t test_index(db_env_t* env) {
   test_helper_assert("index-select type-id 1", ((1 == i_array_length(ids)) && (type->id == db_id_type((i_array_get(ids))))));
   db_txn_abort((&txn));
   status_require((db_txn_begin((&txn))));
-  db_node_index_selection_declare(node_index_selection);
-  status_require((db_node_index_select(txn, (*index), (values[0]), (&node_index_selection))));
-  db_node_index_selection_finish((&node_index_selection));
+  db_record_index_selection_declare(record_index_selection);
+  status_require((db_record_index_select(txn, (*index), (values[0]), (&record_index_selection))));
+  db_record_index_selection_finish((&record_index_selection));
   db_txn_abort((&txn));
 exit:
   db_txn_abort_if_active(txn);
@@ -466,18 +466,18 @@ int main() {
   db_env_t* env;
   status_declare;
   db_env_new((&env));
-  test_helper_test_one(test_graph_read, env);
+  test_helper_test_one(test_relation_read, env);
   test_helper_test_one(test_id_construction, env);
-  test_helper_test_one(test_node_virtual, env);
+  test_helper_test_one(test_record_virtual, env);
   test_helper_test_one(test_open_empty, env);
   test_helper_test_one(test_statistics, env);
   test_helper_test_one(test_sequence, env);
   test_helper_test_one(test_type_create_get_delete, env);
   test_helper_test_one(test_type_create_many, env);
   test_helper_test_one(test_open_nonempty, env);
-  test_helper_test_one(test_graph_delete, env);
-  test_helper_test_one(test_node_create, env);
-  test_helper_test_one(test_node_select, env);
+  test_helper_test_one(test_relation_delete, env);
+  test_helper_test_one(test_record_create, env);
+  test_helper_test_one(test_record_select, env);
   test_helper_test_one(test_index, env);
 exit:
   if (status_is_success) {

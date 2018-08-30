@@ -53,7 +53,7 @@ db_field_t* db_type_field_get(db_type_t* type, uint8_t* name) {
 status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fields_len_t fields_len, uint8_t flags, db_type_t** result) {
   status_declare;
   db_mdb_cursor_declare(system);
-  db_mdb_cursor_declare(nodes);
+  db_mdb_cursor_declare(records);
   db_txn_declare(env, txn);
   uint8_t* data;
   uint8_t* data_start;
@@ -117,25 +117,25 @@ status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fie
   db_mdb_cursor_close(system);
   /* update cache */
   status_require((db_env_types_extend((txn.env), type_id)));
-  db_mdb_status_require((db_mdb_env_cursor_open(txn, nodes)));
-  status_require((db_open_type((val_key.mv_data), (val_data.mv_data), ((txn.env)->types), nodes, (&type_pointer))));
-  db_mdb_cursor_close(nodes);
+  db_mdb_status_require((db_mdb_env_cursor_open(txn, records)));
+  status_require((db_open_type((val_key.mv_data), (val_data.mv_data), ((txn.env)->types), records, (&type_pointer))));
+  db_mdb_cursor_close(records);
   status_require((db_txn_commit((&txn))));
   *result = type_pointer;
 exit:
   if (db_txn_is_active(txn)) {
     db_mdb_cursor_close_if_active(system);
-    db_mdb_cursor_close_if_active(nodes);
+    db_mdb_cursor_close_if_active(records);
     db_txn_abort((&txn));
   };
   return (status);
 };
-/** delete system entry and all nodes and clear cache entries */
+/** delete system entry and all records and clear cache entries */
 status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
   status_declare;
   db_mdb_declare_val_null;
   db_mdb_cursor_declare(system);
-  db_mdb_cursor_declare(nodes);
+  db_mdb_cursor_declare(records);
   db_txn_declare(env, txn);
   MDB_val val_key;
   db_id_t id;
@@ -155,15 +155,15 @@ status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
     status.id = status_id_success;
   };
   db_mdb_cursor_close(system);
-  /* nodes */
-  db_mdb_status_require((db_mdb_env_cursor_open(txn, nodes)));
+  /* records */
+  db_mdb_status_require((db_mdb_env_cursor_open(txn, records)));
   val_key.mv_size = sizeof(db_id_t);
   id = db_id_add_type(0, type_id);
   val_key.mv_data = &id;
-  status.id = mdb_cursor_get(nodes, (&val_key), (&val_null), MDB_SET_RANGE);
+  status.id = mdb_cursor_get(records, (&val_key), (&val_null), MDB_SET_RANGE);
   while ((db_mdb_status_is_success && (type_id == db_id_type((db_pointer_to_id((val_key.mv_data))))))) {
-    db_mdb_status_require((mdb_cursor_del(nodes, 0)));
-    status.id = mdb_cursor_get(nodes, (&val_key), (&val_null), MDB_NEXT_NODUP);
+    db_mdb_status_require((mdb_cursor_del(records, 0)));
+    status.id = mdb_cursor_get(records, (&val_key), (&val_null), MDB_NEXT_NODUP);
   };
   if (status_is_failure) {
     if (db_mdb_status_is_notfound) {
@@ -176,7 +176,7 @@ status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
   db_free_env_type((type_id + env->types));
 exit:
   db_mdb_cursor_close_if_active(system);
-  db_mdb_cursor_close_if_active(nodes);
+  db_mdb_cursor_close_if_active(records);
   if (status_is_success) {
     status_require((db_txn_commit((&txn))));
   } else {

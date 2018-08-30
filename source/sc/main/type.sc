@@ -57,7 +57,7 @@
   "the data format is documented in main/open.c"
   status-declare
   (db-mdb-cursor-declare system)
-  (db-mdb-cursor-declare nodes)
+  (db-mdb-cursor-declare records)
   (db-txn-declare env txn)
   (declare
     data uint8-t*
@@ -121,25 +121,25 @@
   (db-mdb-cursor-close system)
   (sc-comment "update cache")
   (status-require (db-env-types-extend txn.env type-id))
-  (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
-  (status-require (db-open-type val-key.mv-data val-data.mv-data txn.env:types nodes &type-pointer))
-  (db-mdb-cursor-close nodes)
+  (db-mdb-status-require (db-mdb-env-cursor-open txn records))
+  (status-require (db-open-type val-key.mv-data val-data.mv-data txn.env:types records &type-pointer))
+  (db-mdb-cursor-close records)
   (status-require (db-txn-commit &txn))
   (set *result type-pointer)
   (label exit
     (if (db-txn-is-active txn)
       (begin
         (db-mdb-cursor-close-if-active system)
-        (db-mdb-cursor-close-if-active nodes)
+        (db-mdb-cursor-close-if-active records)
         (db-txn-abort &txn)))
     (return status)))
 
 (define (db-type-delete env type-id) (status-t db-env-t* db-type-id-t)
-  "delete system entry and all nodes and clear cache entries"
+  "delete system entry and all records and clear cache entries"
   status-declare
   db-mdb-declare-val-null
   (db-mdb-cursor-declare system)
-  (db-mdb-cursor-declare nodes)
+  (db-mdb-cursor-declare records)
   (db-txn-declare env txn)
   (declare
     val-key MDB-val
@@ -159,16 +159,16 @@
       db-mdb-status-expect-notfound
       (set status.id status-id-success)))
   (db-mdb-cursor-close system)
-  (sc-comment "nodes")
-  (db-mdb-status-require (db-mdb-env-cursor-open txn nodes))
+  (sc-comment "records")
+  (db-mdb-status-require (db-mdb-env-cursor-open txn records))
   (set
     val-key.mv-size (sizeof db-id-t)
     id (db-id-add-type 0 type-id)
     val-key.mv-data &id)
-  (set status.id (mdb-cursor-get nodes &val-key &val-null MDB-SET-RANGE))
+  (set status.id (mdb-cursor-get records &val-key &val-null MDB-SET-RANGE))
   (while (and db-mdb-status-is-success (= type-id (db-id-type (db-pointer->id val-key.mv-data))))
-    (db-mdb-status-require (mdb-cursor-del nodes 0))
-    (set status.id (mdb-cursor-get nodes &val-key &val-null MDB-NEXT-NODUP)))
+    (db-mdb-status-require (mdb-cursor-del records 0))
+    (set status.id (mdb-cursor-get records &val-key &val-null MDB-NEXT-NODUP)))
   (if status-is-failure
     (if db-mdb-status-is-notfound (set status.id status-id-success)
       (status-set-group-goto db-status-group-lmdb)))
@@ -176,7 +176,7 @@
   (db-free-env-type (+ type-id env:types))
   (label exit
     (db-mdb-cursor-close-if-active system)
-    (db-mdb-cursor-close-if-active nodes)
+    (db-mdb-cursor-close-if-active records)
     (if status-is-success (status-require (db-txn-commit &txn))
       (db-txn-abort &txn))
     (return status)))
