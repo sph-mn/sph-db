@@ -6,7 +6,7 @@ sph-db is a database as a shared library for records and relations. sph-db is in
 
 # project goals
 * a minimal embeddable database to store records without having to construct high-level query language strings for each query
-* relation-like relations without having to manage junction tables
+* graph-like relations without having to manage junction tables
 
 # features
 ## data model
