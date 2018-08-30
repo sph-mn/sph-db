@@ -3,4 +3,4 @@
 # but it does not need to have been installed.
 
 export LD_LIBRARY_PATH="$PWD/temp"
-#./temp/test-libsph-db
+./temp/test-libsph-db
