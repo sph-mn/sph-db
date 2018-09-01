@@ -492,7 +492,7 @@
   (label exit
     (return status)))
 
-(define (db-open-options-set-defaults a) (db-open-options-t db-open-options-t*)
+(define (db-open-options-set-defaults a) (void db-open-options-t*)
   (set
     a:is-read-only #f
     a:maximum-size 17179869183

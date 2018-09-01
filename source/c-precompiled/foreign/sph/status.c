@@ -36,7 +36,6 @@
   if (status_is_failure) { \
     status_goto; \
   }
-;
 typedef int32_t status_id_t;
 typedef struct {
   status_id_t id;

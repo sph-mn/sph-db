@@ -8,7 +8,6 @@
     example: (debug-log "%d" 1)
     otherwise like printf */
 #define debug_log(format, ...) fprintf(stdout, "%s:%d " format "\n", __func__, __LINE__, __VA_ARGS__)
-;
 /* return status code and error handling. uses a local variable named "status" and a goto label named "exit".
    a status has an identifier and a group to discern between status identifiers of different libraries.
    status id 0 is success, everything else can be considered a failure or special case.
@@ -47,7 +46,6 @@
   if (status_is_failure) { \
     status_goto; \
   }
-;
 typedef int32_t status_id_t;
 typedef struct {
   status_id_t id;
@@ -108,7 +106,7 @@ typedef struct {
 #define i_array_remove(a) a.unused = (a.unused - 1)
 #define i_array_length(a) (a.unused - a.start)
 #define i_array_max_length(a) (a.end - a.start)
-#define i_array_free(a) free((a.start));
+#define i_array_free(a) free((a.start))
 #define db_id_t uint64_t
 #define db_type_id_t uint16_t
 #define db_ordinal_t uint32_t
@@ -311,7 +309,7 @@ typedef struct {
   boolean is_open;
   uint8_t* root;
   pthread_mutex_t mutex;
-  int maxkeysize;
+  uint32_t maxkeysize;
   uint32_t format;
   db_type_t* types;
   db_type_id_t types_len;
@@ -377,6 +375,7 @@ typedef struct {
   void* reader;
 } db_relation_selection_t;
 typedef status_t (*db_relation_reader_t)(db_relation_selection_t*, db_count_t, db_relations_t*);
+void db_open_options_set_defaults(db_open_options_t* a);
 status_t db_env_new(db_env_t** result);
 status_t db_statistics(db_txn_t txn, db_statistics_t* result);
 void db_close(db_env_t* env);

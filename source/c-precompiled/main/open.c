@@ -462,7 +462,7 @@ status_t db_open_relation(db_txn_t txn) {
 exit:
   return (status);
 };
-db_open_options_t db_open_options_set_defaults(db_open_options_t* a) {
+void db_open_options_set_defaults(db_open_options_t* a) {
   a->is_read_only = 0;
   a->maximum_size = 17179869183;
   a->maximum_reader_count = 65535;

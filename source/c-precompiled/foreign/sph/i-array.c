@@ -53,4 +53,4 @@
 #define i_array_remove(a) a.unused = (a.unused - 1)
 #define i_array_length(a) (a.unused - a.start)
 #define i_array_max_length(a) (a.end - a.start)
-#define i_array_free(a) free((a.start));
+#define i_array_free(a) free((a.start))

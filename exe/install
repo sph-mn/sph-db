@@ -6,6 +6,7 @@
 prefix="$1"
 a="temp/libsph-db.so"
 b="source/c-precompiled/main/sph-db.h"
+c="source/c-precompiled/main/sph-db-extra.h"
 a_dest="$prefix/usr/lib"
 b_dest="$prefix/usr/include"
 
@@ -14,6 +15,8 @@ echo "copying $a to $a_dest ..." &&
 cp -t "$a_dest" "$a" &&
 echo "copying $b to $b_dest ..." &&
 cp -t "$b_dest" "$b" &&
-echo set permissions rw-r--r-- for "$a_dest/libsph-db.so" "$b_dest/sph-db.h" "..." &&
-chmod 644 "$a_dest/libsph-db.so" "$b_dest/sph-db.h" &&
+echo "copying $c to $b_dest ..." &&
+cp -t "$b_dest" "$c" &&
+echo setting permissions rw-r--r-- for "$a_dest/libsph-db.so" "$b_dest/sph-db.h" "$b_dest/sph-db-extra.h" "..." &&
+chmod 644 "$a_dest/libsph-db.so" "$b_dest/sph-db.h" "$b_dest/sph-db-extra.h" &&
 echo "installation complete"

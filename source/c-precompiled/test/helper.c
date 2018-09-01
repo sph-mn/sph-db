@@ -30,11 +30,9 @@
     }; \
     return (0); \
   }
-;
 /** define a function for getting a field from a relation record, to use with a function pointer */
 #define test_helper_define_relation_get(field_name) \
   db_id_t test_helper_relation_get_##field_name(db_relation_t record) { return ((record.field_name)); }
-;
 typedef struct {
   db_txn_t txn;
   db_relations_t relations;
