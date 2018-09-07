@@ -208,14 +208,14 @@
     value-3 uint8-t*
     value-4 uint8-t*
     values db-record-values-t*)
-  (db-malloc value-1 1)
-  (db-malloc value-2 1)
-  (db-malloc values (* 2 (sizeof db-record-values-t)))
+  (status-require (db-helper-malloc 1 &value-1))
+  (status-require (db-helper-malloc 1 &value-2))
+  (status-require (db-helper-malloc (* 2 (sizeof db-record-values-t)) &values))
   (set
     *value-1 11
     *value-2 -128)
-  (db-malloc-string value-3 3)
-  (db-malloc-string value-4 5)
+  (status-require (db-helper-malloc-string 3 &value-3))
+  (status-require (db-helper-malloc-string 5 &value-4))
   (memcpy value-3 (address-of "abc") 3)
   (memcpy value-4 (address-of "abcde") 5)
   (status-require (db-record-values-new type (+ 0 values)))
@@ -239,7 +239,7 @@
   status-declare
   (db-txn-declare env txn)
   (declare ids db-id-t*)
-  (db-malloc ids (* 4 (sizeof db-id-t)))
+  (status-require (db-helper-malloc (* 4 (sizeof db-id-t)) &ids))
   (status-require (db-txn-write-begin &txn))
   (status-require (db-record-create txn (array-get values 0) (+ 0 ids)))
   (status-require (db-record-create txn (array-get values 0) (+ 1 ids)))
@@ -356,9 +356,11 @@
   (label exit
     (return status)))
 
-(define (test-helper-relation-read-relations-validate data) (status-t test-helper-relation-read-data-t)
+(define (test-helper-relation-read-relations-validate data)
+  (status-t test-helper-relation-read-data-t)
   status-declare
-  (status-require (test-helper-relation-read-relations-validate-one "left" data.e-left data.relations))
+  (status-require
+    (test-helper-relation-read-relations-validate-one "left" data.e-left data.relations))
   (status-require
     (test-helper-relation-read-relations-validate-one "right" data.e-right data.relations))
   (status-require
@@ -384,7 +386,8 @@
   (label exit
     (return status)))
 
-(define (test-helper-estimate-relation-read-result-count left-count right-count label-count ordinal)
+(define
+  (test-helper-estimate-relation-read-result-count left-count right-count label-count ordinal)
   (uint32-t uint32-t uint32-t uint32-t db-ordinal-condition-t*)
   "assumes linearly set-plus-oneed ordinal integers starting at 1 and queries for all or no ids"
   (define count uint32-t (* left-count right-count label-count))

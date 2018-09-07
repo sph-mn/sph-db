@@ -254,7 +254,7 @@ status_t db_open_type_read_fields(uint8_t** data_pointer, db_type_t* type) {
   offset = 0;
   count = *((db_fields_len_t*)(data));
   data = (sizeof(db_fields_len_t) + data);
-  db_calloc(fields, count, (sizeof(db_field_t)));
+  status_require((db_helper_calloc((count * sizeof(db_field_t)), (&fields))));
   /* field */
   for (i = 0; (i < count); i = (1 + i)) {
     /* type */
@@ -271,7 +271,7 @@ status_t db_open_type_read_fields(uint8_t** data_pointer, db_type_t* type) {
   /* offsets
 example: field-sizes-in-bytes: 1 4 2. fields-fixed-offsets: 1 5 7 */
   if (fixed_count) {
-    db_malloc(fixed_offsets, ((1 + fixed_count) * sizeof(size_t)));
+    status_require((db_helper_malloc(((1 + fixed_count) * sizeof(size_t)), (&fixed_offsets))));
     for (i = 0; (i < fixed_count); i = (1 + i)) {
       *(i + fixed_offsets) = offset;
       offset = (offset + db_field_type_size(((i + fields)->type)));
@@ -332,7 +332,7 @@ status_t db_open_types(MDB_cursor* system, MDB_cursor* records, db_txn_t txn) {
   db_system_key_label(key) = db_system_label_type;
   db_system_key_id(key) = 0;
   val_key.mv_data = key;
-  db_calloc(types, types_len, (sizeof(db_type_t)));
+  status_require((db_helper_calloc((types_len * sizeof(db_type_t)), (&types))));
   types->sequence = system_sequence;
   /* record types */
   status.id = mdb_cursor_get(system, (&val_key), (&val_data), MDB_SET_RANGE);
@@ -365,7 +365,6 @@ status_t db_open_indices(MDB_cursor* system, db_txn_t txn) {
   db_index_t* indices;
   db_fields_len_t indices_alloc_len;
   db_fields_len_t indices_len;
-  db_index_t* indices_temp;
   uint8_t key[db_size_system_key];
   db_type_id_t type_id;
   db_type_t* types;
@@ -387,23 +386,23 @@ status_t db_open_indices(MDB_cursor* system, db_txn_t txn) {
       indices_len = (1 + indices_len);
       if (indices_len > indices_alloc_len) {
         indices_alloc_len = (2 * indices_alloc_len);
-        db_realloc(indices, indices_temp, (indices_alloc_len * sizeof(db_index_t)));
+        status_require((db_helper_realloc((indices_alloc_len * sizeof(db_index_t)), (&indices))));
       };
     } else {
       if (indices_len) {
         /* reallocate indices from indices-alloc-len to indices-len */
         if (!(indices_alloc_len == indices_len)) {
-          db_realloc(indices, indices_temp, (indices_len * sizeof(db_index_t)));
+          status_require((db_helper_realloc((indices_len * sizeof(db_index_t)), (&indices))));
         };
         (current_type_id + types)->indices = indices;
       };
       current_type_id = type_id;
       indices_len = 1;
       indices_alloc_len = 10;
-      db_calloc(indices, indices_alloc_len, (sizeof(db_index_t)));
+      status_require((db_helper_calloc((indices_alloc_len * sizeof(db_index_t)), (&indices))));
     };
     fields_len = ((val_key.mv_size - sizeof(db_system_label_index) - sizeof(db_type_id_t)) / sizeof(db_fields_len_t));
-    db_calloc(fields, fields_len, (sizeof(db_fields_len_t)));
+    status_require((db_helper_calloc((fields_len * sizeof(db_fields_len_t)), (&fields))));
     (indices[(indices_len - 1)]).fields = fields;
     (indices[(indices_len - 1)]).fields_len = fields_len;
     status.id = mdb_cursor_get(system, (&val_key), (&val_null), MDB_NEXT);

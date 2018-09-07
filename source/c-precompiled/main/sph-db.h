@@ -76,9 +76,9 @@ typedef struct {
     element_type* end; \
     element_type* start; \
   } name; \
-  uint8_t i_array_allocate_##name(size_t length, name* a) { \
+  uint8_t i_array_allocate_custom_##name(size_t length, name* a, void* (*alloc)(size_t)) { \
     element_type* start; \
-    start = malloc((length * sizeof(element_type))); \
+    start = alloc((length * sizeof(element_type))); \
     if (!start) { \
       return (0); \
     }; \
@@ -87,7 +87,8 @@ typedef struct {
     a->unused = start; \
     a->end = (length + start); \
     return (1); \
-  }
+  }; \
+  uint8_t i_array_allocate_##name(size_t length, name* a) { return ((i_array_allocate_custom_##name(length, a, malloc))); }
 /** define so that in-range is false, length is zero and free doesnt fail */
 #define i_array_declare(a, type) type a = { 0, 0, 0, 0 }
 #define i_array_add(a, value) \
@@ -235,24 +236,30 @@ i_array_declare_type(db_relations_t, db_relation_t);
   a.type = a_type; \
   a.name = a_name; \
   a.name_len = a_name_len
-#define db_relation_selection_declare(name) \
-  /* declare so that *-finish succeeds even if it has not yet been initialised. \
-  for having cleanup tasks at one place like with a goto exit label */ \
-  db_relation_selection_t name; \
+/** set so that *-finish succeeds even if it has not yet been initialised.
+      for having cleanup tasks at one place like with a goto exit label */
+#define db_relation_selection_set_null(name) \
   name.cursor = 0; \
   name.cursor_2 = 0; \
   name.options = 0; \
   name.ids_set = 0
+#define db_relation_selection_declare(name) \
+  db_relation_selection_t name; \
+  db_relation_selection_set_null(name)
+#define db_record_selection_set_null(name) name.cursor = 0
 #define db_record_selection_declare(name) \
   db_record_selection_t name; \
-  name.cursor = 0
+  db_record_selection_set_null(name)
+#define db_index_selection_set_null(name) name.cursor = 0
 #define db_index_selection_declare(name) \
   db_index_selection_t name; \
-  name.cursor = 0
-#define db_record_index_selection_declare(name) \
-  db_record_index_selection_t name; \
+  db_index_selection_set_null(name)
+#define db_record_index_selection_set_null(name) \
   name.records_cursor = 0; \
   name.index_selection.cursor = 0
+#define db_record_index_selection_declare(name) \
+  db_record_index_selection_t name; \
+  db_record_index_selection_set_null(name)
 enum { db_status_id_success,
   db_status_id_undefined,
   db_status_id_condition_unfulfilled,
@@ -373,7 +380,7 @@ typedef struct {
   db_ids_t right;
   db_ids_t label;
   void* ids_set;
-  db_ordinal_condition_t* ordinal;
+  db_ordinal_condition_t ordinal;
   uint8_t options;
   void* reader;
 } db_relation_selection_t;

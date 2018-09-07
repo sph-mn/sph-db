@@ -29,7 +29,7 @@
         (sc-comment "check if data is larger than the size prefix can specify")
         (if (> field-size db-data-len-max)
           (status-set-both-goto db-status-group-db db-status-id-data-length)))))
-  (if size (db-malloc data size)
+  (if size (status-require (db-helper-malloc size &data))
     (set data 0))
   (set data-temp data)
   (sc-comment "copy data")
@@ -55,7 +55,7 @@
   extent is last field index plus one"
   status-declare
   (declare data db-record-value-t*)
-  (db-calloc data type:fields-len (sizeof db-record-value-t))
+  (status-require (db-helper-calloc (* type:fields-len (sizeof db-record-value-t)) &data))
   (struct-set *result
     type type
     data data
@@ -111,7 +111,8 @@
     (free record.data)
     (return status)))
 
-(define (db-record-ref type record field) (db-record-value-t db-type-t* db-record-t db-fields-len-t)
+(define (db-record-ref type record field)
+  (db-record-value-t db-type-t* db-record-t db-fields-len-t)
   "from the full btree value a record (all fields), return a reference
   to the data for specific field and the size"
   (declare
@@ -165,7 +166,8 @@
 
 (define (db-free-record-values values) (void db-record-values-t*) (free-and-set-null values:data))
 
-(define (db-record-data->values type data result) (status-t db-type-t* db-record-t db-record-values-t*)
+(define (db-record-data->values type data result)
+  (status-t db-type-t* db-record-t db-record-values-t*)
   status-declare
   (declare
     field-data db-record-value-t

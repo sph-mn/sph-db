@@ -177,24 +177,6 @@ imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
 #define db_field_type_is_fixed(a) !(1 & a)
 #define db_system_key_label(a) *((uint8_t*)(a))
 #define db_system_key_id(a) *((db_type_id_t*)((db_size_system_label + ((uint8_t*)(a)))))
-#define db_status_memory_error_if_null(variable) \
-  if (!variable) { \
-    status_set_both_goto(db_status_group_db, db_status_id_memory); \
-  }
-#define db_malloc(variable, size) \
-  variable = malloc(size); \
-  db_status_memory_error_if_null(variable)
-/** allocate memory for a string with size and one extra last null element */
-#define db_malloc_string(variable, len) \
-  db_malloc(variable, (1 + len)); \
-  *(len + variable) = 0
-#define db_calloc(variable, count, size) \
-  variable = calloc(count, size); \
-  db_status_memory_error_if_null(variable)
-#define db_realloc(variable, variable_temp, size) \
-  variable_temp = realloc(variable, size); \
-  db_status_memory_error_if_null(variable_temp); \
-  variable = variable_temp
 #define db_relation_data_to_id(a) db_pointer_to_id((1 + ((db_ordinal_t*)(a))))
 #define db_relation_data_to_ordinal(a) *((db_ordinal_t*)(a))
 #define db_relation_data_set_id(a, value) db_relation_data_to_id(a) = value
@@ -202,6 +184,14 @@ imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
 #define db_relation_data_set_both(a, ordinal, id) \
   db_relation_data_set_ordinal(ordinal); \
   db_relation_data_set_id(id)
+#define db_helper_malloc(size, result) db_helper_primitive_malloc(size, ((void**)(result)))
+#define db_helper_malloc_string(size, result) db_helper_primitive_malloc_string(size, ((uint8_t**)(result)))
+#define db_helper_calloc(size, result) db_helper_primitive_calloc(size, ((void**)(result)))
+#define db_helper_realloc(size, result) db_helper_primitive_realloc(size, ((void**)(result)))
+status_t db_helper_primitive_malloc(size_t size, void** result);
+status_t db_helper_primitive_calloc(size_t size, void** result);
+status_t db_helper_primitive_malloc_string(size_t size, uint8_t** result);
+status_t db_helper_primitive_realloc(size_t size, void** block);
 status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result);
 status_t db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result);
 void db_debug_log_id_bits(db_id_t a);

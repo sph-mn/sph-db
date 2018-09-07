@@ -23,9 +23,9 @@
     element_type* end; \
     element_type* start; \
   } name; \
-  uint8_t i_array_allocate_##name(size_t length, name* a) { \
+  uint8_t i_array_allocate_custom_##name(size_t length, name* a, void* (*alloc)(size_t)) { \
     element_type* start; \
-    start = malloc((length * sizeof(element_type))); \
+    start = alloc((length * sizeof(element_type))); \
     if (!start) { \
       return (0); \
     }; \
@@ -34,7 +34,8 @@
     a->unused = start; \
     a->end = (length + start); \
     return (1); \
-  }
+  }; \
+  uint8_t i_array_allocate_##name(size_t length, name* a) { return ((i_array_allocate_custom_##name(length, a, malloc))); }
 /** define so that in-range is false, length is zero and free doesnt fail */
 #define i_array_declare(a, type) type a = { 0, 0, 0, 0 }
 #define i_array_add(a, value) \

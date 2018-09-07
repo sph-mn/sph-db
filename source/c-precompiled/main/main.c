@@ -281,12 +281,62 @@ db_id_t db_record_virtual_from_any(db_type_id_t type_id, void* data, uint8_t dat
 };
 status_t db_ids_to_set(db_ids_t a, imht_set_t** result) {
   status_declare;
-  db_status_memory_error_if_null((imht_set_create((i_array_length(a)), result)));
+  imht_set_t* b;
+  if (!imht_set_create((i_array_length(a)), (&b))) {
+    status_set_both_goto(db_status_group_db, db_status_id_memory);
+  };
   while (i_array_in_range(a)) {
-    imht_set_add((*result), (i_array_get(a)));
+    imht_set_add(b, (i_array_get(a)));
     i_array_forward(a);
   };
+  *result = b;
 exit:
+  return (status);
+};
+status_t db_helper_primitive_malloc(size_t size, void** result) {
+  status_declare;
+  void* a;
+  a = malloc(size);
+  if (a) {
+    *result = a;
+  } else {
+    status.group = db_status_group_libc;
+    status.id = db_status_id_memory;
+  };
+  return (status);
+};
+/** like db-helper-malloc but sets the last octet to zero */
+status_t db_helper_primitive_malloc_string(size_t size, uint8_t** result) {
+  status_declare;
+  uint8_t* a;
+  status_require((db_helper_malloc(size, (&a))));
+  *(size + a) = 0;
+  *result = a;
+exit:
+  return (status);
+};
+status_t db_helper_primitive_calloc(size_t size, void** result) {
+  status_declare;
+  void* a;
+  a = calloc(size, 1);
+  if (a) {
+    *result = a;
+  } else {
+    status.group = db_status_group_db;
+    status.id = db_status_id_memory;
+  };
+  return (status);
+};
+status_t db_helper_primitive_realloc(size_t size, void** block) {
+  status_declare;
+  void* a;
+  a = realloc((*block), size);
+  if (a) {
+    *block = a;
+  } else {
+    status.group = db_status_group_db;
+    status.id = db_status_id_memory;
+  };
   return (status);
 };
 /** read a length prefixed string.
@@ -299,7 +349,7 @@ status_t db_read_name(uint8_t** data_pointer, uint8_t** result) {
   data = *data_pointer;
   len = *((db_name_len_t*)(data));
   data = (sizeof(db_name_len_t) + data);
-  db_malloc_string(name, len);
+  status_require((db_helper_malloc_string(len, (&name))));
   memcpy(name, data, len);
 exit:
   *data_pointer = (len + data);
@@ -419,7 +469,7 @@ void db_free_env_types(db_type_t** types, db_type_id_t types_len) {
 status_t db_env_new(db_env_t** result) {
   status_declare;
   db_env_t* a;
-  db_calloc(a, 1, (sizeof(db_env_t)));
+  status_require((db_helper_calloc((sizeof(db_env_t)), ((void**)(&a)))));
   *result = a;
 exit:
   return (status);

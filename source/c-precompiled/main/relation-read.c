@@ -21,8 +21,10 @@
   boolean skip; \
   skip = (db_selection_flag_skip & selection->options)
 #define db_relation_reader_define_ordinal_variables(selection) \
-  db_ordinal_t ordinal_min = selection->ordinal->min; \
-  db_ordinal_t ordinal_max = selection->ordinal->max
+  db_ordinal_t ordinal_min; \
+  db_ordinal_t ordinal_max; \
+  ordinal_min = selection->ordinal.min; \
+  ordinal_max = selection->ordinal.max
 status_t db_relation_read_1000(db_relation_selection_t* selection, db_count_t count, db_relations_t* result) {
   db_relation_reader_header(selection);
   db_mdb_declare_val_relation_data;
@@ -650,7 +652,6 @@ exit:
   return (status);
 };
 /** prepare the selection and select the reader.
-  selection must have been declared with db-relation-selection-declare.
   readers are specialised for filter combinations.
   the 1/0 pattern at the end of reader names corresponds to the filter combination the reader is supposed to handle.
   1 stands for filter given, 0 stands for not given. order is left, right, label, ordinal.
@@ -679,7 +680,13 @@ status_t db_relation_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_id
   } else {
     i_array_set_null((selection->label));
   };
-  selection->ordinal = ordinal;
+  if (ordinal) {
+    selection->ordinal = *ordinal;
+  };
+  selection->cursor = 0;
+  selection->cursor_2 = 0;
+  selection->options = 0;
+  selection->ids_set = 0;
   if (left) {
     if (ordinal) {
       if (right) {

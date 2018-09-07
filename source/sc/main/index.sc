@@ -13,7 +13,7 @@
     size size-t)
   (sc-comment "system-label + type + fields")
   (set size (+ 1 (sizeof db-type-id-t) (* (sizeof db-fields-len-t) fields-len)))
-  (db-malloc data size)
+  (status-require (db-helper-malloc size &data))
   (set
     *data db-system-label-index
     data-temp (+ 1 data)
@@ -43,20 +43,20 @@
   (set
     strings 0
     strings-len (+ 2 fields-len))
-  (db-calloc strings strings-len (sizeof uint8-t*))
+  (status-require (db-helper-calloc (* strings-len (sizeof uint8-t*)) &strings))
   (sc-comment "type id")
   (set str (uint->string type-id &str-len))
-  (db-status-memory-error-if-null str)
+  (if (not str) (status-set-both-goto db-status-group-db db-status-id-memory))
   (set
     (array-get strings 0) prefix
     (array-get strings 1) str)
   (sc-comment "field ids")
   (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
     (set str (uint->string (array-get fields i) &str-len))
-    (db-status-memory-error-if-null str)
+    (if (not str) (status-set-both-goto db-status-group-db db-status-id-memory))
     (set (array-get strings (+ 2 i)) str))
   (set name (string-join strings strings-len "-" &name-len))
-  (db-status-memory-error-if-null name)
+  (if (not name) (status-set-both-goto db-status-group-db db-status-id-memory))
   (set
     *result name
     *result-len name-len)
@@ -84,7 +84,7 @@
   (for ((set i 0) (< i index.fields-len) (set i (+ 1 i)))
     (set size (+ size (struct-get (array-get values.data (array-get index.fields i)) size))))
   (if (< env:maxkeysize size) (status-set-both-goto db-status-group-db db-status-id-index-keysize))
-  (db-malloc data size)
+  (status-require (db-helper-malloc size &data))
   (set data-temp data)
   (for ((set i 0) (< i index.fields-len) (set i (+ 1 i)))
     (set value-size (struct-get (array-get values.data (array-get index.fields i)) size))
@@ -238,7 +238,6 @@
   reallocates it in appropriate size (and invalidates all db-index-t pointers)"
   status-declare
   (declare
-    indices-temp db-index-t*
     indices-len db-indices-len-t
     indices db-index-t*
     i db-indices-len-t)
@@ -254,7 +253,7 @@
       (goto exit)))
   (sc-comment "reallocate")
   (set indices-len (+ 1 indices-len))
-  (db-realloc indices indices-temp (* indices-len (sizeof db-index-t)))
+  (status-require (db-helper-realloc (* indices-len (sizeof db-index-t)) &indices))
   (set
     (array-get indices (- indices-len 1)) index
     type:indices indices
@@ -304,7 +303,7 @@
   (sc-comment "add data btree")
   (db-mdb-status-require (mdb-dbi-open txn.mdb-txn name MDB-CREATE &record-index.dbi))
   (sc-comment "update cache. fields might be stack allocated")
-  (db-malloc fields-copy (* fields-len (sizeof db-fields-len-t)))
+  (status-require (db-helper-malloc (* fields-len (sizeof db-fields-len-t)) &fields-copy))
   (memcpy fields-copy fields (* fields-len (sizeof db-fields-len-t)))
   (struct-set record-index
     fields fields-copy

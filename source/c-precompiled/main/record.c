@@ -29,7 +29,7 @@ status_t db_record_values_to_data(db_record_values_t values, db_record_t* result
     };
   };
   if (size) {
-    db_malloc(data, size);
+    status_require((db_helper_malloc(size, (&data))));
   } else {
     data = 0;
   };
@@ -60,7 +60,7 @@ exit:
 status_t db_record_values_new(db_type_t* type, db_record_values_t* result) {
   status_declare;
   db_record_value_t* data;
-  db_calloc(data, (type->fields_len), (sizeof(db_record_value_t)));
+  status_require((db_helper_calloc((type->fields_len * sizeof(db_record_value_t)), (&data))));
   (*result).type = type;
   (*result).data = data;
   (*result).extent = 0;

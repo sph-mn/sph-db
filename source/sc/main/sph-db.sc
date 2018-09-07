@@ -132,31 +132,37 @@
     a.type a-type
     a.name a-name
     a.name-len a-name-len)
-  (db-relation-selection-declare name)
+  (db-relation-selection-set-null name)
   (begin
-    (sc-comment
-      "declare so that *-finish succeeds even if it has not yet been initialised."
-      "for having cleanup tasks at one place like with a goto exit label")
-    (declare name db-relation-selection-t)
+    "set so that *-finish succeeds even if it has not yet been initialised.
+      for having cleanup tasks at one place like with a goto exit label"
     (set
       name.cursor 0
       name.cursor-2 0
       name.options 0
       name.ids-set 0))
+  (db-relation-selection-declare name)
+  (begin
+    (declare name db-relation-selection-t)
+    (db-relation-selection-set-null name))
+  (db-record-selection-set-null name) (set name.cursor 0)
   (db-record-selection-declare name)
   (begin
     (declare name db-record-selection-t)
-    (set name.cursor 0))
+    (db-record-selection-set-null name))
+  (db-index-selection-set-null name) (set name.cursor 0)
   (db-index-selection-declare name)
   (begin
     (declare name db-index-selection-t)
-    (set name.cursor 0))
+    (db-index-selection-set-null name))
+  (db-record-index-selection-set-null name)
+  (set
+    name.records-cursor 0
+    name.index-selection.cursor 0)
   (db-record-index-selection-declare name)
   (begin
     (declare name db-record-index-selection-t)
-    (set
-      name.records-cursor 0
-      name.index-selection.cursor 0)))
+    (db-record-index-selection-set-null name)))
 
 (enum
   (db-status-id-success
@@ -296,7 +302,7 @@
       (right db-ids-t)
       (label db-ids-t)
       (ids-set void*)
-      (ordinal db-ordinal-condition-t*)
+      (ordinal db-ordinal-condition-t)
       (options uint8-t)
       (reader void*)))
   db-relation-reader-t

@@ -275,7 +275,7 @@
     offset 0
     count (pointer-get (convert-type data db-fields-len-t*))
     data (+ (sizeof db-fields-len-t) data))
-  (db-calloc fields count (sizeof db-field-t))
+  (status-require (db-helper-calloc (* count (sizeof db-field-t)) &fields))
   (sc-comment "field")
   (for ((set i 0) (< i count) (set i (+ 1 i)))
     (sc-comment "type")
@@ -290,7 +290,7 @@
   (sc-comment "offsets" "example: field-sizes-in-bytes: 1 4 2. fields-fixed-offsets: 1 5 7")
   (if fixed-count
     (begin
-      (db-malloc fixed-offsets (* (+ 1 fixed-count) (sizeof size-t)))
+      (status-require (db-helper-malloc (* (+ 1 fixed-count) (sizeof size-t)) &fixed-offsets))
       (for ((set i 0) (< i fixed-count) (set i (+ 1 i)))
         (set
           (pointer-get (+ i fixed-offsets)) offset
@@ -358,7 +358,7 @@
     (db-system-key-label key) db-system-label-type
     (db-system-key-id key) 0
     val-key.mv-data key)
-  (db-calloc types types-len (sizeof db-type-t))
+  (status-require (db-helper-calloc (* types-len (sizeof db-type-t)) &types))
   (set types:sequence system-sequence)
   (sc-comment "record types")
   (set status.id (mdb-cursor-get system &val-key &val-data MDB-SET-RANGE))
@@ -388,7 +388,6 @@
     indices db-index-t*
     indices-alloc-len db-fields-len-t
     indices-len db-fields-len-t
-    indices-temp db-index-t*
     key (array uint8-t (db-size-system-key))
     type-id db-type-id-t
     types db-type-t*
@@ -414,24 +413,24 @@
         (if (> indices-len indices-alloc-len)
           (begin
             (set indices-alloc-len (* 2 indices-alloc-len))
-            (db-realloc indices indices-temp (* indices-alloc-len (sizeof db-index-t))))))
+            (status-require (db-helper-realloc (* indices-alloc-len (sizeof db-index-t)) &indices)))))
       (begin
         (if indices-len
           (begin
             (sc-comment "reallocate indices from indices-alloc-len to indices-len")
             (if (not (= indices-alloc-len indices-len))
-              (db-realloc indices indices-temp (* indices-len (sizeof db-index-t))))
+              (status-require (db-helper-realloc (* indices-len (sizeof db-index-t)) &indices)))
             (set (: (+ current-type-id types) indices) indices)))
         (set
           current-type-id type-id
           indices-len 1
           indices-alloc-len 10)
-        (db-calloc indices indices-alloc-len (sizeof db-index-t))))
+        (status-require (db-helper-calloc (* indices-alloc-len (sizeof db-index-t)) &indices))))
     (set fields-len
       (/
         (- val-key.mv-size (sizeof db-system-label-index) (sizeof db-type-id-t))
         (sizeof db-fields-len-t)))
-    (db-calloc fields fields-len (sizeof db-fields-len-t))
+    (status-require (db-helper-calloc (* fields-len (sizeof db-fields-len-t)) &fields))
     (struct-set (array-get indices (- indices-len 1))
       fields fields
       fields-len fields-len)
@@ -473,9 +472,11 @@
   (db-mdb-status-require (mdb-dbi-open txn.mdb-txn "relation-rl" db-options &dbi-relation-rl))
   (db-mdb-status-require (mdb-dbi-open txn.mdb-txn "relation-ll" db-options &dbi-relation-ll))
   (db-mdb-status-require
-    (mdb-set-compare txn.mdb-txn dbi-relation-lr (convert-type db-mdb-compare-relation-key MDB-cmp-func*)))
+    (mdb-set-compare
+      txn.mdb-txn dbi-relation-lr (convert-type db-mdb-compare-relation-key MDB-cmp-func*)))
   (db-mdb-status-require
-    (mdb-set-compare txn.mdb-txn dbi-relation-rl (convert-type db-mdb-compare-relation-key MDB-cmp-func*)))
+    (mdb-set-compare
+      txn.mdb-txn dbi-relation-rl (convert-type db-mdb-compare-relation-key MDB-cmp-func*)))
   (db-mdb-status-require
     (mdb-set-compare txn.mdb-txn dbi-relation-ll (convert-type db-mdb-compare-id MDB-cmp-func*)))
   (db-mdb-status-require

@@ -248,12 +248,56 @@
 
 (define (db-ids->set a result) (status-t db-ids-t imht-set-t**)
   status-declare
-  (db-status-memory-error-if-null (imht-set-create (i-array-length a) result))
+  (declare b imht-set-t*)
+  (if (not (imht-set-create (i-array-length a) &b))
+    (status-set-both-goto db-status-group-db db-status-id-memory))
   (while (i-array-in-range a)
-    (imht-set-add *result (i-array-get a))
+    (imht-set-add b (i-array-get a))
     (i-array-forward a))
+  (set *result b)
   (label exit
     (return status)))
+
+(define (db-helper-primitive-malloc size result) (status-t size-t void**)
+  status-declare
+  (declare a void*)
+  (set a (malloc size))
+  (if a (set *result a)
+    (set
+      status.group db-status-group-libc
+      status.id db-status-id-memory))
+  (return status))
+
+(define (db-helper-primitive-malloc-string size result) (status-t size-t uint8-t**)
+  "like db-helper-malloc but sets the last octet to zero"
+  status-declare
+  (declare a uint8-t*)
+  (status-require (db-helper-malloc size &a))
+  (set
+    (pointer-get (+ size a)) 0
+    *result a)
+  (label exit
+    (return status)))
+
+(define (db-helper-primitive-calloc size result) (status-t size-t void**)
+  status-declare
+  (declare a void*)
+  (set a (calloc size 1))
+  (if a (set *result a)
+    (set
+      status.group db-status-group-db
+      status.id db-status-id-memory))
+  (return status))
+
+(define (db-helper-primitive-realloc size block) (status-t size-t void**)
+  status-declare
+  (declare a void*)
+  (set a (realloc *block size))
+  (if a (set *block a)
+    (set
+      status.group db-status-group-db
+      status.id db-status-id-memory))
+  (return status))
 
 (define (db-read-name data-pointer result) (status-t uint8-t** uint8-t**)
   "read a length prefixed string.
@@ -267,7 +311,7 @@
     data *data-pointer
     len (pointer-get (convert-type data db-name-len-t*))
     data (+ (sizeof db-name-len-t) data))
-  (db-malloc-string name len)
+  (status-require (db-helper-malloc-string len &name))
   (memcpy name data len)
   (label exit
     (set
@@ -378,7 +422,7 @@
   this routine makes sure that .is-open is zero"
   status-declare
   (declare a db-env-t*)
-  (db-calloc a 1 (sizeof db-env-t))
+  (status-require (db-helper-calloc (sizeof db-env-t) (convert-type &a void**)))
   (set *result a)
   (label exit
     (return status)))

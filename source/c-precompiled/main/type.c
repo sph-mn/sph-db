@@ -1,7 +1,6 @@
 /** extend the size of the types array if type-id is an index out of bounds */
 status_t db_env_types_extend(db_env_t* env, db_type_id_t type_id) {
   status_declare;
-  db_type_t* types_temp;
   db_type_id_t types_len;
   db_type_t* types;
   db_type_id_t i;
@@ -12,7 +11,7 @@ status_t db_env_types_extend(db_env_t* env, db_type_id_t type_id) {
   /* resize */
   types = env->types;
   types_len = (db_env_types_extra_count + type_id);
-  db_realloc(types, types_temp, (types_len * sizeof(db_type_t)));
+  status_require((db_helper_realloc((types_len * sizeof(db_type_t)), (&types))));
   /* set new type struct ids to zero */
   for (i = type_id; (i < types_len); i = (1 + i)) {
     (i + types)->id = 0;
@@ -93,7 +92,7 @@ status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fie
     };
     data_size = (data_size + sizeof(db_field_type_t) + sizeof(db_name_len_t) + (i + fields)->name_len);
   };
-  db_malloc(data, data_size);
+  status_require((db_helper_malloc(data_size, (&data))));
   /* set insert data */
   data_start = data;
   *data = flags;

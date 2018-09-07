@@ -21,26 +21,6 @@
   (db-system-key-label a) (pointer-get (convert-type a uint8-t*))
   (db-system-key-id a)
   (pointer-get (convert-type (+ db-size-system-label (convert-type a uint8-t*)) db-type-id-t*))
-  (db-status-memory-error-if-null variable)
-  (if (not variable) (status-set-both-goto db-status-group-db db-status-id-memory))
-  (db-malloc variable size)
-  (begin
-    (set variable (malloc size))
-    (db-status-memory-error-if-null variable))
-  (db-malloc-string variable len)
-  (begin
-    "allocate memory for a string with size and one extra last null element"
-    (db-malloc variable (+ 1 len))
-    (set (pointer-get (+ len variable)) 0))
-  (db-calloc variable count size)
-  (begin
-    (set variable (calloc count size))
-    (db-status-memory-error-if-null variable))
-  (db-realloc variable variable-temp size)
-  (begin
-    (set variable-temp (realloc variable size))
-    (db-status-memory-error-if-null variable-temp)
-    (set variable variable-temp))
   (db-relation-data->id a) (db-pointer->id (+ 1 (convert-type a db-ordinal-t*)))
   (db-relation-data->ordinal a) (pointer-get (convert-type a db-ordinal-t*))
   (db-relation-data-set-id a value) (set (db-relation-data->id a) value)
@@ -48,9 +28,17 @@
   (db-relation-data-set-both a ordinal id)
   (begin
     (db-relation-data-set-ordinal ordinal)
-    (db-relation-data-set-id id)))
+    (db-relation-data-set-id id))
+  (db-helper-malloc size result) (db-helper-primitive-malloc size (convert-type result void**))
+  (db-helper-malloc-string size result) (db-helper-primitive-malloc-string size (convert-type result uint8-t**))
+  (db-helper-calloc size result) (db-helper-primitive-calloc size (convert-type result void**))
+  (db-helper-realloc size result) (db-helper-primitive-realloc size (convert-type result void**)))
 
 (declare
+  (db-helper-primitive-malloc size result) (status-t size-t void**)
+  (db-helper-primitive-calloc size result) (status-t size-t void**)
+  (db-helper-primitive-malloc-string size result) (status-t size-t uint8-t**)
+  (db-helper-primitive-realloc size block) (status-t size-t void**)
   (db-sequence-next-system env result) (status-t db-env-t* db-type-id-t*)
   (db-sequence-next env type-id result) (status-t db-env-t* db-type-id-t db-id-t*)
   ; db-debug

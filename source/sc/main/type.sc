@@ -2,7 +2,6 @@
   "extend the size of the types array if type-id is an index out of bounds"
   status-declare
   (declare
-    types-temp db-type-t*
     types-len db-type-id-t
     types db-type-t*
     i db-type-id-t)
@@ -12,7 +11,7 @@
   (set
     types env:types
     types-len (+ db-env-types-extra-count type-id))
-  (db-realloc types types-temp (* types-len (sizeof db-type-t)))
+  (status-require (db-helper-realloc (* types-len (sizeof db-type-t)) &types))
   (sc-comment "set new type struct ids to zero")
   (for ((set i type-id) (< i types-len) (set i (+ 1 i)))
     (set (: (+ i types) id) 0))
@@ -91,7 +90,7 @@
       (set after-fixed-size-fields #t))
     (set data-size
       (+ data-size (sizeof db-field-type-t) (sizeof db-name-len-t) (: (+ i fields) name-len))))
-  (db-malloc data data-size)
+  (status-require (db-helper-malloc data-size &data))
   (sc-comment "set insert data")
   (set
     data-start data
