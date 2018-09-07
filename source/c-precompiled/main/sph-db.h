@@ -270,9 +270,12 @@ enum { db_status_id_success,
   db_status_id_not_implemented,
   db_status_id_path_not_accessible_db_root,
   db_status_id_index_keysize,
-  db_status_group_db,
+  db_status_id_type_field_order,
+  db_status_id_last };
+enum { db_status_group_db,
   db_status_group_lmdb,
-  db_status_group_libc };
+  db_status_group_libc,
+  db_status_group_last };
 typedef struct {
   uint8_t* name;
   db_name_len_t name_len;
@@ -420,7 +423,7 @@ void db_txn_abort(db_txn_t* a);
 status_t db_txn_begin_child(db_txn_t parent_txn, db_txn_t* a);
 status_t db_txn_write_begin_child(db_txn_t parent_txn, db_txn_t* a);
 db_index_t* db_index_get(db_type_t* type, db_fields_len_t* fields, db_fields_len_t fields_len);
-status_t db_index_create(db_env_t* env, db_type_t* type, db_fields_len_t* fields, db_fields_len_t fields_len);
+status_t db_index_create(db_env_t* env, db_type_t* type, db_fields_len_t* fields, db_fields_len_t fields_len, db_index_t** result_index);
 status_t db_index_delete(db_env_t* env, db_index_t* index);
 status_t db_index_rebuild(db_env_t* env, db_index_t* index);
 status_t db_index_read(db_index_selection_t selection, db_count_t count, db_ids_t* result_ids);

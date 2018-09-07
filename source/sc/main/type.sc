@@ -68,6 +68,7 @@
     key (array uint8-t (db-size-system-key))
     name-len uint8-t
     data-size size-t
+    after-fixed-size-fields boolean
     type-id db-type-id-t
     val-data MDB-val
     val-key MDB-val)
@@ -76,12 +77,18 @@
   (sc-comment "check if type with name exists")
   (if (db-type-get txn.env name) (status-set-both-goto db-status-group-db db-status-id-duplicate))
   (sc-comment "check name length")
-  (set name-len (strlen name))
+  (set
+    after-fixed-size-fields #f
+    name-len (strlen name))
   (if (< db-name-len-max name-len)
     (status-set-both-goto db-status-group-db db-status-id-data-length))
   (sc-comment "allocate insert data")
   (set data-size (+ 1 (sizeof db-name-len-t) name-len (sizeof db-fields-len-t)))
   (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
+    (sc-comment "fixed fields must come before variable length fields")
+    (if (db-field-type-is-fixed (: (+ i fields) type))
+      (if after-fixed-size-fields (status-set-id-goto db-status-id-type-field-order))
+      (set after-fixed-size-fields #t))
     (set data-size
       (+ data-size (sizeof db-field-type-t) (sizeof db-name-len-t) (: (+ i fields) name-len))))
   (db-malloc data data-size)
@@ -122,7 +129,8 @@
   (sc-comment "update cache")
   (status-require (db-env-types-extend txn.env type-id))
   (db-mdb-status-require (db-mdb-env-cursor-open txn records))
-  (status-require (db-open-type val-key.mv-data val-data.mv-data txn.env:types records &type-pointer))
+  (status-require
+    (db-open-type val-key.mv-data val-data.mv-data txn.env:types records &type-pointer))
   (db-mdb-cursor-close records)
   (status-require (db-txn-commit &txn))
   (set *result type-pointer)

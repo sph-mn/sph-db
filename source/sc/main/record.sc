@@ -1,6 +1,7 @@
 (define (db-record-values->data values result) (status-t db-record-values-t db-record-t*)
   "convert a record-values array to the data format that is used as btree value for records.
-  the data for unset trailing fields is not included"
+  the data for unset trailing fields is not included.
+  assumes that fields are in the order (fixed-size-fields variable-size-fields)"
   status-declare
   (declare
     data void*

@@ -218,7 +218,7 @@ db_index_t* db_index_get(db_type_t* type, db_fields_len_t* fields, db_fields_len
   indices is extended and elements are set to zero on deletion.
   indices is currently never downsized, but a re-open of the db-env
   reallocates it in appropriate size (and invalidates all db-index-t pointers) */
-status_t db_type_indices_add(db_type_t* type, db_index_t index) {
+status_t db_type_indices_add(db_type_t* type, db_index_t index, db_index_t** result) {
   status_declare;
   db_index_t* indices_temp;
   db_indices_len_t indices_len;
@@ -242,10 +242,11 @@ status_t db_type_indices_add(db_type_t* type, db_index_t index) {
   indices[(indices_len - 1)] = index;
   type->indices = indices;
   type->indices_len = indices_len;
+  *result = ((indices_len - 1) + indices);
 exit:
   return (status);
 };
-status_t db_index_create(db_env_t* env, db_type_t* type, db_fields_len_t* fields, db_fields_len_t fields_len) {
+status_t db_index_create(db_env_t* env, db_type_t* type, db_fields_len_t* fields, db_fields_len_t fields_len, db_index_t** result_index) {
   status_declare;
   db_mdb_declare_val_null;
   db_txn_declare(env, txn);
@@ -256,7 +257,7 @@ status_t db_index_create(db_env_t* env, db_type_t* type, db_fields_len_t* fields
   size_t size;
   uint8_t* name;
   size_t name_len;
-  db_index_t* indices_temp;
+  db_index_t* index_temp;
   db_index_t record_index;
   if (!fields_len) {
     status.id = db_status_id_invalid_argument;
@@ -267,8 +268,8 @@ status_t db_index_create(db_env_t* env, db_type_t* type, db_fields_len_t* fields
   data = 0;
   size = 0;
   /* check if already exists */
-  indices_temp = db_index_get(type, fields, fields_len);
-  if (indices_temp) {
+  index_temp = db_index_get(type, fields, fields_len);
+  if (index_temp) {
     status_set_both_goto(db_status_group_db, db_status_id_duplicate);
   };
   /* prepare data */
@@ -289,9 +290,10 @@ status_t db_index_create(db_env_t* env, db_type_t* type, db_fields_len_t* fields
   record_index.fields = fields_copy;
   record_index.fields_len = fields_len;
   record_index.type = type;
-  status_require((db_type_indices_add(type, record_index)));
+  status_require((db_type_indices_add(type, record_index, (&index_temp))));
   status_require((db_txn_commit((&txn))));
   status_require((db_index_build(env, record_index)));
+  *result_index = index_temp;
 exit:
   db_mdb_cursor_close_if_active(system);
   db_txn_abort_if_active(txn);

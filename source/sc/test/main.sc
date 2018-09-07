@@ -192,7 +192,6 @@
     (test-helper-relation-read-setup
       env common-element-count common-element-count common-label-count &data))
   (status-require (db-txn-begin &txn))
-
   (status-require (test-helper-relation-read-one txn data 0 0 0 0 0))
   (status-require (test-helper-relation-read-one txn data 1 0 0 0 0))
   (status-require (test-helper-relation-read-one txn data 0 1 0 0 0))
@@ -263,7 +262,8 @@
   (db-record-values-set &values-1 3 value-4 5)
   (sc-comment "test record values/data conversion")
   (db-record-values->data values-1 &record-1)
-  (test-helper-assert "record-values->data size" (= (+ (* 2 (sizeof db-data-len-t)) 7) record-1.size))
+  (test-helper-assert
+    "record-values->data size" (= (+ (* 2 (sizeof db-data-len-t)) 7) record-1.size))
   (db-record-data->values type record-1 &values-2)
   (test-helper-assert "record-data->values type equal" (= values-1.type values-2.type))
   (test-helper-assert
@@ -520,7 +520,7 @@
   (sc-comment "test with no existing records")
   (status-require (db-index-name type:id fields fields-len &index-name &index-name-len))
   (test-helper-assert "index name" (= 0 (strcmp index-name-expected index-name)))
-  (status-require (db-index-create env type fields fields-len))
+  (status-require (db-index-create env type fields fields-len &index))
   (set index (db-index-get type fields fields-len))
   (test-helper-assert "index-get not null" index)
   (test-helper-assert "index-get fields-len" (= fields-len index:fields-len))
@@ -535,7 +535,7 @@
   (status-require (db-index-delete env index))
   (test-helper-assert "index-delete" (not (db-index-get type fields fields-len)))
   (sc-comment "test with existing records")
-  (status-require (db-index-create env type fields fields-len))
+  (status-require (db-index-create env type fields fields-len &index))
   (sc-comment "this call exposed a memory error before")
   (status-require (db-index-name type:id fields fields-len &index-name &index-name-len))
   (set index (db-index-get type fields fields-len))

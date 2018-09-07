@@ -63,6 +63,7 @@ status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fie
   uint8_t key[db_size_system_key];
   uint8_t name_len;
   size_t data_size;
+  boolean after_fixed_size_fields;
   db_type_id_t type_id;
   MDB_val val_data;
   MDB_val val_key;
@@ -74,6 +75,7 @@ status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fie
     status_set_both_goto(db_status_group_db, db_status_id_duplicate);
   };
   /* check name length */
+  after_fixed_size_fields = 0;
   name_len = strlen(name);
   if (db_name_len_max < name_len) {
     status_set_both_goto(db_status_group_db, db_status_id_data_length);
@@ -81,6 +83,14 @@ status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fie
   /* allocate insert data */
   data_size = (1 + sizeof(db_name_len_t) + name_len + sizeof(db_fields_len_t));
   for (i = 0; (i < fields_len); i = (1 + i)) {
+    /* fixed fields must come before variable length fields */
+    if (db_field_type_is_fixed(((i + fields)->type))) {
+      if (after_fixed_size_fields) {
+        status_set_id_goto(db_status_id_type_field_order);
+      };
+    } else {
+      after_fixed_size_fields = 1;
+    };
     data_size = (data_size + sizeof(db_field_type_t) + sizeof(db_name_len_t) + (i + fields)->name_len);
   };
   db_malloc(data, data_size);

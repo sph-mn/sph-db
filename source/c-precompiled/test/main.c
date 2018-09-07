@@ -415,7 +415,7 @@ status_t test_index(db_env_t* env) {
   /* test with no existing records */
   status_require((db_index_name((type->id), fields, fields_len, (&index_name), (&index_name_len))));
   test_helper_assert("index name", (0 == strcmp(index_name_expected, index_name)));
-  status_require((db_index_create(env, type, fields, fields_len)));
+  status_require((db_index_create(env, type, fields, fields_len, (&index))));
   index = db_index_get(type, fields, fields_len);
   test_helper_assert("index-get not null", index);
   test_helper_assert("index-get fields-len", (fields_len == index->fields_len));
@@ -429,7 +429,7 @@ status_t test_index(db_env_t* env) {
   status_require((db_index_delete(env, index)));
   test_helper_assert("index-delete", (!db_index_get(type, fields, fields_len)));
   /* test with existing records */
-  status_require((db_index_create(env, type, fields, fields_len)));
+  status_require((db_index_create(env, type, fields, fields_len, (&index))));
   /* this call exposed a memory error before */
   status_require((db_index_name((type->id), fields, fields_len, (&index_name), (&index_name_len))));
   index = db_index_get(type, fields, fields_len);

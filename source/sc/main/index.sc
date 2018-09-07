@@ -231,7 +231,7 @@
       (return (+ index indices))))
   (return 0))
 
-(define (db-type-indices-add type index) (status-t db-type-t* db-index-t)
+(define (db-type-indices-add type index result) (status-t db-type-t* db-index-t db-index-t**)
   "eventually resize type:indices and add index to type:indices.
   indices is extended and elements are set to zero on deletion.
   indices is currently never downsized, but a re-open of the db-env
@@ -258,12 +258,13 @@
   (set
     (array-get indices (- indices-len 1)) index
     type:indices indices
-    type:indices-len indices-len)
+    type:indices-len indices-len
+    *result (+ (- indices-len 1) indices))
   (label exit
     (return status)))
 
-(define (db-index-create env type fields fields-len)
-  (status-t db-env-t* db-type-t* db-fields-len-t* db-fields-len-t)
+(define (db-index-create env type fields fields-len result-index)
+  (status-t db-env-t* db-type-t* db-fields-len-t* db-fields-len-t db-index-t**)
   status-declare
   db-mdb-declare-val-null
   (db-txn-declare env txn)
@@ -275,7 +276,7 @@
     size size-t
     name uint8-t*
     name-len size-t
-    indices-temp db-index-t*
+    index-temp db-index-t*
     record-index db-index-t)
   (if (not fields-len)
     (begin
@@ -287,8 +288,8 @@
     data 0
     size 0)
   (sc-comment "check if already exists")
-  (set indices-temp (db-index-get type fields fields-len))
-  (if indices-temp (status-set-both-goto db-status-group-db db-status-id-duplicate))
+  (set index-temp (db-index-get type fields fields-len))
+  (if index-temp (status-set-both-goto db-status-group-db db-status-id-duplicate))
   (sc-comment "prepare data")
   (status-require (db-index-system-key type:id fields fields-len &data &size))
   (status-require (db-index-name type:id fields fields-len &name &name-len))
@@ -309,9 +310,10 @@
     fields fields-copy
     fields-len fields-len
     type type)
-  (status-require (db-type-indices-add type record-index))
+  (status-require (db-type-indices-add type record-index &index-temp))
   (status-require (db-txn-commit &txn))
   (status-require (db-index-build env record-index))
+  (set *result-index index-temp)
   (label exit
     (db-mdb-cursor-close-if-active system)
     (db-txn-abort-if-active txn)

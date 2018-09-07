@@ -1,5 +1,6 @@
 /** convert a record-values array to the data format that is used as btree value for records.
-  the data for unset trailing fields is not included */
+  the data for unset trailing fields is not included.
+  assumes that fields are in the order (fixed-size-fields variable-size-fields) */
 status_t db_record_values_to_data(db_record_values_t values, db_record_t* result) {
   status_declare;
   void* data;

@@ -206,13 +206,12 @@ exit:
   db_relations_free(relations);
 }
 
-status_t create_index(db_env_t* env, db_type_t* type, db_index_t** index) {
+status_t create_index(db_env_t* env, db_type_t* type, db_index_t** result_index) {
   printf("create index\n");
   status_declare;
   // array of field indices to index
   db_fields_len_t fields[2] = {1, 2};
-  status_require(db_index_create(env, type, fields, 2));
-  *index = db_index_get(type, fields, 2);
+  status_require(db_index_create(env, type, fields, 2, result_index));
 exit:
   return status;
 }

@@ -117,6 +117,8 @@ uint8_t* db_status_description(status_t a) {
       b = "configured format differs from the format the database was created with";
     } else if (db_status_id_index_keysize == a.id) {
       b = "index key to be inserted exceeds mdb maxkeysize";
+    } else if (db_status_id_type_field_order == a.id) {
+      b = "all fixed length type fields must come before variable length type fields";
     } else {
       b = "";
     };
@@ -161,6 +163,8 @@ uint8_t* db_status_name(status_t a) {
       b = "differing-db-format";
     } else if (db_status_id_index_keysize == a.id) {
       b = "index-key-mdb-keysize";
+    } else if (db_status_id_type_field_order == a.id) {
+      b = "type-field-order";
     } else {
       b = "unknown";
     };

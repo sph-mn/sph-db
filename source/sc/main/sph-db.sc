@@ -175,7 +175,9 @@
     db-status-id-notfound
     db-status-id-not-implemented
     db-status-id-path-not-accessible-db-root
-    db-status-id-index-keysize db-status-group-db db-status-group-lmdb db-status-group-libc))
+    db-status-id-index-keysize db-status-id-type-field-order db-status-id-last))
+
+(enum (db-status-group-db db-status-group-lmdb db-status-group-libc db-status-group-last))
 
 (declare
   ; types
@@ -357,12 +359,13 @@
   (status-t db-txn-t db-txn-t*) (db-txn-write-begin-child parent-txn a)
   (status-t db-txn-t db-txn-t*) (db-index-get type fields fields-len)
   (db-index-t* db-type-t* db-fields-len-t* db-fields-len-t)
-  (db-index-create env type fields fields-len)
-  (status-t db-env-t* db-type-t* db-fields-len-t* db-fields-len-t) (db-index-delete env index)
-  (status-t db-env-t* db-index-t*) (db-index-rebuild env index)
-  (status-t db-env-t* db-index-t*) (db-index-read selection count result-ids)
-  (status-t db-index-selection-t db-count-t db-ids-t*) (db-index-selection-finish selection)
-  (void db-index-selection-t*) (db-index-select txn index values result)
+  (db-index-create env type fields fields-len result-index)
+  (status-t db-env-t* db-type-t* db-fields-len-t* db-fields-len-t db-index-t**)
+  (db-index-delete env index) (status-t db-env-t* db-index-t*)
+  (db-index-rebuild env index) (status-t db-env-t* db-index-t*)
+  (db-index-read selection count result-ids) (status-t db-index-selection-t db-count-t db-ids-t*)
+  (db-index-selection-finish selection) (void db-index-selection-t*)
+  (db-index-select txn index values result)
   (status-t db-txn-t db-index-t db-record-values-t db-index-selection-t*)
   (db-record-index-read selection count result-records)
   (status-t db-record-index-selection-t db-count-t db-records-t*)

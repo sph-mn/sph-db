@@ -29,16 +29,19 @@
           (unused element-type*)
           (end element-type*)
           (start element-type*))))
-    (define ((pre-concat i-array-allocate_ name) length a) (uint8-t size-t name*)
+    (define ((pre-concat i-array-allocate-custom_ name) length a alloc)
+      (uint8-t size-t name* (function-pointer void* size-t))
       (declare start element-type*)
-      (set start (malloc (* length (sizeof element-type))))
+      (set start (alloc (* length (sizeof element-type))))
       (if (not start) (return 0))
       (set
         a:start start
         a:current start
         a:unused start
         a:end (+ length start))
-      (return 1)))
+      (return 1))
+    (define ((pre-concat i-array-allocate_ name) length a) (uint8-t size-t name*)
+      (return ((pre-concat i-array-allocate-custom_ name) length a malloc))))
   (i-array-declare a type)
   (begin
     "define so that in-range is false, length is zero and free doesnt fail"

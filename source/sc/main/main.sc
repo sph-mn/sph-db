@@ -103,6 +103,8 @@
         (db-status-id-different-format
           (set b "configured format differs from the format the database was created with"))
         (db-status-id-index-keysize (set b "index key to be inserted exceeds mdb maxkeysize"))
+        (db-status-id-type-field-order
+          (set b "all fixed length type fields must come before variable length type fields"))
         (else (set b "")))))
   (return (convert-type b uint8-t*)))
 
@@ -129,6 +131,7 @@
         (db-status-id-notfound (set b "notfound"))
         (db-status-id-different-format (set b "differing-db-format"))
         (db-status-id-index-keysize (set b "index-key-mdb-keysize"))
+        (db-status-id-type-field-order (set b "type-field-order"))
         (else (set b "unknown")))))
   (return (convert-type b uint8-t*)))
 
@@ -208,7 +211,8 @@
   (printf
     "btree entry count: system %zu, records %zu, relation-lr %zu, relation-rl %zu, relation-ll %zu\n"
     stat.system.ms_entries
-    stat.records.ms_entries stat.relation-lr.ms_entries stat.relation-rl.ms_entries stat.relation-ll.ms_entries)
+    stat.records.ms_entries
+    stat.relation-lr.ms_entries stat.relation-rl.ms_entries stat.relation-ll.ms_entries)
   (label exit
     (return status)))
 
