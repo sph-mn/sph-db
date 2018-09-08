@@ -120,7 +120,7 @@ status_t read_records(db_env_t* env, db_type_t* type) {
   db_record_selection_declare(selection);
   db_records_clear(records);
   // arguments: db_txn_t, db_type_t*, offset, matcher, matcher_state, selection_address));
-  status_require(db_record_select(txn, type, 0, 0, 0, &selection));
+  status_require(db_record_select(txn, type, 0, 0, &selection));
   status_require_read(db_record_read(selection, 3, &records));
   printf("read %lu records\n", db_records_length(records));
   while(db_records_in_range(records)) {
@@ -132,7 +132,7 @@ status_t read_records(db_env_t* env, db_type_t* type) {
   // by type and custom matcher function
   printf("read records by matcher function\n");
   uint8_t matcher_state = 0;
-  status_require(db_record_select(txn, type, 0, record_matcher, &matcher_state, &selection));
+  status_require(db_record_select(txn, type, record_matcher, &matcher_state, &selection));
 exit:
   db_txn_abort_if_active(txn);
   db_record_selection_finish(&selection);
@@ -187,7 +187,7 @@ status_t read_relations(db_env_t* env) {
   db_ids_add(ids_label, 456);
   // select relations whose left side is in "ids_left" and label in "ids_label".
   db_txn_begin(&txn);
-  status_require(db_relation_select(txn, &ids_left, 0, &ids_label, 0, 0, &selection));
+  status_require(db_relation_select(txn, &ids_left, 0, &ids_label, 0, &selection));
   // read 2 of the selected relations
   status_require(db_relation_read(&selection, 2, &relations));
   // read as many remaining matches as fit into the relations array
