@@ -237,12 +237,11 @@
     selection.options (bit-xor selection.options db-selection-flag-skip))
   (return status))
 
-(define (db-record-select txn type offset matcher matcher-state result-selection)
-  (status-t db-txn-t db-type-t* db-count-t db-record-matcher-t void* db-record-selection-t*)
+(define (db-record-select txn type matcher matcher-state result-selection)
+  (status-t db-txn-t db-type-t* db-record-matcher-t void* db-record-selection-t*)
   "get records by type and optionally filtering data.
   result count is unknown on call or can be large, that is why a selection state
   for partial reading is used.
-  offset: skip this number of matches first.
   matcher: zero if unused. a function that is called for each record of type
   matcher-state: zero if unused. a pointer passed to each call of matcher"
   status-declare
@@ -264,7 +263,6 @@
     result-selection:matcher matcher
     result-selection:matcher-state matcher-state
     result-selection:options 0)
-  (if offset (set status (db-record-skip *result-selection offset)))
   (label exit
     (if status-is-failure
       (begin
@@ -418,7 +416,7 @@
   (i-array-declare ids db-ids-t)
   (i-array-declare records db-records-t)
   (db-record-selection-declare selection)
-  (status-require (db-record-select txn type 0 matcher matcher-state &selection))
+  (status-require (db-record-select txn type matcher matcher-state &selection))
   (db-records-new db-batch-len &records)
   (db-ids-new db-batch-len &ids)
   (do-while status-is-success

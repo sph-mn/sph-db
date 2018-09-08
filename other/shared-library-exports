@@ -53,6 +53,7 @@
     db_relation_read;
     db_relation_select;
     db_relation_selection_finish;
+    db_relation_skip;
     db_relations_new;
     db_select;
     db_selection_finish;

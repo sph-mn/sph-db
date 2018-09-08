@@ -624,10 +624,8 @@
   (label exit
     (return status)))
 
-(define (db-relation-select txn left right label ordinal offset selection)
-  (status-t
-    db-txn-t
-    db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* db-count-t db-relation-selection-t*)
+(define (db-relation-select txn left right label ordinal selection)
+  (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* db-relation-selection-t*)
   "prepare the selection and select the reader.
   readers are specialised for filter combinations.
   the 1/0 pattern at the end of reader names corresponds to the filter combination the reader is supposed to handle.
@@ -688,16 +686,18 @@
         (begin
           (db-relation-select-cursor-initialise relation-lr selection cursor)
           (set selection:reader db-relation-read-0000)))))
-  (define reader db-relation-reader-t selection:reader)
-  (if offset
-    (begin
-      (set selection:options (bit-or db-selection-flag-skip selection:options))
-      (set status (reader selection offset 0))
-      (if (not db-mdb-status-is-success) db-mdb-status-expect-notfound)
-      (set selection:options (bit-xor db-selection-flag-skip selection:options))))
   (label exit
     db-mdb-status-notfound-if-notfound
     (return status)))
+
+(define (db-relation-skip selection count) (status-t db-relation-selection-t* db-count-t)
+  "skip the next count result matches"
+  status-declare
+  (set
+    selection:options (bit-or db-selection-flag-skip selection:options)
+    status ((convert-type selection:reader db-relation-reader-t) selection count 0)
+    selection:options (bit-xor db-selection-flag-skip selection:options))
+  (return status))
 
 (define (db-relation-read selection count result)
   (status-t db-relation-selection-t* db-count-t db-relations-t*)

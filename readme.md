@@ -223,8 +223,8 @@ db_records_free(records);
 
 all of type
 ```c
-// arguments: db_txn_t, db_type_t*, offset, matcher, matcher_state, selection_address));
-status_require(db_record_select(txn, type, 0, 0, 0, &selection));
+// arguments: db_txn_t, db_type_t*, matcher, matcher_state, selection_address));
+status_require(db_record_select(txn, type, 0, 0, &selection));
 status_require_read(db_record_read(selection, 3, &records));
 while(db_records_in_range(records)) {
   record = db_records_get(records);
@@ -242,7 +242,7 @@ boolean record_matcher(db_type_t* type, db_record_t record, void* matcher_state)
   return 1;
 };
 uint8_t matcher_state = 0;
-status_require(db_record_select(txn, type, 0, record_matcher, &matcher_state, &selection));
+status_require(db_record_select(txn, type, record_matcher, &matcher_state, &selection));
 ```
 
 ## create relations
@@ -283,7 +283,7 @@ db_relations_new(10, &relations);
 db_ids_add(ids_left, 123);
 db_ids_add(ids_label, 456);
 // select relations whose left side is in "ids_left" and label in "ids_label".
-status_require(db_relation_select(txn, &ids_left, 0, &ids_label, 0, 0, &selection));
+status_require(db_relation_select(txn, &ids_left, 0, &ids_label, 0, &selection));
 // read 2 of the selected relations
 status_require(db_relation_read(&selection, 2, &relations));
 // read as many remaining matches as there still fit into the relations array
@@ -371,19 +371,16 @@ data = db_record_virtual_data(id, uint32_t);
 db_close :: db_env_t*:env -> void
 db_env_new :: db_env_t**:result -> status_t
 db_field_type_size :: uint8_t:a -> uint8_t
-db_relation_delete :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal -> status_t
-db_relation_ensure :: db_txn_t:txn db_ids_t:left db_ids_t:right db_ids_t:label db_relation_ordinal_generator_t:ordinal_generator void*:ordinal_generator_state -> status_t
-db_relation_read :: db_relation_selection_t*:selection db_count_t:count db_relations_t*:result -> status_t
-db_relation_select :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal db_count_t:offset db_relation_selection_t*:result -> status_t
-db_relation_selection_finish :: db_relation_selection_t*:selection -> void
 db_ids_new :: size_t:length db_ids_t*:result_ids -> status_t
-db_index_create :: db_env_t*:env db_type_t*:type db_fields_len_t*:fields db_fields_len_t:fields_len -> status_t
+db_index_create :: db_env_t*:env db_type_t*:type db_fields_len_t*:fields db_fields_len_t:fields_len db_index_t**:result_index -> status_t
 db_index_delete :: db_env_t*:env db_index_t*:index -> status_t
 db_index_get :: db_type_t*:type db_fields_len_t*:fields db_fields_len_t:fields_len -> db_index_t*
 db_index_read :: db_index_selection_t:selection db_count_t:count db_ids_t*:result_ids -> status_t
 db_index_rebuild :: db_env_t*:env db_index_t*:index -> status_t
 db_index_select :: db_txn_t:txn db_index_t:index db_record_values_t:values db_index_selection_t*:result -> status_t
 db_index_selection_finish :: db_index_selection_t*:selection -> void
+db_open :: uint8_t*:root db_open_options_t*:options db_env_t*:env -> status_t
+db_open_options_set_defaults :: db_open_options_t*:a -> void
 db_record_create :: db_txn_t:txn db_record_values_t:values db_id_t*:result -> status_t
 db_record_data_to_values :: db_type_t*:type db_record_t:data db_record_values_t*:result -> status_t
 db_record_delete :: db_txn_t:txn db_ids_t:ids -> status_t
@@ -394,7 +391,7 @@ db_record_index_select :: db_txn_t:txn db_index_t:index db_record_values_t:value
 db_record_index_selection_finish :: db_record_index_selection_t*:selection -> void
 db_record_read :: db_record_selection_t:selection db_count_t:count db_records_t*:result_records -> status_t
 db_record_ref :: db_type_t*:type db_record_t:record db_fields_len_t:field -> db_record_value_t
-db_record_select :: db_txn_t:txn db_type_t*:type db_count_t:offset db_record_matcher_t:matcher void*:matcher_state db_record_selection_t*:result_selection -> status_t
+db_record_select :: db_txn_t:txn db_type_t*:type db_record_matcher_t:matcher void*:matcher_state db_record_selection_t*:result_selection -> status_t
 db_record_selection_finish :: db_record_selection_t*:selection -> void
 db_record_skip :: db_record_selection_t:selection db_count_t:count -> status_t
 db_record_update :: db_txn_t:txn db_id_t:id db_record_values_t:values -> status_t
@@ -405,7 +402,12 @@ db_record_values_set :: db_record_values_t*:values db_fields_len_t:field_index v
 db_record_virtual_from_any :: db_type_id_t:type_id void*:data uint8_t:data_size -> db_id_t
 db_records_to_ids :: db_records_t:records db_ids_t*:result_ids -> void
 db_records_new :: size_t:length db_records_t*:result_records -> status_t
-db_open :: uint8_t*:root db_open_options_t*:options db_env_t*:env -> status_t
+db_relation_delete :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal -> status_t
+db_relation_ensure :: db_txn_t:txn db_ids_t:left db_ids_t:right db_ids_t:label db_relation_ordinal_generator_t:ordinal_generator void*:ordinal_generator_state -> status_t
+db_relation_read :: db_relation_selection_t*:selection db_count_t:count db_relations_t*:result -> status_t
+db_relation_select :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal db_relation_selection_t*:result -> status_t
+db_relation_selection_finish :: db_relation_selection_t*:selection -> void
+db_relation_skip :: db_relation_selection_t*:selection db_count_t:count -> status_t
 db_relations_new :: size_t:length db_relations_t*:result_relations -> status_t
 db_statistics :: db_txn_t:txn db_statistics_t*:result -> status_t
 db_status_description :: status_t:a -> uint8_t*
@@ -450,7 +452,6 @@ db_field_type_uint32
 db_field_type_uint64
 db_field_type_uint8
 db_fields_len_t
-db_relation_selection_declare(name)
 db_id_add_type(id, type_id)
 db_id_element(id)
 db_id_element_mask
@@ -472,12 +473,17 @@ db_ids_remove
 db_ids_rewind
 db_ids_set_null
 db_index_selection_declare(name)
+db_index_selection_set_null(name)
 db_indices_len_t
 db_name_len_max
 db_name_len_t
+db_null
+db_ordinal_t
 db_record_index_selection_declare(name)
+db_record_index_selection_set_null(name)
 db_record_is_virtual(env, record_id)
 db_record_selection_declare(name)
+db_record_selection_set_null(name)
 db_record_values_declare(name)
 db_record_virtual_data(id, type_name)
 db_record_virtual_from_int
@@ -495,8 +501,8 @@ db_records_max_length
 db_records_remove
 db_records_rewind
 db_records_set_null
-db_null
-db_ordinal_t
+db_relation_selection_declare(name)
+db_relation_selection_set_null(name)
 db_relations_add
 db_relations_clear
 db_relations_declare(name)
@@ -543,9 +549,9 @@ status_set_id_goto(status_id)
 ## types
 ```
 status_id_t: int32_t
+db_record_matcher_t: db_type_t* db_record_t void* -> boolean
 db_relation_ordinal_generator_t: void* -> db_ordinal_t
 db_relation_reader_t: db_relation_selection_t* db_count_t db_relations_t* -> status_t
-db_record_matcher_t: db_type_t* db_record_t void* -> boolean
 db_env_t: struct
   dbi_records: MDB_dbi
   dbi_relation_ll: MDB_dbi
@@ -556,7 +562,7 @@ db_env_t: struct
   is_open: boolean
   root: uint8_t*
   mutex: pthread_mutex_t
-  maxkeysize: int
+  maxkeysize: uint32_t
   format: uint32_t
   types: db_type_t*
   types_len: db_type_id_t
@@ -565,16 +571,6 @@ db_field_t: struct
   name_len: db_name_len_t
   type: db_field_type_t
   index: db_fields_len_t
-db_relation_selection_t: struct
-  cursor: MDB_cursor* restrict
-  cursor_2: MDB_cursor* restrict
-  left: db_ids_t
-  right: db_ids_t
-  label: db_ids_t
-  ids_set: void*
-  ordinal: db_ordinal_condition_t*
-  options: uint8_t
-  reader: void*
 db_index_selection_t: struct
   cursor: MDB_cursor*
 db_index_t: struct db_index_t
@@ -582,6 +578,17 @@ db_index_t: struct db_index_t
   fields: db_fields_len_t*
   fields_len: db_fields_len_t
   type: db_type_t*
+db_open_options_t: struct
+  is_read_only: boolean
+  maximum_size: size_t
+  maximum_reader_count: db_count_t
+  maximum_db_count: db_count_t
+  filesystem_has_ordered_writes: boolean
+  env_open_flags: uint_least32_t
+  file_permissions: uint16_t
+db_ordinal_condition_t: struct
+  min: db_ordinal_t
+  max: db_ordinal_t
 db_record_index_selection_t: struct
   index_selection: db_index_selection_t
   records_cursor: MDB_cursor*
@@ -602,17 +609,16 @@ db_record_values_t: struct
   data: db_record_value_t*
   extent: db_fields_len_t
   type: db_type_t*
-db_open_options_t: struct
-  is_read_only: boolean
-  maximum_size: size_t
-  maximum_reader_count: db_count_t
-  maximum_db_count: db_count_t
-  filesystem_has_ordered_writes: boolean
-  env_open_flags: uint_least32_t
-  file_permissions: uint16_t
-db_ordinal_condition_t: struct
-  min: db_ordinal_t
-  max: db_ordinal_t
+db_relation_selection_t: struct
+  cursor: MDB_cursor* restrict
+  cursor_2: MDB_cursor* restrict
+  left: db_ids_t
+  right: db_ids_t
+  label: db_ids_t
+  ids_set: void*
+  ordinal: db_ordinal_condition_t
+  options: uint8_t
+  reader: void*
 db_relation_t: struct
   left: db_id_t
   right: db_id_t
@@ -646,13 +652,15 @@ status_t: struct
 
 ## enum
 ```
+db_status_group_db db_status_group_lmdb db_status_group_libc
+  db_status_group_last
 db_status_id_success db_status_id_undefined db_status_id_condition_unfulfilled
   db_status_id_data_length db_status_id_different_format db_status_id_duplicate
   db_status_id_input_type db_status_id_invalid_argument db_status_id_max_element_id
   db_status_id_max_type_id db_status_id_max_type_id_size db_status_id_memory
   db_status_id_missing_argument_db_root db_status_id_notfound db_status_id_not_implemented
-  db_status_id_path_not_accessible_db_root db_status_id_index_keysize db_status_group_db
-  db_status_group_lmdb db_status_group_libc
+  db_status_id_path_not_accessible_db_root db_status_id_index_keysize db_status_id_type_field_order
+  db_status_id_last
 ```
 
 # other language bindings

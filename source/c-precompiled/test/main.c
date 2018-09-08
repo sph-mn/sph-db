@@ -302,7 +302,7 @@ status_t test_record_select(db_env_t* env) {
   status_require((db_txn_begin((&txn))));
   /* type */
   status_require((db_records_new(4, (&records))));
-  status_require((db_record_select(txn, type, 0, 0, 0, (&selection))));
+  status_require((db_record_select(txn, type, 0, 0, (&selection))));
   status_require((db_record_read(selection, 1, (&records))));
   test_helper_assert("record-read size", (1 == i_array_length(records)));
   record_value = db_record_ref(type, (i_array_get(records)), 0);
@@ -318,14 +318,14 @@ status_t test_record_select(db_env_t* env) {
   /* matcher */
   i_array_clear(records);
   matcher_state = 0;
-  status_require((db_record_select(txn, type, 0, record_matcher, (&matcher_state), (&selection))));
+  status_require((db_record_select(txn, type, record_matcher, (&matcher_state), (&selection))));
   status_require((db_record_read(selection, 1, (&records))));
   record_value = db_record_ref(type, (i_array_get(records)), 0);
   test_helper_assert("record-ref size", (1 == record_value.size));
   test_helper_assert("matcher-state", (1 == matcher_state));
   db_record_selection_finish((&selection));
   /* type and skip */
-  status_require((db_record_select(txn, type, 0, 0, 0, (&selection))));
+  status_require((db_record_select(txn, type, 0, 0, (&selection))));
   status_require((db_record_skip(selection, 3)));
   status = db_record_read(selection, 1, (&records));
   test_helper_assert("entries skipped", (db_status_id_notfound == status.id));

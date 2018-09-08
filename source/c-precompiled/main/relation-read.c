@@ -658,7 +658,7 @@ exit:
   readers always leave cursors at a valid entry, usually the next entry unless the results have been exhausted.
   left/right/label ids pointer can be zero which means they are unused.
   internally in the selection if unset i-array-in-range and i-array-length is zero */
-status_t db_relation_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal, db_count_t offset, db_relation_selection_t* selection) {
+status_t db_relation_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal, db_relation_selection_t* selection) {
   status_declare;
   db_mdb_declare_val_null;
   imht_set_t* right_set;
@@ -732,17 +732,16 @@ status_t db_relation_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_id
       };
     };
   };
-  db_relation_reader_t reader = selection->reader;
-  if (offset) {
-    selection->options = (db_selection_flag_skip | selection->options);
-    status = reader(selection, offset, 0);
-    if (!db_mdb_status_is_success) {
-      db_mdb_status_expect_notfound;
-    };
-    selection->options = (db_selection_flag_skip ^ selection->options);
-  };
 exit:
   db_mdb_status_notfound_if_notfound;
+  return (status);
+};
+/** skip the next count result matches */
+status_t db_relation_skip(db_relation_selection_t* selection, db_count_t count) {
+  status_declare;
+  selection->options = (db_selection_flag_skip | selection->options);
+  status = ((db_relation_reader_t)(selection->reader))(selection, count, 0);
+  selection->options = (db_selection_flag_skip ^ selection->options);
   return (status);
 };
 /** result memory is to be allocated by the caller */

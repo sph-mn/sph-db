@@ -227,10 +227,9 @@ status_t db_record_skip(db_record_selection_t selection, db_count_t count) {
 /** get records by type and optionally filtering data.
   result count is unknown on call or can be large, that is why a selection state
   for partial reading is used.
-  offset: skip this number of matches first.
   matcher: zero if unused. a function that is called for each record of type
   matcher-state: zero if unused. a pointer passed to each call of matcher */
-status_t db_record_select(db_txn_t txn, db_type_t* type, db_count_t offset, db_record_matcher_t matcher, void* matcher_state, db_record_selection_t* result_selection) {
+status_t db_record_select(db_txn_t txn, db_type_t* type, db_record_matcher_t matcher, void* matcher_state, db_record_selection_t* result_selection) {
   status_declare;
   db_mdb_declare_val_id;
   db_mdb_declare_val_null;
@@ -249,9 +248,6 @@ status_t db_record_select(db_txn_t txn, db_type_t* type, db_count_t offset, db_r
   result_selection->matcher = matcher;
   result_selection->matcher_state = matcher_state;
   result_selection->options = 0;
-  if (offset) {
-    status = db_record_skip((*result_selection), offset);
-  };
 exit:
   if (status_is_failure) {
     mdb_cursor_close(records);
@@ -398,7 +394,7 @@ status_t db_record_select_delete(db_txn_t txn, db_type_t* type, db_record_matche
   i_array_declare(ids, db_ids_t);
   i_array_declare(records, db_records_t);
   db_record_selection_declare(selection);
-  status_require((db_record_select(txn, type, 0, matcher, matcher_state, (&selection))));
+  status_require((db_record_select(txn, type, matcher, matcher_state, (&selection))));
   db_records_new(db_batch_len, (&records));
   db_ids_new(db_batch_len, (&ids));
   do {

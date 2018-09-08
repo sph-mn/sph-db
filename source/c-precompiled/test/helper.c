@@ -94,7 +94,7 @@ status_t test_helper_display_all_relations(db_txn_t txn, uint32_t left_count, ui
   db_relation_selection_declare(selection);
   i_array_declare(relations, db_relations_t);
   status_require((db_relations_new((left_count * right_count * label_count), (&relations))));
-  status_require_read((db_relation_select(txn, 0, 0, 0, 0, 0, (&selection))));
+  status_require_read((db_relation_select(txn, 0, 0, 0, 0, (&selection))));
   status_require_read((db_relation_read((&selection), 0, (&relations))));
   printf("all ");
   db_relation_selection_finish((&selection));
@@ -389,7 +389,10 @@ status_t test_helper_relation_read_one(db_txn_t txn, test_helper_relation_read_d
   expected_count = test_helper_estimate_relation_read_result_count((data.e_left_count), (data.e_right_count), (data.e_label_count), ordinal);
   printf("  %s", reader_suffix_string);
   free(reader_suffix_string);
-  status_require((db_relation_select(txn, left_pointer, right_pointer, label_pointer, ordinal, offset, (&selection))));
+  status_require((db_relation_select(txn, left_pointer, right_pointer, label_pointer, ordinal, (&selection))));
+  if (offset) {
+    status_require((db_relation_skip((&selection), offset)));
+  };
   /* test multiple read calls */
   status_require((db_relation_read((&selection), 2, (&(data.relations)))));
   status_require_read((db_relation_read((&selection), 0, (&(data.relations)))));
@@ -506,7 +509,7 @@ status_t test_helper_relation_delete_one(test_helper_relation_delete_data_t data
   status_require((db_txn_commit((&txn))));
   status_require((db_txn_begin((&txn))));
   db_debug_count_all_btree_entries(txn, (&btree_count_after_delete));
-  status_require_read((db_relation_select(txn, (use_left ? &left : 0), (use_right ? &right : 0), (use_label ? &label : 0), (use_ordinal ? ordinal : 0), 0, (&selection))));
+  status_require_read((db_relation_select(txn, (use_left ? &left : 0), (use_right ? &right : 0), (use_label ? &label : 0), (use_ordinal ? ordinal : 0), (&selection))));
   db_relation_selection_finish((&selection));
   db_txn_abort((&txn));
   if (!(0 == i_array_length(relations))) {
@@ -520,7 +523,7 @@ status_t test_helper_relation_delete_one(test_helper_relation_delete_data_t data
     printf(("\n failed deletion. %lu btree entries not deleted\n"), (btree_count_after_delete - btree_count_before_create));
     status_require((db_txn_begin((&txn))));
     db_debug_log_btree_counts(txn);
-    status_require_read((db_relation_select(txn, 0, 0, 0, 0, 0, (&selection))));
+    status_require_read((db_relation_select(txn, 0, 0, 0, 0, (&selection))));
     status_require_read((db_relation_read((&selection), 0, (&relations))));
     printf("all remaining ");
     db_debug_log_relations(relations);

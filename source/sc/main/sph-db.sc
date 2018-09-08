@@ -328,12 +328,11 @@
   (db-records->ids records result-ids) (void db-records-t db-ids-t*)
   ; -- relation
   (db-relation-selection-finish selection) (void db-relation-selection-t*)
-  (db-relation-select txn left right label ordinal offset result)
-  (status-t
-    db-txn-t
-    db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* db-count-t db-relation-selection-t*)
+  (db-relation-select txn left right label ordinal result)
+  (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* db-relation-selection-t*)
   (db-relation-read selection count result)
-  (status-t db-relation-selection-t* db-count-t db-relations-t*)
+  (status-t db-relation-selection-t* db-count-t db-relations-t*) (db-relation-skip selection count)
+  (status-t db-relation-selection-t* db-count-t)
   (db-relation-ensure txn left right label ordinal-generator ordinal-generator-state)
   (status-t db-txn-t db-ids-t db-ids-t db-ids-t db-relation-ordinal-generator-t void*)
   (db-relation-delete txn left right label ordinal)
@@ -350,8 +349,8 @@
   (status-t db-txn-t db-ids-t) (db-record-delete-type txn type-id)
   (status-t db-txn-t db-type-id-t) (db-record-ref type record field)
   (db-record-value-t db-type-t* db-record-t db-fields-len-t)
-  (db-record-select txn type offset matcher matcher-state result-selection)
-  (status-t db-txn-t db-type-t* db-count-t db-record-matcher-t void* db-record-selection-t*)
+  (db-record-select txn type matcher matcher-state result-selection)
+  (status-t db-txn-t db-type-t* db-record-matcher-t void* db-record-selection-t*)
   (db-record-read selection count result-records)
   (status-t db-record-selection-t db-count-t db-records-t*) (db-record-skip selection count)
   (status-t db-record-selection-t db-count-t) (db-record-selection-finish selection)
