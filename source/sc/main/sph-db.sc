@@ -63,23 +63,39 @@
   db-size-relation-key (* 2 (sizeof db-id-t))
   db-null 0
   db-size-element-id (- (sizeof db-id-t) (sizeof db-type-id-t))
-  db-field-type-t uint8-t
-  db-field-type-binary 1
-  db-field-type-string 3
-  db-field-type-float32 4
-  db-field-type-float64 6
-  db-field-type-int16 80
-  db-field-type-int32 112
-  db-field-type-int64 144
-  db-field-type-int8 48
-  db-field-type-string16 66
-  db-field-type-string32 98
-  db-field-type-string64 130
-  db-field-type-string8 34
-  db-field-type-uint16 64
-  db-field-type-uint32 96
-  db-field-type-uint64 128
-  db-field-type-uint8 32
+  db-field-type-t int8-t
+  db-field-type-string -2
+  db-field-type-binary -1
+  db-field-type-bin8 1
+  db-field-type-bin16 2
+  db-field-type-bin32 3
+  db-field-type-bin64 4
+  db-field-type-bin128 5
+  db-field-type-bin256 6
+  db-field-type-bin512 7
+  db-field-type-uint8 8
+  db-field-type-uint16 9
+  db-field-type-uint32 10
+  db-field-type-uint64 11
+  db-field-type-uint128 12
+  db-field-type-uint256 13
+  db-field-type-uint512 14
+  db-field-type-int8 15
+  db-field-type-int16 16
+  db-field-type-int32 17
+  db-field-type-int64 18
+  db-field-type-int128 19
+  db-field-type-int256 20
+  db-field-type-int512 21
+  db-field-type-string8 22
+  db-field-type-string16 23
+  db-field-type-string32 24
+  db-field-type-string64 25
+  db-field-type-string128 26
+  db-field-type-string256 27
+  db-field-type-string512 28
+  db-field-type-float32 29
+  db-field-type-float64 30
   db-type-flag-virtual 1
   db-id-type-mask (bit-shift-left (convert-type db-type-id-mask db-id-t) (* 8 db-size-element-id))
   db-id-element-mask (bit-not db-id-type-mask)

@@ -123,7 +123,9 @@ db_field_set(fields[3], db_field_type_string, "field-name-4", 12);
 status_require(db_type_create(env, "test-type-name", fields, 4, 0, &type));
 ```
 
-fields can be fixed length (for example for integers and floating point values) or variable length. possible field types are db_field_type_* macro variables, see api reference below.
+fields can be fixed length (for example for integers and floating point values) or variable length.
+all fixed size fields must come before variable size fields or an error is returned.
+possible field types are db_field_type_* macro variables, see api reference below.
 apart from indicating storage type and size, field types are mostly a hint because no conversions take place
 
 ## create records
@@ -348,7 +350,7 @@ if(db_status_id_notfound != status.id) {
 
 ## virtual records
 virtual records carry the data in the identifier and only exist in relations or field data. one use-case are relations with a possibly large number of numeric values that dont need a separate data record, for example timestamps. they are to save space and processing costs. they can store data of any type that is equal to or smaller than id-size minus type-size
-to create a virtual record type, pass db_type_flag_virtual to db_type_create and only a single field
+to create a virtual record type, pass ``db_type_flag_virtual`` to ``db_type_create`` and only specify one field
 
 ```c
 db_id_t id;
@@ -671,8 +673,8 @@ these values can be set before compilation in ``c-precompiled/main/config.c``. o
 
 |name|default|description|
 | --- | --- | --- |
-|db_id_t|uint64_t|for record identifiers. will also contain the type id|
-|db_type_id_t|uint16_t||for type ids. limits the number of possible types. currently can not be larger than 16 bit|
+|db_id_t|uint64_t|must be an unsigned integer. for record identifiers. will also contain the type id|
+|db_type_id_t|uint16_t||must be an unsigned integer. for type ids. limits the number of possible types. currently can not be larger than 16 bit|
 |db_ordinal_t|uint32_t|for relation order values|
 |db_id_mask|UINT64_MAX|maximum value for the id type (all digits set to one)|
 |db_type_id_mask|UINT16_MAX|maximum value for the type-id type|
@@ -694,7 +696,7 @@ these values can be set before compilation in ``c-precompiled/main/config.c``. o
 
 # possible enhancements
 * float values as ordinals has not been tested
-* lift the type creation limit. allow all unsigned integer datatypes for type ids and reclaim unused ids
+* lift the type creation limit
 * nested transactions. supposedly possible in lmdb but not working
 * validator functions for indices and relation data consistency
 * partial indices. with a data filter function given at index definition

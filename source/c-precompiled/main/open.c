@@ -1,5 +1,5 @@
 /* system btree entry format. key -> value
-     type-label type-id -> uint8_t:flags db-name-len-t:name-len name db-field-len-t:field-count (uint8-t:field-type uint8-t:name-len name) ...
+     type-label type-id -> uint8_t:flags db-name-len-t:name-len name db-field-len-t:field-count (int8-t:field-type uint8-t:name-len name) ...
      index-label type-id db-field-len-t:field-offset ... -> () */
 #define db_env_types_extra_count 20
 /** prepare the database filesystem root path.
@@ -240,7 +240,7 @@ status_t db_open_type_read_fields(uint8_t** data_pointer, db_type_t* type) {
   status_declare;
   db_fields_len_t count;
   uint8_t* data;
-  uint8_t field_type;
+  db_field_type_t field_type;
   db_field_t* field_pointer;
   db_field_t* fields;
   db_fields_len_t fixed_count;

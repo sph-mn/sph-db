@@ -1,6 +1,6 @@
 (sc-comment
   "system btree entry format. key -> value
-     type-label type-id -> uint8_t:flags db-name-len-t:name-len name db-field-len-t:field-count (uint8-t:field-type uint8-t:name-len name) ...
+     type-label type-id -> uint8_t:flags db-name-len-t:name-len name db-field-len-t:field-count (int8-t:field-type uint8-t:name-len name) ...
      index-label type-id db-field-len-t:field-offset ... -> ()")
 
 (pre-define db-env-types-extra-count 20)
@@ -260,7 +260,7 @@
   (declare
     count db-fields-len-t
     data uint8-t*
-    field-type uint8-t
+    field-type db-field-type-t
     field-pointer db-field-t*
     fields db-field-t*
     fixed-count db-fields-len-t

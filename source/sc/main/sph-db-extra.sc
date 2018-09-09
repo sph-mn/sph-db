@@ -17,7 +17,7 @@
   db-size-system-label 1
   (db-pointer->id-at a index) (pointer-get (+ index (convert-type a db-id-t*)))
   (db-pointer->id a) (pointer-get (convert-type a db-id-t*))
-  (db-field-type-is-fixed a) (not (bit-and 1 a))
+  (db-field-type-is-fixed a) (< 0 a)
   (db-system-key-label a) (pointer-get (convert-type a uint8-t*))
   (db-system-key-id a)
   (pointer-get (convert-type (+ db-size-system-label (convert-type a uint8-t*)) db-type-id-t*))
@@ -30,7 +30,8 @@
     (db-relation-data-set-ordinal ordinal)
     (db-relation-data-set-id id))
   (db-helper-malloc size result) (db-helper-primitive-malloc size (convert-type result void**))
-  (db-helper-malloc-string size result) (db-helper-primitive-malloc-string size (convert-type result uint8-t**))
+  (db-helper-malloc-string size result)
+  (db-helper-primitive-malloc-string size (convert-type result uint8-t**))
   (db-helper-calloc size result) (db-helper-primitive-calloc size (convert-type result void**))
   (db-helper-realloc size result) (db-helper-primitive-realloc size (convert-type result void**)))
 
