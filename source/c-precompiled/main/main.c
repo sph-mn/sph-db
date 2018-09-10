@@ -261,14 +261,20 @@ exit:
 };
 /** size in octets. zero for variable size types */
 uint8_t db_field_type_size(uint8_t a) {
-  if ((db_field_type_int64 == a) || (db_field_type_uint64 == a) || (db_field_type_string64 == a) || (db_field_type_float64 == a)) {
+  if ((db_field_type_binary64 == a) || (db_field_type_uint64 == a) || (db_field_type_int64 == a) || (db_field_type_string64 == a) || (db_field_type_float64 == a)) {
     return (8);
-  } else if ((db_field_type_int32 == a) || (db_field_type_uint32 == a) || (db_field_type_string32 == a) || (db_field_type_float32 == a)) {
+  } else if ((db_field_type_binary32 == a) || (db_field_type_uint32 == a) || (db_field_type_int32 == a) || (db_field_type_string32 == a) || (db_field_type_float32 == a)) {
     return (4);
-  } else if ((db_field_type_int16 == a) || (db_field_type_uint16 == a) || (db_field_type_string16 == a)) {
+  } else if ((db_field_type_binary16 == a) || (db_field_type_uint16 == a) || (db_field_type_int16 == a) || (db_field_type_string16 == a)) {
     return (2);
-  } else if ((db_field_type_int8 == a) || (db_field_type_uint8 == a) || (db_field_type_string8 == a)) {
+  } else if ((db_field_type_binary8 == a) || (db_field_type_uint8 == a) || (db_field_type_int8 == a) || (db_field_type_string8 == a)) {
     return (1);
+  } else if ((db_field_type_binary128 == a) || (db_field_type_uint128 == a) || (db_field_type_int128 == a) || (db_field_type_string128 == a)) {
+    return (16);
+  } else if ((db_field_type_binary256 == a) || (db_field_type_uint256 == a) || (db_field_type_int256 == a) || (db_field_type_string256 == a)) {
+    return (32);
+  } else if ((db_field_type_binary512 == a) || (db_field_type_uint512 == a) || (db_field_type_int512 == a) || (db_field_type_string512 == a)) {
+    return (64);
   } else {
     return (0);
   };

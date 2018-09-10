@@ -66,13 +66,13 @@
   db-field-type-t int8-t
   db-field-type-string -2
   db-field-type-binary -1
-  db-field-type-bin8 1
-  db-field-type-bin16 2
-  db-field-type-bin32 3
-  db-field-type-bin64 4
-  db-field-type-bin128 5
-  db-field-type-bin256 6
-  db-field-type-bin512 7
+  db-field-type-binary8 1
+  db-field-type-binary16 2
+  db-field-type-binary32 3
+  db-field-type-binary64 4
+  db-field-type-binary128 5
+  db-field-type-binary256 6
+  db-field-type-binary512 7
   db-field-type-uint8 8
   db-field-type-uint16 9
   db-field-type-uint32 10

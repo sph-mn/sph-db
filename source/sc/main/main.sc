@@ -232,12 +232,22 @@
 (define (db-field-type-size a) (uint8-t uint8-t)
   "size in octets. zero for variable size types"
   (case = a
-    ( (db-field-type-int64 db-field-type-uint64 db-field-type-string64 db-field-type-float64)
+    ( (db-field-type-binary64
+        db-field-type-uint64 db-field-type-int64 db-field-type-string64 db-field-type-float64)
       (return 8))
-    ( (db-field-type-int32 db-field-type-uint32 db-field-type-string32 db-field-type-float32)
+    ( (db-field-type-binary32
+        db-field-type-uint32 db-field-type-int32 db-field-type-string32 db-field-type-float32)
       (return 4))
-    ((db-field-type-int16 db-field-type-uint16 db-field-type-string16) (return 2))
-    ((db-field-type-int8 db-field-type-uint8 db-field-type-string8) (return 1))
+    ( (db-field-type-binary16 db-field-type-uint16 db-field-type-int16 db-field-type-string16)
+      (return 2))
+    ( (db-field-type-binary8 db-field-type-uint8 db-field-type-int8 db-field-type-string8)
+      (return 1))
+    ( (db-field-type-binary128 db-field-type-uint128 db-field-type-int128 db-field-type-string128)
+      (return 16))
+    ( (db-field-type-binary256 db-field-type-uint256 db-field-type-int256 db-field-type-string256)
+      (return 32))
+    ( (db-field-type-binary512 db-field-type-uint512 db-field-type-int512 db-field-type-string512)
+      (return 64))
     (else (return 0))))
 
 (define (db-record-virtual-from-any type-id data data-size) (db-id-t db-type-id-t void* uint8-t)

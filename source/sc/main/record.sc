@@ -206,6 +206,7 @@
   (db-mdb-status-require (mdb-cursor-get selection.cursor &val-id &val-data MDB-GET-CURRENT))
   (while
     (and db-mdb-status-is-success count (= type-id (db-id-type (db-pointer->id val-id.mv-data))))
+    (sc-comment "type is passed to matcher for record-ref")
     (if matcher
       (set
         record.id (db-pointer->id val-id.mv-data)

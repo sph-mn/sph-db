@@ -193,6 +193,7 @@ status_t db_record_read(db_record_selection_t selection, db_count_t count, db_re
   type_id = (selection.type)->id;
   db_mdb_status_require((mdb_cursor_get((selection.cursor), (&val_id), (&val_data), MDB_GET_CURRENT)));
   while ((db_mdb_status_is_success && count && (type_id == db_id_type((db_pointer_to_id((val_id.mv_data))))))) {
+    /* type is passed to matcher for record-ref */
     if (matcher) {
       record.id = db_pointer_to_id((val_id.mv_data));
       record.data = val_data.mv_data;
