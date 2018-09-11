@@ -116,6 +116,7 @@ db_record_value_t db_record_ref(db_type_t* type, db_record_t record, db_fields_l
   db_fields_len_t i;
   size_t offset;
   db_record_value_t result;
+  uint8_t prefix_size;
   size_t size;
   if (field < type->fields_fixed_count) {
     /* fixed length field */
@@ -137,8 +138,10 @@ db_record_value_t db_record_ref(db_type_t* type, db_record_t record, db_fields_l
       i = type->fields_fixed_count;
       /* variable length data is prefixed by its size */
       while (((i <= field) && (data_temp < end))) {
-        size = *((db_data_len_t*)(data_temp));
-        data_temp = (sizeof(db_data_len_t) + data_temp);
+        size = 0;
+        prefix_size = db_field_type_size((((type->fields)[i]).type));
+        memcpy((&size), data_temp, prefix_size);
+        data_temp = (prefix_size + data_temp);
         if (i == field) {
           result.data = data_temp;
           result.size = size;

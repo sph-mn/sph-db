@@ -1,6 +1,6 @@
 # about
 
-sph-db is a database as a shared library for records and relations. sph-db is in beta as of 2018-08, please try it and report any issues
+sph-db is a database as a shared library for records and relations. sph-db is in alpha as of 2018-09, you can try it and report any issues, but api or database format changes are still to be expected
 
 * license: lgpl3+
 
@@ -696,6 +696,7 @@ these values can be set before compilation in ``c-precompiled/main/config.c``. o
 
 # possible enhancements
 * float values as ordinals has not been tested
+* more variable size field types. the datatype for size prefix for field data is currently a compile-time option
 * lift the type creation limit
 * nested transactions. supposedly possible in lmdb but not working
 * validator functions for indices and relation data consistency

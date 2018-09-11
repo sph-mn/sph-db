@@ -121,6 +121,7 @@
     i db-fields-len-t
     offset size-t
     result db-record-value-t
+    prefix-size uint8-t
     size size-t)
   (if (< field type:fields-fixed-count)
     (begin
@@ -148,8 +149,10 @@
           (sc-comment "variable length data is prefixed by its size")
           (while (and (<= i field) (< data-temp end))
             (set
-              size (pointer-get (convert-type data-temp db-data-len-t*))
-              data-temp (+ (sizeof db-data-len-t) data-temp))
+              size 0
+              prefix-size (db-field-type-size (struct-get (array-get type:fields i) type)))
+            (memcpy &size data-temp prefix-size)
+            (set data-temp (+ prefix-size data-temp))
             (if (= i field)
               (begin
                 (set

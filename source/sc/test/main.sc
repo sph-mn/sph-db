@@ -44,10 +44,10 @@
   (test-helper-assert "type sequence" (= 1 type-1:sequence))
   (test-helper-assert "type field count" (= 0 type-1:fields-len))
   (sc-comment "create type-2")
-  (db-field-set (array-get fields 0) db-field-type-int8 "test-field-1" 12)
-  (db-field-set (array-get fields 1) db-field-type-int8 "test-field-2" 12)
-  (db-field-set (array-get fields 2) db-field-type-string "test-field-3" 12)
-  (db-field-set (array-get fields 3) db-field-type-string "test-field-4" 12)
+  (db-field-set (array-get fields 0) db-field-type-int8f "test-field-1" 12)
+  (db-field-set (array-get fields 1) db-field-type-int8f "test-field-2" 12)
+  (db-field-set (array-get fields 2) db-field-type-string8 "test-field-3" 12)
+  (db-field-set (array-get fields 3) db-field-type-string16 "test-field-4" 12)
   (status-require (db-type-create env "test-type-2" fields 4 0 &type-2))
   (test-helper-assert "second type id" (= 2 type-2:id))
   (test-helper-assert "second type sequence" (= 1 type-2:sequence))
@@ -138,7 +138,8 @@
         (test-helper-assert "record sequence is limited" (= db-status-id-max-element-id status.id))
         (set status.id status-id-success))
       (test-helper-assert
-        "record sequence is monotonically increasing" (and status-is-success (= 1 (- id prev-id)))))
+        "record sequence is monotonically increasing"
+        (and status-is-success (= 1 (- (db-id-element id) (db-id-element prev-id))))))
     (set prev-id id))
   (sc-comment "system sequence. test last, otherwise type ids would be exhausted")
   (set prev-type-id type:id)
@@ -177,6 +178,9 @@
   (test-helper-assert
     "type-id-mask | element-id-mask = id-mask"
     (= db-id-mask (bit-or db-id-type-mask db-id-element-mask)))
+  (debug-log
+    "type-mask %lu, element-mask %lu, type %lu, element limit %lu, id %lu"
+    db-id-type-mask db-id-element-mask type-id db-element-id-limit (db-id-add-type 10 type-id))
   (test-helper-assert
     "id type" (= type-id (db-id-type (db-id-add-type db-element-id-limit type-id))))
   (sc-comment "take a low value to be compatible with different configurations")
@@ -474,7 +478,7 @@
     data-int -123
     data-float32 1.23)
   (declare fields (array db-field-t 1))
-  (db-field-set (array-get fields 0) db-field-type-int8 0 0)
+  (db-field-set (array-get fields 0) db-field-type-int8f 0 0)
   (status-require (db-type-create env "test-type-v" fields 1 db-type-flag-virtual &type))
   (test-helper-assert "is-virtual" (db-type-is-virtual type))
   (sc-comment "int")
@@ -574,15 +578,15 @@
   (declare env db-env-t*)
   status-declare
   (db-env-new &env)
-  (test-helper-test-one test-relation-read env)
   (test-helper-test-one test-id-construction env)
-  (test-helper-test-one test-record-virtual env)
+  ;(test-helper-test-one test-record-virtual env)
   (test-helper-test-one test-open-empty env)
   (test-helper-test-one test-statistics env)
   (test-helper-test-one test-sequence env)
   (test-helper-test-one test-type-create-get-delete env)
   (test-helper-test-one test-type-create-many env)
   (test-helper-test-one test-open-nonempty env)
+  (test-helper-test-one test-relation-read env)
   (test-helper-test-one test-relation-delete env)
   (test-helper-test-one test-record-create env)
   (test-helper-test-one test-record-select env)

@@ -2,7 +2,7 @@
 #include "./sph-db-extra.h"
 #include "../foreign/sph/one.c"
 #include <math.h>
-#include "./lib/lmdb.c"
+#include "./lmdb.c"
 #define free_and_set_null(a) \
   free(a); \
   a = 0
@@ -99,7 +99,7 @@ uint8_t* db_status_description(status_t a) {
     } else if (db_status_id_condition_unfulfilled == a.id) {
       b = "condition unfulfilled";
     } else if (db_status_id_notfound == a.id) {
-      b = "no more data to read";
+      b = "entry not found or no more data to read";
     } else if (db_status_id_different_format == a.id) {
       b = "configured format differs from the format the database was created with";
     } else if (db_status_id_index_keysize == a.id) {
@@ -241,7 +241,7 @@ status_t db_debug_log_btree_counts(db_txn_t txn) {
 exit:
   return (status);
 };
-/** sum the count of all entries in all btrees used by the database */
+/** sum of all entries in all btrees used by the database */
 status_t db_debug_count_all_btree_entries(db_txn_t txn, uint32_t* result) {
   status_declare;
   db_statistics_t stat;
@@ -250,22 +250,20 @@ status_t db_debug_count_all_btree_entries(db_txn_t txn, uint32_t* result) {
 exit:
   return (status);
 };
-/** size in octets. zero for variable size types */
+/** size in octets. size of the size prefix for variable size types */
 uint8_t db_field_type_size(uint8_t a) {
-  if ((db_field_type_binary64 == a) || (db_field_type_uint64 == a) || (db_field_type_int64 == a) || (db_field_type_string64 == a) || (db_field_type_float64 == a)) {
+  if ((db_field_type_binary64f == a) || (db_field_type_uint64f == a) || (db_field_type_int64f == a) || (db_field_type_string64f == a) || (db_field_type_float64f == a) || (db_field_type_binary64 == a) || (db_field_type_string64 == a)) {
     return (8);
-  } else if ((db_field_type_binary32 == a) || (db_field_type_uint32 == a) || (db_field_type_int32 == a) || (db_field_type_string32 == a) || (db_field_type_float32 == a)) {
+  } else if ((db_field_type_binary32f == a) || (db_field_type_uint32f == a) || (db_field_type_int32f == a) || (db_field_type_string32f == a) || (db_field_type_float32f == a) || (db_field_type_binary32 == a) || (db_field_type_string32 == a)) {
     return (4);
-  } else if ((db_field_type_binary16 == a) || (db_field_type_uint16 == a) || (db_field_type_int16 == a) || (db_field_type_string16 == a)) {
+  } else if ((db_field_type_binary16f == a) || (db_field_type_uint16f == a) || (db_field_type_int16f == a) || (db_field_type_string16f == a) || (db_field_type_binary16 == a) || (db_field_type_string16 == a)) {
     return (2);
-  } else if ((db_field_type_binary8 == a) || (db_field_type_uint8 == a) || (db_field_type_int8 == a) || (db_field_type_string8 == a)) {
+  } else if ((db_field_type_binary8f == a) || (db_field_type_uint8f == a) || (db_field_type_int8f == a) || (db_field_type_string8f == a) || (db_field_type_binary8 == a) || (db_field_type_string8 == a)) {
     return (1);
-  } else if ((db_field_type_binary128 == a) || (db_field_type_uint128 == a) || (db_field_type_int128 == a) || (db_field_type_string128 == a)) {
+  } else if ((db_field_type_binary128f == a) || (db_field_type_uint128f == a) || (db_field_type_int128f == a) || (db_field_type_string128f == a)) {
     return (16);
-  } else if ((db_field_type_binary256 == a) || (db_field_type_uint256 == a) || (db_field_type_int256 == a) || (db_field_type_string256 == a)) {
+  } else if ((db_field_type_binary256f == a) || (db_field_type_uint256f == a) || (db_field_type_int256f == a) || (db_field_type_string256f == a)) {
     return (32);
-  } else if ((db_field_type_binary512 == a) || (db_field_type_uint512 == a) || (db_field_type_int512 == a) || (db_field_type_string512 == a)) {
-    return (64);
   } else {
     return (0);
   };

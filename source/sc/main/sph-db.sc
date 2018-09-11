@@ -67,40 +67,42 @@
   db-null 0
   db-size-element-id (- (sizeof db-id-t) (sizeof db-type-id-t))
   db-field-type-t int8-t
-  db-field-type-string -2
-  db-field-type-binary -1
-  db-field-type-binary8 1
-  db-field-type-binary16 2
-  db-field-type-binary32 3
-  db-field-type-binary64 4
-  db-field-type-binary128 5
-  db-field-type-binary256 6
-  db-field-type-binary512 7
-  db-field-type-uint8 8
-  db-field-type-uint16 9
-  db-field-type-uint32 10
-  db-field-type-uint64 11
-  db-field-type-uint128 12
-  db-field-type-uint256 13
-  db-field-type-uint512 14
-  db-field-type-int8 15
-  db-field-type-int16 16
-  db-field-type-int32 17
-  db-field-type-int64 18
-  db-field-type-int128 19
-  db-field-type-int256 20
-  db-field-type-int512 21
-  db-field-type-string8 22
-  db-field-type-string16 23
-  db-field-type-string32 24
-  db-field-type-string64 25
-  db-field-type-string128 26
-  db-field-type-string256 27
-  db-field-type-string512 28
-  db-field-type-float32 29
-  db-field-type-float64 30
+  db-field-type-string64 -8
+  db-field-type-string32 -7
+  db-field-type-string16 -6
+  db-field-type-string8 -5
+  db-field-type-binary64 -4
+  db-field-type-binary32 -3
+  db-field-type-binary16 -2
+  db-field-type-binary8 -1
+  db-field-type-binary8f 1
+  db-field-type-binary16f 2
+  db-field-type-binary32f 3
+  db-field-type-binary64f 4
+  db-field-type-binary128f 5
+  db-field-type-binary256f 6
+  db-field-type-uint8f 8
+  db-field-type-uint16f 9
+  db-field-type-uint32f 10
+  db-field-type-uint64f 11
+  db-field-type-uint128f 12
+  db-field-type-uint256f 13
+  db-field-type-int8f 15
+  db-field-type-int16f 16
+  db-field-type-int32f 17
+  db-field-type-int64f 18
+  db-field-type-int128f 19
+  db-field-type-int256f 20
+  db-field-type-string8f 22
+  db-field-type-string16f 23
+  db-field-type-string32f 24
+  db-field-type-string64f 25
+  db-field-type-string128f 26
+  db-field-type-string256f 27
+  db-field-type-float32f 29
+  db-field-type-float64f 30
   db-type-flag-virtual 1
-  db-id-type-mask (bit-shift-left (convert-type db-type-id-mask db-id-t) (* 8 db-size-element-id))
+  db-id-type-mask (convert-type db-type-id-mask db-id-t)
   db-id-element-mask (bit-not db-id-type-mask)
   (db-status-set-id-goto status-id) (status-set-both-goto db-status-group-db status-id)
   (status-require-read expression)
@@ -119,22 +121,23 @@
   (db-record-is-virtual env record-id)
   (db-type-is-virtual (db-type-get-by-id env (db-id-type record-id))) (db-id-add-type id type-id)
   (begin
-    "convert id and type-id to db-id-t to be able to pass c literals which might be initialised with some other type"
+    "convert id and type-id to db-id-t to be able to pass c literals which might be initialised with some other type.
+    string type part from id with db-id-element in case there are type bits set after for example typecasting from a smaller datatype"
     (bit-or
-      (db-id-element (convert-type id db-id-t))
-      (bit-shift-left (convert-type type-id db-id-t) (* 8 db-size-element-id))))
+      (db-id-type (convert-type type-id db-id-t))
+      (bit-shift-left (convert-type id db-id-t) (* 8 (sizeof db-type-id-t)))))
   (db-id-type id)
   (begin
-    "get the type id part from a record id. a record id without element id"
-    (bit-shift-right id (* 8 db-size-element-id)))
+    "get the type id part from a record id. a record id minus element id"
+    (bit-and db-id-type-mask id))
   (db-id-element id)
   (begin
-    "get the element id part from a record id. a record id without type id"
-    (bit-and db-id-element-mask id))
+    "get the element id part from a record id. a record id minus type id"
+    (bit-shift-right id (* 8 (sizeof db-type-id-t))))
   (db-record-virtual-from-uint type-id data)
   (begin
     "create a virtual record, which is a db-id-t"
-    (db-id-add-type data type-id))
+    (db-id-add-type (db-id-element data) type-id))
   db-record-virtual-from-int db-record-virtual-from-uint
   (db-record-virtual-data id type-name)
   (begin

@@ -1,4 +1,4 @@
-(pre-include "./sph-db.h" "./sph-db-extra.h" "../foreign/sph/one.c" "math.h" "./lib/lmdb.c")
+(pre-include "./sph-db.h" "./sph-db-extra.h" "../foreign/sph/one.c" "math.h" "./lmdb.c")
 
 (pre-define
   (free-and-set-null a)
@@ -90,7 +90,7 @@
           (set b
             "type identifier size is either configured to be greater than 16 bit, which is currently not supported, or is not smaller than record id size"))
         (db-status-id-condition-unfulfilled (set b "condition unfulfilled"))
-        (db-status-id-notfound (set b "no more data to read"))
+        (db-status-id-notfound (set b "entry not found or no more data to read"))
         (db-status-id-different-format
           (set b "configured format differs from the format the database was created with"))
         (db-status-id-index-keysize (set b "index key to be inserted exceeds mdb maxkeysize"))
@@ -210,7 +210,7 @@
     (return status)))
 
 (define (db-debug-count-all-btree-entries txn result) (status-t db-txn-t uint32-t*)
-  "sum the count of all entries in all btrees used by the database"
+  "sum of all entries in all btrees used by the database"
   status-declare
   (declare stat db-statistics-t)
   (status-require (db-statistics txn &stat))
@@ -223,24 +223,32 @@
     (return status)))
 
 (define (db-field-type-size a) (uint8-t uint8-t)
-  "size in octets. zero for variable size types"
+  "size in octets. size of the size prefix for variable size types"
   (case = a
-    ( (db-field-type-binary64
-        db-field-type-uint64 db-field-type-int64 db-field-type-string64 db-field-type-float64)
+    ( (db-field-type-binary64f
+        db-field-type-uint64f
+        db-field-type-int64f
+        db-field-type-string64f db-field-type-float64f db-field-type-binary64 db-field-type-string64)
       (return 8))
-    ( (db-field-type-binary32
-        db-field-type-uint32 db-field-type-int32 db-field-type-string32 db-field-type-float32)
+    ( (db-field-type-binary32f
+        db-field-type-uint32f
+        db-field-type-int32f
+        db-field-type-string32f db-field-type-float32f db-field-type-binary32 db-field-type-string32)
       (return 4))
-    ( (db-field-type-binary16 db-field-type-uint16 db-field-type-int16 db-field-type-string16)
+    ( (db-field-type-binary16f
+        db-field-type-uint16f
+        db-field-type-int16f db-field-type-string16f db-field-type-binary16 db-field-type-string16)
       (return 2))
-    ( (db-field-type-binary8 db-field-type-uint8 db-field-type-int8 db-field-type-string8)
+    ( (db-field-type-binary8f
+        db-field-type-uint8f
+        db-field-type-int8f db-field-type-string8f db-field-type-binary8 db-field-type-string8)
       (return 1))
-    ( (db-field-type-binary128 db-field-type-uint128 db-field-type-int128 db-field-type-string128)
+    ( (db-field-type-binary128f
+        db-field-type-uint128f db-field-type-int128f db-field-type-string128f)
       (return 16))
-    ( (db-field-type-binary256 db-field-type-uint256 db-field-type-int256 db-field-type-string256)
+    ( (db-field-type-binary256f
+        db-field-type-uint256f db-field-type-int256f db-field-type-string256f)
       (return 32))
-    ( (db-field-type-binary512 db-field-type-uint512 db-field-type-int512 db-field-type-string512)
-      (return 64))
     (else (return 0))))
 
 (define (db-record-virtual-from-any type-id data data-size) (db-id-t db-type-id-t void* uint8-t)

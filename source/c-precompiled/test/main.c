@@ -39,10 +39,10 @@ status_t test_type_create_get_delete(db_env_t* env) {
   test_helper_assert("type sequence", (1 == type_1->sequence));
   test_helper_assert("type field count", (0 == type_1->fields_len));
   /* create type-2 */
-  db_field_set((fields[0]), db_field_type_int8, "test-field-1", 12);
-  db_field_set((fields[1]), db_field_type_int8, "test-field-2", 12);
-  db_field_set((fields[2]), db_field_type_string, "test-field-3", 12);
-  db_field_set((fields[3]), db_field_type_string, "test-field-4", 12);
+  db_field_set((fields[0]), db_field_type_int8f, "test-field-1", 12);
+  db_field_set((fields[1]), db_field_type_int8f, "test-field-2", 12);
+  db_field_set((fields[2]), db_field_type_string8, "test-field-3", 12);
+  db_field_set((fields[3]), db_field_type_string16, "test-field-4", 12);
   status_require((db_type_create(env, "test-type-2", fields, 4, 0, (&type_2))));
   test_helper_assert("second type id", (2 == type_2->id));
   test_helper_assert("second type sequence", (1 == type_2->sequence));
@@ -111,7 +111,7 @@ status_t test_sequence(db_env_t* env) {
       test_helper_assert("record sequence is limited", (db_status_id_max_element_id == status.id));
       status.id = status_id_success;
     } else {
-      test_helper_assert("record sequence is monotonically increasing", (status_is_success && (1 == (id - prev_id))));
+      test_helper_assert("record sequence is monotonically increasing", (status_is_success && (1 == (db_id_element(id) - db_id_element(prev_id)))));
     };
     prev_id = id;
   };
@@ -146,6 +146,7 @@ status_t test_id_construction(db_env_t* env) {
   test_helper_assert("type-id-size + element-id-size = id-size", (sizeof(db_id_t) == (sizeof(db_type_id_t) + db_size_element_id)));
   test_helper_assert("type and element masks not conflicting", (!(db_id_type_mask & db_id_element_mask)));
   test_helper_assert("type-id-mask | element-id-mask = id-mask", (db_id_mask == (db_id_type_mask | db_id_element_mask)));
+  debug_log("type-mask %lu, element-mask %lu, type %lu, element limit %lu, id %lu", db_id_type_mask, db_id_element_mask, type_id, db_element_id_limit, (db_id_add_type(10, type_id)));
   test_helper_assert("id type", (type_id == db_id_type((db_id_add_type(db_element_id_limit, type_id)))));
   /* take a low value to be compatible with different configurations */
   test_helper_assert("id element", (254 == db_id_element((db_id_add_type(254, type_id)))));
@@ -370,7 +371,7 @@ status_t test_record_virtual(db_env_t* env) {
   data_int = -123;
   data_float32 = 1.23;
   db_field_t fields[1];
-  db_field_set((fields[0]), db_field_type_int8, 0, 0);
+  db_field_set((fields[0]), db_field_type_int8f, 0, 0);
   status_require((db_type_create(env, "test-type-v", fields, 1, db_type_flag_virtual, (&type))));
   test_helper_assert("is-virtual", (db_type_is_virtual(type)));
   /* int */
@@ -466,15 +467,14 @@ int main() {
   db_env_t* env;
   status_declare;
   db_env_new((&env));
-  test_helper_test_one(test_relation_read, env);
   test_helper_test_one(test_id_construction, env);
-  test_helper_test_one(test_record_virtual, env);
   test_helper_test_one(test_open_empty, env);
   test_helper_test_one(test_statistics, env);
   test_helper_test_one(test_sequence, env);
   test_helper_test_one(test_type_create_get_delete, env);
   test_helper_test_one(test_type_create_many, env);
   test_helper_test_one(test_open_nonempty, env);
+  test_helper_test_one(test_relation_read, env);
   test_helper_test_one(test_relation_delete, env);
   test_helper_test_one(test_record_create, env);
   test_helper_test_one(test_record_select, env);

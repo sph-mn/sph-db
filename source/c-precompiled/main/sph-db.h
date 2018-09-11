@@ -181,40 +181,42 @@ i_array_declare_type(db_relations_t, db_relation_t);
 #define db_null 0
 #define db_size_element_id (sizeof(db_id_t) - sizeof(db_type_id_t))
 #define db_field_type_t int8_t
-#define db_field_type_string -2
-#define db_field_type_binary -1
-#define db_field_type_binary8 1
-#define db_field_type_binary16 2
-#define db_field_type_binary32 3
-#define db_field_type_binary64 4
-#define db_field_type_binary128 5
-#define db_field_type_binary256 6
-#define db_field_type_binary512 7
-#define db_field_type_uint8 8
-#define db_field_type_uint16 9
-#define db_field_type_uint32 10
-#define db_field_type_uint64 11
-#define db_field_type_uint128 12
-#define db_field_type_uint256 13
-#define db_field_type_uint512 14
-#define db_field_type_int8 15
-#define db_field_type_int16 16
-#define db_field_type_int32 17
-#define db_field_type_int64 18
-#define db_field_type_int128 19
-#define db_field_type_int256 20
-#define db_field_type_int512 21
-#define db_field_type_string8 22
-#define db_field_type_string16 23
-#define db_field_type_string32 24
-#define db_field_type_string64 25
-#define db_field_type_string128 26
-#define db_field_type_string256 27
-#define db_field_type_string512 28
-#define db_field_type_float32 29
-#define db_field_type_float64 30
+#define db_field_type_string64 -8
+#define db_field_type_string32 -7
+#define db_field_type_string16 -6
+#define db_field_type_string8 -5
+#define db_field_type_binary64 -4
+#define db_field_type_binary32 -3
+#define db_field_type_binary16 -2
+#define db_field_type_binary8 -1
+#define db_field_type_binary8f 1
+#define db_field_type_binary16f 2
+#define db_field_type_binary32f 3
+#define db_field_type_binary64f 4
+#define db_field_type_binary128f 5
+#define db_field_type_binary256f 6
+#define db_field_type_uint8f 8
+#define db_field_type_uint16f 9
+#define db_field_type_uint32f 10
+#define db_field_type_uint64f 11
+#define db_field_type_uint128f 12
+#define db_field_type_uint256f 13
+#define db_field_type_int8f 15
+#define db_field_type_int16f 16
+#define db_field_type_int32f 17
+#define db_field_type_int64f 18
+#define db_field_type_int128f 19
+#define db_field_type_int256f 20
+#define db_field_type_string8f 22
+#define db_field_type_string16f 23
+#define db_field_type_string32f 24
+#define db_field_type_string64f 25
+#define db_field_type_string128f 26
+#define db_field_type_string256f 27
+#define db_field_type_float32f 29
+#define db_field_type_float64f 30
 #define db_type_flag_virtual 1
-#define db_id_type_mask (((db_id_t)(db_type_id_mask)) << (8 * db_size_element_id))
+#define db_id_type_mask ((db_id_t)(db_type_id_mask))
 #define db_id_element_mask ~db_id_type_mask
 #define db_status_set_id_goto(status_id) status_set_both_goto(db_status_group_db, status_id)
 #define status_require_read(expression) \
@@ -234,14 +236,15 @@ i_array_declare_type(db_relations_t, db_relation_t);
 #define db_type_get_by_id(env, type_id) (type_id + env->types)
 #define db_type_is_virtual(type) (db_type_flag_virtual & type->flags)
 #define db_record_is_virtual(env, record_id) db_type_is_virtual((db_type_get_by_id(env, (db_id_type(record_id)))))
-/** convert id and type-id to db-id-t to be able to pass c literals which might be initialised with some other type */
-#define db_id_add_type(id, type_id) (db_id_element(((db_id_t)(id))) | (((db_id_t)(type_id)) << (8 * db_size_element_id)))
-/** get the type id part from a record id. a record id without element id */
-#define db_id_type(id) (id >> (8 * db_size_element_id))
-/** get the element id part from a record id. a record id without type id */
-#define db_id_element(id) (db_id_element_mask & id)
+/** convert id and type-id to db-id-t to be able to pass c literals which might be initialised with some other type.
+    string type part from id with db-id-element in case there are type bits set after for example typecasting from a smaller datatype */
+#define db_id_add_type(id, type_id) (db_id_type(((db_id_t)(type_id))) | (((db_id_t)(id)) << (8 * sizeof(db_type_id_t))))
+/** get the type id part from a record id. a record id minus element id */
+#define db_id_type(id) (db_id_type_mask & id)
+/** get the element id part from a record id. a record id minus type id */
+#define db_id_element(id) (id >> (8 * sizeof(db_type_id_t)))
 /** create a virtual record, which is a db-id-t */
-#define db_record_virtual_from_uint(type_id, data) db_id_add_type(data, type_id)
+#define db_record_virtual_from_uint(type_id, data) db_id_add_type((db_id_element(data)), type_id)
 #define db_record_virtual_from_int db_record_virtual_from_uint
 /** get the data associated with a virtual record as a db-id-t
     this only works because the target type should be equal or smaller than db-size-id-element */

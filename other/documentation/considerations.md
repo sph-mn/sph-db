@@ -62,21 +62,36 @@ notes on considered questions and decisions made while developing sph-db
 # how to cluster records of the same type
 archieved by having sorted keys and the type at the beginning of keys
 
-# should readers possibly return results and end-of-data in one call
-* option - selected
-  * position at first, get current, position at next
-  * cant position at element before the first. that is why cursor is always at the current
-  * pro
-    * results and end-of-data in one call
-  * con
-    * wouldnt have to position at next for first call
+# what should be the maximum fixed size field type size
+* the difference between fixed and variable length field data is the additional size prefix for variable length data
+* prefix length is currently set fixed at compile time. additional larger variable types could be added
+* size prefix as a percentage of payload data size
+  * table 1
+    * data-size, prefix-size, prefix-percentage
+    * 32, 8, 25%
+    * 64, 8, 12.5%
+    * 128, 8, 6.25%
+    * 256, 8, 3.125%
+    * 512, 8, 1.5625%
+* size prefix in relation to maximum specifiable data size
+  * table 2
+    * bit, size-unit, max-size
+    * 8, 8, 2040
+    * 16, 8, 524280
+* proliferation of types
+  * too many types may exhaust the number of ids possible with the type id datatype
+  * too many types are an issue with db users who select specific conversion functions for types and have to create larger maps
+  * it is more coding
+  * with 8 bit type ids, negative being variable types, there are 127 ids available
+  * fixed and custom size types are currently binary, string, int, uint
+  * with fixed size types 2**3..2**9 inclusively that would be 7 subtypes per custom size type
 * option
-  * if positioned at first element then get else next
-  * readers dont signal notfound when there is data to read
-  * con
-    * extra branch
-  * pro
-    * readers behave more predictably with read actually only reading the next
+  * support up to 512 as initial max fixed size
+  * higher fixed size would have variable length prefix be less that 1% of payload
+* option
+  * support up to 256 because less than ~3% loss for using the variable length type is ok for larger data
+  * with 512 is too many types
+  * unset fixed size fields always take the same space while variable size fields can be minimum prefix size
 
 # multiple rows or one result at a time with record-read
 difference to relation read: less filters
@@ -125,6 +140,22 @@ difference to relation read: less filters
   * multiple using linked-lists
   * con
     * malloc per added list element
+
+# should readers possibly return results and end-of-data in one call
+* option - selected
+  * position at first, get current, position at next
+  * cant position at element before the first. that is why cursor is always at the current
+  * pro
+    * results and end-of-data in one call
+  * con
+    * wouldnt have to position at next for first call
+* option
+  * if positioned at first element then get else next
+  * readers dont signal notfound when there is data to read
+  * con
+    * extra branch
+  * pro
+    * readers behave more predictably with read actually only reading the next
 
 # should virtual records support multiple fields
 could technically encode multiple 8 bit fields or similar
@@ -367,3 +398,20 @@ other active transactions might be trying to use the schema and for example inse
 * custom primary keys
   * a dictionary, a one to one association, could be considered a subset of plain tables. yet rows might have row identifiers identifying a pairing even if that is not needed. this points to custom primary keys
   * con: ambiguity of auto-increment and provided keys. each insert requires additional checks if auto-increment and eventually if key has been provided. id key potentially quicker to join as primary and foreign key because efficient data type
+
+# start field type ids at 0 or zero
+* <> 0 vs <>= 0
+* does a null type ever make sense. maybe in c-functions that translate something to field types
+* before using signed integers for types we started with one, continue doing that
+
+# why support a binary and uint field type
+* use cases: cryptographic keys, specially encoded data
+* should the meaning of uint and binary be conflated
+  * con
+    * users that support it can decode binary to bytevectors and uint to big numbers
+
+# put the type id before or after the record id
+* little endian preferred
+* type at beginning to avoid record ids beginning at the largest numbers
+* getting the type part would be a bit-and, getting the element part a bit-shift
+* ideally the simpler operation is the one for getting the type
