@@ -222,7 +222,7 @@
   (label exit
     (return status)))
 
-(define (db-field-type-size a) (uint8-t uint8-t)
+(define (db-field-type-size a) (uint8-t db-field-type-t)
   "size in octets. size of the size prefix for variable size types"
   (case = a
     ( (db-field-type-binary64f
@@ -254,7 +254,7 @@
 (define (db-record-virtual-from-any type-id data data-size) (db-id-t db-type-id-t void* uint8-t)
   "create a virtual record with data of any type equal or smaller in size than db-size-id-element"
   (declare id db-id-t)
-  (memcpy &id data data-size)
+  (memcpy (+ (sizeof db-type-id-t) (convert-type &id uint8-t*)) data data-size)
   (return (db-id-add-type id type-id)))
 
 (define (db-ids->set a result) (status-t db-ids-t imht-set-t**)

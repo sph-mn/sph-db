@@ -1,13 +1,16 @@
 /** convert a record-values array to the data format that is used as btree value for records.
   the data for unset trailing fields is not included.
-  assumes that fields are in the order (fixed-size-fields variable-size-fields) */
+  assumes that fields are in the order (fixed-size-fields variable-size-fields).
+  field-size is uint64-t because its content is copied with memcpy to variable size prefixes
+  which are at most 64 bit */
 status_t db_record_values_to_data(db_record_values_t values, db_record_t* result) {
   status_declare;
   void* data;
   uint8_t* data_temp;
   void* field_data;
-  uint8_t field_size;
+  uint64_t field_size;
   db_field_type_t field_type;
+  uint8_t prefix_size;
   db_fields_len_t i;
   size_t size;
   size = 0;
@@ -20,10 +23,11 @@ status_t db_record_values_to_data(db_record_values_t values, db_record_t* result
       ((values.data)[i]).size = field_size;
       size = (field_size + size);
     } else {
+      prefix_size = db_field_type_size(((((values.type)->fields)[i]).type));
       field_size = ((values.data)[i]).size;
-      size = (sizeof(db_data_len_t) + field_size + size);
+      size = (prefix_size + field_size + size);
       /* check if data is larger than the size prefix can specify */
-      if (field_size > db_data_len_max) {
+      if (field_size >= (1 << (8 * prefix_size))) {
         status_set_both_goto(db_status_group_db, db_status_id_data_length);
       };
     };
@@ -38,8 +42,9 @@ status_t db_record_values_to_data(db_record_values_t values, db_record_t* result
   for (i = 0; (i < values.extent); i = (1 + i)) {
     field_size = ((values.data)[i]).size;
     if (i >= (values.type)->fields_fixed_count) {
-      *((db_data_len_t*)(data_temp)) = field_size;
-      data_temp = (sizeof(db_data_len_t) + data_temp);
+      prefix_size = db_field_type_size(((((values.type)->fields)[i]).type));
+      memcpy(data_temp, (&field_size), prefix_size);
+      data_temp = (prefix_size + data_temp);
     };
     field_data = ((values.data)[i]).data;
     /* field-data pointer is zero for unset fields */

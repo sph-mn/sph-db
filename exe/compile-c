@@ -1,6 +1,6 @@
 #!/bin/sh
 
-optimisation=3
+optimisation=0
 warnings="-Wunused-label -Wunused-value -Wunused-variable"
 gcc_options="$warnings -Wfatal-errors -std=c11 -O$optimisation"
 c=source/c-precompiled

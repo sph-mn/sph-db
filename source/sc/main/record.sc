@@ -1,14 +1,17 @@
 (define (db-record-values->data values result) (status-t db-record-values-t db-record-t*)
   "convert a record-values array to the data format that is used as btree value for records.
   the data for unset trailing fields is not included.
-  assumes that fields are in the order (fixed-size-fields variable-size-fields)"
+  assumes that fields are in the order (fixed-size-fields variable-size-fields).
+  field-size is uint64-t because its content is copied with memcpy to variable size prefixes
+  which are at most 64 bit"
   status-declare
   (declare
     data void*
     data-temp uint8-t*
     field-data void*
-    field-size uint8-t
+    field-size uint64-t
     field-type db-field-type-t
+    prefix-size uint8-t
     i db-fields-len-t
     size size-t)
   (set size 0)
@@ -24,10 +27,11 @@
           size (+ field-size size)))
       (begin
         (set
+          prefix-size (db-field-type-size (struct-get (array-get values.type:fields i) type))
           field-size (struct-get (array-get values.data i) size)
-          size (+ (sizeof db-data-len-t) field-size size))
+          size (+ prefix-size field-size size))
         (sc-comment "check if data is larger than the size prefix can specify")
-        (if (> field-size db-data-len-max)
+        (if (>= field-size (bit-shift-left 1 (* 8 prefix-size)))
           (status-set-both-goto db-status-group-db db-status-id-data-length)))))
   (if size (status-require (db-helper-malloc size &data))
     (set data 0))
@@ -36,9 +40,10 @@
   (for ((set i 0) (< i values.extent) (set i (+ 1 i)))
     (set field-size (struct-get (array-get values.data i) size))
     (if (>= i values.type:fields-fixed-count)
-      (set
-        (pointer-get (convert-type data-temp db-data-len-t*)) field-size
-        data-temp (+ (sizeof db-data-len-t) data-temp)))
+      (begin
+        (set prefix-size (db-field-type-size (struct-get (array-get values.type:fields i) type)))
+        (memcpy data-temp &field-size prefix-size)
+        (set data-temp (+ prefix-size data-temp))))
     (set field-data (struct-get (array-get values.data i) data))
     (sc-comment "field-data pointer is zero for unset fields")
     (if (not field-data) (memset data-temp 0 field-size)

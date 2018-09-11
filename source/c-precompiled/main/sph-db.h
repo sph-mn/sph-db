@@ -114,10 +114,8 @@ typedef struct {
 #define db_ordinal_t uint32_t
 #define db_id_mask UINT64_MAX
 #define db_type_id_mask UINT16_MAX
-#define db_data_len_t uint32_t
 #define db_name_len_t uint8_t
 #define db_name_len_max UINT8_MAX
-#define db_data_len_max UINT32_MAX
 #define db_fields_len_t uint8_t
 #define db_indices_len_t uint8_t
 #define db_count_t uint32_t
@@ -244,11 +242,11 @@ i_array_declare_type(db_relations_t, db_relation_t);
 /** get the element id part from a record id. a record id minus type id */
 #define db_id_element(id) (id >> (8 * sizeof(db_type_id_t)))
 /** create a virtual record, which is a db-id-t */
-#define db_record_virtual_from_uint(type_id, data) db_id_add_type((db_id_element(data)), type_id)
+#define db_record_virtual_from_uint(type_id, data) db_id_add_type(data, type_id)
 #define db_record_virtual_from_int db_record_virtual_from_uint
 /** get the data associated with a virtual record as a db-id-t
     this only works because the target type should be equal or smaller than db-size-id-element */
-#define db_record_virtual_data(id, type_name) *((type_name*)(&id))
+#define db_record_virtual_data(id, type_name) ((type_name)(db_id_element(id)))
 #define db_txn_declare(env, name) db_txn_t name = { 0, env }
 #define db_txn_abort_if_active(a) \
   if (a.mdb_txn) { \
@@ -369,7 +367,7 @@ typedef struct {
   db_ordinal_t max;
 } db_ordinal_condition_t;
 typedef struct {
-  db_data_len_t size;
+  size_t size;
   void* data;
 } db_record_value_t;
 typedef struct {
@@ -413,7 +411,7 @@ db_field_t* db_type_field_get(db_type_t* type, uint8_t* name);
 db_type_t* db_type_get(db_env_t* env, uint8_t* name);
 status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fields_len_t fields_len, uint8_t flags, db_type_t** result);
 status_t db_type_delete(db_env_t* env, db_type_id_t id);
-uint8_t db_field_type_size(uint8_t a);
+uint8_t db_field_type_size(db_field_type_t a);
 uint8_t* db_status_description(status_t a);
 uint8_t* db_status_name(status_t a);
 status_t db_ids_new(size_t length, db_ids_t* result_ids);

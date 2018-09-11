@@ -225,7 +225,7 @@ status_t test_record_create(db_env_t* env) {
   db_record_values_set((&values_1), 3, value_4, 5);
   /* test record values/data conversion */
   db_record_values_to_data(values_1, (&record_1));
-  test_helper_assert(("record-values->data size"), (((2 * sizeof(db_data_len_t)) + 7) == record_1.size));
+  test_helper_assert(("record-values->data size"), ((3 + 7) == record_1.size));
   db_record_data_to_values(type, record_1, (&values_2));
   test_helper_assert(("record-data->values type equal"), (values_1.type == values_2.type));
   test_helper_assert(("record-data->values size equal"), ((((values_1.data)[0]).size == ((values_2.data)[0]).size) && (((values_1.data)[1]).size == ((values_2.data)[1]).size) && (((values_1.data)[2]).size == ((values_2.data)[2]).size) && (((values_1.data)[3]).size == ((values_2.data)[3]).size)));
@@ -374,18 +374,20 @@ status_t test_record_virtual(db_env_t* env) {
   db_field_set((fields[0]), db_field_type_int8f, 0, 0);
   status_require((db_type_create(env, "test-type-v", fields, 1, db_type_flag_virtual, (&type))));
   test_helper_assert("is-virtual", (db_type_is_virtual(type)));
-  /* int */
-  id = db_record_virtual_from_int((type->id), data_int);
-  test_helper_assert("is-virtual int", (db_record_is_virtual(env, id)));
-  test_helper_assert("type-id int", (type->id == db_id_type(id)));
-  test_helper_assert("data int", (data_int == db_record_virtual_data(id, int8_t)));
   /* uint */
   id = db_record_virtual_from_uint((type->id), data_uint);
   test_helper_assert("is-virtual uint", (db_record_is_virtual(env, id)));
   test_helper_assert("type-id uint", (type->id == db_id_type(id)));
   test_helper_assert("data uint", (data_uint == db_record_virtual_data(id, uint8_t)));
+  /* int */
+  id = db_record_virtual_from_int((type->id), data_int);
+  test_helper_assert("is-virtual int", (db_record_is_virtual(env, id)));
+  test_helper_assert("type-id int", (type->id == db_id_type(id)));
+  test_helper_assert("data int", (data_int == db_record_virtual_data(id, int8_t)));
   /* float */
   id = db_record_virtual_from_any((type->id), (&data_float32), (sizeof(float)));
+  debug_log("id %lu, uint %lu", id, (db_record_virtual_from_uint((type->id), data_float32)));
+  debug_log("id %lu, data-float32 %f, virtual-data %f", id, data_float32, (db_record_virtual_data(id, float)));
   test_helper_assert("is-virtual float", (db_record_is_virtual(env, id)));
   test_helper_assert("type-id float", (type->id == db_id_type(id)));
   test_helper_assert("data float", (data_float32 == db_record_virtual_data(id, float)));
@@ -468,6 +470,7 @@ int main() {
   status_declare;
   db_env_new((&env));
   test_helper_test_one(test_id_construction, env);
+  test_helper_test_one(test_record_virtual, env);
   test_helper_test_one(test_open_empty, env);
   test_helper_test_one(test_statistics, env);
   test_helper_test_one(test_sequence, env);

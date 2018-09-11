@@ -137,13 +137,13 @@
   (db-record-virtual-from-uint type-id data)
   (begin
     "create a virtual record, which is a db-id-t"
-    (db-id-add-type (db-id-element data) type-id))
+    (db-id-add-type data type-id))
   db-record-virtual-from-int db-record-virtual-from-uint
   (db-record-virtual-data id type-name)
   (begin
     "get the data associated with a virtual record as a db-id-t
     this only works because the target type should be equal or smaller than db-size-id-element"
-    (pointer-get (convert-type &id type-name*)))
+    (convert-type (db-id-element id) type-name))
   (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
   (db-txn-abort-if-active a) (if a.mdb-txn (db-txn-abort &a))
   (db-txn-is-active a)
@@ -287,7 +287,7 @@
   db-record-value-t
   (type
     (struct
-      (size db-data-len-t)
+      (size size-t)
       (data void*)))
   db-record-values-t
   (type
@@ -338,7 +338,7 @@
   (db-type-create env name fields fields-len flags result)
   (status-t db-env-t* uint8-t* db-field-t* db-fields-len-t uint8-t db-type-t**)
   (db-type-delete env id) (status-t db-env-t* db-type-id-t)
-  (db-field-type-size a) (uint8-t uint8-t)
+  (db-field-type-size a) (uint8-t db-field-type-t)
   (db-status-description a) (uint8-t* status-t)
   (db-status-name a) (uint8-t* status-t)
   (db-ids-new length result-ids) (status-t size-t db-ids-t*)

@@ -678,8 +678,6 @@ these values can be set before compilation in ``c-precompiled/main/config.c``. o
 |db_ordinal_t|uint32_t|for relation order values|
 |db_id_mask|UINT64_MAX|maximum value for the id type (all digits set to one)|
 |db_type_id_mask|UINT16_MAX|maximum value for the type-id type|
-|db_data_len_t|uint32_t|to store field sizes|
-|db_data_len_max|UINT32_MAX|maximum allowed field size|
 |db_name_len_t|uint8_t|to store name string lengths (for type and field names)|
 |db_name_len_max|UINT8_MAX|maximum allowed name length|
 |db_fields_len_t|uint8_t|for field indices. limits the number of possible fields|
