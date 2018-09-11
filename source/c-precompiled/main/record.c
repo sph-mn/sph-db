@@ -242,7 +242,7 @@ status_t db_record_select(db_txn_t txn, db_type_t* type, db_record_matcher_t mat
   val_id.mv_data = &id;
   db_mdb_status_require((mdb_cursor_get(records, (&val_id), (&val_null), MDB_SET_RANGE)));
   if (!(type->id == db_id_type((db_pointer_to_id((val_id.mv_data)))))) {
-    status_set_id_goto(db_status_id_notfound);
+    status_set_both_goto(db_status_group_db, db_status_id_notfound);
   };
   result_selection->type = type;
   result_selection->cursor = records;
@@ -274,7 +274,7 @@ status_t db_record_get_internal(MDB_cursor* records_cursor, db_ids_t ids, db_rec
       i_array_add((*result_records), record);
     } else {
       if (db_mdb_status_is_notfound) {
-        status_set_id_goto(db_status_id_notfound);
+        status_set_both_goto(db_status_group_db, db_status_id_notfound);
       } else {
         status_set_group_goto(db_status_group_lmdb);
       };

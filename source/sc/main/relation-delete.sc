@@ -13,7 +13,8 @@
   (label exit
     (return status)))
 
-(define (db-relation-internal-delete-relation-ll-conditional relation-lr relation-ll id-label id-left)
+(define
+  (db-relation-internal-delete-relation-ll-conditional relation-lr relation-ll id-label id-left)
   (status-t MDB-cursor* MDB-cursor* db-id-t db-id-t)
   status-declare
   db-mdb-declare-val-null
@@ -25,7 +26,8 @@
     val-relation-key.mv-data relation-key
     status.id (mdb-cursor-get relation-lr &val-relation-key &val-null MDB-SET))
   (return
-    (if* db-mdb-status-is-notfound (db-relation-internal-delete-relation-ll relation-ll id-label id-left)
+    (if* db-mdb-status-is-notfound
+      (db-relation-internal-delete-relation-ll relation-ll id-label id-left)
       status)))
 
 (define (db-relation-internal-delete-relation-rl relation-rl id-left id-right id-label)
@@ -73,7 +75,8 @@
               relation-rl id-left (db-relation-data->id val-relation-data.mv-data) id-label))
           db-mdb-status-expect-read
           (db-mdb-status-require (mdb-cursor-del relation-lr 0))
-          (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP))
+          (set status.id
+            (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP))
           (if db-mdb-status-is-success (goto each-data-2-0010)
             db-mdb-status-expect-notfound))
         db-mdb-status-expect-notfound)
@@ -142,7 +145,8 @@
           (array-get relation-key 0) id-left
           (array-get relation-key 1) id-label
           val-relation-key.mv-data relation-key)
-        (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-SET-KEY))
+        (set status.id
+          (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-SET-KEY))
         (if db-mdb-status-is-success
           (begin
             (do-while db-mdb-status-is-success
@@ -152,7 +156,8 @@
               db-mdb-status-expect-read
               (set status (db-relation-internal-delete-relation-ll relation-ll id-label id-left))
               db-mdb-status-expect-read
-              (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP)))
+              (set status.id
+                (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP)))
             db-mdb-status-expect-notfound
             (set
               (array-get relation-key 0) id-left
@@ -203,7 +208,8 @@
             db-mdb-status-expect-notfound))
         db-mdb-status-expect-notfound)
       (set status
-        (db-relation-internal-delete-relation-ll-conditional relation-lr relation-ll id-label id-left))
+        (db-relation-internal-delete-relation-ll-conditional
+          relation-lr relation-ll id-label id-left))
       db-mdb-status-expect-read
       (db-mdb-status-require (mdb-cursor-del relation-rl 0))
       (set status.id (mdb-cursor-get relation-rl &val-relation-key &val-id MDB-NEXT-DUP))
@@ -241,7 +247,8 @@
       (if db-mdb-status-is-success (goto each-data-1000)
         db-mdb-status-expect-notfound))
     (array-set relation-key 0 id-left 1 id-label)
-    (db-mdb-status-require (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-SET-KEY))
+    (db-mdb-status-require
+      (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-SET-KEY))
     (db-mdb-status-require (mdb-cursor-del relation-lr MDB-NODUPDATA))
     (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-NODUP))
     (goto each-key-1000)))
@@ -275,13 +282,15 @@
       (set id-right (db-relation-data->id val-relation-data.mv-data))
       (if (imht-set-contains right-set id-right)
         (begin
-          (set status (db-relation-internal-delete-relation-rl relation-rl id-left id-right id-label))
+          (set status
+            (db-relation-internal-delete-relation-rl relation-rl id-left id-right id-label))
           db-mdb-status-expect-read
           (db-mdb-status-require (mdb-cursor-del relation-lr 0))))
       (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP))
       (if db-mdb-status-is-success (goto each-data-1100)
         db-mdb-status-expect-notfound))
-    (set status (db-relation-internal-delete-relation-ll-conditional relation-lr relation-ll id-label id-left))
+    (set status
+      (db-relation-internal-delete-relation-ll-conditional relation-lr relation-ll id-label id-left))
     db-mdb-status-expect-read
     (set
       (array-get relation-key 0) id-left
@@ -290,7 +299,8 @@
     (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-SET-KEY))
     (cond
       (db-mdb-status-is-success
-        (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-NODUP))
+        (set status.id
+          (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-NODUP))
         (goto each-key-1100))
       ((= status.id MDB-NOTFOUND) (goto set-range-1100))
       (else (status-set-group-goto db-status-group-lmdb)))))
@@ -309,17 +319,21 @@
           (array-get relation-key 0) id-left
           (array-get relation-key 1) id-label
           val-relation-key.mv-data relation-key)
-        (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-SET-KEY))
+        (set status.id
+          (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-SET-KEY))
         (while db-mdb-status-is-success
           (if (imht-set-contains right-set (db-relation-data->id val-relation-data.mv-data))
             (begin
               (set id-right (db-relation-data->id val-relation-data.mv-data))
-              (set status (db-relation-internal-delete-relation-rl relation-rl id-left id-right id-label))
+              (set status
+                (db-relation-internal-delete-relation-rl relation-rl id-left id-right id-label))
               db-mdb-status-expect-read
               (db-mdb-status-require (mdb-cursor-del relation-lr 0))))
-          (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP)))
+          (set status.id
+            (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP)))
         (set status
-          (db-relation-internal-delete-relation-ll-conditional relation-lr relation-ll id-label id-left))
+          (db-relation-internal-delete-relation-ll-conditional
+            relation-lr relation-ll id-label id-left))
         db-mdb-status-expect-read
         (i-array-forward label))
       (i-array-rewind label)
@@ -339,14 +353,16 @@
         id-left (i-array-get left)
         (array-get relation-key 0) id-left
         val-relation-key.mv-data relation-key)
-      (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-SET-RANGE))
+      (set status.id
+        (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-SET-RANGE))
       (label each-key-1001-1101
         (if db-mdb-status-is-success
           (if (= id-left (db-pointer->id val-relation-key.mv-data))
             (begin
               (set
                 val-relation-data.mv-data relation-data
-                status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-GET-BOTH-RANGE))
+                status.id
+                (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-GET-BOTH-RANGE))
               (if db-mdb-status-is-success
                 (begin
                   (set id-label (db-pointer->id-at val-relation-key.mv-data 1))
@@ -364,19 +380,23 @@
           (goto exit))))
     (label each-data-1001-1101
       (sc-comment "get-both-range should have positioned cursor at >= ordinal-min")
-      (if (or (not ordinal-max) (<= (db-relation-data->ordinal val-relation-data.mv-data) ordinal-max))
+      (if
+        (or
+          (not ordinal-max) (<= (db-relation-data->ordinal val-relation-data.mv-data) ordinal-max))
         (begin
           (set id-right (db-relation-data->id val-relation-data.mv-data))
           (if (or (not right-pointer) (imht-set-contains right-set id-right))
             (begin
-              (set status (db-relation-internal-delete-relation-rl relation-rl id-left id-right id-label))
+              (set status
+                (db-relation-internal-delete-relation-rl relation-rl id-left id-right id-label))
               db-mdb-status-expect-read
               (db-mdb-status-require (mdb-cursor-del relation-lr 0)))))
         (goto next-label-1001-1101))
       (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP))
       (if db-mdb-status-is-success (goto each-data-1001-1101)
         db-mdb-status-expect-notfound))
-    (set status (db-relation-internal-delete-relation-ll-conditional relation-lr relation-ll id-label id-left))
+    (set status
+      (db-relation-internal-delete-relation-ll-conditional relation-lr relation-ll id-label id-left))
     db-mdb-status-expect-read
     (label next-label-1001-1101
       (set
@@ -386,7 +406,8 @@
       (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-SET-KEY))
       (cond
         (db-mdb-status-is-success
-          (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-NODUP))
+          (set status.id
+            (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-NODUP))
           (goto each-key-1001-1101))
         ((= status.id MDB-NOTFOUND) (goto set-range-1001-1101))
         (else (status-set-group-goto db-status-group-lmdb))))))
@@ -408,7 +429,8 @@
         (array-get relation-key 1) id-label
         val-relation-key.mv-data relation-key
         val-relation-data.mv-data relation-data)
-      (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-GET-BOTH-RANGE))
+      (set status.id
+        (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-GET-BOTH-RANGE))
       (if db-mdb-status-is-success (goto each-data-1011-1111)
         (label each-key-1011-1111
           (i-array-forward left)
@@ -422,7 +444,9 @@
                   (goto set-key-1011-1111))
                 (goto exit)))))))
     (label each-data-1011-1111
-      (if (or (not ordinal-max) (<= (db-relation-data->ordinal val-relation-data.mv-data) ordinal-max))
+      (if
+        (or
+          (not ordinal-max) (<= (db-relation-data->ordinal val-relation-data.mv-data) ordinal-max))
         (begin
           (if
             (or
@@ -432,13 +456,16 @@
               (sc-comment "delete relation-rl")
               (set
                 id-right (db-relation-data->id val-relation-data.mv-data)
-                status (db-relation-internal-delete-relation-rl relation-rl id-left id-right id-label))
+                status
+                (db-relation-internal-delete-relation-rl relation-rl id-left id-right id-label))
               db-mdb-status-expect-read
               (db-mdb-status-require (mdb-cursor-del relation-lr 0))))
-          (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP))
+          (set status.id
+            (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP))
           (if db-mdb-status-is-success (goto each-data-1011-1111)
             db-mdb-status-expect-notfound))))
-    (set status (db-relation-internal-delete-relation-ll-conditional relation-lr relation-ll id-label id-left))
+    (set status
+      (db-relation-internal-delete-relation-ll-conditional relation-lr relation-ll id-label id-left))
     db-mdb-status-expect-read
     (goto each-key-1011-1111)))
 
@@ -484,7 +511,7 @@
       (if label-pointer db-relation-internal-delete-0110
         db-relation-internal-delete-0100)
       (if label-pointer db-relation-internal-delete-0010
-        (db-status-set-id-goto db-status-id-not-implemented))))
+        (status-set-both-goto db-status-group-db db-status-id-not-implemented))))
   (label exit
     db-mdb-status-success-if-notfound
     (return status)))
@@ -503,7 +530,8 @@
   (db-mdb-status-require (db-mdb-env-cursor-open txn relation-lr))
   (db-mdb-status-require (db-mdb-env-cursor-open txn relation-rl))
   (db-mdb-status-require (db-mdb-env-cursor-open txn relation-ll))
-  (set status (db-relation-internal-delete left right label ordinal relation-lr relation-rl relation-ll))
+  (set status
+    (db-relation-internal-delete left right label ordinal relation-lr relation-rl relation-ll))
   (label exit
     (db-mdb-cursor-close-if-active relation-lr)
     (db-mdb-cursor-close-if-active relation-rl)

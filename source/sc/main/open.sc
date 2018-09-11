@@ -13,9 +13,9 @@
   (set
     path-temp 0
     path-temp (string-clone path))
-  (if (not path-temp) (db-status-set-id-goto db-status-id-memory))
+  (if (not path-temp) (status-set-both-goto db-status-group-db db-status-id-memory))
   (if (not (ensure-directory-structure path-temp (bit-or 73 options:file-permissions)))
-    (db-status-set-id-goto db-status-id-path-not-accessible-db-root))
+    (status-set-both-goto db-status-group-db db-status-id-path-not-accessible-db-root))
   (set env:root path-temp)
   (label exit
     (if status-is-failure (free path-temp))
@@ -40,7 +40,7 @@
   (set
     mdb-env 0
     data-path (string-append env:root "/data"))
-  (if (not data-path) (db-status-set-id-goto db-status-id-memory))
+  (if (not data-path) (status-set-both-goto db-status-group-db db-status-id-memory))
   (db-mdb-status-require (mdb-env-create &mdb-env))
   (db-mdb-status-require (mdb-env-set-maxdbs mdb-env options:maximum-db-count))
   (db-mdb-status-require (mdb-env-set-mapsize mdb-env options:maximum-size))
@@ -101,7 +101,7 @@
                 stderr
                 "database sizes: (id %u) (type: %u) (ordinal %u)"
                 (array-get data 0) (array-get data 1) (array-get data 2))
-              (db-status-set-id-goto db-status-id-different-format))))))
+              (status-set-both-goto db-status-group-db db-status-id-different-format))))))
     (begin
       db-mdb-status-expect-notfound
       (sc-comment "no format entry exists yet")
@@ -216,7 +216,7 @@
       (begin
         (sc-comment "database is empty")
         (set *result 0)
-        (status-set-id-goto status-id-success))
+        (status-set-both-goto db-status-group-db status-id-success))
       status-goto))
   (sc-comment
     "database is not empty and the last key is not of searched type.
@@ -518,7 +518,7 @@
     (status-set-both-goto db-status-group-db db-status-id-max-type-id-size))
   (db-txn-declare env txn)
   (if env:is-open (return status))
-  (if (not path) (db-status-set-id-goto db-status-id-missing-argument-db-root))
+  (if (not path) (status-set-both-goto db-status-group-db db-status-id-missing-argument-db-root))
   (if options-pointer (set options *options-pointer)
     (db-open-options-set-defaults &options))
   (status-require (db-open-root env &options path))

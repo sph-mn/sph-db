@@ -530,7 +530,7 @@ status_t db_relation_internal_delete(db_ids_t* left_pointer, db_ids_t* right_poi
       if (label_pointer) {
         db_relation_internal_delete_0010;
       } else {
-        db_status_set_id_goto(db_status_id_not_implemented);
+        status_set_both_goto(db_status_group_db, db_status_id_not_implemented);
       };
     };
   };

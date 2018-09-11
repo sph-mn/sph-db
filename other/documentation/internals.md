@@ -6,7 +6,7 @@
   * type-label id -> name-len name field-count (field-type name-len name) ...
   * index-label type-id field-index ... -> null
 * records
-  * record-id: fixed-size-data ... (variable-size-len variable-size-data) ...
+  * record-id -> fixed-size-data ... (variable-size-len variable-size-data) ...
 * relation-lr
   * left:record-id label:record-id -> ordinal:number right:record-id
 * relation-rl
@@ -14,7 +14,7 @@
 * relation-ll
   * label:record-id -> left:record-id
 * i-{type-id}-{field-offset}[-{field-offset} ...]
-  * field-data ... record-id -> null
+  * field-data ... record-id -> empty
 
 # records
 * all records are stored in one lmdb database

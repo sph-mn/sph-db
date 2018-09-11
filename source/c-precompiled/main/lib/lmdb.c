@@ -13,9 +13,7 @@
   if (db_mdb_status_is_notfound) { \
     status.id = status_id_success; \
   }
-#define db_mdb_status_set_id_goto(id) \
-  status.group = db_status_group_lmdb; \
-  status.id = id
+#define db_mdb_status_set_id_goto(id) status_set_both_goto(db_status_group_lmdb, id)
 #define db_mdb_status_require(expression) \
   status.id = expression; \
   if (db_mdb_status_is_failure) { \

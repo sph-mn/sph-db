@@ -22,6 +22,9 @@
 (i-array-declare-type db-relations-t db-relation-t)
 
 (pre-define
+  db-status-group-db "sph-db"
+  db-status-group-lmdb "lmdb"
+  db-status-group-libc "libc"
   db-ids-add i-array-add
   db-ids-clear i-array-clear
   db-ids-forward i-array-forward
@@ -199,8 +202,6 @@
     db-status-id-path-not-accessible-db-root
     db-status-id-index-keysize db-status-id-type-field-order db-status-id-last))
 
-(enum (db-status-group-db db-status-group-lmdb db-status-group-libc db-status-group-last))
-
 (declare
   ; types
   db-field-t
@@ -337,7 +338,6 @@
   (db-field-type-size a) (uint8-t uint8-t)
   (db-status-description a) (uint8-t* status-t)
   (db-status-name a) (uint8-t* status-t)
-  (db-status-group-id->name a) (uint8-t* status-id-t)
   (db-ids-new length result-ids) (status-t size-t db-ids-t*)
   (db-records-new length result-records) (status-t size-t db-records-t*)
   (db-relations-new length result-relations) (status-t size-t db-relations-t*)

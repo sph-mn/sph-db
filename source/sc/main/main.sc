@@ -67,21 +67,12 @@
     *result-len (- size 1))
   (return result))
 
-(define (db-status-group-id->name a) (uint8-t* status-id-t)
-  (declare b char*)
-  (case = a
-    (db-status-group-db (set b "sph-db"))
-    (db-status-group-lmdb (set b "lmdb"))
-    (db-status-group-libc (set b "libc"))
-    (else (set b "")))
-  (return b))
-
 (define (db-status-description a) (uint8-t* status-t)
   "get the description if available for a status"
   (declare b char*)
-  (case = a.group
-    (db-status-group-lmdb (set b (mdb-strerror a.id)))
-    (else
+  (cond
+    ((not (strcmp db-status-group-lmdb a.group)) (set b (mdb-strerror a.id)))
+    ( (not (strcmp db-status-group-db a.group))
       (case = a.id
         (db-status-id-success (set b "success"))
         (db-status-id-invalid-argument (set b "input argument is of wrong type"))
@@ -105,15 +96,16 @@
         (db-status-id-index-keysize (set b "index key to be inserted exceeds mdb maxkeysize"))
         (db-status-id-type-field-order
           (set b "all fixed length type fields must come before variable length type fields"))
-        (else (set b "")))))
+        (else (set b ""))))
+    (else (set b "")))
   (return (convert-type b uint8-t*)))
 
 (define (db-status-name a) (uint8-t* status-t)
   "get the name if available for a status"
   (declare b char*)
-  (case = a.group
-    (db-status-group-lmdb (set b (mdb-strerror a.id)))
-    (else
+  (cond
+    ((not (strcmp db-status-group-lmdb a.group)) (set b (mdb-strerror a.id)))
+    ( (not (strcmp db-status-group-db a.group))
       (case = a.id
         (db-status-id-success (set b "success"))
         (db-status-id-invalid-argument (set b "invalid-argument"))
@@ -132,7 +124,8 @@
         (db-status-id-different-format (set b "differing-db-format"))
         (db-status-id-index-keysize (set b "index-key-mdb-keysize"))
         (db-status-id-type-field-order (set b "type-field-order"))
-        (else (set b "unknown")))))
+        (else (set b "unknown"))))
+    (else (set b "unknown")))
   (return (convert-type b uint8-t*)))
 
 (define (db-txn-begin a) (status-t db-txn-t*)

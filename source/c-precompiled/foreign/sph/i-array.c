@@ -14,7 +14,7 @@
 #include <stdlib.h>
 /** .current: to avoid having to write for-loops. this would correspond to the index variable in loops
      .unused: to have variable length content in a fixed length array. points outside the memory area after the last element has been added
-     .end: a boundary for iterations
+     .end: start + max-length. (last-index + 1) of the allocated array
      .start: the beginning of the allocated array and used for rewind and free */
 #define i_array_declare_type(name, element_type) \
   typedef struct { \
@@ -23,7 +23,7 @@
     element_type* end; \
     element_type* start; \
   } name; \
-  uint8_t i_array_allocate_custom_##name(size_t length, name* a, void* (*alloc)(size_t)) { \
+  uint8_t i_array_allocate_custom_##name(size_t length, void* (*alloc)(size_t), name* a) { \
     element_type* start; \
     start = alloc((length * sizeof(element_type))); \
     if (!start) { \
@@ -35,7 +35,7 @@
     a->end = (length + start); \
     return (1); \
   }; \
-  uint8_t i_array_allocate_##name(size_t length, name* a) { return ((i_array_allocate_custom_##name(length, a, malloc))); }
+  uint8_t i_array_allocate_##name(size_t length, name* a) { return ((i_array_allocate_custom_##name(length, malloc, a))); }
 /** define so that in-range is false, length is zero and free doesnt fail */
 #define i_array_declare(a, type) type a = { 0, 0, 0, 0 }
 #define i_array_add(a, value) \

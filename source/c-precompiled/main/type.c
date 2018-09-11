@@ -67,7 +67,7 @@ status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fie
   MDB_val val_data;
   MDB_val val_key;
   if ((db_type_flag_virtual & flags) && !(1 == fields_len)) {
-    status_set_id_goto(db_status_id_not_implemented);
+    status_set_both_goto(db_status_group_db, db_status_id_not_implemented);
   };
   /* check if type with name exists */
   if (db_type_get((txn.env), name)) {
@@ -85,7 +85,7 @@ status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fie
     /* fixed fields must come before variable length fields */
     if (db_field_type_is_fixed(((i + fields)->type))) {
       if (after_fixed_size_fields) {
-        status_set_id_goto(db_status_id_type_field_order);
+        status_set_both_goto(db_status_group_db, db_status_id_type_field_order);
       };
     } else {
       after_fixed_size_fields = 1;

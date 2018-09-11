@@ -15,10 +15,7 @@
       status.group db-status-group-db
       status.id db-status-id-notfound))
   db-mdb-status-success-if-notfound (if db-mdb-status-is-notfound (set status.id status-id-success))
-  (db-mdb-status-set-id-goto id)
-  (set
-    status.group db-status-group-lmdb
-    status.id id)
+  (db-mdb-status-set-id-goto id) (status-set-both-goto db-status-group-lmdb id)
   (db-mdb-status-require expression)
   (begin
     (set status.id expression)
@@ -87,7 +84,8 @@
   (cond
     ((< (db-relation-data->ordinal a:mv-data) (db-relation-data->ordinal b:mv-data)) (return -1))
     ((> (db-relation-data->ordinal a:mv-data) (db-relation-data->ordinal b:mv-data)) (return 1))
-    (else (return (db-id-compare (db-relation-data->id a:mv-data) (db-relation-data->id b:mv-data))))))
+    (else
+      (return (db-id-compare (db-relation-data->id a:mv-data) (db-relation-data->id b:mv-data))))))
 
 (define (db-mdb-compare-data a b) ((static int) (const MDB-val*) (const MDB-val*))
   (define length-difference ssize-t

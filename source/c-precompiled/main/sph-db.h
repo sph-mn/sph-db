@@ -11,11 +11,12 @@
 /* return status code and error handling. uses a local variable named "status" and a goto label named "exit".
    a status has an identifier and a group to discern between status identifiers of different libraries.
    status id 0 is success, everything else can be considered a failure or special case.
-   status ids are 32 bit signed integers for compatibility with error return codes from many other existing libraries */
+   status ids are 32 bit signed integers for compatibility with error return codes from many other existing libraries.
+   group ids are strings to make it easier to create new groups that dont conflict with others compared to using numbers */
 /** like status declare but with a default group */
 #define status_declare_group(group) status_t status = { status_id_success, group }
 #define status_id_success 0
-#define status_group_undefined 0
+#define status_group_undefined ""
 #define status_declare status_t status = { status_id_success, status_group_undefined }
 #define status_reset status_set_both(status_group_undefined, status_id_success)
 #define status_is_success (status_id_success == status.id)
@@ -49,7 +50,7 @@
 typedef int32_t status_id_t;
 typedef struct {
   status_id_t id;
-  uint8_t group;
+  uint8_t* group;
 } status_t;
 /* "iteration array" - an array with variable length content that makes iteration easier to code.
   most bindings are generic macros that will work on all i-array types. i-array-add and i-array-forward go from left to right.
@@ -67,7 +68,7 @@ typedef struct {
 #include <stdlib.h>
 /** .current: to avoid having to write for-loops. this would correspond to the index variable in loops
      .unused: to have variable length content in a fixed length array. points outside the memory area after the last element has been added
-     .end: a boundary for iterations
+     .end: start + max-length. (last-index + 1) of the allocated array
      .start: the beginning of the allocated array and used for rewind and free */
 #define i_array_declare_type(name, element_type) \
   typedef struct { \
@@ -76,7 +77,7 @@ typedef struct {
     element_type* end; \
     element_type* start; \
   } name; \
-  uint8_t i_array_allocate_custom_##name(size_t length, name* a, void* (*alloc)(size_t)) { \
+  uint8_t i_array_allocate_custom_##name(size_t length, void* (*alloc)(size_t), name* a) { \
     element_type* start; \
     start = alloc((length * sizeof(element_type))); \
     if (!start) { \
@@ -88,7 +89,7 @@ typedef struct {
     a->end = (length + start); \
     return (1); \
   }; \
-  uint8_t i_array_allocate_##name(size_t length, name* a) { return ((i_array_allocate_custom_##name(length, a, malloc))); }
+  uint8_t i_array_allocate_##name(size_t length, name* a) { return ((i_array_allocate_custom_##name(length, malloc, a))); }
 /** define so that in-range is false, length is zero and free doesnt fail */
 #define i_array_declare(a, type) type a = { 0, 0, 0, 0 }
 #define i_array_add(a, value) \
@@ -135,6 +136,9 @@ typedef struct {
 i_array_declare_type(db_ids_t, db_id_t);
 i_array_declare_type(db_records_t, db_record_t);
 i_array_declare_type(db_relations_t, db_relation_t);
+#define db_status_group_db "sph-db"
+#define db_status_group_lmdb "lmdb"
+#define db_status_group_libc "libc"
 #define db_ids_add i_array_add
 #define db_ids_clear i_array_clear
 #define db_ids_forward i_array_forward
@@ -295,10 +299,6 @@ enum { db_status_id_success,
   db_status_id_index_keysize,
   db_status_id_type_field_order,
   db_status_id_last };
-enum { db_status_group_db,
-  db_status_group_lmdb,
-  db_status_group_libc,
-  db_status_group_last };
 typedef struct {
   uint8_t* name;
   db_name_len_t name_len;
@@ -413,7 +413,6 @@ status_t db_type_delete(db_env_t* env, db_type_id_t id);
 uint8_t db_field_type_size(uint8_t a);
 uint8_t* db_status_description(status_t a);
 uint8_t* db_status_name(status_t a);
-uint8_t* db_status_group_id_to_name(status_id_t a);
 status_t db_ids_new(size_t length, db_ids_t* result_ids);
 status_t db_records_new(size_t length, db_records_t* result_records);
 status_t db_relations_new(size_t length, db_relations_t* result_relations);

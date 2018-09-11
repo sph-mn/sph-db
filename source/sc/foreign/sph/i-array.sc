@@ -20,7 +20,7 @@
   (begin
     ".current: to avoid having to write for-loops. this would correspond to the index variable in loops
      .unused: to have variable length content in a fixed length array. points outside the memory area after the last element has been added
-     .end: a boundary for iterations
+     .end: start + max-length. (last-index + 1) of the allocated array
      .start: the beginning of the allocated array and used for rewind and free"
     (declare name
       (type
@@ -29,8 +29,8 @@
           (unused element-type*)
           (end element-type*)
           (start element-type*))))
-    (define ((pre-concat i-array-allocate-custom_ name) length a alloc)
-      (uint8-t size-t name* (function-pointer void* size-t))
+    (define ((pre-concat i-array-allocate-custom_ name) length alloc a)
+      (uint8-t size-t (function-pointer void* size-t) name*)
       (declare start element-type*)
       (set start (alloc (* length (sizeof element-type))))
       (if (not start) (return 0))
@@ -41,7 +41,7 @@
         a:end (+ length start))
       (return 1))
     (define ((pre-concat i-array-allocate_ name) length a) (uint8-t size-t name*)
-      (return ((pre-concat i-array-allocate-custom_ name) length a malloc))))
+      (return ((pre-concat i-array-allocate-custom_ name) length malloc a))))
   (i-array-declare a type)
   (begin
     "define so that in-range is false, length is zero and free doesnt fail"

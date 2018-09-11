@@ -257,7 +257,7 @@
     val-id.mv-data &id)
   (db-mdb-status-require (mdb-cursor-get records &val-id &val-null MDB-SET-RANGE))
   (if (not (= type:id (db-id-type (db-pointer->id val-id.mv-data))))
-    (status-set-id-goto db-status-id-notfound))
+    (status-set-both-goto db-status-group-db db-status-id-notfound))
   (set
     result-selection:type type
     result-selection:cursor records
@@ -292,7 +292,7 @@
           record.data val-data.mv-data
           record.size val-data.mv-size)
         (i-array-add *result-records record))
-      (if db-mdb-status-is-notfound (status-set-id-goto db-status-id-notfound)
+      (if db-mdb-status-is-notfound (status-set-both-goto db-status-group-db db-status-id-notfound)
         (status-set-group-goto db-status-group-lmdb)))
     (i-array-forward ids))
   (label exit

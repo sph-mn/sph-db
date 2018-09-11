@@ -10,10 +10,10 @@ status_t db_open_root(db_env_t* env, db_open_options_t* options, uint8_t* path) 
   path_temp = 0;
   path_temp = string_clone(path);
   if (!path_temp) {
-    db_status_set_id_goto(db_status_id_memory);
+    status_set_both_goto(db_status_group_db, db_status_id_memory);
   };
   if (!ensure_directory_structure(path_temp, (73 | options->file_permissions))) {
-    db_status_set_id_goto(db_status_id_path_not_accessible_db_root);
+    status_set_both_goto(db_status_group_db, db_status_id_path_not_accessible_db_root);
   };
   env->root = path_temp;
 exit:
@@ -30,7 +30,7 @@ status_t db_open_mdb_env(db_env_t* env, db_open_options_t* options) {
   mdb_env = 0;
   data_path = string_append((env->root), "/data");
   if (!data_path) {
-    db_status_set_id_goto(db_status_id_memory);
+    status_set_both_goto(db_status_group_db, db_status_id_memory);
   };
   db_mdb_status_require((mdb_env_create((&mdb_env))));
   db_mdb_status_require((mdb_env_set_maxdbs(mdb_env, (options->maximum_db_count))));
@@ -80,7 +80,7 @@ status_t db_open_format(MDB_cursor* system, db_txn_t txn) {
         db_mdb_status_require((mdb_cursor_put(system, (&val_key), (&val_data), 0)));
       } else {
         fprintf(stderr, ("database sizes: (id %u) (type: %u) (ordinal %u)"), (data[0]), (data[1]), (data[2]));
-        db_status_set_id_goto(db_status_id_different_format);
+        status_set_both_goto(db_status_group_db, db_status_id_different_format);
       };
     };
   } else {
@@ -201,7 +201,7 @@ status_t db_type_last_id(MDB_cursor* records, db_type_id_t type_id, db_id_t* res
     if (db_mdb_status_is_notfound) {
       /* database is empty */
       *result = 0;
-      status_set_id_goto(status_id_success);
+      status_set_both_goto(db_status_group_db, status_id_success);
     } else {
       status_goto;
     };
@@ -488,7 +488,7 @@ status_t db_open(uint8_t* path, db_open_options_t* options_pointer, db_env_t* en
     return (status);
   };
   if (!path) {
-    db_status_set_id_goto(db_status_id_missing_argument_db_root);
+    status_set_both_goto(db_status_group_db, db_status_id_missing_argument_db_root);
   };
   if (options_pointer) {
     options = *options_pointer;

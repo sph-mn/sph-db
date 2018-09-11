@@ -72,7 +72,7 @@
     val-data MDB-val
     val-key MDB-val)
   (if (and (bit-and db-type-flag-virtual flags) (not (= 1 fields-len)))
-    (status-set-id-goto db-status-id-not-implemented))
+    (status-set-both-goto db-status-group-db db-status-id-not-implemented))
   (sc-comment "check if type with name exists")
   (if (db-type-get txn.env name) (status-set-both-goto db-status-group-db db-status-id-duplicate))
   (sc-comment "check name length")
@@ -86,7 +86,8 @@
   (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
     (sc-comment "fixed fields must come before variable length fields")
     (if (db-field-type-is-fixed (: (+ i fields) type))
-      (if after-fixed-size-fields (status-set-id-goto db-status-id-type-field-order))
+      (if after-fixed-size-fields
+        (status-set-both-goto db-status-group-db db-status-id-type-field-order))
       (set after-fixed-size-fields #t))
     (set data-size
       (+ data-size (sizeof db-field-type-t) (sizeof db-name-len-t) (: (+ i fields) name-len))))

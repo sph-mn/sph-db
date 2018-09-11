@@ -66,25 +66,12 @@ uint8_t* string_join(uint8_t** strings, size_t strings_len, uint8_t* delimiter, 
   *result_len = (size - 1);
   return (result);
 };
-uint8_t* db_status_group_id_to_name(status_id_t a) {
-  char* b;
-  if (db_status_group_db == a) {
-    b = "sph-db";
-  } else if (db_status_group_lmdb == a) {
-    b = "lmdb";
-  } else if (db_status_group_libc == a) {
-    b = "libc";
-  } else {
-    b = "";
-  };
-  return (b);
-};
 /** get the description if available for a status */
 uint8_t* db_status_description(status_t a) {
   char* b;
-  if (db_status_group_lmdb == a.group) {
+  if (!strcmp(db_status_group_lmdb, (a.group))) {
     b = mdb_strerror((a.id));
-  } else {
+  } else if (!strcmp(db_status_group_db, (a.group))) {
     if (db_status_id_success == a.id) {
       b = "success";
     } else if (db_status_id_invalid_argument == a.id) {
@@ -122,15 +109,17 @@ uint8_t* db_status_description(status_t a) {
     } else {
       b = "";
     };
+  } else {
+    b = "";
   };
   return (((uint8_t*)(b)));
 };
 /** get the name if available for a status */
 uint8_t* db_status_name(status_t a) {
   char* b;
-  if (db_status_group_lmdb == a.group) {
+  if (!strcmp(db_status_group_lmdb, (a.group))) {
     b = mdb_strerror((a.id));
-  } else {
+  } else if (!strcmp(db_status_group_db, (a.group))) {
     if (db_status_id_success == a.id) {
       b = "success";
     } else if (db_status_id_invalid_argument == a.id) {
@@ -168,6 +157,8 @@ uint8_t* db_status_name(status_t a) {
     } else {
       b = "unknown";
     };
+  } else {
+    b = "unknown";
   };
   return (((uint8_t*)(b)));
 };
