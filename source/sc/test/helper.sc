@@ -460,7 +460,9 @@
   (if offset (status-require (db-relation-skip &selection offset)))
   (sc-comment "test multiple read calls")
   (status-require (db-relation-read &selection 2 &data.relations))
-  (status-require-read (db-relation-read &selection 0 &data.relations))
+  (sc-comment "this call assumes that results never exceed the length of data.relations")
+  (status-require-read
+    (db-relation-read &selection (db-relations-max-length data.relations) &data.relations))
   (if (= status.id db-status-id-notfound) (set status.id status-id-success)
     (begin
       (printf "\n  final read result does not indicate that there is no more data")
@@ -632,7 +634,7 @@
       (status-require (db-txn-begin &txn))
       (db-debug-log-btree-counts txn)
       (status-require-read (db-relation-select txn 0 0 0 0 &selection))
-      (status-require-read (db-relation-read &selection 0 &relations))
+      (status-require-read (db-relation-read &selection (db-relations-length relations) &relations))
       (printf "all remaining ")
       (db-debug-log-relations relations)
       (db-relation-selection-finish &selection)

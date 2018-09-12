@@ -395,7 +395,8 @@ status_t test_helper_relation_read_one(db_txn_t txn, test_helper_relation_read_d
   };
   /* test multiple read calls */
   status_require((db_relation_read((&selection), 2, (&(data.relations)))));
-  status_require_read((db_relation_read((&selection), 0, (&(data.relations)))));
+  /* this call assumes that results never exceed the length of data.relations */
+  status_require_read((db_relation_read((&selection), (db_relations_max_length((data.relations))), (&(data.relations)))));
   if (status.id == db_status_id_notfound) {
     status.id = status_id_success;
   } else {
@@ -524,7 +525,7 @@ status_t test_helper_relation_delete_one(test_helper_relation_delete_data_t data
     status_require((db_txn_begin((&txn))));
     db_debug_log_btree_counts(txn);
     status_require_read((db_relation_select(txn, 0, 0, 0, 0, (&selection))));
-    status_require_read((db_relation_read((&selection), 0, (&relations))));
+    status_require_read((db_relation_read((&selection), (db_relations_length(relations)), (&relations))));
     printf("all remaining ");
     db_debug_log_relations(relations);
     db_relation_selection_finish((&selection));
