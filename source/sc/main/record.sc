@@ -195,7 +195,6 @@
 
 (define (db-record-read selection count result-records)
   (status-t db-record-selection-t db-count-t db-records-t*)
-  "try to read db_records_max_length(result_records) if count is zero"
   status-declare
   db-mdb-declare-val-id
   (declare

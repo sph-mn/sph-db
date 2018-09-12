@@ -38,10 +38,10 @@ status_t create_type(db_env_t* env, db_type_t** result_type) {
   db_field_t fields[4];
   db_type_t* type;
   // set field.type, field.name and field.name_len
-  db_field_set(fields[0], db_field_type_uint8, "field-name-1", 12);
-  db_field_set(fields[1], db_field_type_int8, "field-name-2", 12);
-  db_field_set(fields[2], db_field_type_string, "field-name-3", 12);
-  db_field_set(fields[3], db_field_type_string, "field-name-4", 12);
+  db_field_set(fields[0], db_field_type_uint8f, "field-name-1", 12);
+  db_field_set(fields[1], db_field_type_int8f, "field-name-2", 12);
+  db_field_set(fields[2], db_field_type_string8, "field-name-3", 12);
+  db_field_set(fields[3], db_field_type_string8, "field-name-4", 12);
   // arguments: db_env_t*, type_name, db_field_t*, field_count, flags, result
   status_require(db_type_create(env, "test-type-name", fields, 4, 0, &type));
   *result_type = type;
@@ -181,17 +181,16 @@ status_t read_relations(db_env_t* env) {
   db_relation_t relation;
   status_require(db_ids_new(1, &ids_left));
   status_require(db_ids_new(1, &ids_label));
-  db_relations_new(10, &relations);
+  status_require(db_relations_new(10, &relations));
   // record ids to be used to filter
-  db_ids_add(ids_left, 123);
-  db_ids_add(ids_label, 456);
+  db_ids_add(ids_left, 1);
+  db_ids_add(ids_label, 6);
+  db_ids_add(ids_label, 7);
   // select relations whose left side is in "ids_left" and label in "ids_label".
   db_txn_begin(&txn);
   status_require(db_relation_select(txn, &ids_left, 0, &ids_label, 0, &selection));
   // read 2 of the selected relations
   status_require(db_relation_read(&selection, 2, &relations));
-  // read as many remaining matches as fit into the relations array
-  status_require_read(db_relation_read(&selection, 0, &relations));
   db_relation_selection_finish(&selection);
   // display relations. "ordinal" might not be set unless a filter for left was used
   while(db_relations_in_range(relations)) {
@@ -204,6 +203,7 @@ exit:
   db_ids_free(ids_left);
   db_ids_free(ids_label);
   db_relations_free(relations);
+  return status;
 }
 
 status_t create_index(db_env_t* env, db_type_t* type, db_index_t** result_index) {
@@ -287,7 +287,7 @@ status_t create_virtual_records(db_env_t* env) {
   db_field_t fields;
   db_type_t* type;
   // create virtual record type. must have only one field
-  db_field_set(fields, db_field_type_uint16, 0, 0);
+  db_field_set(fields, db_field_type_uint16f, 0, 0);
   status_require(db_type_create(env, "test-vtype", &fields, 1, db_type_flag_virtual, &type));
   if(db_type_is_virtual(type)) {
     printf("type is a virtual record type\n");
@@ -296,7 +296,7 @@ status_t create_virtual_records(db_env_t* env) {
   data = 123;
   id = db_record_virtual_from_uint(type->id, data);
   // get data. arguments: id, datatype
-  data = db_record_virtual_data(id, uint32_t);
+  data = db_record_virtual_data_uint(id, uint32_t);
 exit:
   return status;
 }
@@ -322,6 +322,7 @@ int main() {
   printf("%s\n", db_status_description(status));
 exit:
   if(status_is_failure) {
+    printf("%lu\n", status.group);
     printf("error: %s\n", db_status_description(status));
   }
   return status.id;

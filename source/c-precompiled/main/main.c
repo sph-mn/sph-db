@@ -110,7 +110,11 @@ uint8_t* db_status_description(status_t a) {
       b = "";
     };
   } else {
-    b = "";
+    if (status_id_success == a.id) {
+      b = "success";
+    } else {
+      b = "";
+    };
   };
   return (((uint8_t*)(b)));
 };
@@ -268,11 +272,10 @@ uint8_t db_field_type_size(db_field_type_t a) {
     return (0);
   };
 };
-/** create a virtual record with data of any type equal or smaller in size than db-size-id-element */
-db_id_t db_record_virtual_from_any(db_type_id_t type_id, void* data, uint8_t data_size) {
-  db_id_t id;
-  memcpy((sizeof(db_type_id_t) + ((uint8_t*)(&id))), data, data_size);
-  return ((db_id_add_type(id, type_id)));
+void* db_record_virtual_data_any(db_id_t id, void* result, size_t result_size) {
+  id = db_id_element(id);
+  memcpy(result, (&id), result_size);
+  return (result);
 };
 status_t db_ids_to_set(db_ids_t a, imht_set_t** result) {
   status_declare;

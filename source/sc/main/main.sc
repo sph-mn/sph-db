@@ -97,7 +97,9 @@
         (db-status-id-type-field-order
           (set b "all fixed length type fields must come before variable length type fields"))
         (else (set b ""))))
-    (else (set b "")))
+    (else
+      (if (= status-id-success a.id) (set b "success")
+        (set b ""))))
   (return (convert-type b uint8-t*)))
 
 (define (db-status-name a) (uint8-t* status-t)
@@ -251,11 +253,10 @@
       (return 32))
     (else (return 0))))
 
-(define (db-record-virtual-from-any type-id data data-size) (db-id-t db-type-id-t void* uint8-t)
-  "create a virtual record with data of any type equal or smaller in size than db-size-id-element"
-  (declare id db-id-t)
-  (memcpy (+ (sizeof db-type-id-t) (convert-type &id uint8-t*)) data data-size)
-  (return (db-id-add-type id type-id)))
+(define (db-record-virtual-data-any id result result-size) (void* db-id-t void* size-t)
+  (set id (db-id-element id))
+  (memcpy result &id result-size)
+  (return result))
 
 (define (db-ids->set a result) (status-t db-ids-t imht-set-t**)
   status-declare

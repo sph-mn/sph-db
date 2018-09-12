@@ -115,17 +115,18 @@ in the following examples, where a ``txn`` variable occurs, use of the appropria
 db_field_t fields[4];
 db_type_t* type;
 // set field.type, field.name and field.name_len
-db_field_set(fields[0], db_field_type_uint8, "field-name-1", 12);
-db_field_set(fields[1], db_field_type_int8, "field-name-2", 12);
-db_field_set(fields[2], db_field_type_string, "field-name-3", 12);
-db_field_set(fields[3], db_field_type_string, "field-name-4", 12);
+db_field_set(fields[0], db_field_type_uint8f, "field-name-1", 12);
+db_field_set(fields[1], db_field_type_int8f, "field-name-2", 12);
+db_field_set(fields[2], db_field_type_string8, "field-name-3", 12);
+db_field_set(fields[3], db_field_type_string8, "field-name-4", 12);
 // arguments: db_env_t*, type_name, db_field_t*, field_count, flags, result
 status_require(db_type_create(env, "test-type-name", fields, 4, 0, &type));
 ```
 
 fields can be fixed length (for example for integers and floating point values) or variable length.
 all fixed size fields must come before variable size fields or an error is returned.
-possible field types are db_field_type_* macro variables, see api reference below.
+possible field types are db_field_type_* macro variables, see api reference below. field types with ``f`` at the end
+are of fixed size, others are variable size and the number is the size of the datatype where the actual data size is stored.
 apart from indicating storage type and size, field types are mostly a hint because no conversions take place
 
 ## create records
@@ -280,16 +281,15 @@ db_relation_t relation;
 // memory allocation
 status_require(db_ids_new(1, &ids_left));
 status_require(db_ids_new(1, &ids_label));
-db_relations_new(10, &relations);
+status_require(db_relations_new(10, &relations));
 // record ids to be used to filter
-db_ids_add(ids_left, 123);
-db_ids_add(ids_label, 456);
+db_ids_add(ids_left, 1);
+db_ids_add(ids_label, 6);
+db_ids_add(ids_label, 7);
 // select relations whose left side is in "ids_left" and label in "ids_label".
 status_require(db_relation_select(txn, &ids_left, 0, &ids_label, 0, &selection));
 // read 2 of the selected relations
 status_require(db_relation_read(&selection, 2, &relations));
-// read as many remaining matches as there still fit into the relations array
-status_require_read(db_relation_read(&selection, 0, &relations));
 db_relation_selection_finish(&selection);
 // display relations. "ordinal" might not be set unless a filter for left was used
 while(db_relations_in_range(relations)) {
@@ -364,7 +364,7 @@ status_require(db_type_create(env, "test-vtype", &fields, 1, db_type_flag_virtua
 data = 123;
 id = db_record_virtual_from_uint(type->id, data);
 // get data. arguments: id, datatype
-data = db_record_virtual_data(id, uint32_t);
+data = db_record_virtual_data_uint(id, uint32_t);
 ```
 
 # api
@@ -372,7 +372,7 @@ data = db_record_virtual_data(id, uint32_t);
 ```
 db_close :: db_env_t*:env -> void
 db_env_new :: db_env_t**:result -> status_t
-db_field_type_size :: uint8_t:a -> uint8_t
+db_field_type_size :: db_field_type_t:a -> uint8_t
 db_ids_new :: size_t:length db_ids_t*:result_ids -> status_t
 db_index_create :: db_env_t*:env db_type_t*:type db_fields_len_t*:fields db_fields_len_t:fields_len db_index_t**:result_index -> status_t
 db_index_delete :: db_env_t*:env db_index_t*:index -> status_t
@@ -401,7 +401,7 @@ db_record_values_to_data :: db_record_values_t:values db_record_t*:result -> sta
 db_record_values_free :: db_record_values_t*:a -> void
 db_record_values_new :: db_type_t*:type db_record_values_t*:result -> status_t
 db_record_values_set :: db_record_values_t*:values db_fields_len_t:field_index void*:data size_t:size -> void
-db_record_virtual_from_any :: db_type_id_t:type_id void*:data uint8_t:data_size -> db_id_t
+db_record_virtual_data_any :: db_id_t:id void*:result size_t:result_size -> void*
 db_records_to_ids :: db_records_t:records db_ids_t*:result_ids -> void
 db_records_new :: size_t:length db_records_t*:result_records -> status_t
 db_relation_delete :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal -> status_t
@@ -413,7 +413,6 @@ db_relation_skip :: db_relation_selection_t*:selection db_count_t:count -> statu
 db_relations_new :: size_t:length db_relations_t*:result_relations -> status_t
 db_statistics :: db_txn_t:txn db_statistics_t*:result -> status_t
 db_status_description :: status_t:a -> uint8_t*
-db_status_group_id_to_name :: status_id_t:a -> uint8_t*
 db_status_name :: status_t:a -> uint8_t*
 db_txn_abort :: db_txn_t*:a -> void
 db_txn_begin :: db_txn_t*:a -> status_t
@@ -432,27 +431,43 @@ db_type_get :: db_env_t*:env uint8_t*:name -> db_type_t*
 boolean
 db_batch_len
 db_count_t
-db_data_len_max
-db_data_len_t
 db_env_declare(name)
 db_field_set(a, a_type, a_name, a_name_len)
-db_field_type_binary
-db_field_type_float32
-db_field_type_float64
-db_field_type_int16
-db_field_type_int32
-db_field_type_int64
-db_field_type_int8
-db_field_type_string
+db_field_type_binary128f
+db_field_type_binary16
+db_field_type_binary16f
+db_field_type_binary256f
+db_field_type_binary32
+db_field_type_binary32f
+db_field_type_binary64
+db_field_type_binary64f
+db_field_type_binary8
+db_field_type_binary8f
+db_field_type_float32f
+db_field_type_float64f
+db_field_type_int128f
+db_field_type_int16f
+db_field_type_int256f
+db_field_type_int32f
+db_field_type_int64f
+db_field_type_int8f
+db_field_type_string128f
 db_field_type_string16
+db_field_type_string16f
+db_field_type_string256f
 db_field_type_string32
+db_field_type_string32f
 db_field_type_string64
+db_field_type_string64f
 db_field_type_string8
+db_field_type_string8f
 db_field_type_t
-db_field_type_uint16
-db_field_type_uint32
-db_field_type_uint64
-db_field_type_uint8
+db_field_type_uint128f
+db_field_type_uint16f
+db_field_type_uint256f
+db_field_type_uint32f
+db_field_type_uint64f
+db_field_type_uint8f
 db_fields_len_t
 db_id_add_type(id, type_id)
 db_id_element(id)
@@ -487,7 +502,9 @@ db_record_is_virtual(env, record_id)
 db_record_selection_declare(name)
 db_record_selection_set_null(name)
 db_record_values_declare(name)
-db_record_virtual_data(id, type_name)
+db_record_virtual_data_int
+db_record_virtual_data_uint(id, type_name)
+db_record_virtual_from_any(type_id, data_pointer)
 db_record_virtual_from_int
 db_record_virtual_from_uint(type_id, data)
 db_records_add
@@ -521,6 +538,9 @@ db_relations_set_null
 db_size_element_id
 db_size_relation_data
 db_size_relation_key
+db_status_group_db
+db_status_group_libc
+db_status_group_lmdb
 db_status_set_id_goto(status_id)
 db_status_success_if_notfound
 db_txn_abort_if_active(a)
@@ -605,7 +625,7 @@ db_record_t: struct
   data: void*
   size: size_t
 db_record_value_t: struct
-  size: db_data_len_t
+  size: size_t
   data: void*
 db_record_values_t: struct
   data: db_record_value_t*
@@ -649,13 +669,11 @@ db_type_t: struct
   sequence: db_id_t
 status_t: struct
   id: status_id_t
-  group: uint8_t
+  group: uint8_t*
 ```
 
 ## enum
 ```
-db_status_group_db db_status_group_lmdb db_status_group_libc
-  db_status_group_last
 db_status_id_success db_status_id_undefined db_status_id_condition_unfulfilled
   db_status_id_data_length db_status_id_different_format db_status_id_duplicate
   db_status_id_input_type db_status_id_invalid_argument db_status_id_max_element_id

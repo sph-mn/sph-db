@@ -747,7 +747,7 @@ status_t db_relation_skip(db_relation_selection_t* selection, db_count_t count) 
 /** result memory is to be allocated by the caller */
 status_t db_relation_read(db_relation_selection_t* selection, db_count_t count, db_relations_t* result) {
   status_declare;
-  status = ((db_relation_reader_t)(selection->reader))(selection, (!count ? i_array_max_length((*result)) : count), result);
+  status = ((db_relation_reader_t)(selection->reader))(selection, count, result);
   db_mdb_status_notfound_if_notfound;
   return (status);
 };

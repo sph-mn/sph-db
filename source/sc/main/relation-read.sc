@@ -703,12 +703,7 @@
   (status-t db-relation-selection-t* db-count-t db-relations-t*)
   "result memory is to be allocated by the caller"
   status-declare
-  (set status
-    ( (convert-type selection:reader db-relation-reader-t)
-      selection
-      (if* (not count) (i-array-max-length *result)
-        count)
-      result))
+  (set status ((convert-type selection:reader db-relation-reader-t) selection count result))
   db-mdb-status-notfound-if-notfound
   (return status))
 

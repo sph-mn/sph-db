@@ -184,7 +184,6 @@ exit:
   };
   return (status);
 };
-/** try to read db_records_max_length(result_records) if count is zero */
 status_t db_record_read(db_record_selection_t selection, db_count_t count, db_records_t* result_records) {
   status_declare;
   db_mdb_declare_val_id;

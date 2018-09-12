@@ -101,7 +101,6 @@
   db-field-type-string256f 27
   db-field-type-float32f 29
   db-field-type-float64f 30
-  db-type-flag-virtual 1
   db-id-type-mask (convert-type db-type-id-mask db-id-t)
   db-id-element-mask (bit-not db-id-type-mask)
   (db-status-set-id-goto status-id) (status-set-both-goto db-status-group-db status-id)
@@ -117,9 +116,7 @@
   (db-relations-declare name) (i-array-declare name db-relations-t)
   (db-records-declare name) (i-array-declare name db-records-t)
   (db-type-get-by-id env type-id) (+ type-id env:types)
-  (db-type-is-virtual type) (bit-and db-type-flag-virtual type:flags)
-  (db-record-is-virtual env record-id)
-  (db-type-is-virtual (db-type-get-by-id env (db-id-type record-id))) (db-id-add-type id type-id)
+  (db-id-add-type id type-id)
   (begin
     "convert id and type-id to db-id-t to be able to pass c literals which might be initialised with some other type.
     string type part from id with db-id-element in case there are type bits set after for example typecasting from a smaller datatype"
@@ -134,16 +131,6 @@
   (begin
     "get the element id part from a record id. a record id minus type id"
     (bit-shift-right id (* 8 (sizeof db-type-id-t))))
-  (db-record-virtual-from-uint type-id data)
-  (begin
-    "create a virtual record, which is a db-id-t"
-    (db-id-add-type data type-id))
-  db-record-virtual-from-int db-record-virtual-from-uint
-  (db-record-virtual-data id type-name)
-  (begin
-    "get the data associated with a virtual record as a db-id-t
-    this only works because the target type should be equal or smaller than db-size-id-element"
-    (convert-type (db-id-element id) type-name))
   (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
   (db-txn-abort-if-active a) (if a.mdb-txn (db-txn-abort &a))
   (db-txn-is-active a)
@@ -185,6 +172,20 @@
   (begin
     (declare name db-record-index-selection-t)
     (db-record-index-selection-set-null name)))
+
+(sc-comment "virtual records")
+
+(pre-define
+  db-type-flag-virtual 1
+  (db-record-virtual-data-uint id type-name) (convert-type (db-id-element id) type-name)
+  db-record-virtual-data-int db-record-virtual-data-uint
+  db-record-virtual-from-int db-record-virtual-from-uint
+  (db-type-is-virtual type) (bit-and db-type-flag-virtual type:flags)
+  (db-record-is-virtual env record-id)
+  (db-type-is-virtual (db-type-get-by-id env (db-id-type record-id)))
+  (db-record-virtual-from-uint type-id data) (db-id-add-type data type-id)
+  (db-record-virtual-from-any type-id data-pointer)
+  (db-id-add-type (pointer-get (convert-type data-pointer db-id-t*)) type-id))
 
 (enum
   (db-status-id-success
@@ -374,8 +375,8 @@
   (status-t db-record-selection-t db-count-t db-records-t*) (db-record-skip selection count)
   (status-t db-record-selection-t db-count-t) (db-record-selection-finish selection)
   (void db-record-selection-t*) (db-record-update txn id values)
-  (status-t db-txn-t db-id-t db-record-values-t) (db-record-virtual-from-any type-id data data-size)
-  (db-id-t db-type-id-t void* uint8-t) (db-txn-write-begin a)
+  (status-t db-txn-t db-id-t db-record-values-t) (db-record-virtual-data-any id result result-size)
+  (void* db-id-t void* size-t) (db-txn-write-begin a)
   (status-t db-txn-t*) (db-txn-begin a)
   (status-t db-txn-t*) (db-txn-commit a)
   (status-t db-txn-t*) (db-txn-abort a)

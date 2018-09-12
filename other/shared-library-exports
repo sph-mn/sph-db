@@ -45,7 +45,7 @@
     db_record_values_new;
     db_record_values_set;
     db_record_values_to_data;
-    db_record_virtual_from_any;
+    db_record_virtual_data_any;
     db_records_new;
     db_records_to_ids;
     db_relation_delete;

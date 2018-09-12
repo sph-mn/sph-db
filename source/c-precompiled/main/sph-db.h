@@ -213,7 +213,6 @@ i_array_declare_type(db_relations_t, db_relation_t);
 #define db_field_type_string256f 27
 #define db_field_type_float32f 29
 #define db_field_type_float64f 30
-#define db_type_flag_virtual 1
 #define db_id_type_mask ((db_id_t)(db_type_id_mask))
 #define db_id_element_mask ~db_id_type_mask
 #define db_status_set_id_goto(status_id) status_set_both_goto(db_status_group_db, status_id)
@@ -232,8 +231,6 @@ i_array_declare_type(db_relations_t, db_relation_t);
 #define db_relations_declare(name) i_array_declare(name, db_relations_t)
 #define db_records_declare(name) i_array_declare(name, db_records_t)
 #define db_type_get_by_id(env, type_id) (type_id + env->types)
-#define db_type_is_virtual(type) (db_type_flag_virtual & type->flags)
-#define db_record_is_virtual(env, record_id) db_type_is_virtual((db_type_get_by_id(env, (db_id_type(record_id)))))
 /** convert id and type-id to db-id-t to be able to pass c literals which might be initialised with some other type.
     string type part from id with db-id-element in case there are type bits set after for example typecasting from a smaller datatype */
 #define db_id_add_type(id, type_id) (db_id_type(((db_id_t)(type_id))) | (((db_id_t)(id)) << (8 * sizeof(db_type_id_t))))
@@ -241,12 +238,6 @@ i_array_declare_type(db_relations_t, db_relation_t);
 #define db_id_type(id) (db_id_type_mask & id)
 /** get the element id part from a record id. a record id minus type id */
 #define db_id_element(id) (id >> (8 * sizeof(db_type_id_t)))
-/** create a virtual record, which is a db-id-t */
-#define db_record_virtual_from_uint(type_id, data) db_id_add_type(data, type_id)
-#define db_record_virtual_from_int db_record_virtual_from_uint
-/** get the data associated with a virtual record as a db-id-t
-    this only works because the target type should be equal or smaller than db-size-id-element */
-#define db_record_virtual_data(id, type_name) ((type_name)(db_id_element(id)))
 #define db_txn_declare(env, name) db_txn_t name = { 0, env }
 #define db_txn_abort_if_active(a) \
   if (a.mdb_txn) { \
@@ -281,6 +272,15 @@ i_array_declare_type(db_relations_t, db_relation_t);
 #define db_record_index_selection_declare(name) \
   db_record_index_selection_t name; \
   db_record_index_selection_set_null(name)
+/* virtual records */
+#define db_type_flag_virtual 1
+#define db_record_virtual_data_uint(id, type_name) ((type_name)(db_id_element(id)))
+#define db_record_virtual_data_int db_record_virtual_data_uint
+#define db_record_virtual_from_int db_record_virtual_from_uint
+#define db_type_is_virtual(type) (db_type_flag_virtual & type->flags)
+#define db_record_is_virtual(env, record_id) db_type_is_virtual((db_type_get_by_id(env, (db_id_type(record_id)))))
+#define db_record_virtual_from_uint(type_id, data) db_id_add_type(data, type_id)
+#define db_record_virtual_from_any(type_id, data_pointer) db_id_add_type((*((db_id_t*)(data_pointer))), type_id)
 enum { db_status_id_success,
   db_status_id_undefined,
   db_status_id_condition_unfulfilled,
@@ -439,7 +439,7 @@ status_t db_record_read(db_record_selection_t selection, db_count_t count, db_re
 status_t db_record_skip(db_record_selection_t selection, db_count_t count);
 void db_record_selection_finish(db_record_selection_t* selection);
 status_t db_record_update(db_txn_t txn, db_id_t id, db_record_values_t values);
-db_id_t db_record_virtual_from_any(db_type_id_t type_id, void* data, uint8_t data_size);
+void* db_record_virtual_data_any(db_id_t id, void* result, size_t result_size);
 status_t db_txn_write_begin(db_txn_t* a);
 status_t db_txn_begin(db_txn_t* a);
 status_t db_txn_commit(db_txn_t* a);

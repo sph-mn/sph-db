@@ -178,9 +178,6 @@
   (test-helper-assert
     "type-id-mask | element-id-mask = id-mask"
     (= db-id-mask (bit-or db-id-type-mask db-id-element-mask)))
-  (debug-log
-    "type-mask %lu, element-mask %lu, type %lu, element limit %lu, id %lu"
-    db-id-type-mask db-id-element-mask type-id db-element-id-limit (db-id-add-type 10 type-id))
   (test-helper-assert
     "id type" (= type-id (db-id-type (db-id-add-type db-element-id-limit type-id))))
   (sc-comment "take a low value to be compatible with different configurations")
@@ -471,7 +468,8 @@
     id db-id-t
     data-int int8-t
     data-uint uint8-t
-    data-float32 float)
+    data-float32 float
+    data-result-float32 float)
   (set
     data-uint 123
     data-int -123
@@ -484,19 +482,18 @@
   (set id (db-record-virtual-from-uint type:id data-uint))
   (test-helper-assert "is-virtual uint" (db-record-is-virtual env id))
   (test-helper-assert "type-id uint" (= type:id (db-id-type id)))
-  (test-helper-assert "data uint" (= data-uint (db-record-virtual-data id uint8-t)))
+  (test-helper-assert "data uint" (= data-uint (db-record-virtual-data-uint id uint8-t)))
   (sc-comment "int")
   (set id (db-record-virtual-from-int type:id data-int))
   (test-helper-assert "is-virtual int" (db-record-is-virtual env id))
   (test-helper-assert "type-id int" (= type:id (db-id-type id)))
-  (test-helper-assert "data int" (= data-int (db-record-virtual-data id int8-t)))
+  (test-helper-assert "data int" (= data-int (db-record-virtual-data-int id int8-t)))
   (sc-comment "float")
-  (set id (db-record-virtual-from-any type:id &data-float32 (sizeof float)))
-  (debug-log "id %lu, uint %lu" id (db-record-virtual-from-uint type:id data-float32))
-  (debug-log "id %lu, data-float32 %f, virtual-data %f" id data-float32 (db-record-virtual-data id float))
+  (set id (db-record-virtual-from-any type:id &data-float32))
+  (db-record-virtual-data-any id &data-result-float32 (sizeof float))
   (test-helper-assert "is-virtual float" (db-record-is-virtual env id))
   (test-helper-assert "type-id float" (= type:id (db-id-type id)))
-  (test-helper-assert "data float" (= data-float32 (db-record-virtual-data id float)))
+  (test-helper-assert "data float" (= data-float32 data-result-float32))
   (label exit
     (return status)))
 
