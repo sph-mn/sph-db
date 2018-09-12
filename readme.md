@@ -712,9 +712,9 @@ these values can be set before compilation in ``c-precompiled/main/config.c``. o
 
 # possible enhancements
 * float values as ordinals has not been tested
-* more variable size field types. the datatype for size prefix for field data is currently a compile-time option
 * lift the type creation limit
 * nested transactions. supposedly possible in lmdb but not working
+* more streamlined declaration/allocation/deallocation for api usage
 * validator functions for indices and relation data consistency
 * partial indices. with a data filter function given at index definition
 * currently index inserts with data too large are rejected. maybe add an option to truncate instead
