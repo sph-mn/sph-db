@@ -2,62 +2,123 @@
   "convert a record-values array to the data format that is used as btree value for records.
   the data for unset trailing fields is not included.
   assumes that fields are in the order (fixed-size-fields variable-size-fields).
-  field-size is uint64-t because its content is copied with memcpy to variable size prefixes
-  which are at most 64 bit"
+  data-size is uint64-t because its content is copied with memcpy to variable size prefixes
+  which are at most 64 bit.
+  assumes that value sizes are not too large and that record-values-set checks that"
   status-declare
   (declare
     data void*
+    data-size uint64-t
     data-temp uint8-t*
     field-data void*
-    field-size uint64-t
-    field-type db-field-type-t
-    prefix-size uint8-t
+    field-size db-field-type-size-t
+    fields db-field-t*
+    fields-fixed-count db-fields-len-t
     i db-fields-len-t
     size size-t)
-  (set size 0)
-  (sc-comment "prepare size information")
+  (sc-comment "no fields set, no data stored")
+  (if (not values.extent)
+    (begin
+      (set
+        result:data 0
+        result:size 0)
+      (return status)))
+  (set
+    size 0
+    fields-fixed-count values.type:fields-fixed-count
+    fields values.type:fields)
+  (sc-comment "calculate data size")
   (for ((set i 0) (< i values.extent) (set i (+ 1 i)))
-    (if (< i values.type:fields-fixed-count)
-      (begin
-        (sc-comment "fixed length field")
-        (set
-          field-type (struct-get (array-get values.type:fields i) type)
-          field-size (db-field-type-size field-type)
-          (struct-get (array-get values.data i) size) field-size
-          size (+ field-size size)))
-      (begin
-        (set
-          prefix-size (db-field-type-size (struct-get (array-get values.type:fields i) type))
-          field-size (struct-get (array-get values.data i) size)
-          size (+ prefix-size field-size size))
-        (sc-comment "check if data is larger than the size prefix can specify")
-        (if (>= field-size (bit-shift-left 1 (* 8 prefix-size)))
-          (status-set-both-goto db-status-group-db db-status-id-data-length)))))
-  (if size (status-require (db-helper-malloc size &data))
-    (set data 0))
+    (set size
+      (+
+        (struct-get (array-get fields i) size)
+        (if* (< i fields-fixed-count) 0
+          (struct-get (array-get values.data i) size))
+        size)))
+  (sc-comment "allocate and prepare data")
+  (status-require (db-helper-calloc size &data))
   (set data-temp data)
-  (sc-comment "copy data")
   (for ((set i 0) (< i values.extent) (set i (+ 1 i)))
-    (set field-size (struct-get (array-get values.data i) size))
-    (if (>= i values.type:fields-fixed-count)
+    (set
+      data-size (struct-get (array-get values.data i) size)
+      field-size (struct-get (array-get fields i) size)
+      field-data (struct-get (array-get values.data i) data))
+    (if (< i fields-fixed-count)
       (begin
-        (set prefix-size (db-field-type-size (struct-get (array-get values.type:fields i) type)))
-        (memcpy data-temp &field-size prefix-size)
-        (set data-temp (+ prefix-size data-temp))))
-    (set field-data (struct-get (array-get values.data i) data))
-    (sc-comment "field-data pointer is zero for unset fields")
-    (if (not field-data) (memset data-temp 0 field-size)
-      (memcpy data-temp field-data field-size))
-    (set data-temp (+ field-size data-temp)))
+        (if data-size (memcpy data-temp field-data data-size))
+        (set data-temp (+ field-size data-temp)))
+      (begin
+        (sc-comment "data size prefix and optionally data")
+        (memcpy data-temp &data-size field-size)
+        (set data-temp (+ field-size data-temp))
+        (if data-size (memcpy data-temp field-data data-size))
+        (set data-temp (+ data-size data-temp)))))
   (set
     result:data data
     result:size size)
   (label exit
     (return status)))
 
+(define (db-record-ref type record field)
+  (db-record-value-t db-type-t* db-record-t db-fields-len-t)
+  "from the full btree value of a record (data with all fields), return a reference
+  to the data for specific field and the size.
+  if a trailing field is not stored with the data, record.data and .size are 0"
+  (declare
+    data-temp uint8-t*
+    end uint8-t*
+    i db-fields-len-t
+    offset size-t
+    result db-record-value-t
+    prefix-size uint8-t
+    size size-t)
+  (if (< field type:fields-fixed-count)
+    (begin
+      (sc-comment "fixed length field")
+      (set offset (array-get type:fields-fixed-offsets field))
+      (if (< offset record.size)
+        (set
+          result.data (+ offset (convert-type record.data uint8-t*))
+          result.size (struct-get (array-get type:fields field) size))
+        (set
+          result.data 0
+          result.size 0))
+      (return result))
+    (begin
+      (sc-comment "variable length field")
+      (set offset
+        (if* type:fields-fixed-count (array-get type:fields-fixed-offsets type:fields-fixed-count)
+          0))
+      (if (< offset record.size)
+        (begin
+          (set
+            data-temp (+ offset (convert-type record.data uint8-t*))
+            end (+ record.size (convert-type record.data uint8-t*))
+            i type:fields-fixed-count)
+          (sc-comment "variable length data is prefixed by its size")
+          (while (and (<= i field) (< data-temp end))
+            (set
+              size 0
+              prefix-size (struct-get (array-get type:fields i) size))
+            (memcpy &size data-temp prefix-size)
+            (set data-temp (+ prefix-size data-temp))
+            (if (= i field)
+              (begin
+                (set
+                  result.data data-temp
+                  result.size size)
+                (return result)))
+            (set
+              i (+ 1 i)
+              data-temp (+ size data-temp)))))
+      (set
+        result.data 0
+        result.size 0)
+      (return result))))
+
 (define (db-record-values-new type result) (status-t db-type-t* db-record-values-t*)
   "allocate memory for a new record values array.
-  extent is last field index plus one"
+  extent is last field index that is set plus one, zero if no field is set"
   status-declare
   (declare data db-record-value-t*)
   (status-require (db-helper-calloc (* type:fields-len (sizeof db-record-value-t)) &data))
@@ -70,24 +131,26 @@
 
 (define (db-record-values-free a) (void db-record-values-t*) (free-and-set-null a:data))
 
-(define (db-record-values-set values field data size)
-  (void db-record-values-t* db-fields-len-t void* size-t)
+(define (db-record-values-set a field data size)
+  (status-t db-record-values-t* db-fields-len-t void* size-t)
   "set a value for a field in record values.
-  size is ignored for fixed length types"
-  (declare
-    field-type db-field-type-t
-    values-temp db-record-values-t)
-  (set
-    values-temp *values
-    field-type (struct-get (array-get values-temp.type:fields field) type))
-  (struct-set (array-get values-temp.data field)
+  a failure status is returned if size is too large for the field"
+  status-declare
+  (declare values db-record-values-t)
+  (set values *a)
+  (sc-comment "reject invalid sizes for fixed/variable fields")
+  (if
+    (if* (< field values.type:fields-fixed-count)
+      (< (struct-get (array-get values.type:fields field) size) size)
+      (<= (bit-shift-left 1 (* 8 (struct-get (array-get values.type:fields field) size))) size))
+    (status-set-both-goto db-status-group-db db-status-id-data-length))
+  (struct-set (array-get values.data field)
     data data
-    size
-    (if* (db-field-type-is-fixed field-type) (db-field-type-size field-type)
-      size))
-  (if (or (= 0 values-temp.extent) (>= field values-temp.extent))
-    (set values-temp.extent (+ 1 field)))
-  (set *values values-temp))
+    size size)
+  (if (or (= 0 values.extent) (>= field values.extent)) (set values.extent (+ 1 field)))
+  (set *a values)
+  (label exit
+    (return status)))
 
 (define (db-record-create txn values result) (status-t db-txn-t db-record-values-t db-id-t*)
   status-declare
@@ -115,62 +178,6 @@
     (db-mdb-cursor-close-if-active records)
     (free record.data)
     (return status)))
-
-(define (db-record-ref type record field)
-  (db-record-value-t db-type-t* db-record-t db-fields-len-t)
-  "from the full btree value a record (all fields), return a reference
-  to the data for specific field and the size"
-  (declare
-    data-temp uint8-t*
-    end uint8-t*
-    i db-fields-len-t
-    offset size-t
-    result db-record-value-t
-    prefix-size uint8-t
-    size size-t)
-  (if (< field type:fields-fixed-count)
-    (begin
-      (sc-comment "fixed length field")
-      (set offset (array-get type:fields-fixed-offsets field))
-      (if (< offset record.size)
-        (set
-          result.data (+ offset (convert-type record.data uint8-t*))
-          result.size (db-field-type-size (struct-get (array-get type:fields field) type)))
-        (set
-          result.data 0
-          result.size 0))
-      (return result))
-    (begin
-      (sc-comment "variable length field")
-      (set offset
-        (if* type:fields-fixed-count (array-get type:fields-fixed-offsets type:fields-fixed-count)
-          0))
-      (if (< offset record.size)
-        (begin
-          (set
-            data-temp (+ offset (convert-type record.data uint8-t*))
-            end (+ record.size (convert-type record.data uint8-t*))
-            i type:fields-fixed-count)
-          (sc-comment "variable length data is prefixed by its size")
-          (while (and (<= i field) (< data-temp end))
-            (set
-              size 0
-              prefix-size (db-field-type-size (struct-get (array-get type:fields i) type)))
-            (memcpy &size data-temp prefix-size)
-            (set data-temp (+ prefix-size data-temp))
-            (if (= i field)
-              (begin
-                (set
-                  result.data data-temp
-                  result.size size)
-                (return result)))
-            (set
-              i (+ 1 i)
-              data-temp (+ size data-temp)))))
-      (set
-        result.data 0
-        result.size 0)
-      (return result))))
 
 (define (db-free-record-values values) (void db-record-values-t*) (free-and-set-null values:data))
 

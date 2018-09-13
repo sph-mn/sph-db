@@ -257,22 +257,20 @@
   (set
     value-1 11
     value-2 -128)
-  (db-record-values-set &values-1 0 &value-1 0)
-  (db-record-values-set &values-1 1 &value-2 0)
+  (status-require (db-record-values-set &values-1 0 &value-1 (sizeof value-1)))
+  (status-require (db-record-values-set &values-1 1 &value-2 (sizeof value-2)))
   (sc-comment "empty field in between, field 2 left out")
-  (db-record-values-set &values-1 3 value-4 5)
+  (status-require (db-record-values-set &values-1 3 value-4 5))
   (sc-comment "test record values/data conversion")
-  (db-record-values->data values-1 &record-1)
-  (test-helper-assert "record-values->data size" (= (+ 3 7) record-1.size))
+  (status-require (db-record-values->data values-1 &record-1))
+  (test-helper-assert "record-values->data size" (= (+ 3 8) record-1.size))
   (db-record-data->values type record-1 &values-2)
   (test-helper-assert "record-data->values type equal" (= values-1.type values-2.type))
   (test-helper-assert
     "record-data->values size equal"
     (and
-      (=
-        (struct-get (array-get values-1.data 0) size) (struct-get (array-get values-2.data 0) size))
-      (=
-        (struct-get (array-get values-1.data 1) size) (struct-get (array-get values-2.data 1) size))
+      (= 1 (struct-get (array-get values-2.data 0) size))
+      (= 2 (struct-get (array-get values-2.data 1) size))
       (=
         (struct-get (array-get values-1.data 2) size) (struct-get (array-get values-2.data 2) size))
       (=
@@ -293,7 +291,7 @@
           (struct-get (array-get values-2.data field-index) data)
           (if* (< size-1 size-2) size-2
             size-1)))))
-  (db-record-values->data values-2 &record-2)
+  (status-require (db-record-values->data values-2 &record-2))
   (test-helper-assert
     "record-values->data"
     (and
@@ -337,7 +335,7 @@
   (test-helper-assert
     "record-ref-2"
     (and
-      (= (sizeof int8-t) field-data.size)
+      (= 2 field-data.size)
       (= value-2 (pointer-get (convert-type field-data.data int8-t*)))))
   (set field-data (db-record-ref type (i-array-get-at records 0) 3))
   (test-helper-assert
@@ -529,7 +527,7 @@
   (test-helper-assert
     "index-get fields set" (and (= 1 (array-get index:fields 0)) (= 2 (array-get index:fields 1))))
   (status-require (db-index-key env *index (array-get values 0) &key-data &key-size))
-  (test-helper-assert "key size" (= 4 key-size))
+  (test-helper-assert "key size" (= 5 key-size))
   (test-helper-assert "key memory ref" (array-get (convert-type key-data uint8-t*) 3))
   (sc-comment "test record index update")
   (status-require (test-helper-create-records-1 env values &record-ids &record-ids-len))
@@ -576,6 +574,7 @@
   (declare env db-env-t*)
   status-declare
   (db-env-new &env)
+  (test-helper-test-one test-record-create env)
   (test-helper-test-one test-id-construction env)
   (test-helper-test-one test-record-virtual env)
   (test-helper-test-one test-open-empty env)
@@ -586,7 +585,6 @@
   (test-helper-test-one test-open-nonempty env)
   (test-helper-test-one test-relation-read env)
   (test-helper-test-one test-relation-delete env)
-  (test-helper-test-one test-record-create env)
   (test-helper-test-one test-record-select env)
   (test-helper-test-one test-index env)
   (label exit

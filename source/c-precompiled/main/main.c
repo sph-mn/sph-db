@@ -255,7 +255,7 @@ exit:
   return (status);
 };
 /** size in octets. size of the size prefix for variable size types */
-uint8_t db_field_type_size(db_field_type_t a) {
+db_field_type_size_t db_field_type_size(db_field_type_t a) {
   if ((db_field_type_binary64f == a) || (db_field_type_uint64f == a) || (db_field_type_int64f == a) || (db_field_type_string64f == a) || (db_field_type_float64f == a) || (db_field_type_binary64 == a) || (db_field_type_string64 == a)) {
     return (8);
   } else if ((db_field_type_binary32f == a) || (db_field_type_uint32f == a) || (db_field_type_int32f == a) || (db_field_type_string32f == a) || (db_field_type_float32f == a) || (db_field_type_binary32 == a) || (db_field_type_string32 == a)) {

@@ -63,8 +63,8 @@ notes on considered questions and decisions made while developing sph-db
 archieved by having sorted keys and the type at the beginning of keys
 
 # what should be the maximum fixed size field type size
-* the difference between fixed and variable length field data is the additional size prefix for variable length data
-* prefix length is currently set fixed at compile time. additional larger variable types could be added
+* the difference between fixed and variable length fields is the additional size prefix for variable length data
+* unset fixed size fields always take the same space while variable size fields can be minimum prefix size
 * size prefix as a percentage of payload data size
   * table 1
     * data-size, prefix-size, prefix-percentage
@@ -85,13 +85,20 @@ archieved by having sorted keys and the type at the beginning of keys
   * with 8 bit type ids, negative being variable types, there are 127 ids available
   * fixed and custom size types are currently binary, string, int, uint
   * with fixed size types 2**3..2**9 inclusively that would be 7 subtypes per custom size type
+* option - selected
+  * support up to 256 because less than ~3% loss for using the variable length type is ok for larger data
+  * with 512 is too many types
+* option
+  * compile-time option only
+  * 8 bit would be to small for general usage
+  * 16 bit costs more space and might still not be enough (~524 mbit data max)
+  * 32 bit are 12.5% extra for 256 bit data and less for more data
+  * variable prefix and fixed prefix could be compile-time choosable as only few code lines are affected
+  * pro
+    * increased performance for record-ref and record-values->data (record-create), as they wouldnt have to lookup prefix size for variable types and have to write/read the prefix of various length with memcpy calls but simple variable assignments instead
 * option
   * support up to 512 as initial max fixed size
   * higher fixed size would have variable length prefix be less that 1% of payload
-* option
-  * support up to 256 because less than ~3% loss for using the variable length type is ok for larger data
-  * with 512 is too many types
-  * unset fixed size fields always take the same space while variable size fields can be minimum prefix size
 
 # multiple rows or one result at a time with record-read
 difference to relation read: less filters

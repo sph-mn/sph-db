@@ -208,13 +208,15 @@
 
 (declare
   ; types
+  db-field-type-size-t (type uint8-t)
   db-field-t
   (type
     (struct
       (name uint8-t*)
       (name-len db-name-len-t)
       (type db-field-type-t)
-      (index db-fields-len-t)))
+      (offset db-fields-len-t)
+      (size db-field-type-size-t)))
   db-index-t struct
   db-type-t
   (type
@@ -361,7 +363,7 @@
   (db-record-values-free a) (void db-record-values-t*)
   (db-record-values-new type result) (status-t db-type-t* db-record-values-t*)
   (db-record-values-set values field-index data size)
-  (void db-record-values-t* db-fields-len-t void* size-t) (db-record-values->data values result)
+  (status-t db-record-values-t* db-fields-len-t void* size-t) (db-record-values->data values result)
   (status-t db-record-values-t db-record-t*) (db-record-data->values type data result)
   (status-t db-type-t* db-record-t db-record-values-t*) (db-record-create txn values result)
   (status-t db-txn-t db-record-values-t db-id-t*) (db-record-get txn ids result-records)

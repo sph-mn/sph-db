@@ -1,67 +1,111 @@
 /** convert a record-values array to the data format that is used as btree value for records.
   the data for unset trailing fields is not included.
   assumes that fields are in the order (fixed-size-fields variable-size-fields).
-  field-size is uint64-t because its content is copied with memcpy to variable size prefixes
-  which are at most 64 bit */
+  data-size is uint64-t because its content is copied with memcpy to variable size prefixes
+  which are at most 64 bit.
+  assumes that value sizes are not too large and that record-values-set checks that */
 status_t db_record_values_to_data(db_record_values_t values, db_record_t* result) {
   status_declare;
   void* data;
+  uint64_t data_size;
   uint8_t* data_temp;
   void* field_data;
-  uint64_t field_size;
-  db_field_type_t field_type;
-  uint8_t prefix_size;
+  db_field_type_size_t field_size;
+  db_field_t* fields;
+  db_fields_len_t fields_fixed_count;
   db_fields_len_t i;
   size_t size;
+  /* no fields set, no data stored */
+  if (!values.extent) {
+    result->data = 0;
+    result->size = 0;
+    return (status);
+  };
   size = 0;
-  /* prepare size information */
+  fields_fixed_count = (values.type)->fields_fixed_count;
+  fields = (values.type)->fields;
+  /* calculate data size */
   for (i = 0; (i < values.extent); i = (1 + i)) {
-    if (i < (values.type)->fields_fixed_count) {
-      /* fixed length field */
-      field_type = (((values.type)->fields)[i]).type;
-      field_size = db_field_type_size(field_type);
-      ((values.data)[i]).size = field_size;
-      size = (field_size + size);
-    } else {
-      prefix_size = db_field_type_size(((((values.type)->fields)[i]).type));
-      field_size = ((values.data)[i]).size;
-      size = (prefix_size + field_size + size);
-      /* check if data is larger than the size prefix can specify */
-      if (field_size >= (1 << (8 * prefix_size))) {
-        status_set_both_goto(db_status_group_db, db_status_id_data_length);
-      };
-    };
+    size = ((fields[i]).size + ((i < fields_fixed_count) ? 0 : ((values.data)[i]).size) + size);
   };
-  if (size) {
-    status_require((db_helper_malloc(size, (&data))));
-  } else {
-    data = 0;
-  };
+  /* allocate and prepare data */
+  status_require((db_helper_calloc(size, (&data))));
   data_temp = data;
-  /* copy data */
   for (i = 0; (i < values.extent); i = (1 + i)) {
-    field_size = ((values.data)[i]).size;
-    if (i >= (values.type)->fields_fixed_count) {
-      prefix_size = db_field_type_size(((((values.type)->fields)[i]).type));
-      memcpy(data_temp, (&field_size), prefix_size);
-      data_temp = (prefix_size + data_temp);
-    };
+    data_size = ((values.data)[i]).size;
+    field_size = (fields[i]).size;
     field_data = ((values.data)[i]).data;
-    /* field-data pointer is zero for unset fields */
-    if (!field_data) {
-      memset(data_temp, 0, field_size);
+    if (i < fields_fixed_count) {
+      if (data_size) {
+        memcpy(data_temp, field_data, data_size);
+      };
+      data_temp = (field_size + data_temp);
     } else {
-      memcpy(data_temp, field_data, field_size);
+      /* data size prefix and optionally data */
+      memcpy(data_temp, (&data_size), field_size);
+      data_temp = (field_size + data_temp);
+      if (data_size) {
+        memcpy(data_temp, field_data, data_size);
+      };
+      data_temp = (data_size + data_temp);
     };
-    data_temp = (field_size + data_temp);
   };
   result->data = data;
   result->size = size;
 exit:
   return (status);
 };
+/** from the full btree value of a record (data with all fields), return a reference
+  to the data for specific field and the size.
+  if a trailing field is not stored with the data, record.data and .size are 0 */
+db_record_value_t db_record_ref(db_type_t* type, db_record_t record, db_fields_len_t field) {
+  uint8_t* data_temp;
+  uint8_t* end;
+  db_fields_len_t i;
+  size_t offset;
+  db_record_value_t result;
+  uint8_t prefix_size;
+  size_t size;
+  if (field < type->fields_fixed_count) {
+    /* fixed length field */
+    offset = (type->fields_fixed_offsets)[field];
+    if (offset < record.size) {
+      result.data = (offset + ((uint8_t*)(record.data)));
+      result.size = ((type->fields)[field]).size;
+    } else {
+      result.data = 0;
+      result.size = 0;
+    };
+    return (result);
+  } else {
+    /* variable length field */
+    offset = (type->fields_fixed_count ? (type->fields_fixed_offsets)[type->fields_fixed_count] : 0);
+    if (offset < record.size) {
+      data_temp = (offset + ((uint8_t*)(record.data)));
+      end = (record.size + ((uint8_t*)(record.data)));
+      i = type->fields_fixed_count;
+      /* variable length data is prefixed by its size */
+      while (((i <= field) && (data_temp < end))) {
+        size = 0;
+        prefix_size = ((type->fields)[i]).size;
+        memcpy((&size), data_temp, prefix_size);
+        data_temp = (prefix_size + data_temp);
+        if (i == field) {
+          result.data = data_temp;
+          result.size = size;
+          return (result);
+        };
+        i = (1 + i);
+        data_temp = (size + data_temp);
+      };
+    };
+    result.data = 0;
+    result.size = 0;
+    return (result);
+  };
+};
 /** allocate memory for a new record values array.
-  extent is last field index plus one */
+  extent is last field index that is set plus one, zero if no field is set */
 status_t db_record_values_new(db_type_t* type, db_record_values_t* result) {
   status_declare;
   db_record_value_t* data;
@@ -74,18 +118,23 @@ exit:
 };
 void db_record_values_free(db_record_values_t* a) { free_and_set_null((a->data)); };
 /** set a value for a field in record values.
-  size is ignored for fixed length types */
-void db_record_values_set(db_record_values_t* values, db_fields_len_t field, void* data, size_t size) {
-  db_field_type_t field_type;
-  db_record_values_t values_temp;
-  values_temp = *values;
-  field_type = (((values_temp.type)->fields)[field]).type;
-  ((values_temp.data)[field]).data = data;
-  ((values_temp.data)[field]).size = (db_field_type_is_fixed(field_type) ? db_field_type_size(field_type) : size);
-  if ((0 == values_temp.extent) || (field >= values_temp.extent)) {
-    values_temp.extent = (1 + field);
+  a failure status is returned if size is too large for the field */
+status_t db_record_values_set(db_record_values_t* a, db_fields_len_t field, void* data, size_t size) {
+  status_declare;
+  db_record_values_t values;
+  values = *a;
+  /* reject invalid sizes for fixed/variable fields */
+  if ((field < (values.type)->fields_fixed_count) ? ((((values.type)->fields)[field]).size < size) : ((1 << (8 * (((values.type)->fields)[field]).size)) <= size)) {
+    status_set_both_goto(db_status_group_db, db_status_id_data_length);
   };
-  *values = values_temp;
+  ((values.data)[field]).data = data;
+  ((values.data)[field]).size = size;
+  if ((0 == values.extent) || (field >= values.extent)) {
+    values.extent = (1 + field);
+  };
+  *a = values;
+exit:
+  return (status);
 };
 status_t db_record_create(db_txn_t txn, db_record_values_t values, db_id_t* result) {
   status_declare;
@@ -112,54 +161,6 @@ exit:
   db_mdb_cursor_close_if_active(records);
   free((record.data));
   return (status);
-};
-/** from the full btree value a record (all fields), return a reference
-  to the data for specific field and the size */
-db_record_value_t db_record_ref(db_type_t* type, db_record_t record, db_fields_len_t field) {
-  uint8_t* data_temp;
-  uint8_t* end;
-  db_fields_len_t i;
-  size_t offset;
-  db_record_value_t result;
-  uint8_t prefix_size;
-  size_t size;
-  if (field < type->fields_fixed_count) {
-    /* fixed length field */
-    offset = (type->fields_fixed_offsets)[field];
-    if (offset < record.size) {
-      result.data = (offset + ((uint8_t*)(record.data)));
-      result.size = db_field_type_size((((type->fields)[field]).type));
-    } else {
-      result.data = 0;
-      result.size = 0;
-    };
-    return (result);
-  } else {
-    /* variable length field */
-    offset = (type->fields_fixed_count ? (type->fields_fixed_offsets)[type->fields_fixed_count] : 0);
-    if (offset < record.size) {
-      data_temp = (offset + ((uint8_t*)(record.data)));
-      end = (record.size + ((uint8_t*)(record.data)));
-      i = type->fields_fixed_count;
-      /* variable length data is prefixed by its size */
-      while (((i <= field) && (data_temp < end))) {
-        size = 0;
-        prefix_size = db_field_type_size((((type->fields)[i]).type));
-        memcpy((&size), data_temp, prefix_size);
-        data_temp = (prefix_size + data_temp);
-        if (i == field) {
-          result.data = data_temp;
-          result.size = size;
-          return (result);
-        };
-        i = (1 + i);
-        data_temp = (size + data_temp);
-      };
-    };
-    result.data = 0;
-    result.size = 0;
-    return (result);
-  };
 };
 void db_free_record_values(db_record_values_t* values) { free_and_set_null((values->data)); };
 status_t db_record_data_to_values(db_type_t* type, db_record_t data, db_record_values_t* result) {

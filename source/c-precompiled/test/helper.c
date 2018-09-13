@@ -176,7 +176,7 @@ status_t test_helper_create_type_1(db_env_t* env, db_type_t** result) {
   status_declare;
   db_field_t fields[4];
   db_field_set((fields[0]), db_field_type_uint8f, "test-field-1", 12);
-  db_field_set((fields[1]), db_field_type_int8f, "test-field-2", 12);
+  db_field_set((fields[1]), db_field_type_int16f, "test-field-2", 12);
   db_field_set((fields[2]), db_field_type_string8, "test-field-3", 12);
   db_field_set((fields[3]), db_field_type_string16, "test-field-4", 12);
   status_require((db_type_create(env, "test-type-1", fields, 4, 0, result)));
@@ -202,13 +202,13 @@ status_t test_helper_create_values_1(db_env_t* env, db_type_t* type, db_record_v
   memcpy(value_4, (&"abcde"), 5);
   status_require((db_record_values_new(type, (0 + values))));
   status_require((db_record_values_new(type, (1 + values))));
-  db_record_values_set((0 + values), 0, value_1, 0);
-  db_record_values_set((0 + values), 1, value_2, 0);
-  db_record_values_set((0 + values), 2, value_3, 3);
-  db_record_values_set((0 + values), 3, value_4, 5);
-  db_record_values_set((1 + values), 0, value_1, 0);
-  db_record_values_set((1 + values), 1, value_1, 0);
-  db_record_values_set((1 + values), 2, value_3, 3);
+  status_require((db_record_values_set((0 + values), 0, value_1, 1)));
+  status_require((db_record_values_set((0 + values), 1, value_2, 2)));
+  status_require((db_record_values_set((0 + values), 2, value_3, 3)));
+  status_require((db_record_values_set((0 + values), 3, value_4, 5)));
+  status_require((db_record_values_set((1 + values), 0, value_1, 1)));
+  status_require((db_record_values_set((1 + values), 1, value_1, 2)));
+  status_require((db_record_values_set((1 + values), 2, value_3, 3)));
   *result_values_len = 4;
   *result_values = values;
 exit:

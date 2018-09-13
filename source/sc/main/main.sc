@@ -224,7 +224,7 @@
   (label exit
     (return status)))
 
-(define (db-field-type-size a) (uint8-t db-field-type-t)
+(define (db-field-type-size a) (db-field-type-size-t db-field-type-t)
   "size in octets. size of the size prefix for variable size types"
   (case = a
     ( (db-field-type-binary64f

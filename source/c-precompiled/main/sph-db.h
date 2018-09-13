@@ -300,11 +300,13 @@ enum { db_status_id_success,
   db_status_id_index_keysize,
   db_status_id_type_field_order,
   db_status_id_last };
+typedef uint8_t db_field_type_size_t;
 typedef struct {
   uint8_t* name;
   db_name_len_t name_len;
   db_field_type_t type;
-  db_fields_len_t index;
+  db_fields_len_t offset;
+  db_field_type_size_t size;
 } db_field_t;
 struct db_index_t;
 typedef struct {
@@ -426,7 +428,7 @@ status_t db_relation_ensure(db_txn_t txn, db_ids_t left, db_ids_t right, db_ids_
 status_t db_relation_delete(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal);
 void db_record_values_free(db_record_values_t* a);
 status_t db_record_values_new(db_type_t* type, db_record_values_t* result);
-void db_record_values_set(db_record_values_t* values, db_fields_len_t field_index, void* data, size_t size);
+status_t db_record_values_set(db_record_values_t* values, db_fields_len_t field_index, void* data, size_t size);
 status_t db_record_values_to_data(db_record_values_t values, db_record_t* result);
 status_t db_record_data_to_values(db_type_t* type, db_record_t data, db_record_values_t* result);
 status_t db_record_create(db_txn_t txn, db_record_values_t values, db_id_t* result);

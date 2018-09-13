@@ -284,17 +284,20 @@
       field-type *data
       data (+ (sizeof db-field-type-t) data)
       field-pointer:type field-type
-      field-pointer:name-len (pointer-get (convert-type data db-name-len-t*)))
-    (db-read-name &data (address-of (: field-pointer name)))
+      field-pointer:name-len (pointer-get (convert-type data db-name-len-t*))
+      field-pointer:offset i
+      field-pointer:size (db-field-type-size field-type))
+    (db-read-name &data &field-pointer:name)
     (if (db-field-type-is-fixed field-type) (set fixed-count (+ 1 fixed-count))))
-  (sc-comment "offsets" "example: field-sizes-in-bytes: 1 4 2. fields-fixed-offsets: 1 5 7")
+  (sc-comment
+    "fixed-field offsets" "example: field-sizes-in-bytes: 1 4 2. fields-fixed-offsets: 1 5 7")
   (if fixed-count
     (begin
       (status-require (db-helper-malloc (* (+ 1 fixed-count) (sizeof size-t)) &fixed-offsets))
       (for ((set i 0) (< i fixed-count) (set i (+ 1 i)))
         (set
           (pointer-get (+ i fixed-offsets)) offset
-          offset (+ offset (db-field-type-size (: (+ i fields) type)))))
+          offset (+ offset (struct-get (array-get fields i) size))))
       (set (pointer-get (+ i fixed-offsets)) offset)))
   (set
     type:fields fields

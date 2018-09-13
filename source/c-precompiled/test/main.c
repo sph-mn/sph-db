@@ -218,23 +218,23 @@ status_t test_record_create(db_env_t* env) {
   status_require((db_record_values_new(type, (&values_1))));
   value_1 = 11;
   value_2 = -128;
-  db_record_values_set((&values_1), 0, (&value_1), 0);
-  db_record_values_set((&values_1), 1, (&value_2), 0);
+  status_require((db_record_values_set((&values_1), 0, (&value_1), (sizeof(value_1)))));
+  status_require((db_record_values_set((&values_1), 1, (&value_2), (sizeof(value_2)))));
   /* empty field in between, field 2 left out */
-  db_record_values_set((&values_1), 3, value_4, 5);
+  status_require((db_record_values_set((&values_1), 3, value_4, 5)));
   /* test record values/data conversion */
-  db_record_values_to_data(values_1, (&record_1));
-  test_helper_assert(("record-values->data size"), ((3 + 7) == record_1.size));
+  status_require((db_record_values_to_data(values_1, (&record_1))));
+  test_helper_assert(("record-values->data size"), ((3 + 8) == record_1.size));
   db_record_data_to_values(type, record_1, (&values_2));
   test_helper_assert(("record-data->values type equal"), (values_1.type == values_2.type));
-  test_helper_assert(("record-data->values size equal"), ((((values_1.data)[0]).size == ((values_2.data)[0]).size) && (((values_1.data)[1]).size == ((values_2.data)[1]).size) && (((values_1.data)[2]).size == ((values_2.data)[2]).size) && (((values_1.data)[3]).size == ((values_2.data)[3]).size)));
+  test_helper_assert(("record-data->values size equal"), ((1 == ((values_2.data)[0]).size) && (2 == ((values_2.data)[1]).size) && (((values_1.data)[2]).size == ((values_2.data)[2]).size) && (((values_1.data)[3]).size == ((values_2.data)[3]).size)));
   test_helper_assert(("record-data->values data equal 1"), (0 == memcmp(value_4, (((values_1.data)[3]).data), 5)));
   for (field_index = 0; (field_index < type->fields_len); field_index = (1 + field_index)) {
     size_1 = ((values_1.data)[field_index]).size;
     size_2 = ((values_2.data)[field_index]).size;
     test_helper_assert(("record-data->values data equal 2"), (0 == memcmp((((values_1.data)[field_index]).data), (((values_2.data)[field_index]).data), ((size_1 < size_2) ? size_2 : size_1))));
   };
-  db_record_values_to_data(values_2, (&record_2));
+  status_require((db_record_values_to_data(values_2, (&record_2))));
   test_helper_assert(("record-values->data"), ((record_1.size == record_2.size) && (0 == memcmp((record_1.data), (record_2.data), ((record_1.size < record_2.size) ? record_2.size : record_1.size)))));
   db_record_values_free((&values_2));
   db_record_values_new(type, (&values_2));
@@ -260,7 +260,7 @@ status_t test_record_create(db_env_t* env) {
   test_helper_assert("record-get result length", (2 == i_array_length(records)));
   test_helper_assert("record-get result ids", ((id_1 == (i_array_get_at(records, 0)).id) && (id_2 == (i_array_get_at(records, 1)).id)));
   field_data = db_record_ref(type, (i_array_get_at(records, 0)), 1);
-  test_helper_assert("record-ref-2", ((sizeof(int8_t) == field_data.size) && (value_2 == *((int8_t*)(field_data.data)))));
+  test_helper_assert("record-ref-2", ((2 == field_data.size) && (value_2 == *((int8_t*)(field_data.data)))));
   field_data = db_record_ref(type, (i_array_get_at(records, 0)), 3);
   test_helper_assert("record-ref-3", ((5 == field_data.size) && (0 == memcmp(value_4, (field_data.data), (field_data.size)))));
   i_array_clear(ids);
@@ -423,7 +423,7 @@ status_t test_index(db_env_t* env) {
   test_helper_assert("index-get fields-len", (fields_len == index->fields_len));
   test_helper_assert("index-get fields set", ((1 == (index->fields)[0]) && (2 == (index->fields)[1])));
   status_require((db_index_key(env, (*index), (values[0]), (&key_data), (&key_size))));
-  test_helper_assert("key size", (4 == key_size));
+  test_helper_assert("key size", (5 == key_size));
   test_helper_assert("key memory ref", (((uint8_t*)(key_data))[3]));
   /* test record index update */
   status_require((test_helper_create_records_1(env, values, (&record_ids), (&record_ids_len))));
@@ -468,6 +468,7 @@ int main() {
   db_env_t* env;
   status_declare;
   db_env_new((&env));
+  test_helper_test_one(test_record_create, env);
   test_helper_test_one(test_id_construction, env);
   test_helper_test_one(test_record_virtual, env);
   test_helper_test_one(test_open_empty, env);
@@ -478,7 +479,6 @@ int main() {
   test_helper_test_one(test_open_nonempty, env);
   test_helper_test_one(test_relation_read, env);
   test_helper_test_one(test_relation_delete, env);
-  test_helper_test_one(test_record_create, env);
   test_helper_test_one(test_record_select, env);
   test_helper_test_one(test_index, env);
 exit:

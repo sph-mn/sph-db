@@ -263,18 +263,20 @@ status_t db_open_type_read_fields(uint8_t** data_pointer, db_type_t* type) {
     data = (sizeof(db_field_type_t) + data);
     field_pointer->type = field_type;
     field_pointer->name_len = *((db_name_len_t*)(data));
+    field_pointer->offset = i;
+    field_pointer->size = db_field_type_size(field_type);
     db_read_name((&data), (&(field_pointer->name)));
     if (db_field_type_is_fixed(field_type)) {
       fixed_count = (1 + fixed_count);
     };
   };
-  /* offsets
+  /* fixed-field offsets
 example: field-sizes-in-bytes: 1 4 2. fields-fixed-offsets: 1 5 7 */
   if (fixed_count) {
     status_require((db_helper_malloc(((1 + fixed_count) * sizeof(size_t)), (&fixed_offsets))));
     for (i = 0; (i < fixed_count); i = (1 + i)) {
       *(i + fixed_offsets) = offset;
-      offset = (offset + db_field_type_size(((i + fields)->type)));
+      offset = (offset + (fields[i]).size);
     };
     *(i + fixed_offsets) = offset;
   };
