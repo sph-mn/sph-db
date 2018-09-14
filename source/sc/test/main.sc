@@ -487,11 +487,11 @@
   (test-helper-assert "type-id int" (= type:id (db-id-type id)))
   (test-helper-assert "data int" (= data-int (db-record-virtual-data-int id int8-t)))
   (sc-comment "float")
-  (set id (db-record-virtual-from-any type:id &data-float32))
-  (db-record-virtual-data-any id &data-result-float32 (sizeof float))
-  (test-helper-assert "is-virtual float" (db-record-is-virtual env id))
-  (test-helper-assert "type-id float" (= type:id (db-id-type id)))
-  (test-helper-assert "data float" (= data-float32 data-result-float32))
+  (set id (db-record-virtual type:id &data-float32 (sizeof data-float32)))
+  (db-record-virtual-data id &data-result-float32 (sizeof float))
+  (test-helper-assert "is-virtual float32" (db-record-is-virtual env id))
+  (test-helper-assert "type-id float32" (= type:id (db-id-type id)))
+  (test-helper-assert "data float32" (= data-float32 data-result-float32))
   (label exit
     (return status)))
 

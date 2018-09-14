@@ -66,8 +66,13 @@ status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fie
   db_type_id_t type_id;
   MDB_val val_data;
   MDB_val val_key;
-  if ((db_type_flag_virtual & flags) && !(1 == fields_len)) {
-    status_set_both_goto(db_status_group_db, db_status_id_not_implemented);
+  if (db_type_flag_virtual & flags) {
+    if (!(1 == fields_len)) {
+      status_set_both_goto(db_status_group_db, db_status_id_not_implemented);
+    };
+    if (db_size_element_id < db_field_type_size((fields->type))) {
+      status_set_both_goto(db_status_group_db, db_status_id_invalid_field_type);
+    };
   };
   /* check if type with name exists */
   if (db_type_get((txn.env), name)) {

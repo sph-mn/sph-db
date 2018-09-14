@@ -385,11 +385,11 @@ status_t test_record_virtual(db_env_t* env) {
   test_helper_assert("type-id int", (type->id == db_id_type(id)));
   test_helper_assert("data int", (data_int == db_record_virtual_data_int(id, int8_t)));
   /* float */
-  id = db_record_virtual_from_any((type->id), (&data_float32));
-  db_record_virtual_data_any(id, (&data_result_float32), (sizeof(float)));
-  test_helper_assert("is-virtual float", (db_record_is_virtual(env, id)));
-  test_helper_assert("type-id float", (type->id == db_id_type(id)));
-  test_helper_assert("data float", (data_float32 == data_result_float32));
+  id = db_record_virtual((type->id), (&data_float32), (sizeof(data_float32)));
+  db_record_virtual_data(id, (&data_result_float32), (sizeof(float)));
+  test_helper_assert("is-virtual float32", (db_record_is_virtual(env, id)));
+  test_helper_assert("type-id float32", (type->id == db_id_type(id)));
+  test_helper_assert("data float32", (data_float32 == data_result_float32));
 exit:
   return (status);
 };

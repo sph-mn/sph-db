@@ -104,6 +104,8 @@ uint8_t* db_status_description(status_t a) {
       b = "configured format differs from the format the database was created with";
     } else if (db_status_id_index_keysize == a.id) {
       b = "index key to be inserted exceeds mdb maxkeysize";
+    } else if (db_status_id_invalid_field_type == a.id) {
+      b = "invalid type for field";
     } else if (db_status_id_type_field_order == a.id) {
       b = "all fixed length type fields must come before variable length type fields";
     } else {
@@ -156,6 +158,8 @@ uint8_t* db_status_name(status_t a) {
       b = "differing-db-format";
     } else if (db_status_id_index_keysize == a.id) {
       b = "index-key-mdb-keysize";
+    } else if (db_status_id_invalid_field_type == a.id) {
+      b = "invalid-field-type";
     } else if (db_status_id_type_field_order == a.id) {
       b = "type-field-order";
     } else {
@@ -272,7 +276,14 @@ db_field_type_size_t db_field_type_size(db_field_type_t a) {
     return (0);
   };
 };
-void* db_record_virtual_data_any(db_id_t id, void* result, size_t result_size) {
+db_id_t db_record_virtual(db_type_id_t type_id, void* data, size_t data_size) {
+  db_id_t id;
+  id = 0;
+  memcpy((&id), data, data_size);
+  return ((db_id_add_type(id, type_id)));
+};
+/** result is allocated and owned by callee */
+void* db_record_virtual_data(db_id_t id, void* result, size_t result_size) {
   id = db_id_element(id);
   memcpy(result, (&id), result_size);
   return (result);

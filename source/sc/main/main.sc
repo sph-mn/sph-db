@@ -94,6 +94,7 @@
         (db-status-id-different-format
           (set b "configured format differs from the format the database was created with"))
         (db-status-id-index-keysize (set b "index key to be inserted exceeds mdb maxkeysize"))
+        (db-status-id-invalid-field-type (set b "invalid type for field"))
         (db-status-id-type-field-order
           (set b "all fixed length type fields must come before variable length type fields"))
         (else (set b ""))))
@@ -125,6 +126,7 @@
         (db-status-id-notfound (set b "notfound"))
         (db-status-id-different-format (set b "differing-db-format"))
         (db-status-id-index-keysize (set b "index-key-mdb-keysize"))
+        (db-status-id-invalid-field-type (set b "invalid-field-type"))
         (db-status-id-type-field-order (set b "type-field-order"))
         (else (set b "unknown"))))
     (else (set b "unknown")))
@@ -253,7 +255,14 @@
       (return 32))
     (else (return 0))))
 
-(define (db-record-virtual-data-any id result result-size) (void* db-id-t void* size-t)
+(define (db-record-virtual type-id data data-size) (db-id-t db-type-id-t void* size-t)
+  (declare id db-id-t)
+  (set id 0)
+  (memcpy &id data data-size)
+  (return (db-id-add-type id type-id)))
+
+(define (db-record-virtual-data id result result-size) (void* db-id-t void* size-t)
+  "result is allocated and owned by callee"
   (set id (db-id-element id))
   (memcpy result &id result-size)
   (return result))

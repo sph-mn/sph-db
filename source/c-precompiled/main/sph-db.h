@@ -281,7 +281,6 @@ i_array_declare_type(db_relations_t, db_relation_t);
 #define db_type_is_virtual(type) (db_type_flag_virtual & type->flags)
 #define db_record_is_virtual(env, record_id) db_type_is_virtual((db_type_get_by_id(env, (db_id_type(record_id)))))
 #define db_record_virtual_from_uint(type_id, data) db_id_add_type(data, type_id)
-#define db_record_virtual_from_any(type_id, data_pointer) db_id_add_type((*((db_id_t*)(data_pointer))), type_id)
 enum { db_status_id_success,
   db_status_id_undefined,
   db_status_id_condition_unfulfilled,
@@ -300,6 +299,7 @@ enum { db_status_id_success,
   db_status_id_path_not_accessible_db_root,
   db_status_id_index_keysize,
   db_status_id_type_field_order,
+  db_status_id_invalid_field_type,
   db_status_id_last };
 typedef uint8_t db_field_type_size_t;
 typedef struct {
@@ -442,7 +442,8 @@ status_t db_record_read(db_record_selection_t selection, db_count_t count, db_re
 status_t db_record_skip(db_record_selection_t selection, db_count_t count);
 void db_record_selection_finish(db_record_selection_t* selection);
 status_t db_record_update(db_txn_t txn, db_id_t id, db_record_values_t values);
-void* db_record_virtual_data_any(db_id_t id, void* result, size_t result_size);
+void* db_record_virtual_data(db_id_t id, void* result, size_t result_size);
+db_id_t db_record_virtual(db_type_id_t type_id, void* data, size_t data_size);
 status_t db_txn_write_begin(db_txn_t* a);
 status_t db_txn_begin(db_txn_t* a);
 status_t db_txn_commit(db_txn_t* a);

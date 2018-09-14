@@ -184,9 +184,7 @@
   (db-type-is-virtual type) (bit-and db-type-flag-virtual type:flags)
   (db-record-is-virtual env record-id)
   (db-type-is-virtual (db-type-get-by-id env (db-id-type record-id)))
-  (db-record-virtual-from-uint type-id data) (db-id-add-type data type-id)
-  (db-record-virtual-from-any type-id data-pointer)
-  (db-id-add-type (pointer-get (convert-type data-pointer db-id-t*)) type-id))
+  (db-record-virtual-from-uint type-id data) (db-id-add-type data type-id))
 
 (enum
   (db-status-id-success
@@ -205,7 +203,8 @@
     db-status-id-notfound
     db-status-id-not-implemented
     db-status-id-path-not-accessible-db-root
-    db-status-id-index-keysize db-status-id-type-field-order db-status-id-last))
+    db-status-id-index-keysize
+    db-status-id-type-field-order db-status-id-invalid-field-type db-status-id-last))
 
 (declare
   ; types
@@ -378,8 +377,9 @@
   (status-t db-record-selection-t db-count-t db-records-t*) (db-record-skip selection count)
   (status-t db-record-selection-t db-count-t) (db-record-selection-finish selection)
   (void db-record-selection-t*) (db-record-update txn id values)
-  (status-t db-txn-t db-id-t db-record-values-t) (db-record-virtual-data-any id result result-size)
-  (void* db-id-t void* size-t) (db-txn-write-begin a)
+  (status-t db-txn-t db-id-t db-record-values-t) (db-record-virtual-data id result result-size)
+  (void* db-id-t void* size-t) (db-record-virtual type-id data data-size)
+  (db-id-t db-type-id-t void* size-t) (db-txn-write-begin a)
   (status-t db-txn-t*) (db-txn-begin a)
   (status-t db-txn-t*) (db-txn-commit a)
   (status-t db-txn-t*) (db-txn-abort a)
