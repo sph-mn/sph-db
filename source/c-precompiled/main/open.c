@@ -61,17 +61,18 @@ status_t db_open_format(MDB_cursor* system, db_txn_t txn) {
   MDB_val val_data;
   MDB_stat stat_info;
   format = ((uint8_t*)(&format_data));
-  format[0] = sizeof(db_id_t);
-  format[1] = sizeof(db_type_id_t);
-  format[2] = sizeof(db_ordinal_t);
+  format[0] = db_format_version;
+  format[1] = sizeof(db_id_t);
+  format[2] = sizeof(db_type_id_t);
+  format[3] = sizeof(db_ordinal_t);
   val_key.mv_size = 1;
-  val_data.mv_size = 3;
+  val_data.mv_size = 4;
   label = db_system_label_format;
   val_key.mv_data = &label;
   status.id = mdb_cursor_get(system, (&val_key), (&val_data), MDB_SET);
   if (db_mdb_status_is_success) {
     data = val_data.mv_data;
-    if (!((data[0] == format[0]) && (data[1] == format[1]) && (data[2] == format[2]))) {
+    if (!((4 == val_data.mv_size) && (data[0] == format[0]) && (data[1] == format[1]) && (data[2] == format[2]) && (data[3] == format[3]))) {
       /* differing type sizes are not a problem if there is no data yet.
              this only checks if any tables/indices exist by checking the contents of the system btree */
       db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_system), (&stat_info))));

@@ -134,6 +134,7 @@ typedef struct {
 i_array_declare_type(db_ids_t, db_id_t);
 i_array_declare_type(db_records_t, db_record_t);
 i_array_declare_type(db_relations_t, db_relation_t);
+#define db_format_version 1
 #define db_status_group_db "sph-db"
 #define db_status_group_lmdb "lmdb"
 #define db_status_group_libc "libc"

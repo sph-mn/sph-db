@@ -22,6 +22,7 @@
 (i-array-declare-type db-relations-t db-relation-t)
 
 (pre-define
+  db-format-version 1
   db-status-group-db "sph-db"
   db-status-group-lmdb "lmdb"
   db-status-group-libc "libc"

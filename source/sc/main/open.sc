@@ -70,11 +70,12 @@
     stat-info MDB-stat)
   (set
     format (convert-type &format-data uint8-t*)
-    (array-get format 0) (sizeof db-id-t)
-    (array-get format 1) (sizeof db-type-id-t)
-    (array-get format 2) (sizeof db-ordinal-t)
+    (array-get format 0) db-format-version
+    (array-get format 1) (sizeof db-id-t)
+    (array-get format 2) (sizeof db-type-id-t)
+    (array-get format 3) (sizeof db-ordinal-t)
     val-key.mv-size 1
-    val-data.mv-size 3
+    val-data.mv-size 4
     label db-system-label-format
     val-key.mv-data &label
     status.id (mdb-cursor-get system &val-key &val-data MDB-SET))
@@ -84,8 +85,10 @@
       (if
         (not
           (and
+            (= 4 val-data.mv-size)
             (= (array-get data 0) (array-get format 0))
-            (= (array-get data 1) (array-get format 1)) (= (array-get data 2) (array-get format 2))))
+            (= (array-get data 1) (array-get format 1))
+            (= (array-get data 2) (array-get format 2)) (= (array-get data 3) (array-get format 3))))
         (begin
           (sc-comment
             "differing type sizes are not a problem if there is no data yet.
