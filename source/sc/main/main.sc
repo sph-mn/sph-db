@@ -344,7 +344,7 @@
   (define (name length result) (status-t size-t type*)
     "like i-array-allocate-* but returns status-t"
     status-declare
-    (if (not ((pre-concat i-array-allocate_ type) length result))
+    (if ((pre-concat i-array-allocate_ type) length result)
       (set
         status.id db-status-id-memory
         status.group db-status-group-db))

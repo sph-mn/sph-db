@@ -4,7 +4,9 @@
   examples:
     i_array_declare_type(my_type, int);
     my_type a;
-    i_array_allocate_my_type(4, &a);
+    if(i_array_allocate_my_type(4, &a)) {
+      // memory allocation error
+    }
     i_array_add(a, 1);
     i_array_add(a, 2);
     while(i_array_in_range(a)) {
@@ -33,13 +35,13 @@
       (uint8-t size-t (function-pointer void* size-t) name*)
       (declare start element-type*)
       (set start (alloc (* length (sizeof element-type))))
-      (if (not start) (return 0))
+      (if (not start) (return 1))
       (set
         a:start start
         a:current start
         a:unused start
         a:end (+ length start))
-      (return 1))
+      (return 0))
     (define ((pre-concat i-array-allocate_ name) length a) (uint8-t size-t name*)
       (return ((pre-concat i-array-allocate-custom_ name) length malloc a))))
   (i-array-declare a type)

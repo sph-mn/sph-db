@@ -117,8 +117,8 @@
       (return result))))
 
 (define (db-record-values-new type result) (status-t db-type-t* db-record-values-t*)
-  "allocate memory for a new record values array.
-  extent is last field index that is set plus one, zero if no field is set"
+  "allocate memory for a new record values array. all fields an sizes are zero.
+  \"extent\" is the last field index that is set plus one, zero if no field is set"
   status-declare
   (declare data db-record-value-t*)
   (status-require (db-helper-calloc (* type:fields-len (sizeof db-record-value-t)) &data))

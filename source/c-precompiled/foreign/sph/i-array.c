@@ -3,7 +3,9 @@
   examples:
     i_array_declare_type(my_type, int);
     my_type a;
-    i_array_allocate_my_type(4, &a);
+    if(i_array_allocate_my_type(4, &a)) {
+      // memory allocation error
+    }
     i_array_add(a, 1);
     i_array_add(a, 2);
     while(i_array_in_range(a)) {
@@ -27,13 +29,13 @@
     element_type* start; \
     start = alloc((length * sizeof(element_type))); \
     if (!start) { \
-      return (0); \
+      return (1); \
     }; \
     a->start = start; \
     a->current = start; \
     a->unused = start; \
     a->end = (length + start); \
-    return (1); \
+    return (0); \
   }; \
   uint8_t i_array_allocate_##name(size_t length, name* a) { return ((i_array_allocate_custom_##name(length, malloc, a))); }
 /** define so that in-range is false, length is zero and free doesnt fail */

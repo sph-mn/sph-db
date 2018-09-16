@@ -369,7 +369,7 @@ exit:
   /** like i-array-allocate-* but returns status-t */ \
   status_t name(size_t length, type* result) { \
     status_declare; \
-    if (!i_array_allocate_##type(length, result)) { \
+    if (i_array_allocate_##type(length, result)) { \
       status.id = db_status_id_memory; \
       status.group = db_status_group_db; \
     }; \

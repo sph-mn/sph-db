@@ -104,8 +104,8 @@ db_record_value_t db_record_ref(db_type_t* type, db_record_t record, db_fields_l
     return (result);
   };
 };
-/** allocate memory for a new record values array.
-  extent is last field index that is set plus one, zero if no field is set */
+/** allocate memory for a new record values array. all fields an sizes are zero.
+  "extent" is the last field index that is set plus one, zero if no field is set */
 status_t db_record_values_new(db_type_t* type, db_record_values_t* result) {
   status_declare;
   db_record_value_t* data;
