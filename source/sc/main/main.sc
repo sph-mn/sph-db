@@ -286,7 +286,7 @@
   (set a (malloc size))
   (if a (set *result a)
     (set
-      status.group db-status-group-libc
+      status.group db-status-group-db
       status.id db-status-id-memory))
   (return status))
 
@@ -417,7 +417,6 @@
   (for ((set i 0) (< i indices-len) (set i (+ 1 i)))
     (set index-pointer (+ i *indices))
     (free-and-set-null index-pointer:fields))
-  (debug-log "%lu %lu" indices *indices)
   (free-and-set-null *indices))
 
 (define (db-free-env-types-fields fields fields-len) (void db-field-t** db-fields-len-t)

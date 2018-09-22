@@ -309,7 +309,7 @@ status_t db_helper_primitive_malloc(size_t size, void** result) {
   if (a) {
     *result = a;
   } else {
-    status.group = db_status_group_libc;
+    status.group = db_status_group_db;
     status.id = db_status_id_memory;
   };
   return (status);
@@ -443,7 +443,6 @@ void db_free_env_types_indices(db_index_t** indices, db_fields_len_t indices_len
     index_pointer = (i + *indices);
     free_and_set_null((index_pointer->fields));
   };
-  debug_log("%lu %lu", indices, (*indices));
   free_and_set_null((*indices));
 };
 void db_free_env_types_fields(db_field_t** fields, db_fields_len_t fields_len) {
