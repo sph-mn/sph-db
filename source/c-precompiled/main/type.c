@@ -1,4 +1,5 @@
-/** extend the size of the types array if type-id is an index out of bounds */
+/** extend the size of the types array if type-id is an index out of bounds.
+  entries from and including index type-id will be set to zero .id */
 status_t db_env_types_extend(db_env_t* env, db_type_id_t type_id) {
   status_declare;
   db_type_id_t types_len;
@@ -14,7 +15,7 @@ status_t db_env_types_extend(db_env_t* env, db_type_id_t type_id) {
   status_require((db_helper_realloc((types_len * sizeof(db_type_t)), (&types))));
   /* set new type struct ids to zero */
   for (i = type_id; (i < types_len); i = (1 + i)) {
-    (i + types)->id = 0;
+    (types[i]).id = 0;
   };
   env->types = types;
   env->types_len = types_len;
@@ -42,7 +43,7 @@ db_field_t* db_type_field_get(db_type_t* type, uint8_t* name) {
   fields_len = type->fields_len;
   fields = type->fields;
   for (index = 0; (index < fields_len); index = (1 + index)) {
-    if (0 == strncmp(name, ((fields[index]).name), ((fields[index]).name_len))) {
+    if (0 == strcmp(name, ((fields[index]).name))) {
       return ((fields + index));
     };
   };
@@ -60,12 +61,14 @@ status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fie
   db_fields_len_t i;
   db_type_t* type_pointer;
   uint8_t key[db_size_system_key];
-  uint8_t name_len;
+  db_name_len_t name_len;
+  db_name_len_t field_name_len;
   size_t data_size;
   boolean after_fixed_size_fields;
   db_type_id_t type_id;
   MDB_val val_data;
   MDB_val val_key;
+  data_start = 0;
   if (db_type_flag_virtual & flags) {
     if (!(1 == fields_len)) {
       status_set_both_goto(db_status_group_db, db_status_id_not_implemented);
@@ -78,13 +81,13 @@ status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fie
   if (db_type_get((txn.env), name)) {
     status_set_both_goto(db_status_group_db, db_status_id_duplicate);
   };
-  /* check name length */
+  /* get and check name-len */
   after_fixed_size_fields = 0;
   name_len = strlen(name);
   if (db_name_len_max < name_len) {
     status_set_both_goto(db_status_group_db, db_status_id_data_length);
   };
-  /* allocate insert data */
+  /* calculate data size */
   data_size = (1 + sizeof(db_name_len_t) + name_len + sizeof(db_fields_len_t));
   for (i = 0; (i < fields_len); i = (1 + i)) {
     /* fixed fields must come before variable length fields */
@@ -95,10 +98,11 @@ status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fie
     } else {
       after_fixed_size_fields = 1;
     };
-    data_size = (data_size + sizeof(db_field_type_t) + sizeof(db_name_len_t) + (i + fields)->name_len);
+    data_size = (data_size + sizeof(db_field_type_t) + sizeof(db_name_len_t) + strlen(((fields[i]).name)));
   };
+  /* allocate */
   status_require((db_helper_malloc(data_size, (&data))));
-  /* set insert data */
+  /* set data */
   data_start = data;
   *data = flags;
   data = (1 + data);
@@ -110,12 +114,13 @@ status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fie
   data = (sizeof(db_fields_len_t) + data);
   for (i = 0; (i < fields_len); i = (1 + i)) {
     field = fields[i];
+    field_name_len = strlen((field.name));
     *((db_field_type_t*)(data)) = field.type;
-    data = (1 + ((db_field_type_t*)(data)));
-    *((db_name_len_t*)(data)) = field.name_len;
-    data = (1 + ((db_name_len_t*)(data)));
-    memcpy(data, (field.name), (field.name_len));
-    data = (field.name_len + data);
+    data = (sizeof(db_field_type_t) + data);
+    *((db_name_len_t*)(data)) = field_name_len;
+    data = (sizeof(db_name_len_t) + data);
+    memcpy(data, (field.name), field_name_len);
+    data = (field_name_len + data);
   };
   status_require((db_sequence_next_system((txn.env), (&type_id))));
   db_system_key_label(key) = db_system_label_type;
@@ -132,7 +137,7 @@ status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fie
   /* update cache */
   status_require((db_env_types_extend((txn.env), type_id)));
   db_mdb_status_require((db_mdb_env_cursor_open(txn, records)));
-  status_require((db_open_type((val_key.mv_data), (val_data.mv_data), ((txn.env)->types), records, (&type_pointer))));
+  status_require((db_open_type(key, data_start, ((txn.env)->types), records, (&type_pointer))));
   db_mdb_cursor_close(records);
   status_require((db_txn_commit((&txn))));
   *result = type_pointer;

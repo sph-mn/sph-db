@@ -44,10 +44,10 @@
   (test-helper-assert "type sequence" (= 1 type-1:sequence))
   (test-helper-assert "type field count" (= 0 type-1:fields-len))
   (sc-comment "create type-2")
-  (db-field-set (array-get fields 0) db-field-type-int8f "test-field-1" 12)
-  (db-field-set (array-get fields 1) db-field-type-int8f "test-field-2" 12)
-  (db-field-set (array-get fields 2) db-field-type-string8 "test-field-3" 12)
-  (db-field-set (array-get fields 3) db-field-type-string16 "test-field-4" 12)
+  (db-field-set (array-get fields 0) db-field-type-int8f "test-field-1")
+  (db-field-set (array-get fields 1) db-field-type-int8f "test-field-2")
+  (db-field-set (array-get fields 2) db-field-type-string8 "test-field-3")
+  (db-field-set (array-get fields 3) db-field-type-string16 "test-field-4")
   (status-require (db-type-create env "test-type-2" fields 4 0 &type-2))
   (test-helper-assert "second type id" (= 2 type-2:id))
   (test-helper-assert "second type sequence" (= 1 type-2:sequence))
@@ -57,7 +57,7 @@
   (for ((set i 0) (< i type-2:fields-len) (set i (+ 1 i)))
     (test-helper-assert
       "second type field name len equality"
-      (= (: (+ i fields) name-len) (: (+ i type-2:fields) name-len)))
+      (= (strlen (: (+ i fields) name)) (strlen (: (+ i type-2:fields) name))))
     (test-helper-assert
       "second type field name equality"
       (= 0 (strcmp (: (+ i fields) name) (: (+ i type-2:fields) name))))
@@ -247,7 +247,7 @@
     size-2 size-t
     type db-type-t*
     value-1 uint8-t
-    value-2 int8-t
+    value-2 int16-t
     values-1 db-record-values-t
     values-2 db-record-values-t)
   (define value-4 uint8-t* (convert-type "abcde" uint8-t*))
@@ -263,34 +263,26 @@
   (status-require (db-record-values-set &values-1 3 value-4 5))
   (sc-comment "test record values/data conversion")
   (status-require (db-record-values->data values-1 &record-1))
-  (test-helper-assert "record-values->data size" (= (+ 3 8) record-1.size))
+  (test-helper-assert "record-values->data size" (= 11 record-1.size))
   (db-record-data->values type record-1 &values-2)
   (test-helper-assert "record-data->values type equal" (= values-1.type values-2.type))
   (test-helper-assert
-    "record-data->values size equal"
+    "record-data->values expected size"
     (and
       (= 1 (struct-get (array-get values-2.data 0) size))
-      (= 2 (struct-get (array-get values-2.data 1) size))
-      (=
-        (struct-get (array-get values-1.data 2) size) (struct-get (array-get values-2.data 2) size))
-      (=
-        (struct-get (array-get values-1.data 3) size) (struct-get (array-get values-2.data 3) size))))
-  (test-helper-assert
-    "record-data->values data equal 1"
-    (= 0 (memcmp value-4 (struct-get (array-get values-1.data 3) data) 5)))
+      (= 2 (struct-get (array-get values-2.data 1) size))))
   (for ((set field-index 0) (< field-index type:fields-len) (set field-index (+ 1 field-index)))
     (set
       size-1 (struct-get (array-get values-1.data field-index) size)
       size-2 (struct-get (array-get values-2.data field-index) size))
+    (test-helper-assert "record-data->values size equal 2" (= size-1 size-2))
     (test-helper-assert
       "record-data->values data equal 2"
       (=
         0
         (memcmp
           (struct-get (array-get values-1.data field-index) data)
-          (struct-get (array-get values-2.data field-index) data)
-          (if* (< size-1 size-2) size-2
-            size-1)))))
+          (struct-get (array-get values-2.data field-index) data) size-1))))
   (status-require (db-record-values->data values-2 &record-2))
   (test-helper-assert
     "record-values->data"
@@ -334,9 +326,7 @@
   (set field-data (db-record-ref type (i-array-get-at records 0) 1))
   (test-helper-assert
     "record-ref-2"
-    (and
-      (= 2 field-data.size)
-      (= value-2 (pointer-get (convert-type field-data.data int8-t*)))))
+    (and (= 2 field-data.size) (= value-2 (pointer-get (convert-type field-data.data int8-t*)))))
   (set field-data (db-record-ref type (i-array-get-at records 0) 3))
   (test-helper-assert
     "record-ref-3" (and (= 5 field-data.size) (= 0 (memcmp value-4 field-data.data field-data.size))))
@@ -473,7 +463,7 @@
     data-int -123
     data-float32 1.23)
   (declare fields (array db-field-t 1))
-  (db-field-set (array-get fields 0) db-field-type-int8f 0 0)
+  (db-field-set (array-get fields 0) db-field-type-int8f "")
   (status-require (db-type-create env "test-type-v" fields 1 db-type-flag-virtual &type))
   (test-helper-assert "is-virtual" (db-type-is-virtual type))
   (sc-comment "uint")
@@ -574,15 +564,15 @@
   (declare env db-env-t*)
   status-declare
   (db-env-new &env)
+  (test-helper-test-one test-open-nonempty env)
+  (test-helper-test-one test-type-create-get-delete env)
   (test-helper-test-one test-record-create env)
   (test-helper-test-one test-id-construction env)
   (test-helper-test-one test-record-virtual env)
   (test-helper-test-one test-open-empty env)
   (test-helper-test-one test-statistics env)
   (test-helper-test-one test-sequence env)
-  (test-helper-test-one test-type-create-get-delete env)
   (test-helper-test-one test-type-create-many env)
-  (test-helper-test-one test-open-nonempty env)
   (test-helper-test-one test-relation-read env)
   (test-helper-test-one test-relation-delete env)
   (test-helper-test-one test-record-select env)

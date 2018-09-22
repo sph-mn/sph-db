@@ -39,10 +39,10 @@ status_t test_type_create_get_delete(db_env_t* env) {
   test_helper_assert("type sequence", (1 == type_1->sequence));
   test_helper_assert("type field count", (0 == type_1->fields_len));
   /* create type-2 */
-  db_field_set((fields[0]), db_field_type_int8f, "test-field-1", 12);
-  db_field_set((fields[1]), db_field_type_int8f, "test-field-2", 12);
-  db_field_set((fields[2]), db_field_type_string8, "test-field-3", 12);
-  db_field_set((fields[3]), db_field_type_string16, "test-field-4", 12);
+  db_field_set((fields[0]), db_field_type_int8f, "test-field-1");
+  db_field_set((fields[1]), db_field_type_int8f, "test-field-2");
+  db_field_set((fields[2]), db_field_type_string8, "test-field-3");
+  db_field_set((fields[3]), db_field_type_string16, "test-field-4");
   status_require((db_type_create(env, "test-type-2", fields, 4, 0, (&type_2))));
   test_helper_assert("second type id", (2 == type_2->id));
   test_helper_assert("second type sequence", (1 == type_2->sequence));
@@ -50,7 +50,7 @@ status_t test_type_create_get_delete(db_env_t* env) {
   test_helper_assert("second type name", (0 == strcmp("test-type-2", (type_2->name))));
   /* test cached field values */
   for (i = 0; (i < type_2->fields_len); i = (1 + i)) {
-    test_helper_assert("second type field name len equality", ((i + fields)->name_len == (i + type_2->fields)->name_len));
+    test_helper_assert("second type field name len equality", (strlen(((i + fields)->name)) == strlen(((i + type_2->fields)->name))));
     test_helper_assert("second type field name equality", (0 == strcmp(((i + fields)->name), ((i + type_2->fields)->name))));
     test_helper_assert("second type type equality", ((i + fields)->type == (i + type_2->fields)->type));
   };
@@ -209,7 +209,7 @@ status_t test_record_create(db_env_t* env) {
   size_t size_2;
   db_type_t* type;
   uint8_t value_1;
-  int8_t value_2;
+  int16_t value_2;
   db_record_values_t values_1;
   db_record_values_t values_2;
   uint8_t* value_4 = ((uint8_t*)("abcde"));
@@ -224,15 +224,15 @@ status_t test_record_create(db_env_t* env) {
   status_require((db_record_values_set((&values_1), 3, value_4, 5)));
   /* test record values/data conversion */
   status_require((db_record_values_to_data(values_1, (&record_1))));
-  test_helper_assert(("record-values->data size"), ((3 + 8) == record_1.size));
+  test_helper_assert(("record-values->data size"), (11 == record_1.size));
   db_record_data_to_values(type, record_1, (&values_2));
   test_helper_assert(("record-data->values type equal"), (values_1.type == values_2.type));
-  test_helper_assert(("record-data->values size equal"), ((1 == ((values_2.data)[0]).size) && (2 == ((values_2.data)[1]).size) && (((values_1.data)[2]).size == ((values_2.data)[2]).size) && (((values_1.data)[3]).size == ((values_2.data)[3]).size)));
-  test_helper_assert(("record-data->values data equal 1"), (0 == memcmp(value_4, (((values_1.data)[3]).data), 5)));
+  test_helper_assert(("record-data->values expected size"), ((1 == ((values_2.data)[0]).size) && (2 == ((values_2.data)[1]).size)));
   for (field_index = 0; (field_index < type->fields_len); field_index = (1 + field_index)) {
     size_1 = ((values_1.data)[field_index]).size;
     size_2 = ((values_2.data)[field_index]).size;
-    test_helper_assert(("record-data->values data equal 2"), (0 == memcmp((((values_1.data)[field_index]).data), (((values_2.data)[field_index]).data), ((size_1 < size_2) ? size_2 : size_1))));
+    test_helper_assert(("record-data->values size equal 2"), (size_1 == size_2));
+    test_helper_assert(("record-data->values data equal 2"), (0 == memcmp((((values_1.data)[field_index]).data), (((values_2.data)[field_index]).data), size_1)));
   };
   status_require((db_record_values_to_data(values_2, (&record_2))));
   test_helper_assert(("record-values->data"), ((record_1.size == record_2.size) && (0 == memcmp((record_1.data), (record_2.data), ((record_1.size < record_2.size) ? record_2.size : record_1.size)))));
@@ -371,7 +371,7 @@ status_t test_record_virtual(db_env_t* env) {
   data_int = -123;
   data_float32 = 1.23;
   db_field_t fields[1];
-  db_field_set((fields[0]), db_field_type_int8f, 0, 0);
+  db_field_set((fields[0]), db_field_type_int8f, "");
   status_require((db_type_create(env, "test-type-v", fields, 1, db_type_flag_virtual, (&type))));
   test_helper_assert("is-virtual", (db_type_is_virtual(type)));
   /* uint */
@@ -468,15 +468,15 @@ int main() {
   db_env_t* env;
   status_declare;
   db_env_new((&env));
+  test_helper_test_one(test_open_nonempty, env);
+  test_helper_test_one(test_type_create_get_delete, env);
   test_helper_test_one(test_record_create, env);
   test_helper_test_one(test_id_construction, env);
   test_helper_test_one(test_record_virtual, env);
   test_helper_test_one(test_open_empty, env);
   test_helper_test_one(test_statistics, env);
   test_helper_test_one(test_sequence, env);
-  test_helper_test_one(test_type_create_get_delete, env);
   test_helper_test_one(test_type_create_many, env);
-  test_helper_test_one(test_open_nonempty, env);
   test_helper_test_one(test_relation_read, env);
   test_helper_test_one(test_relation_delete, env);
   test_helper_test_one(test_record_select, env);

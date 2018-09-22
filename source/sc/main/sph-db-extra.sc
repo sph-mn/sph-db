@@ -7,6 +7,7 @@
   db-system-label-format 0
   db-system-label-type 1
   db-system-label-index 2
+  db-system-label-t uint8-t
   db-selection-flag-skip 1
   db-relation-selection-flag-is-set-left 2
   db-relation-selection-flag-is-set-right 4
@@ -14,13 +15,15 @@
   db-element-id-limit db-id-element-mask
   db-type-flag-virtual 1
   db-size-type-id-max 16
-  db-size-system-label 1
+  db-system-key-label-t uint8-t
+  db-system-key-id-t db-type-id-t
+  db-size-system-key (+ (sizeof db-system-key-id-t) (sizeof db-system-key-label-t))
   (db-pointer->id-at a index) (pointer-get (+ index (convert-type a db-id-t*)))
   (db-pointer->id a) (pointer-get (convert-type a db-id-t*))
   (db-field-type-is-fixed a) (< 0 a)
-  (db-system-key-label a) (pointer-get (convert-type a uint8-t*))
+  (db-system-key-label a) (pointer-get (convert-type a db-system-key-label-t*))
   (db-system-key-id a)
-  (pointer-get (convert-type (+ db-size-system-label (convert-type a uint8-t*)) db-type-id-t*))
+  (pointer-get (convert-type (+ 1 (convert-type a db-system-key-label-t*)) db-system-key-id-t*))
   (db-relation-data->id a) (db-pointer->id (+ 1 (convert-type a db-ordinal-t*)))
   (db-relation-data->ordinal a) (pointer-get (convert-type a db-ordinal-t*))
   (db-relation-data-set-id a value) (set (db-relation-data->id a) value)

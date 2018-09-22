@@ -1,5 +1,6 @@
 (define (db-env-types-extend env type-id) (status-t db-env-t* db-type-id-t)
-  "extend the size of the types array if type-id is an index out of bounds"
+  "extend the size of the types array if type-id is an index out of bounds.
+  entries from and including index type-id will be set to zero .id"
   status-declare
   (declare
     types-len db-type-id-t
@@ -14,7 +15,7 @@
   (status-require (db-helper-realloc (* types-len (sizeof db-type-t)) &types))
   (sc-comment "set new type struct ids to zero")
   (for ((set i type-id) (< i types-len) (set i (+ 1 i)))
-    (set (: (+ i types) id) 0))
+    (set (struct-get (array-get types i) id) 0))
   (set
     env:types types
     env:types-len types-len)
@@ -42,13 +43,7 @@
     fields-len type:fields-len
     fields type:fields)
   (for ((set index 0) (< index fields-len) (set index (+ 1 index)))
-    (if
-      (=
-        0
-        (strncmp
-          name
-          (struct-get (array-get fields index) name) (struct-get (array-get fields index) name-len)))
-      (return (+ fields index))))
+    (if (= 0 (strcmp name (struct-get (array-get fields index) name))) (return (+ fields index))))
   (return 0))
 
 (define (db-type-create env name fields fields-len flags result)
@@ -65,12 +60,14 @@
     i db-fields-len-t
     type-pointer db-type-t*
     key (array uint8-t (db-size-system-key))
-    name-len uint8-t
+    name-len db-name-len-t
+    field-name-len db-name-len-t
     data-size size-t
     after-fixed-size-fields boolean
     type-id db-type-id-t
     val-data MDB-val
     val-key MDB-val)
+  (set data-start 0)
   (if (bit-and db-type-flag-virtual flags)
     (begin
       (if (not (= 1 fields-len))
@@ -79,13 +76,13 @@
         (status-set-both-goto db-status-group-db db-status-id-invalid-field-type))))
   (sc-comment "check if type with name exists")
   (if (db-type-get txn.env name) (status-set-both-goto db-status-group-db db-status-id-duplicate))
-  (sc-comment "check name length")
+  (sc-comment "get and check name-len")
   (set
     after-fixed-size-fields #f
     name-len (strlen name))
   (if (< db-name-len-max name-len)
     (status-set-both-goto db-status-group-db db-status-id-data-length))
-  (sc-comment "allocate insert data")
+  (sc-comment "calculate data size")
   (set data-size (+ 1 (sizeof db-name-len-t) name-len (sizeof db-fields-len-t)))
   (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
     (sc-comment "fixed fields must come before variable length fields")
@@ -94,9 +91,13 @@
         (status-set-both-goto db-status-group-db db-status-id-type-field-order))
       (set after-fixed-size-fields #t))
     (set data-size
-      (+ data-size (sizeof db-field-type-t) (sizeof db-name-len-t) (: (+ i fields) name-len))))
+      (+
+        data-size
+        (sizeof db-field-type-t)
+        (sizeof db-name-len-t) (strlen (struct-get (array-get fields i) name)))))
+  (sc-comment "allocate")
   (status-require (db-helper-malloc data-size &data))
-  (sc-comment "set insert data")
+  (sc-comment "set data")
   (set
     data-start data
     *data flags
@@ -111,12 +112,13 @@
   (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
     (set
       field (array-get fields i)
+      field-name-len (strlen field.name)
       (pointer-get (convert-type data db-field-type-t*)) field.type
-      data (+ 1 (convert-type data db-field-type-t*))
-      (pointer-get (convert-type data db-name-len-t*)) field.name-len
-      data (+ 1 (convert-type data db-name-len-t*)))
-    (memcpy data field.name field.name-len)
-    (set data (+ field.name-len data)))
+      data (+ (sizeof db-field-type-t) data)
+      (pointer-get (convert-type data db-name-len-t*)) field-name-len
+      data (+ (sizeof db-name-len-t) data))
+    (memcpy data field.name field-name-len)
+    (set data (+ field-name-len data)))
   (status-require (db-sequence-next-system txn.env &type-id))
   (set
     (db-system-key-label key) db-system-label-type
@@ -133,8 +135,7 @@
   (sc-comment "update cache")
   (status-require (db-env-types-extend txn.env type-id))
   (db-mdb-status-require (db-mdb-env-cursor-open txn records))
-  (status-require
-    (db-open-type val-key.mv-data val-data.mv-data txn.env:types records &type-pointer))
+  (status-require (db-open-type key data-start txn.env:types records &type-pointer))
   (db-mdb-cursor-close records)
   (status-require (db-txn-commit &txn))
   (set *result type-pointer)

@@ -8,8 +8,9 @@
   (db-error-log pattern ...)
   (fprintf stderr (pre-string-concat "%s:%d error: " pattern "\n") __func__ __LINE__ __VA_ARGS__)
   reduce-count (set count (- count 1))
-  stop-if-count-zero (if (= 0 count) (goto exit))
-  db-size-system-key (+ 1 (sizeof db-type-id-t)))
+  stop-if-count-zero (if (= 0 count) (goto exit)))
+
+(pre-define (debug-trace n) (fprintf stdout "%s %d\n" __func__ n))
 
 (define (uint->string a result-len) (uint8-t* uintmax-t size-t*)
   (declare
@@ -289,13 +290,13 @@
       status.id db-status-id-memory))
   (return status))
 
-(define (db-helper-primitive-malloc-string size result) (status-t size-t uint8-t**)
-  "like db-helper-malloc but sets the last octet to zero"
+(define (db-helper-primitive-malloc-string length result) (status-t size-t uint8-t**)
+  "like db-helper-malloc but allocates one extra byte that is set to zero"
   status-declare
   (declare a uint8-t*)
-  (status-require (db-helper-malloc size &a))
+  (status-require (db-helper-malloc (+ 1 length) &a))
   (set
-    (pointer-get (+ size a)) 0
+    (array-get a length) 0
     *result a)
   (label exit
     (return status)))
@@ -322,7 +323,8 @@
 
 (define (db-read-name data-pointer result) (status-t uint8-t** uint8-t**)
   "read a length prefixed string.
-  on success set result to a newly allocated string and data to the next byte after the string"
+  on success set result to a newly allocated, null terminated string and
+  data-pointer is positioned at the first byte after the string"
   status-declare
   (declare
     data uint8-t*
@@ -334,10 +336,10 @@
     data (+ (sizeof db-name-len-t) data))
   (status-require (db-helper-malloc-string len &name))
   (memcpy name data len)
+  (set
+    *data-pointer (+ len data)
+    *result name)
   (label exit
-    (set
-      *data-pointer (+ len data)
-      *result name)
     (return status)))
 
 (pre-define (db-define-i-array-new name type)
@@ -415,6 +417,7 @@
   (for ((set i 0) (< i indices-len) (set i (+ 1 i)))
     (set index-pointer (+ i *indices))
     (free-and-set-null index-pointer:fields))
+  (debug-log "%lu %lu" indices *indices)
   (free-and-set-null *indices))
 
 (define (db-free-env-types-fields fields fields-len) (void db-field-t** db-fields-len-t)
@@ -425,7 +428,7 @@
   (free-and-set-null *fields))
 
 (define (db-free-env-type type) (void db-type-t*)
-  (if (= 0 type:id) return)
+  (if (not type:id) return)
   (free-and-set-null type:fields-fixed-offsets)
   (db-free-env-types-fields &type:fields type:fields-len)
   (db-free-env-types-indices &type:indices type:indices-len)

@@ -190,10 +190,10 @@
   "create a new type with four fields, fixed and variable length, for testing"
   status-declare
   (declare fields (array db-field-t 4))
-  (db-field-set (array-get fields 0) db-field-type-uint8f "test-field-1" 12)
-  (db-field-set (array-get fields 1) db-field-type-int16f "test-field-2" 12)
-  (db-field-set (array-get fields 2) db-field-type-string8 "test-field-3" 12)
-  (db-field-set (array-get fields 3) db-field-type-string16 "test-field-4" 12)
+  (db-field-set (array-get fields 0) db-field-type-uint8f "test-field-1")
+  (db-field-set (array-get fields 1) db-field-type-int16f "test-field-2")
+  (db-field-set (array-get fields 2) db-field-type-string8 "test-field-3")
+  (db-field-set (array-get fields 3) db-field-type-string16 "test-field-4")
   (status-require (db-type-create env "test-type-1" fields 4 0 result))
   (label exit
     (return status)))

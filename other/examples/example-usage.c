@@ -37,11 +37,11 @@ status_t create_type(db_env_t* env, db_type_t** result_type) {
   status_declare;
   db_field_t fields[4];
   db_type_t* type;
-  // set field.type, field.name and field.name_len
-  db_field_set(fields[0], db_field_type_uint8f, "field-name-1", 12);
-  db_field_set(fields[1], db_field_type_int8f, "field-name-2", 12);
-  db_field_set(fields[2], db_field_type_string8, "field-name-3", 12);
-  db_field_set(fields[3], db_field_type_string8, "field-name-4", 12);
+  // set field.type and field.name
+  db_field_set(fields[0], db_field_type_uint8f, "field-name-1");
+  db_field_set(fields[1], db_field_type_int8f, "field-name-2");
+  db_field_set(fields[2], db_field_type_string8, "field-name-3");
+  db_field_set(fields[3], db_field_type_string8, "field-name-4");
   // arguments: db_env_t*, type_name, db_field_t*, field_count, flags, result
   status_require(db_type_create(env, "test-type-name", fields, 4, 0, &type));
   *result_type = type;
@@ -287,7 +287,7 @@ status_t create_virtual_records(db_env_t* env) {
   db_field_t fields;
   db_type_t* type;
   // create virtual record type. must have only one field
-  db_field_set(fields, db_field_type_uint16f, 0, 0);
+  db_field_set(fields, db_field_type_uint16f, "");
   status_require(db_type_create(env, "test-vtype", &fields, 1, db_type_flag_virtual, &type));
   if(db_type_is_virtual(type)) {
     printf("type is a virtual record type\n");

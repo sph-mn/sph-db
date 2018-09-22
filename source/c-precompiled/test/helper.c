@@ -175,10 +175,10 @@ exit:
 status_t test_helper_create_type_1(db_env_t* env, db_type_t** result) {
   status_declare;
   db_field_t fields[4];
-  db_field_set((fields[0]), db_field_type_uint8f, "test-field-1", 12);
-  db_field_set((fields[1]), db_field_type_int16f, "test-field-2", 12);
-  db_field_set((fields[2]), db_field_type_string8, "test-field-3", 12);
-  db_field_set((fields[3]), db_field_type_string16, "test-field-4", 12);
+  db_field_set((fields[0]), db_field_type_uint8f, "test-field-1");
+  db_field_set((fields[1]), db_field_type_int16f, "test-field-2");
+  db_field_set((fields[2]), db_field_type_string8, "test-field-3");
+  db_field_set((fields[3]), db_field_type_string16, "test-field-4");
   status_require((db_type_create(env, "test-type-1", fields, 4, 0, result)));
 exit:
   return (status);

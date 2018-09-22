@@ -12,7 +12,7 @@
   if (0 == count) { \
     goto exit; \
   }
-#define db_size_system_key (1 + sizeof(db_type_id_t))
+#define debug_trace(n) fprintf(stdout, "%s %d\n", __func__, n)
 uint8_t* uint_to_string(uintmax_t a, size_t* result_len) {
   size_t size;
   uint8_t* result;
@@ -314,12 +314,12 @@ status_t db_helper_primitive_malloc(size_t size, void** result) {
   };
   return (status);
 };
-/** like db-helper-malloc but sets the last octet to zero */
-status_t db_helper_primitive_malloc_string(size_t size, uint8_t** result) {
+/** like db-helper-malloc but allocates one extra byte that is set to zero */
+status_t db_helper_primitive_malloc_string(size_t length, uint8_t** result) {
   status_declare;
   uint8_t* a;
-  status_require((db_helper_malloc(size, (&a))));
-  *(size + a) = 0;
+  status_require((db_helper_malloc((1 + length), (&a))));
+  a[length] = 0;
   *result = a;
 exit:
   return (status);
@@ -349,7 +349,8 @@ status_t db_helper_primitive_realloc(size_t size, void** block) {
   return (status);
 };
 /** read a length prefixed string.
-  on success set result to a newly allocated string and data to the next byte after the string */
+  on success set result to a newly allocated, null terminated string and
+  data-pointer is positioned at the first byte after the string */
 status_t db_read_name(uint8_t** data_pointer, uint8_t** result) {
   status_declare;
   uint8_t* data;
@@ -360,9 +361,9 @@ status_t db_read_name(uint8_t** data_pointer, uint8_t** result) {
   data = (sizeof(db_name_len_t) + data);
   status_require((db_helper_malloc_string(len, (&name))));
   memcpy(name, data, len);
-exit:
   *data_pointer = (len + data);
   *result = name;
+exit:
   return (status);
 };
 #define db_define_i_array_new(name, type) \
@@ -442,6 +443,7 @@ void db_free_env_types_indices(db_index_t** indices, db_fields_len_t indices_len
     index_pointer = (i + *indices);
     free_and_set_null((index_pointer->fields));
   };
+  debug_log("%lu %lu", indices, (*indices));
   free_and_set_null((*indices));
 };
 void db_free_env_types_fields(db_field_t** fields, db_fields_len_t fields_len) {
@@ -455,7 +457,7 @@ void db_free_env_types_fields(db_field_t** fields, db_fields_len_t fields_len) {
   free_and_set_null((*fields));
 };
 void db_free_env_type(db_type_t* type) {
-  if (0 == type->id) {
+  if (!type->id) {
     return;
   };
   free_and_set_null((type->fields_fixed_offsets));

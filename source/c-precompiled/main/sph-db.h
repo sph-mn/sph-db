@@ -247,10 +247,9 @@ i_array_declare_type(db_relations_t, db_relation_t);
     db_txn_abort((&a)); \
   }
 #define db_txn_is_active(a) (a.mdb_txn ? 1 : 0)
-#define db_field_set(a, a_type, a_name, a_name_len) \
+#define db_field_set(a, a_type, a_name) \
   a.type = a_type; \
-  a.name = a_name; \
-  a.name_len = a_name_len
+  a.name = a_name
 /** set so that *-finish succeeds even if it has not yet been initialised.
       for having cleanup tasks at one place like with a goto exit label */
 #define db_relation_selection_set_null(name) \
@@ -306,7 +305,6 @@ enum { db_status_id_success,
 typedef uint8_t db_field_type_size_t;
 typedef struct {
   uint8_t* name;
-  db_name_len_t name_len;
   db_field_type_t type;
   db_fields_len_t offset;
   db_field_type_size_t size;
@@ -321,7 +319,6 @@ typedef struct {
   db_type_id_t id;
   struct db_index_t* indices;
   db_indices_len_t indices_len;
-  size_t indices_size;
   uint8_t* name;
   db_id_t sequence;
 } db_type_t;

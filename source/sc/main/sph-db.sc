@@ -137,11 +137,10 @@
   (db-txn-is-active a)
   (if* a.mdb-txn #t
     #f)
-  (db-field-set a a-type a-name a-name-len)
+  (db-field-set a a-type a-name)
   (set
     a.type a-type
-    a.name a-name
-    a.name-len a-name-len)
+    a.name a-name)
   (db-relation-selection-set-null name)
   (begin
     "set so that *-finish succeeds even if it has not yet been initialised.
@@ -213,7 +212,6 @@
   (type
     (struct
       (name uint8-t*)
-      (name-len db-name-len-t)
       (type db-field-type-t)
       (offset db-fields-len-t)
       (size db-field-type-size-t)))
@@ -231,7 +229,6 @@
         (struct
           db-index-t*))
       (indices-len db-indices-len-t)
-      (indices-size size-t)
       (name uint8-t*)
       (sequence db-id-t)))
   db-index-t

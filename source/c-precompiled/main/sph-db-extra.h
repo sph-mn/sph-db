@@ -164,6 +164,7 @@ imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
 #define db_system_label_format 0
 #define db_system_label_type 1
 #define db_system_label_index 2
+#define db_system_label_t uint8_t
 #define db_selection_flag_skip 1
 #define db_relation_selection_flag_is_set_left 2
 #define db_relation_selection_flag_is_set_right 4
@@ -171,12 +172,14 @@ imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
 #define db_element_id_limit db_id_element_mask
 #define db_type_flag_virtual 1
 #define db_size_type_id_max 16
-#define db_size_system_label 1
+#define db_system_key_label_t uint8_t
+#define db_system_key_id_t db_type_id_t
+#define db_size_system_key (sizeof(db_system_key_id_t) + sizeof(db_system_key_label_t))
 #define db_pointer_to_id_at(a, index) *(index + ((db_id_t*)(a)))
 #define db_pointer_to_id(a) *((db_id_t*)(a))
 #define db_field_type_is_fixed(a) (0 < a)
-#define db_system_key_label(a) *((uint8_t*)(a))
-#define db_system_key_id(a) *((db_type_id_t*)((db_size_system_label + ((uint8_t*)(a)))))
+#define db_system_key_label(a) *((db_system_key_label_t*)(a))
+#define db_system_key_id(a) *((db_system_key_id_t*)((1 + ((db_system_key_label_t*)(a)))))
 #define db_relation_data_to_id(a) db_pointer_to_id((1 + ((db_ordinal_t*)(a))))
 #define db_relation_data_to_ordinal(a) *((db_ordinal_t*)(a))
 #define db_relation_data_set_id(a, value) db_relation_data_to_id(a) = value
