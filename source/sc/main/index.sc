@@ -72,25 +72,61 @@
 (define (db-index-key env index values result-data result-size)
   (status-t db-env-t* db-index-t db-record-values-t void** size-t*)
   "create a key to be used in an index btree.
-  key-format: field-value ..."
+  similar to db-record-values->data but only for indexed fields.
+  values must be written with variable size prefixes and more like for row data to avoid ambiguous keys"
   status-declare
   (declare
-    value-size size-t
     data void*
+    data-size uint64-t
+    data-temp uint8-t*
+    field-data void*
+    field-index db-fields-len-t
+    field-size db-field-type-size-t
+    fields db-field-t*
+    fields-fixed-count db-fields-len-t
     i db-fields-len-t
-    size size-t
-    data-temp uint8-t*)
-  (set size 0)
+    size size-t)
+  (sc-comment "no fields set, no data stored")
+  (if (not values.extent)
+    (begin
+      (set
+        *result-data 0
+        *result-size 0)
+      (return status)))
+  (set
+    size 0
+    fields-fixed-count values.type:fields-fixed-count
+    fields values.type:fields)
+  (sc-comment "calculate data size")
   (for ((set i 0) (< i index.fields-len) (set i (+ 1 i)))
-    (set size (+ size (struct-get (array-get values.data (array-get index.fields i)) size))))
+    (set
+      field-index (array-get index.fields i)
+      size
+      (+
+        (struct-get (array-get fields field-index) size)
+        (if* (< field-index fields-fixed-count) 0
+          (struct-get (array-get values.data field-index) size))
+        size)))
   (if (< env:maxkeysize size) (status-set-both-goto db-status-group-db db-status-id-index-keysize))
-  (status-require (db-helper-malloc size &data))
+  (sc-comment "allocate and prepare data")
+  (status-require (db-helper-calloc size &data))
   (set data-temp data)
   (for ((set i 0) (< i index.fields-len) (set i (+ 1 i)))
-    (set value-size (struct-get (array-get values.data (array-get index.fields i)) size))
-    (memcpy
-      data-temp (struct-get (array-get values.data (array-get index.fields i)) data) value-size)
-    (set data-temp (+ value-size data-temp)))
+    (set
+      field-index (array-get index.fields i)
+      data-size (struct-get (array-get values.data field-index) size)
+      field-size (struct-get (array-get fields field-index) size)
+      field-data (struct-get (array-get values.data field-index) data))
+    (if (< i fields-fixed-count)
+      (begin
+        (if data-size (memcpy data-temp field-data data-size))
+        (set data-temp (+ field-size data-temp)))
+      (begin
+        (sc-comment "data size prefix and optionally data")
+        (memcpy data-temp &data-size field-size)
+        (set data-temp (+ field-size data-temp))
+        (if data-size (memcpy data-temp field-data data-size))
+        (set data-temp (+ data-size data-temp)))))
   (set
     *result-data data
     *result-size size)

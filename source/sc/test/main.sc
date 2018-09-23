@@ -517,7 +517,7 @@
   (test-helper-assert
     "index-get fields set" (and (= 1 (array-get index:fields 0)) (= 2 (array-get index:fields 1))))
   (status-require (db-index-key env *index (array-get values 0) &key-data &key-size))
-  (test-helper-assert "key size" (= 5 key-size))
+  (test-helper-assert "key size" (= 6 key-size))
   (test-helper-assert "key memory ref" (array-get (convert-type key-data uint8-t*) 3))
   (sc-comment "test record index update")
   (status-require (test-helper-create-records-1 env values &record-ids &record-ids-len))

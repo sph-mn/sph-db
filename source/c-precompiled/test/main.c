@@ -423,7 +423,7 @@ status_t test_index(db_env_t* env) {
   test_helper_assert("index-get fields-len", (fields_len == index->fields_len));
   test_helper_assert("index-get fields set", ((1 == (index->fields)[0]) && (2 == (index->fields)[1])));
   status_require((db_index_key(env, (*index), (values[0]), (&key_data), (&key_size))));
-  test_helper_assert("key size", (5 == key_size));
+  test_helper_assert("key size", (6 == key_size));
   test_helper_assert("key memory ref", (((uint8_t*)(key_data))[3]));
   /* test record index update */
   status_require((test_helper_create_records_1(env, values, (&record_ids), (&record_ids_len))));

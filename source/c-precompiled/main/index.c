@@ -67,27 +67,59 @@ exit:
   return (status);
 };
 /** create a key to be used in an index btree.
-  key-format: field-value ... */
+  similar to db-record-values->data but only for indexed fields.
+  values must be written with variable size prefixes and more like for row data to avoid ambiguous keys */
 status_t db_index_key(db_env_t* env, db_index_t index, db_record_values_t values, void** result_data, size_t* result_size) {
   status_declare;
-  size_t value_size;
   void* data;
+  uint64_t data_size;
+  uint8_t* data_temp;
+  void* field_data;
+  db_fields_len_t field_index;
+  db_field_type_size_t field_size;
+  db_field_t* fields;
+  db_fields_len_t fields_fixed_count;
   db_fields_len_t i;
   size_t size;
-  uint8_t* data_temp;
+  /* no fields set, no data stored */
+  if (!values.extent) {
+    *result_data = 0;
+    *result_size = 0;
+    return (status);
+  };
   size = 0;
+  fields_fixed_count = (values.type)->fields_fixed_count;
+  fields = (values.type)->fields;
+  /* calculate data size */
   for (i = 0; (i < index.fields_len); i = (1 + i)) {
-    size = (size + ((values.data)[(index.fields)[i]]).size);
+    field_index = (index.fields)[i];
+    size = ((fields[field_index]).size + ((field_index < fields_fixed_count) ? 0 : ((values.data)[field_index]).size) + size);
   };
   if (env->maxkeysize < size) {
     status_set_both_goto(db_status_group_db, db_status_id_index_keysize);
   };
-  status_require((db_helper_malloc(size, (&data))));
+  /* allocate and prepare data */
+  status_require((db_helper_calloc(size, (&data))));
   data_temp = data;
   for (i = 0; (i < index.fields_len); i = (1 + i)) {
-    value_size = ((values.data)[(index.fields)[i]]).size;
-    memcpy(data_temp, (((values.data)[(index.fields)[i]]).data), value_size);
-    data_temp = (value_size + data_temp);
+    field_index = (index.fields)[i];
+    data_size = ((values.data)[field_index]).size;
+    field_size = (fields[field_index]).size;
+    field_data = ((values.data)[field_index]).data;
+    if (i < fields_fixed_count) {
+      if (data_size) {
+        memcpy(data_temp, field_data, data_size);
+      };
+      data_temp = (field_size + data_temp);
+    } else {
+      /* data size prefix and optionally data */
+      memcpy(data_temp, (&data_size), field_size);
+      data_temp = (field_size + data_temp);
+      if (data_size) {
+        memcpy(data_temp, field_data, data_size);
+      };
+      data_temp = (data_size + data_temp);
+    };
   };
   *result_data = data;
   *result_size = size;
