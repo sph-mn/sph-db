@@ -153,9 +153,7 @@ status_t db_record_create(db_txn_t txn, db_record_values_t values, db_id_t* resu
   status_require((db_sequence_next((txn.env), ((values.type)->id), (&id))));
   db_mdb_status_require((mdb_cursor_put(records, (&val_id), (&val_data), 0)));
   db_mdb_cursor_close(records);
-  if (values.extent) {
-    status_require((db_indices_entry_ensure(txn, values, id)));
-  };
+  status_require((db_indices_entry_ensure(txn, values, id)));
   *result = id;
 exit:
   db_mdb_cursor_close_if_active(records);

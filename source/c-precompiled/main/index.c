@@ -66,8 +66,10 @@ exit:
   };
   return (status);
 };
-/** create a key to be used in an index btree.
+/** create a key to be used in an index database.
   similar to db-record-values->data but only for indexed fields.
+  key format: field-data ...
+  the record id will be in the btree key but with MDB-DUPSORT it is treated like key/value.
   values must be written with variable size prefixes and more like for row data to avoid ambiguous keys */
 status_t db_index_key(db_env_t* env, db_index_t index, db_record_values_t values, void** result_data, size_t* result_size) {
   status_declare;
@@ -82,18 +84,13 @@ status_t db_index_key(db_env_t* env, db_index_t index, db_record_values_t values
   db_fields_len_t i;
   size_t size;
   /* no fields set, no data stored */
-  if (!values.extent) {
-    *result_data = 0;
-    *result_size = 0;
-    return (status);
-  };
   size = 0;
   fields_fixed_count = (values.type)->fields_fixed_count;
   fields = (values.type)->fields;
   /* calculate data size */
   for (i = 0; (i < index.fields_len); i = (1 + i)) {
     field_index = (index.fields)[i];
-    size = ((fields[field_index]).size + ((field_index < fields_fixed_count) ? 0 : ((values.data)[field_index]).size) + size);
+    size = ((fields[field_index]).size + ((field_index < fields_fixed_count) ? 0 : ((field_index < values.extent) ? ((values.data)[field_index]).size : 0)) + size);
   };
   if (env->maxkeysize < size) {
     status_set_both_goto(db_status_group_db, db_status_id_index_keysize);
@@ -103,9 +100,13 @@ status_t db_index_key(db_env_t* env, db_index_t index, db_record_values_t values
   data_temp = data;
   for (i = 0; (i < index.fields_len); i = (1 + i)) {
     field_index = (index.fields)[i];
-    data_size = ((values.data)[field_index]).size;
     field_size = (fields[field_index]).size;
-    field_data = ((values.data)[field_index]).data;
+    if (field_index < values.extent) {
+      data_size = ((values.data)[field_index]).size;
+      field_data = ((values.data)[field_index]).data;
+    } else {
+      data_size = 0;
+    };
     if (i < fields_fixed_count) {
       if (data_size) {
         memcpy(data_temp, field_data, data_size);
@@ -228,6 +229,8 @@ status_t db_index_build(db_env_t* env, db_index_t index) {
     status.id = mdb_cursor_get(records, (&val_id), (&val_data), MDB_NEXT_NODUP);
   };
   db_mdb_status_expect_read;
+  db_mdb_cursor_close(index_cursor);
+  db_mdb_cursor_close(records);
   status_require((db_txn_commit((&txn))));
 exit:
   db_mdb_cursor_close_if_active(index_cursor);
@@ -320,7 +323,7 @@ status_t db_index_create(db_env_t* env, db_type_t* type, db_fields_len_t* fields
   db_mdb_status_require((mdb_cursor_put(system, (&val_data), (&val_null), 0)));
   db_mdb_cursor_close(system);
   /* add data btree */
-  db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), name, MDB_CREATE, (&(record_index.dbi)))));
+  db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), name, (MDB_CREATE | MDB_DUPSORT), (&(record_index.dbi)))));
   /* update cache. fields might be stack allocated */
   status_require((db_helper_malloc((fields_len * sizeof(db_fields_len_t)), (&fields_copy))));
   memcpy(fields_copy, fields, (fields_len * sizeof(db_fields_len_t)));

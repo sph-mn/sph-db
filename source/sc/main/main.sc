@@ -12,6 +12,20 @@
 
 (pre-define (debug-trace n) (fprintf stdout "%s %d\n" __func__ n))
 
+(define (display-bits-u8 a) (void uint8-t)
+  (declare i uint8-t)
+  (printf "%u" (bit-and 1 a))
+  (for ((set i 1) (< i 8) (set i (+ 1 i)))
+    (printf "%u"
+      (if* (bit-and (bit-shift-left (convert-type 1 uint8-t) i) a) 1
+        0))))
+
+(define (display-bits a size) (void void* size-t)
+  (declare i size-t)
+  (for ((set i 0) (< i size) (set i (+ 1 i)))
+    (display-bits-u8 (array-get (convert-type a uint8-t*) i)))
+  (printf "\n"))
+
 (define (uint->string a result-len) (uint8-t* uintmax-t size-t*)
   (declare
     size size-t

@@ -71,8 +71,10 @@
 
 (define (db-index-key env index values result-data result-size)
   (status-t db-env-t* db-index-t db-record-values-t void** size-t*)
-  "create a key to be used in an index btree.
+  "create a key to be used in an index database.
   similar to db-record-values->data but only for indexed fields.
+  key format: field-data ...
+  the record id will be in the btree key but with MDB-DUPSORT it is treated like key/value.
   values must be written with variable size prefixes and more like for row data to avoid ambiguous keys"
   status-declare
   (declare
@@ -87,12 +89,6 @@
     i db-fields-len-t
     size size-t)
   (sc-comment "no fields set, no data stored")
-  (if (not values.extent)
-    (begin
-      (set
-        *result-data 0
-        *result-size 0)
-      (return status)))
   (set
     size 0
     fields-fixed-count values.type:fields-fixed-count
@@ -105,7 +101,8 @@
       (+
         (struct-get (array-get fields field-index) size)
         (if* (< field-index fields-fixed-count) 0
-          (struct-get (array-get values.data field-index) size))
+          (if* (< field-index values.extent) (struct-get (array-get values.data field-index) size)
+            0))
         size)))
   (if (< env:maxkeysize size) (status-set-both-goto db-status-group-db db-status-id-index-keysize))
   (sc-comment "allocate and prepare data")
@@ -114,9 +111,12 @@
   (for ((set i 0) (< i index.fields-len) (set i (+ 1 i)))
     (set
       field-index (array-get index.fields i)
-      data-size (struct-get (array-get values.data field-index) size)
-      field-size (struct-get (array-get fields field-index) size)
-      field-data (struct-get (array-get values.data field-index) data))
+      field-size (struct-get (array-get fields field-index) size))
+    (if (< field-index values.extent)
+      (set
+        data-size (struct-get (array-get values.data field-index) size)
+        field-data (struct-get (array-get values.data field-index) data))
+      (set data-size 0))
     (if (< i fields-fixed-count)
       (begin
         (if data-size (memcpy data-temp field-data data-size))
@@ -235,6 +235,8 @@
     (db-mdb-status-require (mdb-cursor-put index-cursor &val-data &val-id 0))
     (set status.id (mdb-cursor-get records &val-id &val-data MDB-NEXT-NODUP)))
   db-mdb-status-expect-read
+  (db-mdb-cursor-close index-cursor)
+  (db-mdb-cursor-close records)
   (status-require (db-txn-commit &txn))
   (label exit
     (db-mdb-cursor-close-if-active index-cursor)
@@ -337,7 +339,8 @@
   (db-mdb-status-require (mdb-cursor-put system &val-data &val-null 0))
   (db-mdb-cursor-close system)
   (sc-comment "add data btree")
-  (db-mdb-status-require (mdb-dbi-open txn.mdb-txn name MDB-CREATE &record-index.dbi))
+  (db-mdb-status-require
+    (mdb-dbi-open txn.mdb-txn name (bit-or MDB-CREATE MDB_DUPSORT) &record-index.dbi))
   (sc-comment "update cache. fields might be stack allocated")
   (status-require (db-helper-malloc (* fields-len (sizeof db-fields-len-t)) &fields-copy))
   (memcpy fields-copy fields (* fields-len (sizeof db-fields-len-t)))

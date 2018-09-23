@@ -172,7 +172,7 @@
   (status-require (db-sequence-next txn.env values.type:id &id))
   (db-mdb-status-require (mdb-cursor-put records &val-id &val-data 0))
   (db-mdb-cursor-close records)
-  (if values.extent (status-require (db-indices-entry-ensure txn values id)))
+  (status-require (db-indices-entry-ensure txn values id))
   (set *result id)
   (label exit
     (db-mdb-cursor-close-if-active records)

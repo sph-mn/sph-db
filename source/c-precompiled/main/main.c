@@ -13,6 +13,20 @@
     goto exit; \
   }
 #define debug_trace(n) fprintf(stdout, "%s %d\n", __func__, n)
+void display_bits_u8(uint8_t a) {
+  uint8_t i;
+  printf("%u", (1 & a));
+  for (i = 1; (i < 8); i = (1 + i)) {
+    printf("%u", (((((uint8_t)(1)) << i) & a) ? 1 : 0));
+  };
+};
+void display_bits(void* a, size_t size) {
+  size_t i;
+  for (i = 0; (i < size); i = (1 + i)) {
+    display_bits_u8((((uint8_t*)(a))[i]));
+  };
+  printf("\n");
+};
 uint8_t* uint_to_string(uintmax_t a, size_t* result_len) {
   size_t size;
   uint8_t* result;
