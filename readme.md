@@ -5,7 +5,7 @@ sph-db is a database as a shared library for records and relations. sph-db is in
 * license: lgpl3+
 
 # project goals
-* a minimal embeddable database to store records without having to construct high-level query language strings queries
+* a minimal embeddable database to store records without having to construct high-level language strings for queries
 * graph-like relations without having to manage junction tables
 
 # features
