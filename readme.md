@@ -313,7 +313,7 @@ index = db_index_get(type, fields, 2);
 
 * existing records will be indexed on index creation
 * new records will be automatically added or removed from the index when they are created or deleted
-* there is a limit on the combined size of indexed field data for a record, which is defined by the lmdb compile-time constant MDB_MAXKEYSIZE, default 511 bytes minus db_id_t size. currently index inserts with data too large are rejected
+* there is a limit on the combined size of indexed field data for a record, which is defined by the lmdb compile-time constant MDB_MAXKEYSIZE, default 511 bytes minus db_id_t size. currently inserts with index data too large are rejected
 
 ## read record ids from indices
 ```c
@@ -349,7 +349,7 @@ if(db_status_id_notfound != status.id) {
 ```
 
 ## virtual records
-virtual records carry the data in the identifier and only exist in relations or field data. one use-case are relations with a possibly large number of numeric values that dont need a separate data record, for example timestamps. they are to save space and processing costs. they can store data of any type that is equal to or smaller than id-size minus type-size
+virtual records carry the data in the identifier and only exist in relations or field data. one use-case are relations with a possibly large number of numeric values that dont need a separate data record, for example timestamps. they are to save space and processing costs. they can store data of any type that is equal to or smaller than id-size minus type-size.
 to create a virtual record type, pass ``db_type_flag_virtual`` to ``db_type_create`` and only specify one field
 
 ```c
@@ -712,12 +712,13 @@ these values can be set before compilation in ``c-precompiled/main/config.c``. o
 
 # possible enhancements
 * float values as ordinals has not been tested
+* currently index inserts with data too large are rejected. maybe add an option to control what happens, for example to truncate instead
+* signal error when creating index for fields that are or might be too large
+* eventually more streamlined declaration/allocation/deallocation for api usage
+* validator functions for indices and relation data consistency
 * lift the type creation limit
 * nested transactions. supposedly possible in lmdb but not working
-* more streamlined declaration/allocation/deallocation for api usage
-* validator functions for indices and relation data consistency
 * partial indices. with a data filter function given at index definition
-* currently index inserts with data too large are rejected. maybe add an option to truncate instead
 * at some places MDB_SET_RANGE and MDB_GET_BOTH_RANGE is used in succession. maybe get-both-range includes set-range and the latter can be left out
 * search with matcher functions in index keys
 * simplified naming for status bindings. status_require is a long word to be written frequently

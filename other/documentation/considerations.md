@@ -174,9 +174,9 @@ could technically encode multiple 8 bit fields or similar
 
 # how to choose and use indices
 * option - selected
-* manually
-* either selecting only record ids or records via ids from index
-* custom btree searches possible with lmdb features or extension
+  * manually
+  * either selecting only record ids or records via ids from index
+  * custom btree searches possible with lmdb features or extension
 
 # database handles or one open database per process
 * option - selected
@@ -193,7 +193,7 @@ could technically encode multiple 8 bit fields or similar
 * or custom tests and branches
 * more complex searchers could be an extension
 * con
-  * elevating the process to higher-level languages exacerbates costs
+  * elevating the process to any higher-level language exacerbates costs
 
 # should partial indices be supported
 initially not supported
@@ -224,7 +224,7 @@ initially not supported
 # sequences per type or one global
 * option - selected
   * per-type
-    * can theoretically be shorter
+    * values can theoretically stay smaller
     * need to query every type to load current sequence number on startup
 * option
   * database global
@@ -233,12 +233,14 @@ initially not supported
 * option
   * custom-size per-type
     * size loaded from schema variable
+    * overhead from variable size
 
 # what happens on concurrent delete and update for a row
 * update is reinsert
 * probably last committed transaction wins
 * that is why updates are problematic
 * "update might prevent deletion"
+* part of lmdb, not sph-db
 
 # how to create custom virtual types
 set the corresponding flag with db-type-create
@@ -261,7 +263,7 @@ set the corresponding flag with db-type-create
 * use multiple types as if being one and merge at some point (might never become fully merged)
 
 # one sequence for all types or one per type
-* 64 bit keys seem desirable because it is the biggest native c datatype. but with that size and a reasonable 16 bit type identifier, only 48 bit are left for row ids
+* 64 bit keys seem desirable because it is the biggest native c datatype. but with that size and a reasonable 16 bit type identifier, only 48 bit are left for row ids per type
 * initialise counters in array. type id equals index
 * at startup, for each type, find max id
 
@@ -339,6 +341,31 @@ record first/last/prev/range etc seem not needed because of the data model (ids 
 
 # why implement db-record-get
 * faster for externally retrieved ids list, for example page id or file ids, to quickly check if even exists before loading details
+* db-record-select is for types and data matching. would have more overhead
+* one is to find records or ids when you dont have the ids and need to search data
+* record-select could be called record-find or record-search. but select really just prepares
+* comparison
+  * record-get-by-data
+    * result count is unknown. that is why reader is used
+    * in record-get-by-id the input ids are the selection
+    * offset
+    * matcher
+  * record-get-by-id
+    * result count is known
+* option - selected
+  * record-select :: type offset matcher selection
+  * record-get :: ids result
+  * con
+    * different signatures for getting records
+  * pro
+    * offset not needed with ids anyway
+* option
+  * record-select :: ids type offset matcher selection
+  * pro
+    * matcher function can be used for ids filter
+  * con
+    * offset not needed for ids
+    * significantly less efficient than only get by id
 
 # copy or reference selected fields
 * option - selected
@@ -359,7 +386,7 @@ record first/last/prev/range etc seem not needed because of the data model (ids 
     * more data required
     * longer btree string name
   * pro
-    * id numbers would have to be found by specifying type and fields anyway
+    * id numbers would have to be found by specifying type and fields or name anyway
 * option
   * monotonically increasing id
   * pro
@@ -384,7 +411,7 @@ other active transactions might be trying to use the schema and for example inse
 * delete/insert might both happen on the same or concurrent transactions
 * data for a deleted type could be inserted
 * data becomes inaccessible and wastes space
-* if type id is ever reused, previously existing data becomes accessible again. this can be confusing in the new data model. sensitive data can become re-accessible with inadequate treatment
+* if type id is ever reused, previously existing data becomes accessible again. this can be confusing in the new user data model. sensitive data can become re-accessible with inadequate treatment
 * option - selected
   * delete all data with the new type id when a new type is created
 * option
@@ -404,7 +431,7 @@ other active transactions might be trying to use the schema and for example inse
 
 # other
 * should label/ordinal be optional
-* if separate type-to-type btrees are used, should relation relations of both directions be kept in the sys-info cache
+* if separate type-to-type btrees are used, should relation relations of both directions be kept in the system cache
 * custom primary keys
   * a dictionary, a one to one association, could be considered a subset of plain tables. yet rows might have row identifiers identifying a pairing even if that is not needed. this points to custom primary keys
   * con: ambiguity of auto-increment and provided keys. each insert requires additional checks if auto-increment and eventually if key has been provided. id key potentially quicker to join as primary and foreign key because efficient data type
@@ -420,8 +447,77 @@ other active transactions might be trying to use the schema and for example inse
   * con
     * users that support it can decode binary to bytevectors and uint to big numbers
 
+# naming of record and graph bindings
+* option - selected
+  * db-records-new
+  * db-relations-new
+  * db-record-create
+  * db-relation-ensure
+  * pro
+    * "records are distinguished from arrays by the fact that their number of fields is typically fixed, each field has a name, and that each field may have a different type"
+    * it is in the current short description of sph-db "database as a shared library for records and relations"
+* option
+  * db-nodes-new
+  * db-relations-new
+  * db-graph-ensure
+  * db-node-create
+  * con
+    * inconsistency
+    * db-node-create creates a node element, db-graph-ensure acts on the graph by creating a relation
+    * node seems a bit imprecise. can there even be a node without a graph
+    * the plural is implicitly a the collection data type
+* option
+  * db-nodes-new
+  * db-relations-new
+  * db-node-create
+  * db-relation-ensure
+  * pro
+    * no inconsistency between what is acted on in db-relation/db-node
+
 # put the type id before or after the record id
 * little endian preferred
 * type at beginning to avoid record ids beginning at the largest numbers
 * getting the type part would be a bit-and, getting the element part a bit-shift
 * ideally the simpler operation is the one for getting the type
+
+# record data compression
+* the btree allows storing variable size data
+* should trailing unset fields be excluded
+* how much overhead would that produce
+* record-ref needs to check size, seems not that expensive
+* record-values->data needs to figure out if trailing fields unset
+* option - selected: counter with highest set index (or the index after)
+* option: scanning tail values for 0
+
+# record field values data structure
+* option - selected
+  * array with one data element for each type field
+  * to be serialised to the final data
+* option
+  * values as linked list
+  * con
+    * malloc for value set
+    * perhaps too expensive for rows with few fields
+    * value arrays are reusable
+* option
+  * values as final record insert data directly
+  * con
+    * doesnt know final size
+    * doesnt know variable size offsets
+    * maybe multiple reallocs needed when setting field values
+
+# should records with unset fields be indexed?
+* having many empty records fills up the index
+* unused fields are only set when set fields follow (record data compression)
+* default value 0 might be false and user wants to find all false records. then again, can also set it explicitly
+* pro of dupsort is that it delimits data and id
+* empty keys cant be searched for
+* option - selected
+  * always index
+  * consistency between record-ref and index - if record-ref gives 0 for example, it should be findable by index
+  * there would also be inconsistency in fields set to 0 and unset fields because of empty size
+  * also fixed fields normally are always set full length, but leaving them out if no fields follow is a compression feature not pertaining to the abstract field value
+  * pro
+    * records with fields unset otherwise only to find with full scan
+* option
+  * configurable
