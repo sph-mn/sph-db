@@ -72,7 +72,7 @@
 # search performance
 * records and relations are stored in b+trees with a basic o(log n) time complexity for search/insert/delete (average and worst case)
 * record data: getting data from record identifiers requires only one basic b+tree search. it is as fast as it gets. data fields can be indexed
-* relations: relations are filtered by giving lists of ids to match as arguments. 16 different filter combinations for left/label/ordinal/right, the parts of relations, are theoretically possible with db_relation_select. 2 are unsupported: all combinations that contain a filter for right and ordinal but not left. because the number of the possible combinations is small, pre-compiled code optimised for the exact filter combination is used when executing queries. the sph-db relation functionality is specifically designed for queries with these filters
+* relations: relations are filtered by giving lists of ids to match as arguments. 16 different filter combinations for left/label/ordinal/right, the parts of relations, are theoretically possible with db_relation_select. 2 are unsupported: all combinations that contain a filter for right and ordinal but not left. because the number of the possible combinations is small, code optimised for the exact filter combination is used when executing queries. the sph-db relation functionality is specifically designed for queries with these filters
 
 here is a list of estimated, relative, ``db_relation_read`` performance for each filter combination from best (fastest execution per element matched) to worst (slowest), some are equal:
 ```

@@ -217,6 +217,9 @@ initially not supported
 * change of the default relation database layout would add considerable complexity
 * possible with labels that are compound data structure record ids
 * example situation: "when every ingredient can be added in different amounts to different recipes"
+* example key/value: left label -> ordinal right type data ...
+* data would perhaps only be identifiable by left, label and right. search by right and label might not work well
+* how would table scans and indexing work
 
 # sequences per type or one global
 * option - selected
