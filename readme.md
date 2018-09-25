@@ -688,7 +688,7 @@ db_status_id_success db_status_id_undefined db_status_id_condition_unfulfilled
 * scheme: [sph-db-guile](https://github.com/sph-mn/sph-db-guile)
 
 # compile-time configuration
-these values can be set before compilation in ``c-precompiled/main/config.c``. once compiled, they can not be changed. databases created with one configuration must only be used by code compiled with the same configuration. if necessary, for example, multiple shared libraries with different configuration can be created.
+these values can be set before compilation in ``c-precompiled/main/config.c``. once compiled, they can not be changed for a shared library. databases created with one configuration must only be used by code compiled with the same configuration. if necessary, for example, multiple shared libraries with different configuration can be created.
 
 |name|default|description|
 | --- | --- | --- |
