@@ -311,6 +311,8 @@
         (status-set-group-goto db-status-group-lmdb)))
     (i-array-forward ids))
   (label exit
+    (sc-comment "only acts on a status-group-lmdb status")
+    db-mdb-status-success-if-notfound
     (return status)))
 
 (define (db-record-get txn ids match-all result-records)

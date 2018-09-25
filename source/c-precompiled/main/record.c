@@ -290,6 +290,8 @@ status_t db_record_get_internal(MDB_cursor* records_cursor, db_ids_t ids, boolea
     i_array_forward(ids);
   };
 exit:
+  /* only acts on a status-group-lmdb status */
+  db_mdb_status_success_if_notfound;
   return (status);
 };
 /** get a reference to data for one record identified by id.
