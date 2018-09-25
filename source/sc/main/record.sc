@@ -380,8 +380,8 @@
     (return status)))
 
 (define (db-record-delete-type txn type-id) (status-t db-txn-t db-type-id-t)
+  "delete any records of type and all their relations"
   status-declare
-  (sc-comment "delete all records of type and all their relations")
   db-mdb-declare-val-id
   db-mdb-declare-val-null
   (db-mdb-cursor-declare records)
@@ -395,7 +395,7 @@
     (db-mdb-status-require (mdb-cursor-del records 0))
     (set status.id (mdb-cursor-get records &val-id &val-null MDB-NEXT-NODUP)))
   (label exit
-    db-mdb-status-notfound-if-notfound
+    db-mdb-status-success-if-notfound
     (db-mdb-cursor-close-if-active records)
     (return status)))
 

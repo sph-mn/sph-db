@@ -33,12 +33,12 @@ size_t imht_set_calculate_hash_table_size(size_t min_size) {
 uint8_t imht_set_create(size_t min_size, imht_set_t** result) {
   *result = malloc((sizeof(imht_set_t)));
   if (!*result) {
-    return (0);
+    return (1);
   };
   min_size = imht_set_calculate_hash_table_size(min_size);
   (**result).content = calloc(min_size, (sizeof(imht_set_key_t)));
   (**result).size = min_size;
-  return (((*result)->content ? 1 : 0));
+  return (((*result)->content ? 0 : 1));
 };
 void imht_set_destroy(imht_set_t* a) {
   if (a) {

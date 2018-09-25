@@ -355,9 +355,9 @@ exit:
   db_mdb_cursor_close_if_active(records);
   return (status);
 };
+/** delete any records of type and all their relations */
 status_t db_record_delete_type(db_txn_t txn, db_type_id_t type_id) {
   status_declare;
-  /* delete all records of type and all their relations */
   db_mdb_declare_val_id;
   db_mdb_declare_val_null;
   db_mdb_cursor_declare(records);
@@ -371,7 +371,7 @@ status_t db_record_delete_type(db_txn_t txn, db_type_id_t type_id) {
     status.id = mdb_cursor_get(records, (&val_id), (&val_null), MDB_NEXT_NODUP);
   };
 exit:
-  db_mdb_status_notfound_if_notfound;
+  db_mdb_status_success_if_notfound;
   db_mdb_cursor_close_if_active(records);
   return (status);
 };

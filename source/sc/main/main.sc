@@ -285,7 +285,7 @@
 (define (db-ids->set a result) (status-t db-ids-t imht-set-t**)
   status-declare
   (declare b imht-set-t*)
-  (if (not (imht-set-create (i-array-length a) &b))
+  (if (imht-set-create (db-ids-length a) &b)
     (status-set-both-goto db-status-group-db db-status-id-memory))
   (while (i-array-in-range a)
     (imht-set-add b (i-array-get a))

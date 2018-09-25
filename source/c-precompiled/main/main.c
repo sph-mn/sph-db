@@ -305,7 +305,7 @@ void* db_record_virtual_data(db_id_t id, void* result, size_t result_size) {
 status_t db_ids_to_set(db_ids_t a, imht_set_t** result) {
   status_declare;
   imht_set_t* b;
-  if (!imht_set_create((i_array_length(a)), (&b))) {
+  if (imht_set_create((db_ids_length(a)), (&b))) {
     status_set_both_goto(db_status_group_db, db_status_id_memory);
   };
   while (i_array_in_range(a)) {

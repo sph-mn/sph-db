@@ -105,16 +105,16 @@
   (return (bit-or 1 min-size)))
 
 (define (imht-set-create min-size result) (uint8-t size-t imht-set-t**)
-  ; returns 1 on success or 0 if the memory allocation failed
+  ; returns 0 on success or 1 if the memory allocation failed
   (set *result (malloc (sizeof imht-set-t)))
-  (if (not *result) (return #f))
+  (if (not *result) (return 1))
   (set min-size (imht-set-calculate-hash-table-size min-size))
   (struct-set **result
     content (calloc min-size (sizeof imht-set-key-t))
     size min-size)
   (return
-    (if* (: *result content) #t
-      #f)))
+    (if* (: *result content) 0
+      1)))
 
 (define (imht-set-destroy a) (void imht-set-t*)
   (if a
