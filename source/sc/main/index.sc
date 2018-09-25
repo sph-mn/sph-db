@@ -362,7 +362,7 @@
 
 (define (db-index-delete env index) (status-t db-env-t* db-index-t*)
   "index must be a pointer into env:types:indices.
-  the cache entry struct has its fields set to zero"
+  the cache entry struct has at least its type field set to zero"
   status-declare
   db-mdb-declare-val-null
   (db-txn-declare env txn)

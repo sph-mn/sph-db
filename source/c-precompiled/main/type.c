@@ -149,7 +149,7 @@ exit:
   };
   return (status);
 };
-/** delete system entry and all records and clear cache entries */
+/** delete all indices of type, all records of type, the system entry and clear cache entries, in this order */
 status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
   status_declare;
   db_mdb_declare_val_null;
@@ -158,22 +158,20 @@ status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
   db_txn_declare(env, txn);
   MDB_val val_key;
   db_id_t id;
+  db_indices_len_t i;
+  db_indices_len_t indices_len;
+  db_type_t* type;
   uint8_t key[db_size_system_key];
-  val_key.mv_size = db_size_system_key;
-  db_system_key_label(key) = db_system_label_type;
-  db_system_key_id(key) = type_id;
-  val_key.mv_data = key;
-  status_require((db_txn_write_begin((&txn))));
-  /* system. continue even if not found */
-  db_mdb_status_require((db_mdb_env_cursor_open(txn, system)));
-  status.id = mdb_cursor_get(system, (&val_key), (&val_null), MDB_SET);
-  if (db_mdb_status_is_success) {
-    db_mdb_status_require((mdb_cursor_del(system, 0)));
-  } else {
-    db_mdb_status_expect_notfound;
-    status.id = status_id_success;
+  type = (type_id + env->types);
+  indices_len = type->indices_len;
+  /* indices */
+  for (i = 0; (i < indices_len); i = (1 + i)) {
+    /* check if array entry not nulled */
+    if (((type->indices)[i]).type) {
+      status_require((db_index_delete(env, (type->indices + i))));
+    };
   };
-  db_mdb_cursor_close(system);
+  status_require((db_txn_write_begin((&txn))));
   /* records */
   db_mdb_status_require((db_mdb_env_cursor_open(txn, records)));
   val_key.mv_size = sizeof(db_id_t);
@@ -191,6 +189,24 @@ status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
       status_set_group_goto(db_status_group_lmdb);
     };
   };
+  db_mdb_cursor_close(records);
+  /* system */
+  val_key.mv_size = db_size_system_key;
+  db_system_key_label(key) = db_system_label_type;
+  db_system_key_id(key) = type_id;
+  val_key.mv_data = key;
+  db_mdb_status_require((db_mdb_env_cursor_open(txn, system)));
+  status.id = mdb_cursor_get(system, (&val_key), (&val_null), MDB_SET);
+  if (db_mdb_status_is_success) {
+    db_mdb_status_require((mdb_cursor_del(system, 0)));
+  } else {
+    if (db_mdb_status_is_notfound) {
+      status.id = status_id_success;
+    } else {
+      status_goto;
+    };
+  };
+  db_mdb_cursor_close(system);
   /* cache */
   db_free_env_type((type_id + env->types));
 exit:

@@ -148,7 +148,7 @@
     (return status)))
 
 (define (db-type-delete env type-id) (status-t db-env-t* db-type-id-t)
-  "delete system entry and all records and clear cache entries"
+  "delete all indices of type, all records of type, the system entry and clear cache entries, in this order"
   status-declare
   db-mdb-declare-val-null
   (db-mdb-cursor-declare system)
@@ -157,21 +157,19 @@
   (declare
     val-key MDB-val
     id db-id-t
+    i db-indices-len-t
+    indices-len db-indices-len-t
+    type db-type-t*
     key (array uint8-t (db-size-system-key)))
   (set
-    val-key.mv-size db-size-system-key
-    (db-system-key-label key) db-system-label-type
-    (db-system-key-id key) type-id
-    val-key.mv-data key)
+    type (+ type-id env:types)
+    indices-len type:indices-len)
+  (sc-comment "indices")
+  (for ((set i 0) (< i indices-len) (set i (+ 1 i)))
+    (sc-comment "check if array entry not nulled")
+    (if (struct-get (array-get type:indices i) type)
+      (status-require (db-index-delete env (+ type:indices i)))))
   (status-require (db-txn-write-begin &txn))
-  (sc-comment "system. continue even if not found")
-  (db-mdb-status-require (db-mdb-env-cursor-open txn system))
-  (set status.id (mdb-cursor-get system &val-key &val-null MDB-SET))
-  (if db-mdb-status-is-success (db-mdb-status-require (mdb-cursor-del system 0))
-    (begin
-      db-mdb-status-expect-notfound
-      (set status.id status-id-success)))
-  (db-mdb-cursor-close system)
   (sc-comment "records")
   (db-mdb-status-require (db-mdb-env-cursor-open txn records))
   (set
@@ -185,6 +183,19 @@
   (if status-is-failure
     (if db-mdb-status-is-notfound (set status.id status-id-success)
       (status-set-group-goto db-status-group-lmdb)))
+  (db-mdb-cursor-close records)
+  (sc-comment "system")
+  (set
+    val-key.mv-size db-size-system-key
+    (db-system-key-label key) db-system-label-type
+    (db-system-key-id key) type-id
+    val-key.mv-data key)
+  (db-mdb-status-require (db-mdb-env-cursor-open txn system))
+  (set status.id (mdb-cursor-get system &val-key &val-null MDB-SET))
+  (if db-mdb-status-is-success (db-mdb-status-require (mdb-cursor-del system 0))
+    (if db-mdb-status-is-notfound (set status.id status-id-success)
+      status-goto))
+  (db-mdb-cursor-close system)
   (sc-comment "cache")
   (db-free-env-type (+ type-id env:types))
   (label exit

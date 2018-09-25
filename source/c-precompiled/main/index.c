@@ -345,7 +345,7 @@ exit:
   return (status);
 };
 /** index must be a pointer into env:types:indices.
-  the cache entry struct has its fields set to zero */
+  the cache entry struct has at least its type field set to zero */
 status_t db_index_delete(db_env_t* env, db_index_t* index) {
   status_declare;
   db_mdb_declare_val_null;
