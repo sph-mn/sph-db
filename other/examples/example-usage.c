@@ -101,13 +101,14 @@ status_t read_records(db_env_t* env, db_type_t* type) {
   db_records_declare(records);
   db_record_value_t field_data;
   db_record_t record;
+  uint8_t match_all = 1;
   status_require(db_records_new(2, &records));
   status_require(db_ids_new(3, &ids));
   db_ids_add(ids, 1);
   db_ids_add(ids, 2);
   db_ids_add(ids, 3);
   status_require(db_txn_begin(&txn));
-  status_require_read(db_record_get(txn, ids, &records));
+  status_require_read(db_record_get(txn, ids, match_all, &records));
   if(db_records_length(records)) {
     // arguments: type, db-record-t, field_index
     record = db_records_get_at(records, 0);

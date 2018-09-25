@@ -188,9 +188,9 @@
     (status-require
       (db-index-key txn.env record-index values (convert-type &data void**) &val-data.mv-size))
     (set val-data.mv-data data)
-    ; delete
     (db-mdb-status-require (mdb-cursor-open txn.mdb-txn record-index.dbi &record-index-cursor))
     (db-mdb-status-require (mdb-cursor-put record-index-cursor &val-data &val-id 0))
+    (sc-comment "assumes that indices are valid/complete and contain the entry")
     (db-mdb-status-require (mdb-cursor-get record-index-cursor &val-data &val-id MDB-GET-BOTH))
     (if status-is-success (db-mdb-status-require (mdb-cursor-del record-index-cursor 0)))
     (db-mdb-cursor-close record-index-cursor))

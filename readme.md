@@ -196,7 +196,7 @@ if no results are found or the end of results has been reached, the returned sta
 // like status_require but tolerates notfound
 status_require_read(db_record_read(selection, count, &results));
 if(db_status_id_notfound != status.id) {
-  field_data = db_record_ref(db_record_get_at(results, 0), 0);
+  field_data = db_record_ref(db_records_get_at(results, 0), 0);
 }
 // sets status.id to zero if the current status is db_status_id_notfound
 db_status_success_if_notfound;
@@ -213,10 +213,10 @@ status_require(db_ids_new(3, &ids));
 db_ids_add(ids, 1);
 db_ids_add(ids, 2);
 db_ids_add(ids, 3);
-status_require_read(db_record_get(txn, ids, &records));
+status_require_read(db_record_get(txn, ids, 1, &records));
 if(db_records_length(records)) {
   record = db_records_get_at(records, 0);
-  // arguments: type, db-record-t, field_index
+  // arguments: type, db_record_t, field_index
   field_data = db_record_ref(type, record, 1);
   // field_data: void* .data, size_t .size
 }
@@ -387,7 +387,7 @@ db_record_create :: db_txn_t:txn db_record_values_t:values db_id_t*:result -> st
 db_record_data_to_values :: db_type_t*:type db_record_t:data db_record_values_t*:result -> status_t
 db_record_delete :: db_txn_t:txn db_ids_t:ids -> status_t
 db_record_delete_type :: db_txn_t:txn db_type_id_t:type_id -> status_t
-db_record_get :: db_txn_t:txn db_ids_t:ids db_records_t*:result_records -> status_t
+db_record_get :: db_txn_t:txn db_ids_t:ids boolean:match_all db_records_t*:result_records -> status_t
 db_record_index_read :: db_record_index_selection_t:selection db_count_t:count db_records_t*:result_records -> status_t
 db_record_index_select :: db_txn_t:txn db_index_t:index db_record_values_t:values db_record_index_selection_t*:result -> status_t
 db_record_index_selection_finish :: db_record_index_selection_t*:selection -> void

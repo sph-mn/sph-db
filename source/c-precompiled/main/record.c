@@ -263,9 +263,9 @@ exit:
   return (status);
 };
 /** get records by id.
-  returns and status is notfound if any id could not be found.
+  returns status notfound if any id could not be found if match-all is true.
   like record-get with a given mdb-cursor */
-status_t db_record_get_internal(MDB_cursor* records_cursor, db_ids_t ids, db_records_t* result_records) {
+status_t db_record_get_internal(MDB_cursor* records_cursor, db_ids_t ids, boolean match_all, db_records_t* result_records) {
   status_declare;
   db_mdb_declare_val_id;
   MDB_val val_data;
@@ -280,7 +280,9 @@ status_t db_record_get_internal(MDB_cursor* records_cursor, db_ids_t ids, db_rec
       i_array_add((*result_records), record);
     } else {
       if (db_mdb_status_is_notfound) {
-        status_set_both_goto(db_status_group_db, db_status_id_notfound);
+        if (match_all) {
+          status_set_both_goto(db_status_group_db, db_status_id_notfound);
+        };
       } else {
         status_set_group_goto(db_status_group_lmdb);
       };
@@ -292,19 +294,19 @@ exit:
 };
 /** get a reference to data for one record identified by id.
   fields can be accessed with db-record-ref.
-  if record could not be found, status is status-id-notfound */
-status_t db_record_get(db_txn_t txn, db_ids_t ids, db_records_t* result_records) {
+  if a record could not be found and match-all is true, status is status-id-notfound */
+status_t db_record_get(db_txn_t txn, db_ids_t ids, boolean match_all, db_records_t* result_records) {
   status_declare;
   db_mdb_cursor_declare(records);
   db_mdb_status_require((db_mdb_env_cursor_open(txn, records)));
-  status = db_record_get_internal(records, ids, result_records);
+  status = db_record_get_internal(records, ids, match_all, result_records);
 exit:
   db_mdb_cursor_close(records);
   return (status);
 };
 /** declare because it is defined later */
 status_t db_relation_internal_delete(db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal, MDB_cursor* relation_lr, MDB_cursor* relation_rl, MDB_cursor* relation_ll);
-/** delete records and all their relations */
+/** delete records and all their relations. status  */
 status_t db_record_delete(db_txn_t txn, db_ids_t ids) {
   status_declare;
   db_mdb_declare_val_id;
@@ -425,7 +427,7 @@ status_t db_record_index_read(db_record_index_selection_t selection, db_count_t 
   db_ids_declare(ids);
   db_ids_new(count, (&ids));
   status_require_read((db_index_read((selection.index_selection), count, (&ids))));
-  status_require((db_record_get_internal((selection.records_cursor), ids, result_records)));
+  status_require((db_record_get_internal((selection.records_cursor), ids, 1, result_records)));
 exit:
   return (status);
 };

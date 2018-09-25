@@ -432,7 +432,7 @@ status_t db_record_values_set(db_record_values_t* values, db_fields_len_t field_
 status_t db_record_values_to_data(db_record_values_t values, db_record_t* result);
 status_t db_record_data_to_values(db_type_t* type, db_record_t data, db_record_values_t* result);
 status_t db_record_create(db_txn_t txn, db_record_values_t values, db_id_t* result);
-status_t db_record_get(db_txn_t txn, db_ids_t ids, db_records_t* result_records);
+status_t db_record_get(db_txn_t txn, db_ids_t ids, boolean match_all, db_records_t* result_records);
 status_t db_record_delete(db_txn_t txn, db_ids_t ids);
 status_t db_record_delete_type(db_txn_t txn, db_type_id_t type_id);
 db_record_value_t db_record_ref(db_type_t* type, db_record_t record, db_fields_len_t field);

@@ -256,7 +256,7 @@ status_t test_record_create(db_env_t* env) {
   status_require((db_records_new(3, (&records))));
   i_array_add(ids, id_1);
   i_array_add(ids, id_2);
-  status_require((db_record_get(txn, ids, (&records))));
+  status_require((db_record_get(txn, ids, 1, (&records))));
   test_helper_assert("record-get result length", (2 == i_array_length(records)));
   test_helper_assert("record-get result ids", ((id_1 == (i_array_get_at(records, 0)).id) && (id_2 == (i_array_get_at(records, 1)).id)));
   field_data = db_record_ref(type, (i_array_get_at(records, 0)), 1);
@@ -266,7 +266,7 @@ status_t test_record_create(db_env_t* env) {
   i_array_clear(ids);
   i_array_clear(records);
   i_array_add(ids, 9999);
-  status = db_record_get(txn, ids, (&records));
+  status = db_record_get(txn, ids, 1, (&records));
   test_helper_assert("record-get non-existing", (db_status_id_notfound == status.id));
   status.id = status_id_success;
   db_txn_abort((&txn));

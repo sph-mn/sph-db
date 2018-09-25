@@ -285,10 +285,10 @@
         db-mdb-status-notfound-if-notfound))
     (return status)))
 
-(define (db-record-get-internal records-cursor ids result-records)
-  (status-t MDB-cursor* db-ids-t db-records-t*)
+(define (db-record-get-internal records-cursor ids match-all result-records)
+  (status-t MDB-cursor* db-ids-t boolean db-records-t*)
   "get records by id.
-  returns and status is notfound if any id could not be found.
+  returns status notfound if any id could not be found if match-all is true.
   like record-get with a given mdb-cursor"
   status-declare
   db-mdb-declare-val-id
@@ -306,20 +306,22 @@
           record.data val-data.mv-data
           record.size val-data.mv-size)
         (i-array-add *result-records record))
-      (if db-mdb-status-is-notfound (status-set-both-goto db-status-group-db db-status-id-notfound)
+      (if db-mdb-status-is-notfound
+        (if match-all (status-set-both-goto db-status-group-db db-status-id-notfound))
         (status-set-group-goto db-status-group-lmdb)))
     (i-array-forward ids))
   (label exit
     (return status)))
 
-(define (db-record-get txn ids result-records) (status-t db-txn-t db-ids-t db-records-t*)
+(define (db-record-get txn ids match-all result-records)
+  (status-t db-txn-t db-ids-t boolean db-records-t*)
   "get a reference to data for one record identified by id.
   fields can be accessed with db-record-ref.
-  if record could not be found, status is status-id-notfound"
+  if a record could not be found and match-all is true, status is status-id-notfound"
   status-declare
   (db-mdb-cursor-declare records)
   (db-mdb-status-require (db-mdb-env-cursor-open txn records))
-  (set status (db-record-get-internal records ids result-records))
+  (set status (db-record-get-internal records ids match-all result-records))
   (label exit
     (db-mdb-cursor-close records)
     (return status)))
@@ -330,7 +332,7 @@
   "declare because it is defined later")
 
 (define (db-record-delete txn ids) (status-t db-txn-t db-ids-t)
-  "delete records and all their relations"
+  "delete records and all their relations. status "
   status-declare
   db-mdb-declare-val-id
   (declare
@@ -453,7 +455,7 @@
   (db-ids-declare ids)
   (db-ids-new count &ids)
   (status-require-read (db-index-read selection.index-selection count &ids))
-  (status-require (db-record-get-internal selection.records-cursor ids result-records))
+  (status-require (db-record-get-internal selection.records-cursor ids #t result-records))
   (label exit
     (return status)))
 

@@ -316,7 +316,7 @@
   (status-require (db-records-new 3 &records))
   (i-array-add ids id-1)
   (i-array-add ids id-2)
-  (status-require (db-record-get txn ids &records))
+  (status-require (db-record-get txn ids #t &records))
   (test-helper-assert "record-get result length" (= 2 (i-array-length records)))
   (test-helper-assert
     "record-get result ids"
@@ -333,7 +333,7 @@
   (i-array-clear ids)
   (i-array-clear records)
   (i-array-add ids 9999)
-  (set status (db-record-get txn ids &records))
+  (set status (db-record-get txn ids #t &records))
   (test-helper-assert "record-get non-existing" (= db-status-id-notfound status.id))
   (set status.id status-id-success)
   (db-txn-abort &txn)

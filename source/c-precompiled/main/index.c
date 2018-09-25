@@ -184,6 +184,7 @@ status_t db_indices_entry_delete(db_txn_t txn, db_record_values_t values, db_id_
     val_data.mv_data = data;
     db_mdb_status_require((mdb_cursor_open((txn.mdb_txn), (record_index.dbi), (&record_index_cursor))));
     db_mdb_status_require((mdb_cursor_put(record_index_cursor, (&val_data), (&val_id), 0)));
+    /* assumes that indices are valid/complete and contain the entry */
     db_mdb_status_require((mdb_cursor_get(record_index_cursor, (&val_data), (&val_id), MDB_GET_BOTH)));
     if (status_is_success) {
       db_mdb_status_require((mdb_cursor_del(record_index_cursor, 0)));
