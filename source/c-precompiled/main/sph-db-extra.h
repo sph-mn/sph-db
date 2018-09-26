@@ -187,14 +187,6 @@ imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
 #define db_relation_data_set_both(a, ordinal, id) \
   db_relation_data_set_ordinal(ordinal); \
   db_relation_data_set_id(id)
-#define db_helper_malloc(size, result) db_helper_primitive_malloc(size, ((void**)(result)))
-#define db_helper_malloc_string(size, result) db_helper_primitive_malloc_string(size, ((uint8_t**)(result)))
-#define db_helper_calloc(size, result) db_helper_primitive_calloc(size, ((void**)(result)))
-#define db_helper_realloc(size, result) db_helper_primitive_realloc(size, ((void**)(result)))
-status_t db_helper_primitive_malloc(size_t size, void** result);
-status_t db_helper_primitive_calloc(size_t size, void** result);
-status_t db_helper_primitive_malloc_string(size_t size, uint8_t** result);
-status_t db_helper_primitive_realloc(size_t size, void** block);
 status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result);
 status_t db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result);
 void db_debug_log_id_bits(db_id_t a);

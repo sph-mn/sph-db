@@ -1,4 +1,8 @@
-(pre-include "./sph-db.h" "./sph-db-extra.h" "../foreign/sph/one.c" "math.h" "./lmdb.c")
+(pre-include
+  "math.h"
+  "./sph-db.h"
+  "../foreign/sph/helper.c"
+  "../foreign/sph/string.c" "../foreign/sph/filesystem.c" "./sph-db-extra.h" "./lmdb.c")
 
 (pre-define
   (free-and-set-null a)
@@ -10,83 +14,12 @@
   reduce-count (set count (- count 1))
   stop-if-count-zero (if (= 0 count) (goto exit)))
 
-(pre-define (debug-trace n) (fprintf stdout "%s %d\n" __func__ n))
-
-(define (display-bits-u8 a) (void uint8-t)
-  (declare i uint8-t)
-  (printf "%u" (bit-and 1 a))
-  (for ((set i 1) (< i 8) (set i (+ 1 i)))
-    (printf "%u"
-      (if* (bit-and (bit-shift-left (convert-type 1 uint8-t) i) a) 1
-        0))))
-
-(define (display-bits a size) (void void* size-t)
-  (declare i size-t)
-  (for ((set i 0) (< i size) (set i (+ 1 i)))
-    (display-bits-u8 (array-get (convert-type a uint8-t*) i)))
-  (printf "\n"))
-
-(define (uint->string a result-len) (uint8-t* uintmax-t size-t*)
-  (declare
-    size size-t
-    result uint8-t*)
-  (set
-    size
-    (+ 1
-      (if* (= 0 a) 1
-        (+ 1 (log10 a))))
-    result (malloc size))
-  (if (not result) (return 0))
-  (if (< (snprintf result size "%ju" a) 0)
-    (begin
-      (free result)
-      (return 0))
-    (begin
-      (set *result-len (- size 1))
-      (return result))))
-
-(define (string-join strings strings-len delimiter result-len)
-  (uint8-t* uint8-t** size-t uint8-t* size-t*)
-  "join strings into one string with each input string separated by delimiter.
-  zero if strings-len is zero or memory could not be allocated"
-  (declare
-    result uint8-t*
-    result-temp uint8-t*
-    size size-t
-    size-temp size-t
-    i size-t
-    delimiter-len size-t)
-  (if (not strings-len) (return 0))
-  (sc-comment "size: string-null + delimiters + string-lengths")
-  (set
-    delimiter-len (strlen delimiter)
-    size (+ 1 (* delimiter-len (- strings-len 1))))
-  (for ((set i 0) (< i strings-len) (set i (+ 1 i)))
-    (set size (+ size (strlen (array-get strings i)))))
-  (set result (malloc size))
-  (if (not result) (return 0))
-  (set
-    result-temp result
-    size-temp (strlen (array-get strings 0)))
-  (memcpy result-temp (array-get strings 0) size-temp)
-  (set result-temp (+ size-temp result-temp))
-  (for ((set i 1) (< i strings-len) (set i (+ 1 i)))
-    (memcpy result-temp delimiter delimiter-len)
-    (set
-      result-temp (+ delimiter-len result-temp)
-      size-temp (strlen (array-get strings i)))
-    (memcpy result-temp (array-get strings i) size-temp)
-    (set result-temp (+ size-temp result-temp)))
-  (set
-    (array-get result (- size 1)) 0
-    *result-len (- size 1))
-  (return result))
-
 (define (db-status-description a) (uint8-t* status-t)
   "get the description if available for a status"
   (declare b char*)
   (cond
     ((not (strcmp db-status-group-lmdb a.group)) (set b (mdb-strerror a.id)))
+    ((not (strcmp db-status-group-sph a.group)) (set b (sph-helper-status-description a)))
     ( (not (strcmp db-status-group-db a.group))
       (case = a.id
         (db-status-id-success (set b "success"))
@@ -123,6 +56,7 @@
   (declare b char*)
   (cond
     ((not (strcmp db-status-group-lmdb a.group)) (set b (mdb-strerror a.id)))
+    ((not (strcmp db-status-group-sph a.group)) (set b (sph-helper-status-name a)))
     ( (not (strcmp db-status-group-db a.group))
       (case = a.id
         (db-status-id-success (set b "success"))
@@ -294,47 +228,6 @@
   (label exit
     (return status)))
 
-(define (db-helper-primitive-malloc size result) (status-t size-t void**)
-  status-declare
-  (declare a void*)
-  (set a (malloc size))
-  (if a (set *result a)
-    (set
-      status.group db-status-group-db
-      status.id db-status-id-memory))
-  (return status))
-
-(define (db-helper-primitive-malloc-string length result) (status-t size-t uint8-t**)
-  "like db-helper-malloc but allocates one extra byte that is set to zero"
-  status-declare
-  (declare a uint8-t*)
-  (status-require (db-helper-malloc (+ 1 length) &a))
-  (set
-    (array-get a length) 0
-    *result a)
-  (label exit
-    (return status)))
-
-(define (db-helper-primitive-calloc size result) (status-t size-t void**)
-  status-declare
-  (declare a void*)
-  (set a (calloc size 1))
-  (if a (set *result a)
-    (set
-      status.group db-status-group-db
-      status.id db-status-id-memory))
-  (return status))
-
-(define (db-helper-primitive-realloc size block) (status-t size-t void**)
-  status-declare
-  (declare a void*)
-  (set a (realloc *block size))
-  (if a (set *block a)
-    (set
-      status.group db-status-group-db
-      status.id db-status-id-memory))
-  (return status))
-
 (define (db-read-name data-pointer result) (status-t uint8-t** uint8-t**)
   "read a length prefixed string.
   on success set result to a newly allocated, null terminated string and
@@ -348,7 +241,7 @@
     data *data-pointer
     len (pointer-get (convert-type data db-name-len-t*))
     data (+ (sizeof db-name-len-t) data))
-  (status-require (db-helper-malloc-string len &name))
+  (status-require (sph-helper-malloc-string len &name))
   (memcpy name data len)
   (set
     *data-pointer (+ len data)
@@ -459,7 +352,7 @@
   this routine makes sure that .is-open is zero"
   status-declare
   (declare a db-env-t*)
-  (status-require (db-helper-calloc (sizeof db-env-t) (convert-type &a void**)))
+  (status-require (sph-helper-calloc (sizeof db-env-t) (convert-type &a void**)))
   (set *result a)
   (label exit
     (return status)))

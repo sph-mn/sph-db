@@ -4,8 +4,10 @@
 #include <pthread.h>
 #include "../main/sph-db.h"
 #include "../main/sph-db-extra.h"
-#include "../main/lib/lmdb.c"
-#include "../foreign/sph/one.c"
+#include "../main/lmdb.c"
+#include "../foreign/sph/helper.c"
+#include "../foreign/sph/string.c"
+#include "../foreign/sph/filesystem.c"
 #define test_helper_db_root "/tmp/sph-db-test"
 #define test_helper_path_data test_helper_db_root "/data"
 #define test_helper_test_one(f, env) \
@@ -191,13 +193,13 @@ status_t test_helper_create_values_1(db_env_t* env, db_type_t* type, db_record_v
   uint8_t* value_3;
   uint8_t* value_4;
   db_record_values_t* values;
-  status_require((db_helper_malloc(1, (&value_1))));
-  status_require((db_helper_malloc(1, (&value_2))));
-  status_require((db_helper_malloc((2 * sizeof(db_record_values_t)), (&values))));
+  status_require((sph_helper_malloc(1, (&value_1))));
+  status_require((sph_helper_malloc(1, (&value_2))));
+  status_require((sph_helper_malloc((2 * sizeof(db_record_values_t)), (&values))));
   *value_1 = 11;
   *value_2 = -128;
-  status_require((db_helper_malloc_string(3, (&value_3))));
-  status_require((db_helper_malloc_string(5, (&value_4))));
+  status_require((sph_helper_malloc_string(3, (&value_3))));
+  status_require((sph_helper_malloc_string(5, (&value_4))));
   memcpy(value_3, (&"abc"), 3);
   memcpy(value_4, (&"abcde"), 5);
   status_require((db_record_values_new(type, (0 + values))));
@@ -219,7 +221,7 @@ status_t test_helper_create_records_1(db_env_t* env, db_record_values_t* values,
   status_declare;
   db_txn_declare(env, txn);
   db_id_t* ids;
-  status_require((db_helper_malloc((4 * sizeof(db_id_t)), (&ids))));
+  status_require((sph_helper_malloc((4 * sizeof(db_id_t)), (&ids))));
   status_require((db_txn_write_begin((&txn))));
   status_require((db_record_create(txn, (values[0]), (0 + ids))));
   status_require((db_record_create(txn, (values[0]), (1 + ids))));

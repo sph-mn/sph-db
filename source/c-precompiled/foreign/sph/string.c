@@ -1,4 +1,3 @@
-/* depends on sph.sc */
 #include <string.h>
 #include <stdlib.h>
 /** set result to a new string with a trailing slash added, or the given string if it already has a trailing slash.
@@ -40,24 +39,40 @@ uint8_t* string_clone(uint8_t* a) {
   };
   return (result);
 };
-#include <unistd.h>
-#include <sys/stat.h>
-#include <libgen.h>
-#include <errno.h>
-#define file_exists_p(path) !(access(path, F_OK) == -1)
-/** like posix dirname, but never modifies its argument and always returns a new string */
-uint8_t* dirname_2(uint8_t* a) {
-  uint8_t* path_copy = string_clone(a);
-  return ((dirname(path_copy)));
-};
-/** return 1 if the path exists or has been successfully created */
-uint8_t ensure_directory_structure(uint8_t* path, mode_t mkdir_mode) {
-  if (file_exists_p(path)) {
-    return (1);
-  } else {
-    uint8_t* path_dirname = dirname_2(path);
-    uint8_t status = ensure_directory_structure(path_dirname, mkdir_mode);
-    free(path_dirname);
-    return ((status && ((EEXIST == errno) || (0 == mkdir(path, mkdir_mode)))));
+/** join strings into one string with each input string separated by delimiter.
+  zero if strings-len is zero or memory could not be allocated */
+uint8_t* string_join(uint8_t** strings, size_t strings_len, uint8_t* delimiter, size_t* result_len) {
+  uint8_t* result;
+  uint8_t* result_temp;
+  size_t size;
+  size_t size_temp;
+  size_t i;
+  size_t delimiter_len;
+  if (!strings_len) {
+    return (0);
   };
+  /* size: string-null + delimiters + string-lengths */
+  delimiter_len = strlen(delimiter);
+  size = (1 + (delimiter_len * (strings_len - 1)));
+  for (i = 0; (i < strings_len); i = (1 + i)) {
+    size = (size + strlen((strings[i])));
+  };
+  result = malloc(size);
+  if (!result) {
+    return (0);
+  };
+  result_temp = result;
+  size_temp = strlen((strings[0]));
+  memcpy(result_temp, (strings[0]), size_temp);
+  result_temp = (size_temp + result_temp);
+  for (i = 1; (i < strings_len); i = (1 + i)) {
+    memcpy(result_temp, delimiter, delimiter_len);
+    result_temp = (delimiter_len + result_temp);
+    size_temp = strlen((strings[i]));
+    memcpy(result_temp, (strings[i]), size_temp);
+    result_temp = (size_temp + result_temp);
+  };
+  result[(size - 1)] = 0;
+  *result_len = (size - 1);
+  return (result);
 };

@@ -281,7 +281,7 @@
     offset 0
     count (pointer-get (convert-type data db-fields-len-t*))
     data (+ (sizeof db-fields-len-t) data))
-  (status-require (db-helper-calloc (* count (sizeof db-field-t)) &fields))
+  (status-require (sph-helper-calloc (* count (sizeof db-field-t)) &fields))
   (for ((set i 0) (< i count) (set i (+ 1 i)))
     (set
       field-type *data
@@ -296,7 +296,7 @@
     "fixed-field offsets" "example: field-sizes-in-bytes: 1 4 2. fields-fixed-offsets: 1 5 7")
   (if fixed-count
     (begin
-      (status-require (db-helper-malloc (* (+ 1 fixed-count) (sizeof size-t)) &fixed-offsets))
+      (status-require (sph-helper-malloc (* (+ 1 fixed-count) (sizeof size-t)) &fixed-offsets))
       (for ((set i 0) (< i fixed-count) (set i (+ 1 i)))
         (set
           (array-get fixed-offsets i) offset
@@ -363,7 +363,7 @@
     (db-system-key-id key) 0
     val-key.mv-size db-size-system-key
     val-key.mv-data key)
-  (status-require (db-helper-malloc (* types-len (sizeof db-type-t)) &types))
+  (status-require (sph-helper-malloc (* types-len (sizeof db-type-t)) &types))
   (sc-comment "calloc doesnt necessarily set struct fields to zero")
   (for ((set i 0) (< i types-len) (set i (+ 1 i)))
     (set (struct-get (array-get types i) id) 0))
@@ -424,14 +424,14 @@
         (if (> indices-len indices-alloc-len)
           (begin
             (set indices-alloc-len (+ 10 indices-alloc-len))
-            (status-require (db-helper-realloc (* indices-alloc-len (sizeof db-index-t)) &indices)))))
+            (status-require (sph-helper-realloc (* indices-alloc-len (sizeof db-index-t)) &indices)))))
       (begin
         (sc-comment "index for the first or a different type")
         (if indices-len
           (begin
             (sc-comment "not the first" "readjust size to save memory")
             (if (> indices-alloc-len indices-len)
-              (status-require (db-helper-realloc (* indices-len (sizeof db-index-t)) &indices)))
+              (status-require (sph-helper-realloc (* indices-len (sizeof db-index-t)) &indices)))
             (sc-comment "add indices array to type")
             (set (struct-get (array-get types current-type-id) indices) indices)))
         (sc-comment "set current type and allocate indices array")
@@ -439,9 +439,9 @@
           current-type-id type-id
           indices-len 1
           indices-alloc-len 10)
-        (status-require (db-helper-calloc (* indices-alloc-len (sizeof db-index-t)) &indices))))
+        (status-require (sph-helper-calloc (* indices-alloc-len (sizeof db-index-t)) &indices))))
     (set fields-len (/ (- val-key.mv-size db-size-system-key) (sizeof db-fields-len-t)))
-    (status-require (db-helper-calloc (* fields-len (sizeof db-fields-len-t)) &fields))
+    (status-require (sph-helper-calloc (* fields-len (sizeof db-fields-len-t)) &fields))
     (struct-set (array-get indices (- indices-len 1))
       fields fields
       fields-len fields-len)

@@ -29,7 +29,8 @@ copy_submodules() {
   mkdir -p "$f/sph" &&
   cp --update --target-directory="$f" "$a/sph.sc" &&
   cp --update --target-directory="$f/sph" \
-    "$b/status.sc" "$b/i-array.sc" "$b/imht-set.sc" "$b/one.sc"
+     "$b/status.sc" "$b/i-array.sc" "$b/imht-set.sc" \
+     "$b/string.sc" "$b/filesystem.sc" "$b/helper.sc"
 }
 
 compile_sc() {

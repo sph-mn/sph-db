@@ -23,6 +23,7 @@
 
 (pre-define
   db-format-version 1
+  db-status-group-sph "sph"
   db-status-group-db "sph-db"
   db-status-group-lmdb "lmdb"
   db-status-group-libc "libc"

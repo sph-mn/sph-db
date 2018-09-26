@@ -29,7 +29,7 @@ status_t db_record_values_to_data(db_record_values_t values, db_record_t* result
     size = ((fields[i]).size + ((i < fields_fixed_count) ? 0 : ((values.data)[i]).size) + size);
   };
   /* allocate and prepare data */
-  status_require((db_helper_calloc(size, (&data))));
+  status_require((sph_helper_calloc(size, (&data))));
   data_temp = data;
   for (i = 0; (i < values.extent); i = (1 + i)) {
     data_size = ((values.data)[i]).size;
@@ -109,7 +109,7 @@ db_record_value_t db_record_ref(db_type_t* type, db_record_t record, db_fields_l
 status_t db_record_values_new(db_type_t* type, db_record_values_t* result) {
   status_declare;
   db_record_value_t* data;
-  status_require((db_helper_calloc((type->fields_len * sizeof(db_record_value_t)), (&data))));
+  status_require((sph_helper_calloc((type->fields_len * sizeof(db_record_value_t)), (&data))));
   (*result).type = type;
   (*result).data = data;
   (*result).extent = 0;

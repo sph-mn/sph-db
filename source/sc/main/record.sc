@@ -36,7 +36,7 @@
           (struct-get (array-get values.data i) size))
         size)))
   (sc-comment "allocate and prepare data")
-  (status-require (db-helper-calloc size &data))
+  (status-require (sph-helper-calloc size &data))
   (set data-temp data)
   (for ((set i 0) (< i values.extent) (set i (+ 1 i)))
     (set
@@ -121,7 +121,7 @@
   \"extent\" is the last field index that is set plus one, zero if no field is set"
   status-declare
   (declare data db-record-value-t*)
-  (status-require (db-helper-calloc (* type:fields-len (sizeof db-record-value-t)) &data))
+  (status-require (sph-helper-calloc (* type:fields-len (sizeof db-record-value-t)) &data))
   (struct-set *result
     type type
     data data

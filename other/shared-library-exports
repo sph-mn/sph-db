@@ -9,10 +9,6 @@
     db_debug_log_relations;
     db_env_new;
     db_field_type_size;
-    db_helper_primitive_calloc;
-    db_helper_primitive_malloc;
-    db_helper_primitive_malloc_string;
-    db_helper_primitive_realloc;
     db_ids_new;
     db_index_create;
     db_index_delete;

@@ -9,7 +9,7 @@ status_t db_index_system_key(db_type_id_t type_id, db_fields_len_t* fields, db_f
   size_t size;
   /* system-label + type + fields */
   size = (1 + sizeof(db_type_id_t) + (sizeof(db_fields_len_t) * fields_len));
-  status_require((db_helper_malloc(size, (&data))));
+  status_require((sph_helper_malloc(size, (&data))));
   *data = db_system_label_index;
   data_temp = (1 + data);
   *((db_type_id_t*)(data_temp)) = type_id;
@@ -34,9 +34,9 @@ status_t db_index_name(db_type_id_t type_id, db_fields_len_t* fields, db_fields_
   uint8_t* prefix = "i";
   strings = 0;
   strings_len = (2 + fields_len);
-  status_require((db_helper_calloc((strings_len * sizeof(uint8_t*)), (&strings))));
+  status_require((sph_helper_calloc((strings_len * sizeof(uint8_t*)), (&strings))));
   /* type id */
-  str = uint_to_string(type_id, (&str_len));
+  str = sph_helper_uint_to_string(type_id, (&str_len));
   if (!str) {
     status_set_both_goto(db_status_group_db, db_status_id_memory);
   };
@@ -44,7 +44,7 @@ status_t db_index_name(db_type_id_t type_id, db_fields_len_t* fields, db_fields_
   strings[1] = str;
   /* field ids */
   for (i = 0; (i < fields_len); i = (1 + i)) {
-    str = uint_to_string((fields[i]), (&str_len));
+    str = sph_helper_uint_to_string((fields[i]), (&str_len));
     if (!str) {
       status_set_both_goto(db_status_group_db, db_status_id_memory);
     };
@@ -96,7 +96,7 @@ status_t db_index_key(db_env_t* env, db_index_t index, db_record_values_t values
     status_set_both_goto(db_status_group_db, db_status_id_index_keysize);
   };
   /* allocate and prepare data */
-  status_require((db_helper_calloc(size, (&data))));
+  status_require((sph_helper_calloc(size, (&data))));
   data_temp = data;
   for (i = 0; (i < index.fields_len); i = (1 + i)) {
     field_index = (index.fields)[i];
@@ -279,7 +279,7 @@ status_t db_type_indices_add(db_type_t* type, db_index_t index, db_index_t** res
   };
   /* reallocate */
   indices_len = (1 + indices_len);
-  status_require((db_helper_realloc((indices_len * sizeof(db_index_t)), (&indices))));
+  status_require((sph_helper_realloc((indices_len * sizeof(db_index_t)), (&indices))));
   indices[(indices_len - 1)] = index;
   type->indices = indices;
   type->indices_len = indices_len;
@@ -326,7 +326,7 @@ status_t db_index_create(db_env_t* env, db_type_t* type, db_fields_len_t* fields
   /* add data btree */
   db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), name, (MDB_CREATE | MDB_DUPSORT), (&(record_index.dbi)))));
   /* update cache. fields might be stack allocated */
-  status_require((db_helper_malloc((fields_len * sizeof(db_fields_len_t)), (&fields_copy))));
+  status_require((sph_helper_malloc((fields_len * sizeof(db_fields_len_t)), (&fields_copy))));
   memcpy(fields_copy, fields, (fields_len * sizeof(db_fields_len_t)));
   record_index.fields = fields_copy;
   record_index.fields_len = fields_len;

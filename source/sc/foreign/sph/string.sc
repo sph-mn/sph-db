@@ -1,5 +1,3 @@
-(sc-comment "depends on sph.sc")
-;-- string
 (pre-include "string.h" "stdlib.h")
 
 (define (ensure-trailing-slash a result) (uint8-t uint8-t* uint8-t**)
@@ -38,21 +36,39 @@
   (if result (memcpy result a a-size))
   (return result))
 
-;-- filesystem
-; access, mkdir dirname
-(pre-include "unistd.h" "sys/stat.h" "libgen.h" "errno.h")
-(pre-define (file-exists? path) (not (= (access path F-OK) -1)))
-
-(define (dirname-2 a) (uint8-t* uint8-t*)
-  "like posix dirname, but never modifies its argument and always returns a new string"
-  (define path-copy uint8-t* (string-clone a))
-  (return (dirname path-copy)))
-
-(define (ensure-directory-structure path mkdir-mode) (uint8-t uint8-t* mode-t)
-  "return 1 if the path exists or has been successfully created"
-  (if (file-exists? path) (return #t)
-    (begin
-      (define path-dirname uint8-t* (dirname-2 path))
-      (define status uint8-t (ensure-directory-structure path-dirname mkdir-mode))
-      (free path-dirname)
-      (return (and status (or (= EEXIST errno) (= 0 (mkdir path mkdir-mode))))))))
+(define (string-join strings strings-len delimiter result-len)
+  (uint8-t* uint8-t** size-t uint8-t* size-t*)
+  "join strings into one string with each input string separated by delimiter.
+  zero if strings-len is zero or memory could not be allocated"
+  (declare
+    result uint8-t*
+    result-temp uint8-t*
+    size size-t
+    size-temp size-t
+    i size-t
+    delimiter-len size-t)
+  (if (not strings-len) (return 0))
+  (sc-comment "size: string-null + delimiters + string-lengths")
+  (set
+    delimiter-len (strlen delimiter)
+    size (+ 1 (* delimiter-len (- strings-len 1))))
+  (for ((set i 0) (< i strings-len) (set i (+ 1 i)))
+    (set size (+ size (strlen (array-get strings i)))))
+  (set result (malloc size))
+  (if (not result) (return 0))
+  (set
+    result-temp result
+    size-temp (strlen (array-get strings 0)))
+  (memcpy result-temp (array-get strings 0) size-temp)
+  (set result-temp (+ size-temp result-temp))
+  (for ((set i 1) (< i strings-len) (set i (+ 1 i)))
+    (memcpy result-temp delimiter delimiter-len)
+    (set
+      result-temp (+ delimiter-len result-temp)
+      size-temp (strlen (array-get strings i)))
+    (memcpy result-temp (array-get strings i) size-temp)
+    (set result-temp (+ size-temp result-temp)))
+  (set
+    (array-get result (- size 1)) 0
+    *result-len (- size 1))
+  (return result))

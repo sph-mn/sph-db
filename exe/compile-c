@@ -12,10 +12,10 @@ compile_libsph_db() {
 
 compile_test() {
   export LIBRARY_PATH="$PWD/temp"
-  gcc "$c/test/main.c" -o temp/test-libsph-db -llmdb -lsph-db -lpthread $gcc_options
+  gcc "$c/test/main.c" -o temp/test-libsph-db -llmdb -lsph-db -lpthread -lm $gcc_options
 }
 
 mkdir -p temp &&
-compile_libsph_db $@
+compile_libsph_db $@ &&
 compile_test $@
 chmod 755 temp/*

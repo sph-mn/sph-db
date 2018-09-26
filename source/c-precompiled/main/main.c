@@ -1,7 +1,9 @@
-#include "./sph-db.h"
-#include "./sph-db-extra.h"
-#include "../foreign/sph/one.c"
 #include <math.h>
+#include "./sph-db.h"
+#include "../foreign/sph/helper.c"
+#include "../foreign/sph/string.c"
+#include "../foreign/sph/filesystem.c"
+#include "./sph-db-extra.h"
 #include "./lmdb.c"
 #define free_and_set_null(a) \
   free(a); \
@@ -12,79 +14,13 @@
   if (0 == count) { \
     goto exit; \
   }
-#define debug_trace(n) fprintf(stdout, "%s %d\n", __func__, n)
-void display_bits_u8(uint8_t a) {
-  uint8_t i;
-  printf("%u", (1 & a));
-  for (i = 1; (i < 8); i = (1 + i)) {
-    printf("%u", (((((uint8_t)(1)) << i) & a) ? 1 : 0));
-  };
-};
-void display_bits(void* a, size_t size) {
-  size_t i;
-  for (i = 0; (i < size); i = (1 + i)) {
-    display_bits_u8((((uint8_t*)(a))[i]));
-  };
-  printf("\n");
-};
-uint8_t* uint_to_string(uintmax_t a, size_t* result_len) {
-  size_t size;
-  uint8_t* result;
-  size = (1 + ((0 == a) ? 1 : (1 + log10(a))));
-  result = malloc(size);
-  if (!result) {
-    return (0);
-  };
-  if (snprintf(result, size, "%ju", a) < 0) {
-    free(result);
-    return (0);
-  } else {
-    *result_len = (size - 1);
-    return (result);
-  };
-};
-/** join strings into one string with each input string separated by delimiter.
-  zero if strings-len is zero or memory could not be allocated */
-uint8_t* string_join(uint8_t** strings, size_t strings_len, uint8_t* delimiter, size_t* result_len) {
-  uint8_t* result;
-  uint8_t* result_temp;
-  size_t size;
-  size_t size_temp;
-  size_t i;
-  size_t delimiter_len;
-  if (!strings_len) {
-    return (0);
-  };
-  /* size: string-null + delimiters + string-lengths */
-  delimiter_len = strlen(delimiter);
-  size = (1 + (delimiter_len * (strings_len - 1)));
-  for (i = 0; (i < strings_len); i = (1 + i)) {
-    size = (size + strlen((strings[i])));
-  };
-  result = malloc(size);
-  if (!result) {
-    return (0);
-  };
-  result_temp = result;
-  size_temp = strlen((strings[0]));
-  memcpy(result_temp, (strings[0]), size_temp);
-  result_temp = (size_temp + result_temp);
-  for (i = 1; (i < strings_len); i = (1 + i)) {
-    memcpy(result_temp, delimiter, delimiter_len);
-    result_temp = (delimiter_len + result_temp);
-    size_temp = strlen((strings[i]));
-    memcpy(result_temp, (strings[i]), size_temp);
-    result_temp = (size_temp + result_temp);
-  };
-  result[(size - 1)] = 0;
-  *result_len = (size - 1);
-  return (result);
-};
 /** get the description if available for a status */
 uint8_t* db_status_description(status_t a) {
   char* b;
   if (!strcmp(db_status_group_lmdb, (a.group))) {
     b = mdb_strerror((a.id));
+  } else if (!strcmp(db_status_group_sph, (a.group))) {
+    b = sph_helper_status_description(a);
   } else if (!strcmp(db_status_group_db, (a.group))) {
     if (db_status_id_success == a.id) {
       b = "success";
@@ -139,6 +75,8 @@ uint8_t* db_status_name(status_t a) {
   char* b;
   if (!strcmp(db_status_group_lmdb, (a.group))) {
     b = mdb_strerror((a.id));
+  } else if (!strcmp(db_status_group_sph, (a.group))) {
+    b = sph_helper_status_name(a);
   } else if (!strcmp(db_status_group_db, (a.group))) {
     if (db_status_id_success == a.id) {
       b = "success";
@@ -316,52 +254,6 @@ status_t db_ids_to_set(db_ids_t a, imht_set_t** result) {
 exit:
   return (status);
 };
-status_t db_helper_primitive_malloc(size_t size, void** result) {
-  status_declare;
-  void* a;
-  a = malloc(size);
-  if (a) {
-    *result = a;
-  } else {
-    status.group = db_status_group_db;
-    status.id = db_status_id_memory;
-  };
-  return (status);
-};
-/** like db-helper-malloc but allocates one extra byte that is set to zero */
-status_t db_helper_primitive_malloc_string(size_t length, uint8_t** result) {
-  status_declare;
-  uint8_t* a;
-  status_require((db_helper_malloc((1 + length), (&a))));
-  a[length] = 0;
-  *result = a;
-exit:
-  return (status);
-};
-status_t db_helper_primitive_calloc(size_t size, void** result) {
-  status_declare;
-  void* a;
-  a = calloc(size, 1);
-  if (a) {
-    *result = a;
-  } else {
-    status.group = db_status_group_db;
-    status.id = db_status_id_memory;
-  };
-  return (status);
-};
-status_t db_helper_primitive_realloc(size_t size, void** block) {
-  status_declare;
-  void* a;
-  a = realloc((*block), size);
-  if (a) {
-    *block = a;
-  } else {
-    status.group = db_status_group_db;
-    status.id = db_status_id_memory;
-  };
-  return (status);
-};
 /** read a length prefixed string.
   on success set result to a newly allocated, null terminated string and
   data-pointer is positioned at the first byte after the string */
@@ -373,7 +265,7 @@ status_t db_read_name(uint8_t** data_pointer, uint8_t** result) {
   data = *data_pointer;
   len = *((db_name_len_t*)(data));
   data = (sizeof(db_name_len_t) + data);
-  status_require((db_helper_malloc_string(len, (&name))));
+  status_require((sph_helper_malloc_string(len, (&name))));
   memcpy(name, data, len);
   *data_pointer = (len + data);
   *result = name;
@@ -493,7 +385,7 @@ void db_free_env_types(db_type_t** types, db_type_id_t types_len) {
 status_t db_env_new(db_env_t** result) {
   status_declare;
   db_env_t* a;
-  status_require((db_helper_calloc((sizeof(db_env_t)), ((void**)(&a)))));
+  status_require((sph_helper_calloc((sizeof(db_env_t)), ((void**)(&a)))));
   *result = a;
 exit:
   return (status);

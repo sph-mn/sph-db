@@ -2,7 +2,10 @@
   "stdio.h"
   "stdlib.h"
   "errno.h"
-  "pthread.h" "../main/sph-db.h" "../main/sph-db-extra.h" "../main/lib/lmdb.c" "../foreign/sph/one.c")
+  "pthread.h"
+  "../main/sph-db.h"
+  "../main/sph-db-extra.h"
+  "../main/lmdb.c" "../foreign/sph/helper.c" "../foreign/sph/string.c" "../foreign/sph/filesystem.c")
 
 (pre-define
   test-helper-db-root "/tmp/sph-db-test"
@@ -208,14 +211,14 @@
     value-3 uint8-t*
     value-4 uint8-t*
     values db-record-values-t*)
-  (status-require (db-helper-malloc 1 &value-1))
-  (status-require (db-helper-malloc 1 &value-2))
-  (status-require (db-helper-malloc (* 2 (sizeof db-record-values-t)) &values))
+  (status-require (sph-helper-malloc 1 &value-1))
+  (status-require (sph-helper-malloc 1 &value-2))
+  (status-require (sph-helper-malloc (* 2 (sizeof db-record-values-t)) &values))
   (set
     *value-1 11
     *value-2 -128)
-  (status-require (db-helper-malloc-string 3 &value-3))
-  (status-require (db-helper-malloc-string 5 &value-4))
+  (status-require (sph-helper-malloc-string 3 &value-3))
+  (status-require (sph-helper-malloc-string 5 &value-4))
   (memcpy value-3 (address-of "abc") 3)
   (memcpy value-4 (address-of "abcde") 5)
   (status-require (db-record-values-new type (+ 0 values)))
@@ -239,7 +242,7 @@
   status-declare
   (db-txn-declare env txn)
   (declare ids db-id-t*)
-  (status-require (db-helper-malloc (* 4 (sizeof db-id-t)) &ids))
+  (status-require (sph-helper-malloc (* 4 (sizeof db-id-t)) &ids))
   (status-require (db-txn-write-begin &txn))
   (status-require (db-record-create txn (array-get values 0) (+ 0 ids)))
   (status-require (db-record-create txn (array-get values 0) (+ 1 ids)))

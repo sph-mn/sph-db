@@ -31,18 +31,9 @@
   (db-relation-data-set-both a ordinal id)
   (begin
     (db-relation-data-set-ordinal ordinal)
-    (db-relation-data-set-id id))
-  (db-helper-malloc size result) (db-helper-primitive-malloc size (convert-type result void**))
-  (db-helper-malloc-string size result)
-  (db-helper-primitive-malloc-string size (convert-type result uint8-t**))
-  (db-helper-calloc size result) (db-helper-primitive-calloc size (convert-type result void**))
-  (db-helper-realloc size result) (db-helper-primitive-realloc size (convert-type result void**)))
+    (db-relation-data-set-id id)))
 
 (declare
-  (db-helper-primitive-malloc size result) (status-t size-t void**)
-  (db-helper-primitive-calloc size result) (status-t size-t void**)
-  (db-helper-primitive-malloc-string size result) (status-t size-t uint8-t**)
-  (db-helper-primitive-realloc size block) (status-t size-t void**)
   (db-sequence-next-system env result) (status-t db-env-t* db-type-id-t*)
   (db-sequence-next env type-id result) (status-t db-env-t* db-type-id-t db-id-t*)
   ; db-debug

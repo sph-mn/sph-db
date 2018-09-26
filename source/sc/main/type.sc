@@ -12,7 +12,7 @@
   (set
     types env:types
     types-len (+ db-env-types-extra-count type-id))
-  (status-require (db-helper-realloc (* types-len (sizeof db-type-t)) &types))
+  (status-require (sph-helper-realloc (* types-len (sizeof db-type-t)) &types))
   (sc-comment "set new type struct ids to zero")
   (for ((set i type-id) (< i types-len) (set i (+ 1 i)))
     (set (struct-get (array-get types i) id) 0))
@@ -96,7 +96,7 @@
         (sizeof db-field-type-t)
         (sizeof db-name-len-t) (strlen (struct-get (array-get fields i) name)))))
   (sc-comment "allocate")
-  (status-require (db-helper-malloc data-size &data))
+  (status-require (sph-helper-malloc data-size &data))
   (sc-comment "set data")
   (set
     data-start data
