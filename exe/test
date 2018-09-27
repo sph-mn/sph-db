@@ -2,5 +2,6 @@
 # the shared library must have already been compiled,
 # but it does not need to have been installed.
 
+export MALLOC_CHECK_=2
 export LD_LIBRARY_PATH="$PWD/temp"
 ./temp/test-libsph-db

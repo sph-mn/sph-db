@@ -126,7 +126,7 @@ status_t test_helper_reset(db_env_t* env, boolean re_use) {
   if (env->is_open) {
     db_close(env);
   };
-  if (!re_use && file_exists_p(test_helper_path_data)) {
+  if (!re_use && file_exists(test_helper_path_data)) {
     status.id = system("rm " test_helper_path_data);
     if (status_is_failure) {
       status_goto;
