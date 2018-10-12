@@ -1,6 +1,6 @@
 # about
 
-sph-db is a database as a shared library for records and relations. sph-db is in alpha as of 2018-09, you can try it and report any issues, but api or database format changes are still to be expected
+sph-db is a database as a shared library for records and relations. sph-db is in beta as of 2018-10, you can try it and report any issues. slight api or database format adjustments might still be made if necessary. sph-db is not expected to move out of beta until enough users have tested it
 
 * license: lgpl3+
 
