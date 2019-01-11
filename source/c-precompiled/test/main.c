@@ -58,11 +58,13 @@ status_t test_type_create_get_delete(db_env_t* env) {
   fields_2[0] = db_type_field_get(type_2, "test-field-1");
   fields_2[1] = db_type_field_get(type_2, "test-field-2");
   fields_2[2] = db_type_field_get(type_2, "test-field-3");
-  /* test fixed count and offsets */
+  fields_2[3] = db_type_field_get(type_2, "test-field-4");
   test_helper_assert("fixed count", (2 == type_2->fields_fixed_count));
   test_helper_assert("fixed offsets", ((0 == (type_2->fields_fixed_offsets)[0]) && (1 == (type_2->fields_fixed_offsets)[1])));
-  /* test type-field-get */
-  test_helper_assert("type-field-get", (fields_2[0] == (0 + type_2->fields)) && ((0 + type_2->fields) == fields_2[1]) && (fields_2[1] == (1 + type_2->fields)) && ((1 + type_2->fields) == fields_2[2]) && (fields_2[2] == (2 + type_2->fields)) && ((2 + type_2->fields) == fields_2[3]) && (fields_2[3] == (3 + type_2->fields)));
+  test_helper_assert("type-field-get result 0", (fields_2[0] == (0 + type_2->fields)));
+  test_helper_assert("type-field-get result 1", (fields_2[1] == (1 + type_2->fields)));
+  test_helper_assert("type-field-get result 2", (fields_2[2] == (2 + type_2->fields)));
+  test_helper_assert("type-field-get result 3", (fields_2[3] == (3 + type_2->fields)));
   /* test type-get */
   test_helper_assert("non existent type", (!db_type_get(env, "test-type-x")));
   type_1_1 = db_type_get(env, "test-type-1");

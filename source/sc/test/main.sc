@@ -68,22 +68,18 @@
     fields-2
     0
     (db-type-field-get type-2 "test-field-1")
-    1 (db-type-field-get type-2 "test-field-2") 2 (db-type-field-get type-2 "test-field-3"))
-  (sc-comment "test fixed count and offsets")
+    1
+    (db-type-field-get type-2 "test-field-2")
+    2 (db-type-field-get type-2 "test-field-3") 3 (db-type-field-get type-2 "test-field-4"))
   (test-helper-assert "fixed count" (= 2 type-2:fields-fixed-count))
   (test-helper-assert
     "fixed offsets"
     (and
       (= 0 (array-get type-2:fields-fixed-offsets 0)) (= 1 (array-get type-2:fields-fixed-offsets 1))))
-  (sc-comment "test type-field-get")
-  (test-helper-assert
-    "type-field-get"
-    (=
-      (array-get fields-2 0)
-      (+ 0 type-2:fields)
-      (array-get fields-2 1)
-      (+ 1 type-2:fields)
-      (array-get fields-2 2) (+ 2 type-2:fields) (array-get fields-2 3) (+ 3 type-2:fields)))
+  (test-helper-assert "type-field-get result 0" (= (array-get fields-2 0) (+ 0 type-2:fields)))
+  (test-helper-assert "type-field-get result 1" (= (array-get fields-2 1) (+ 1 type-2:fields)))
+  (test-helper-assert "type-field-get result 2" (= (array-get fields-2 2) (+ 2 type-2:fields)))
+  (test-helper-assert "type-field-get result 3" (= (array-get fields-2 3) (+ 3 type-2:fields)))
   (sc-comment "test type-get")
   (test-helper-assert "non existent type" (not (db-type-get env "test-type-x")))
   (set
