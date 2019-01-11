@@ -22,7 +22,7 @@ exit:
   };
   return (status);
 };
-uint32_t db_open_mdb_env_flags(db_open_options_t* options) { return ((options->env_open_flags ? options->env_open_flags : (MDB_NOSUBDIR | MDB_WRITEMAP | (options->is_read_only ? MDB_RDONLY : 0) | (options->filesystem_has_ordered_writes ? MDB_MAPASYNC : 0)))); };
+uint32_t db_open_mdb_env_flags(db_open_options_t* options) { return ((options->env_open_flags ? options->env_open_flags : (MDB_NOSUBDIR | (options->is_read_only ? MDB_RDONLY : 0) | (options->filesystem_has_ordered_writes ? MDB_MAPASYNC : 0)))); };
 status_t db_open_mdb_env(db_env_t* env, db_open_options_t* options) {
   status_declare;
   uint8_t* data_path;

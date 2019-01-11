@@ -26,7 +26,6 @@
     (if* options:env-open-flags options:env-open-flags
       (bit-or
         MDB-NOSUBDIR
-        MDB-WRITEMAP
         (if* options:is-read-only MDB-RDONLY
           0)
         (if* options:filesystem-has-ordered-writes MDB-MAPASYNC
