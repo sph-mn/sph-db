@@ -41,6 +41,8 @@ compile_sc() {
   find -type f -name "*.sc" -exec sc --parents '{}' "$c" \; &&
   cd "$root" &&
   find "$c" -type f -exec ./exe/format-c -i '{}' \; &&
+	# config.c is user variable and already in sph-db.h
+	rm "$c/main/config.c" &&
   mv "$c/main/sph-db.c" "$c/main/sph-db.h"
   mv "$c/main/sph-db-extra.c" "$c/main/sph-db-extra.h"
 }
