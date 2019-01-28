@@ -3,6 +3,19 @@
 #include <math.h>
 #include <pthread.h>
 #include <lmdb.h>
+/* compile-time configuration start */
+#define db_id_t uint64_t
+#define db_type_id_t uint16_t
+#define db_ordinal_t uint32_t
+#define db_id_mask UINT64_MAX
+#define db_type_id_mask UINT16_MAX
+#define db_name_len_t uint8_t
+#define db_name_len_max UINT8_MAX
+#define db_fields_len_t uint8_t
+#define db_indices_len_t uint8_t
+#define db_count_t uint32_t
+#define db_batch_len 100
+/* compile-time configuration end */
 #include <stdio.h>
 /** writes values with current routine name and line info to standard output.
     example: (debug-log "%d" 1)
@@ -115,17 +128,6 @@ typedef struct {
 #define i_array_length(a) (a.unused - a.start)
 #define i_array_max_length(a) (a.end - a.start)
 #define i_array_free(a) free((a.start))
-#define db_id_t uint64_t
-#define db_type_id_t uint16_t
-#define db_ordinal_t uint32_t
-#define db_id_mask UINT64_MAX
-#define db_type_id_mask UINT16_MAX
-#define db_name_len_t uint8_t
-#define db_name_len_max UINT8_MAX
-#define db_fields_len_t uint8_t
-#define db_indices_len_t uint8_t
-#define db_count_t uint32_t
-#define db_batch_len 100
 typedef struct {
   db_id_t left;
   db_id_t right;

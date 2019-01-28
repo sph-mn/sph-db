@@ -1,6 +1,6 @@
 (sc-comment "this file is for declarations and macros needed to use sph-db as a shared library")
 (pre-include "inttypes.h" "math.h" "pthread.h" "lmdb.h")
-(sc-include "foreign/sph" "foreign/sph/status" "foreign/sph/i-array" "main/config")
+(sc-include "main/config" "foreign/sph" "foreign/sph/status" "foreign/sph/i-array")
 
 (declare
   db-relation-t

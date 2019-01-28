@@ -34,7 +34,7 @@ sph-db is a database as a shared library for records and relations. sph-db is co
 
 # setup
 1. install run-time and quick build dependencies
-1. eventually ``adjust source/c-precompiled/main/config.c``
+1. eventually adjust the compile-time configuration at the beginning of ``source/c-precompiled/main/sph-db.h``. these settings are fixed for compiled shared libraries and the settings in the header must match the values a shared library to use was compiled with
 1. change into the project directory and execute ``./exe/compile-c``
 1. execute ``./exe/install``. this supports one optional argument: a path prefix to install to
 
@@ -688,7 +688,7 @@ db_status_id_success db_status_id_undefined db_status_id_condition_unfulfilled
 * scheme: [sph-db-guile](https://github.com/sph-mn/sph-db-guile)
 
 # compile-time configuration
-these values can be set before compilation in ``c-precompiled/main/config.c``. once compiled, they can not be changed for a shared library. databases created with one configuration must only be used by code compiled with the same configuration. if necessary, for example, multiple shared libraries with different configuration can be created.
+these values can be set before compilation in ``c-precompiled/main/sph-db.h``. once compiled, they can not be changed for a shared library. databases created with one configuration must only be used by code compiled with the same configuration. if necessary, for example, multiple shared libraries with different configuration can be created.
 
 |name|default|description|
 | --- | --- | --- |
@@ -712,6 +712,7 @@ these values can be set before compilation in ``c-precompiled/main/config.c``. o
 * the maximum number of type creations is currently 65535. this limit is to be removed in the future
 
 # possible enhancements
+* having the compile-time configuration in the versioned sph-db.h isnt a good solution
 * float values as ordinals has not been tested
 * currently index inserts with data too large are rejected. maybe add an option to control what happens, for example to truncate instead
 * signal error when creating index for fields that are or might be too large
