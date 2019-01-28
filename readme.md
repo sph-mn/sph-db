@@ -1,22 +1,22 @@
 # about
 
-sph-db is a database as a shared library for records and relations. sph-db is in beta as of 2018-10, you can try it and report any issues. slight api or database format adjustments might still be made if necessary. sph-db is not expected to move out of beta until enough users have tested it
+sph-db is a database as a shared library for records and relations. sph-db is considered feature complete and in beta as of 2018-10, you can try it and report any issues
 
 * license: lgpl3+
 
 # project goals
-* a minimal embeddable database to store records without having to construct high-level language strings for queries
+* a minimal, embeddable database to store records without having to construct high-level language strings for queries. basically an sqlite without sql and without higher-level sql features - a simple, fast record database
 * graph-like relations without having to manage junction tables
 
 # features
 ## data model
-* records have identifiers for random access. they are similar to table rows in relational databases, and indexable
+* records have identifiers for random access. they are like table rows with columns in relational databases, and they are indexable
 * records can act as nodes in relations to build a graph
 * relations are directed, labeled, unidirectionally ordered and small
 
 ## technology
 * acid compliant, memory-mapped database that can grow to any size that fits on the local filesystem, unrestricted by available ram
-* direct, high-speed interface using c data structures. no overhead from sql or similar query language parsing
+* direct, high-speed interface using c data structures. no overhead from sql or similar query language parsing and processing
 * embeddable by linking or code inclusion
 * read-optimised design with full support for parallel database reads
 * efficient through focus on limited feature-set and thin abstraction over lmdb. benchmarks for lmdb can be found [here](https://symas.com/lmdb/technical/)
