@@ -693,7 +693,7 @@ these values can be set before compilation in ``c-precompiled/main/sph-db.h``. o
 |name|default|description|
 | --- | --- | --- |
 |db_id_t|uint64_t|must be an unsigned integer. for record identifiers. will also contain the type id|
-|db_type_id_t|uint16_t||must be an unsigned integer. for type ids. limits the number of possible types. currently can not be larger than 16 bit|
+|db_type_id_t|uint16_t|must be an unsigned integer. for type ids. limits the number of possible types. currently can not be larger than 16 bit|
 |db_ordinal_t|uint32_t|for relation order values|
 |db_id_mask|UINT64_MAX|maximum value for the id type (all digits set to one)|
 |db_type_id_mask|UINT16_MAX|maximum value for the type-id type|
