@@ -694,19 +694,19 @@ these values can be set before compilation in ``c-precompiled/main/sph-db.h``. o
 | --- | --- | --- |
 |db_id_t|uint64_t|must be an unsigned integer. for record identifiers. will also contain the type id|
 |db_type_id_t|uint16_t|must be an unsigned integer. for type ids. limits the number of possible types. currently can not be larger than 16 bit|
-|db_ordinal_t|uint32_t|for relation order values|
+|db_ordinal_t|uint16_t|for relation order values. |
 |db_id_mask|UINT64_MAX|maximum value for the id type (all digits set to one)|
 |db_type_id_mask|UINT16_MAX|maximum value for the type-id type|
 |db_name_len_t|uint8_t|to store name string lengths (for type and field names)|
 |db_name_len_max|UINT8_MAX|maximum allowed name length|
-|db_fields_len_t|uint8_t|for field indices. limits the number of possible fields|
-|db_indices_len_t|uint8_t|limits the number of possible indices per type|
+|db_fields_len_t|uint16_t|for field indices. limits the number of possible fields|
+|db_indices_len_t|uint16_t|limits the number of possible indices per type|
 |db_count_t|uint32_t|for values like the count of elements to read. does not need to be larger than half size_t|
-|db_batch_len|uint32_t|number of elements to process at once internally for example in db-record-select-delete. mostly for db-id-t|
+|db_batch_len|100|number of elements to process at once internally for example in db-record-select-delete. mostly for buffering db-id-t|
 
 # additional features and caveats
 * make sure that you do not try to insert ordinals or ids bigger than what is defined to be possible by the data types for ordinals and record identifiers. otherwise numerical overflows might occur
-* ordinals are primarily intended to store data in a pre-calculated order for fast ordered retrieval
+* ordinals are primarily intended to store relations in a pre-calculated order for fast ordered retrieval
 * to use db_relation_select and a filter by ordinal, "left" filter values must be given
 * readers can return results and indicate the end of results in the same call
 * the maximum number of type creations is currently 65535. this limit is to be removed in the future
@@ -719,6 +719,7 @@ these values can be set before compilation in ``c-precompiled/main/sph-db.h``. o
 * eventually more streamlined declaration/allocation/deallocation for api usage
 * validator functions for indices and relation data consistency
 * lift the type creation limit
+* remove ordinals entirely or allow zero size ordinals, as this feature adds at least 8 bit to every relation
 * nested transactions. supposedly possible in lmdb but not working
 * partial indices. with a data filter function given at index definition
 * at some places MDB_SET_RANGE and MDB_GET_BOTH_RANGE is used in succession. maybe get-both-range includes set-range and the latter can be left out
