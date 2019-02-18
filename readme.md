@@ -1,11 +1,11 @@
 # about
 
-sph-db is a database as a shared library for records and relations. sph-db is considered feature complete and in beta as of 2018-10, you can try it and report any issues
+sph-db is a database for records and relations. sph-db is considered feature complete and in beta as of 2018-10, you can try it and report any issues
 
 * license: lgpl3+
 
 # project goals
-* a minimal, embeddable database to store records without having to construct high-level language strings for queries. basically an sqlite without sql and without higher-level sql features - a simple, fast record database
+* a minimal, fast nosql database as a shared library to store records
 * graph-like relations without having to manage junction tables
 
 # features
