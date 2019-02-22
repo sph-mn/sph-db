@@ -1,16 +1,16 @@
 # about
 
-sph-db is a database for records and relations. sph-db is considered feature complete and in beta as of 2018-10, you can try it and report any issues
+sph-db is considered feature complete and in beta as of 2018-10, you can try it and report any issues
 
 * license: lgpl3+
 
 # project goals
-* a minimal, fast nosql database as a shared library to store records
-* graph-like relations without having to manage junction tables
+* a fast nosql database as a shared library to store records
+* graph-like many-to-many relations without having to manage junction tables
 
 # features
 ## data model
-* records have identifiers for random access. they are like table rows with columns in relational databases, and they are indexable
+* records have identifiers for random access and fields of various types and are indexable. records are just like table rows in relational databases
 * records can act as nodes in relations to build a graph
 * relations are directed, labeled, unidirectionally ordered and small
 
