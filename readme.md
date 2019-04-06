@@ -34,7 +34,7 @@ sph-db is considered feature complete and in beta as of 2018-10, you can try it 
 
 # setup
 1. install run-time and quick build dependencies
-1. eventually adjust the compile-time configuration at the beginning of ``source/c-precompiled/main/sph-db.h``. these settings are fixed for compiled shared libraries and the settings in the header must match the values a shared library to use was compiled with
+1. maybe adjust the compile-time configuration at the beginning of ``source/c-precompiled/main/sph-db.h``. these settings are fixed for compiled shared libraries and the settings in the header must match the values a shared library to use was compiled with
 1. change into the project directory and execute ``./exe/compile-c``
 1. execute ``./exe/install``. this supports one optional argument: a path prefix to install to
 
@@ -80,7 +80,7 @@ db_close(&env);
 ## transactions
 * transactions are required for reading and writing. routines for schema changes like type and index creation create a transaction internally and must not be used while another transaction is active in the same thread
 * there must only be one active transaction per thread (there is an option to relax this for read transactions). nested transactions might be possible in the future
-* returned data pointers, for example from db_record_data_ref, are only valid until the corresponding transaction is aborted or committed. such data pointers are always only for reading and must never be written to
+* returned data pointers, for example from db_record_data_ref, are only valid until the corresponding transaction is aborted or committed. data pointers are always only for reading and should never be written to
 
 declare a transaction handle variable
 ```c
@@ -127,7 +127,7 @@ fields can be fixed length (for example for integers and floating point values) 
 all fixed size fields must come before variable size fields or an error is returned.
 possible field types are db_field_type_* macro variables, see api reference below. field types with ``f`` at the end
 are of fixed size, others are variable size and the number is the size of the datatype where the actual data size is stored.
-apart from indicating storage type and size, field types are mostly a hint because no conversions take place
+apart from indicating storage type and size, field types are a hint because no conversions take place
 
 ## create records
 ```c
@@ -709,14 +709,14 @@ these values can be set before compilation in ``c-precompiled/main/sph-db.h``. o
 * ordinals are primarily intended to store relations in a pre-calculated order for fast ordered retrieval
 * to use db_relation_select and a filter by ordinal, "left" filter values must be given
 * readers can return results and indicate the end of results in the same call
-* the maximum number of type creations is currently 65535. this limit is to be removed in the future
+* the maximum number types, or type creations more precisely, is currently 65535. this limit could be removed in the future
 
 # possible enhancements
 * having the compile-time configuration in the versioned sph-db.h isnt a good solution
 * float values as ordinals has not been tested
-* currently index inserts with data too large are rejected. maybe add an option to control what happens, for example to truncate instead
+* currently index inserts with data too large are rejected with an error. maybe add an option to control what happens, for example to truncate instead
 * signal error when creating index for fields that are or might be too large
-* eventually more streamlined declaration/allocation/deallocation for api usage
+* possibly more streamlined declaration/allocation/deallocation for api usage
 * validator functions for indices and relation data consistency
 * lift the type creation limit
 * remove ordinals entirely or allow zero size ordinals, as this feature adds at least 8 bit to every relation

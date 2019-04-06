@@ -6,24 +6,23 @@ notes on considered questions and decisions made while developing sph-db
   * sqlite pros
     * multi platform, well tested, well documented, views, order on select, group, filtering sub-selects, triggers, sql-functions, query optimiser, integer primary keys are automatically auto increment, automatically find and use indices
   * sqlite cons
-    * building sql strings requires quoting, escaping and generally protection against sql-injection. another step where strings are analysed and possibly rewritten
+    * building sql strings requires quoting, escaping and generally protection against sql-injection and generally steps where strings are analysed and possibly rewritten multiple times
     * cant predict or guarantee order of values as they are stored
     * all types are variable length and all data fields are therefore probably prefixed with type information
     * checking if an index exists is not supported
-    * might require copying of selected data for reading instead of offering pointers to it directly
     * there is always an integer row id anyway, even when using for example strings as the primary key
   * shared features
     * create indices selectively for columns
     * filter table rows whose columns match column content and logical conditions
   * sph-db pros
     * better performance (fewer code paths, more minimalistic design, lmdb)
-    * uses c data structures for queries instead of sql strings which need to be constructed by concatenating strings then parsed and evaluated
+    * uses c data structures for queries instead of sql strings which would need to be constructed by concatenating strings then parsed and evaluated
     * sph-db gives access to data without copying
     * direct lmdb btree access support. custom key-value btrees can be added to the environment
     * no junction tables with specific layout, naming and indices need to be managed
     * automatic deletion of dependent relations when deleting records instead of first having to create triggers
-* relation databases
-  * relation databases typically store relations in an adjacency list, which tends to be efficient for traversing long paths from record to record. but adjacency lists alone arent particularly well suited for frequent random access to records as if they are records or finding all relations a record is in. sph-db uses b+trees instead because its focus is on mapping data to identifiers (random access) and filtering on the set of all relations (optimised for queries such as "is x related to y" and "which records are adjacent to x" but not optimised for long path traversals)
+* graph databases
+  * graph databases typically store relations in an adjacency list, which tends to be efficient for traversing long paths from record to record. but adjacency lists alone arent particularly well suited for frequent random access to records as if they are records or finding all relations a record is in. sph-db uses b+trees instead because its focus is on mapping data to identifiers (random access) and filtering on the set of all relations (optimised for queries such as "is x related to y" and "which records are adjacent to x" but not optimised for long path traversals)
 * relational databases
   * for relations between various types, the type has to be carried anyway with ids
   * one btree for each table because space saving. acts like a prefix to a data collection
@@ -122,7 +121,7 @@ difference to relation read: less filters
     * malloc for each row result struct
     * when filtering rows one by one more results than needed might have been loaded
   * pro
-    * less function calls, eventually less preparation to continue search (no re-allocation of cursor, status and mdb-val local variables)
+    * less function calls, possibly less preparation to continue search (no re-allocation of cursor, status and mdb-val local variables)
     * works the same as for relations. less likely to be changed for relations at this point
     * timely more separated data read and use step separates repeated processes and might improve low-level caching
 * how sqlite does it
@@ -434,7 +433,7 @@ other active transactions might be trying to use the schema and for example inse
 * if separate type-to-type btrees are used, should relation relations of both directions be kept in the system cache
 * custom primary keys
   * a dictionary, a one to one association, could be considered a subset of plain tables. yet rows might have row identifiers identifying a pairing even if that is not needed. this points to custom primary keys
-  * con: ambiguity of auto-increment and provided keys. each insert requires additional checks if auto-increment and eventually if key has been provided. id key potentially quicker to join as primary and foreign key because efficient data type
+  * con: ambiguity of auto-increment and provided keys. each insert requires additional checks if auto-increment and possibly if key has been provided. id key potentially quicker to join as primary and foreign key because efficient data type
 
 # start field type ids at 0 or zero
 * <> 0 vs <>= 0
