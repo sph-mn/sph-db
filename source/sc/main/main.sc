@@ -1,14 +1,9 @@
-(pre-include
-  "math.h"
-  "./sph-db.h"
-  "../foreign/sph/helper.c"
-  "../foreign/sph/string.c" "../foreign/sph/filesystem.c" "./sph-db-extra.h" "./lmdb.c")
+(pre-include "math.h" "./sph-db.h"
+  "../foreign/sph/helper.c" "../foreign/sph/string.c" "../foreign/sph/filesystem.c"
+  "./sph-db-extra.h" "./lmdb.c")
 
 (pre-define
-  (free-and-set-null a)
-  (begin
-    (free a)
-    (set a 0))
+  (free-and-set-null a) (begin (free a) (set a 0))
   (db-error-log pattern ...)
   (fprintf stderr (pre-string-concat "%s:%d error: " pattern "\n") __func__ __LINE__ __VA_ARGS__)
   reduce-count (set count (- count 1))
@@ -17,8 +12,7 @@
 (define (db-status-description a) (uint8-t* status-t)
   "get the description if available for a status"
   (declare b char*)
-  (cond
-    ((not (strcmp db-status-group-lmdb a.group)) (set b (mdb-strerror a.id)))
+  (cond ((not (strcmp db-status-group-lmdb a.group)) (set b (mdb-strerror a.id)))
     ((not (strcmp db-status-group-sph a.group)) (set b (sph-helper-status-description a)))
     ( (not (strcmp db-status-group-db a.group))
       (case = a.id
@@ -46,16 +40,13 @@
         (db-status-id-type-field-order
           (set b "all fixed length type fields must come before variable length type fields"))
         (else (set b ""))))
-    (else
-      (if (= status-id-success a.id) (set b "success")
-        (set b ""))))
+    (else (if (= status-id-success a.id) (set b "success") (set b ""))))
   (return (convert-type b uint8-t*)))
 
 (define (db-status-name a) (uint8-t* status-t)
   "get the name if available for a status"
   (declare b char*)
-  (cond
-    ((not (strcmp db-status-group-lmdb a.group)) (set b (mdb-strerror a.id)))
+  (cond ((not (strcmp db-status-group-lmdb a.group)) (set b (mdb-strerror a.id)))
     ((not (strcmp db-status-group-sph a.group)) (set b (sph-helper-status-name a)))
     ( (not (strcmp db-status-group-db a.group))
       (case = a.id
@@ -84,62 +75,49 @@
 (define (db-txn-begin a) (status-t db-txn-t*)
   status-declare
   (db-mdb-status-require (mdb-txn-begin a:env:mdb-env 0 MDB-RDONLY &a:mdb-txn))
-  (label exit
-    (return status)))
+  (label exit (return status)))
 
 (define (db-txn-write-begin a) (status-t db-txn-t*)
   status-declare
   (db-mdb-status-require (mdb-txn-begin a:env:mdb-env 0 0 &a:mdb-txn))
-  (label exit
-    (return status)))
+  (label exit (return status)))
 
 (define (db-txn-begin-child parent-txn a) (status-t db-txn-t db-txn-t*)
   status-declare
   (db-mdb-status-require (mdb-txn-begin a:env:mdb-env parent-txn.mdb-txn MDB-RDONLY &a:mdb-txn))
-  (label exit
-    (return status)))
+  (label exit (return status)))
 
 (define (db-txn-write-begin-child parent-txn a) (status-t db-txn-t db-txn-t*)
   status-declare
   (db-mdb-status-require (mdb-txn-begin a:env:mdb-env parent-txn.mdb-txn 0 &a:mdb-txn))
-  (label exit
-    (return status)))
+  (label exit (return status)))
 
-(define (db-txn-abort a) (void db-txn-t*)
-  (mdb-txn-abort a:mdb-txn)
-  (set a:mdb-txn 0))
+(define (db-txn-abort a) (void db-txn-t*) (mdb-txn-abort a:mdb-txn) (set a:mdb-txn 0))
 
 (define (db-txn-commit a) (status-t db-txn-t*)
   status-declare
   (db-mdb-status-require (mdb-txn-commit a:mdb-txn))
   (set a:mdb-txn 0)
-  (label exit
-    (return status)))
+  (label exit (return status)))
 
 (define (db-debug-log-id-bits a) (void db-id-t)
   (declare index db-id-t)
   (printf "%u" (bit-and 1 a))
   (for ((set index 1) (< index (* 8 (sizeof db-id-t))) (set index (+ 1 index)))
-    (printf "%u"
-      (if* (bit-and (bit-shift-left (convert-type 1 db-id-t) index) a) 1
-        0)))
+    (printf "%u" (if* (bit-and (bit-shift-left (convert-type 1 db-id-t) index) a) 1 0)))
   (printf "\n"))
 
 (define (db-debug-log-ids a) (void db-ids-t)
   "display an ids array"
   (printf "ids (%lu):" (i-array-length a))
-  (while (i-array-in-range a)
-    (printf " %lu" (i-array-get a))
-    (i-array-forward a))
+  (while (i-array-in-range a) (printf " %lu" (i-array-get a)) (i-array-forward a))
   (printf "\n"))
 
 (define (db-debug-log-ids-set a) (void imht-set-t)
   "display an ids set"
   (define i uint32-t 0)
   (printf "id set (%lu):" a.size)
-  (while (< i a.size)
-    (printf " %lu" (array-get a.content i))
-    (set i (+ 1 i)))
+  (while (< i a.size) (printf " %lu" (array-get a.content i)) (set i (+ 1 i)))
   (printf "\n"))
 
 (define (db-debug-log-relations a) (void db-relations-t)
@@ -156,11 +134,9 @@
   (status-require (db-statistics txn &stat))
   (printf
     "btree entry count: system %zu, records %zu, relation-lr %zu, relation-rl %zu, relation-ll %zu\n"
-    stat.system.ms_entries
-    stat.records.ms_entries
-    stat.relation-lr.ms_entries stat.relation-rl.ms_entries stat.relation-ll.ms_entries)
-  (label exit
-    (return status)))
+    stat.system.ms_entries stat.records.ms_entries stat.relation-lr.ms_entries
+    stat.relation-rl.ms_entries stat.relation-ll.ms_entries)
+  (label exit (return status)))
 
 (define (db-debug-count-all-btree-entries txn result) (status-t db-txn-t uint32-t*)
   "sum of all entries in all btrees used by the database"
@@ -168,39 +144,30 @@
   (declare stat db-statistics-t)
   (status-require (db-statistics txn &stat))
   (set *result
-    (+
-      stat.system.ms_entries
-      stat.records.ms_entries
+    (+ stat.system.ms_entries stat.records.ms_entries
       stat.relation-lr.ms_entries stat.relation-rl.ms_entries stat.relation-ll.ms_entries))
-  (label exit
-    (return status)))
+  (label exit (return status)))
 
 (define (db-field-type-size a) (db-field-type-size-t db-field-type-t)
   "size in octets. size of the size prefix for variable size types"
   (case = a
-    ( (db-field-type-binary64f
-        db-field-type-uint64f
-        db-field-type-int64f
+    ( (db-field-type-binary64f db-field-type-uint64f db-field-type-int64f
         db-field-type-string64f db-field-type-float64f db-field-type-binary64 db-field-type-string64)
       (return 8))
-    ( (db-field-type-binary32f
-        db-field-type-uint32f
-        db-field-type-int32f
+    ( (db-field-type-binary32f db-field-type-uint32f db-field-type-int32f
         db-field-type-string32f db-field-type-float32f db-field-type-binary32 db-field-type-string32)
       (return 4))
-    ( (db-field-type-binary16f
-        db-field-type-uint16f
-        db-field-type-int16f db-field-type-string16f db-field-type-binary16 db-field-type-string16)
+    ( (db-field-type-binary16f db-field-type-uint16f db-field-type-int16f
+        db-field-type-string16f db-field-type-binary16 db-field-type-string16)
       (return 2))
-    ( (db-field-type-binary8f
-        db-field-type-uint8f
-        db-field-type-int8f db-field-type-string8f db-field-type-binary8 db-field-type-string8)
+    ( (db-field-type-binary8f db-field-type-uint8f db-field-type-int8f
+        db-field-type-string8f db-field-type-binary8 db-field-type-string8)
       (return 1))
-    ( (db-field-type-binary128f
-        db-field-type-uint128f db-field-type-int128f db-field-type-string128f)
+    ( (db-field-type-binary128f db-field-type-uint128f db-field-type-int128f
+        db-field-type-string128f)
       (return 16))
-    ( (db-field-type-binary256f
-        db-field-type-uint256f db-field-type-int256f db-field-type-string256f)
+    ( (db-field-type-binary256f db-field-type-uint256f db-field-type-int256f
+        db-field-type-string256f)
       (return 32))
     (else (return 0))))
 
@@ -220,43 +187,32 @@
   status-declare
   (declare b imht-set-t*)
   (if (imht-set-create (db-ids-length a) &b)
-    (status-set-both-goto db-status-group-db db-status-id-memory))
-  (while (i-array-in-range a)
-    (imht-set-add b (i-array-get a))
-    (i-array-forward a))
+    (status-set-goto db-status-group-db db-status-id-memory))
+  (while (i-array-in-range a) (imht-set-add b (i-array-get a)) (i-array-forward a))
   (set *result b)
-  (label exit
-    (return status)))
+  (label exit (return status)))
 
 (define (db-read-name data-pointer result) (status-t uint8-t** uint8-t**)
   "read a length prefixed string.
   on success set result to a newly allocated, null terminated string and
   data-pointer is positioned at the first byte after the string"
   status-declare
-  (declare
-    data uint8-t*
-    len db-name-len-t
-    name uint8-t*)
+  (declare data uint8-t* len db-name-len-t name uint8-t*)
   (set
     data *data-pointer
     len (pointer-get (convert-type data db-name-len-t*))
     data (+ (sizeof db-name-len-t) data))
   (status-require (sph-helper-malloc-string len &name))
   (memcpy name data len)
-  (set
-    *data-pointer (+ len data)
-    *result name)
-  (label exit
-    (return status)))
+  (set *data-pointer (+ len data) *result name)
+  (label exit (return status)))
 
 (pre-define (db-define-i-array-new name type)
   (define (name length result) (status-t size-t type*)
     "like i-array-allocate-* but returns status-t"
     status-declare
     (if ((pre-concat i-array-allocate_ type) length result)
-      (set
-        status.id db-status-id-memory
-        status.group db-status-group-db))
+      (set status.id db-status-id-memory status.group db-status-group-db))
     (return status)))
 
 (db-define-i-array-new db-ids-new db-ids-t)
@@ -277,8 +233,7 @@
   (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-relation-lr &result:relation-lr))
   (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-relation-ll &result:relation-ll))
   (db-mdb-status-require (mdb-stat txn.mdb-txn txn.env:dbi-relation-rl &result:relation-rl))
-  (label exit
-    (return status)))
+  (label exit (return status)))
 
 (define (db-sequence-next-system env result) (status-t db-env-t* db-type-id-t*)
   "return one new unique type identifier.
@@ -294,9 +249,8 @@
       (set *result sequence))
     (begin
       (pthread-mutex-unlock &env:mutex)
-      (status-set-both-goto db-status-group-db db-status-id-max-type-id)))
-  (label exit
-    (return status)))
+      (status-set-goto db-status-group-db db-status-id-max-type-id)))
+  (label exit (return status)))
 
 (define (db-sequence-next env type-id result) (status-t db-env-t* db-type-id-t db-id-t*)
   "return one new unique type record identifier.
@@ -312,14 +266,11 @@
       (set *result (db-id-add-type sequence type-id)))
     (begin
       (pthread-mutex-unlock &env:mutex)
-      (status-set-both-goto db-status-group-db db-status-id-max-element-id)))
-  (label exit
-    (return status)))
+      (status-set-goto db-status-group-db db-status-id-max-element-id)))
+  (label exit (return status)))
 
 (define (db-free-env-types-indices indices indices-len) (void db-index-t** db-fields-len-t)
-  (declare
-    i db-fields-len-t
-    index-pointer db-index-t*)
+  (declare i db-fields-len-t index-pointer db-index-t*)
   (if (not *indices) return)
   (for ((set i 0) (< i indices-len) (set i (+ 1 i)))
     (set index-pointer (+ i *indices))
@@ -329,8 +280,7 @@
 (define (db-free-env-types-fields fields fields-len) (void db-field-t** db-fields-len-t)
   (declare i db-fields-len-t)
   (if (not *fields) return)
-  (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
-    (free-and-set-null (: (+ i *fields) name)))
+  (for ((set i 0) (< i fields-len) (set i (+ 1 i))) (free-and-set-null (: (+ i *fields) name)))
   (free-and-set-null *fields))
 
 (define (db-free-env-type type) (void db-type-t*)
@@ -343,8 +293,7 @@
 (define (db-free-env-types types types-len) (void db-type-t** db-type-id-t)
   (declare i db-type-id-t)
   (if (not *types) return)
-  (for ((set i 0) (< i types-len) (set i (+ 1 i)))
-    (db-free-env-type (+ i *types)))
+  (for ((set i 0) (< i types-len) (set i (+ 1 i))) (db-free-env-type (+ i *types)))
   (free-and-set-null *types))
 
 (define (db-env-new result) (status-t db-env-t**)
@@ -354,8 +303,7 @@
   (declare a db-env-t*)
   (status-require (sph-helper-calloc (sizeof db-env-t) (convert-type &a void**)))
   (set *result a)
-  (label exit
-    (return status)))
+  (label exit (return status)))
 
 (define (db-close env) (void db-env-t*)
   (define mdb-env MDB-env* env:mdb-env)

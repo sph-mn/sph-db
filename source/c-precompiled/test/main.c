@@ -12,7 +12,7 @@ status_t test_open_empty(db_env_t* env) {
   test_helper_assert(("env.root is set"), (0 == strcmp((env->root), test_helper_db_root)));
 exit:
   return (status);
-};
+}
 status_t test_statistics(db_env_t* env) {
   status_declare;
   db_statistics_t stat;
@@ -23,7 +23,7 @@ status_t test_statistics(db_env_t* env) {
 exit:
   db_txn_abort_if_active(txn);
   return (status);
-};
+}
 status_t test_type_create_get_delete(db_env_t* env) {
   status_declare;
   db_field_t fields[4];
@@ -80,7 +80,7 @@ status_t test_type_create_get_delete(db_env_t* env) {
   test_helper_assert("type-delete type-get", (!(type_1_1 || type_2_1)));
 exit:
   return (status);
-};
+}
 /** create several types, particularly to test automatic env:types array resizing */
 status_t test_type_create_many(db_env_t* env) {
   status_declare;
@@ -94,7 +94,7 @@ status_t test_type_create_many(db_env_t* env) {
   };
 exit:
   return (status);
-};
+}
 status_t test_sequence(db_env_t* env) {
   status_declare;
   size_t i;
@@ -131,14 +131,14 @@ status_t test_sequence(db_env_t* env) {
   };
 exit:
   return (status);
-};
+}
 status_t test_open_nonempty(db_env_t* env) {
   status_declare;
   status_require((test_type_create_get_delete(env)));
   status_require((test_helper_reset(env, 1)));
 exit:
   return (status);
-};
+}
 /** test features related to the combination of element and type id to record id */
 status_t test_id_construction(db_env_t* env) {
   status_declare;
@@ -153,7 +153,7 @@ status_t test_id_construction(db_env_t* env) {
   test_helper_assert("id element", (254 == db_id_element((db_id_add_type(254, type_id)))));
 exit:
   return (status);
-};
+}
 status_t test_relation_read(db_env_t* env) {
   status_declare;
   db_txn_declare(env, txn);
@@ -176,7 +176,7 @@ exit:
   db_txn_abort_if_active(txn);
   test_helper_relation_read_teardown((&data));
   return (status);
-};
+}
 /** some assertions depend on the correctness of relation-read */
 status_t test_relation_delete(db_env_t* env) {
   status_declare;
@@ -195,7 +195,7 @@ status_t test_relation_delete(db_env_t* env) {
   status_require((test_helper_relation_delete_one(data, 1, 1, 1, 1)));
 exit:
   return (status);
-};
+}
 status_t test_record_create(db_env_t* env) {
   status_declare;
   db_txn_declare(env, txn);
@@ -275,11 +275,11 @@ status_t test_record_create(db_env_t* env) {
 exit:
   db_txn_abort_if_active(txn);
   return (status);
-};
+}
 boolean record_matcher(db_type_t* type, db_record_t record, void* matcher_state) {
   *((uint8_t*)(matcher_state)) = 1;
   return (1);
-};
+}
 status_t test_record_select(db_env_t* env) {
   status_declare;
   db_txn_declare(env, txn);
@@ -350,7 +350,7 @@ exit:
   i_array_free(ids);
   db_txn_abort_if_active(txn);
   return (status);
-};
+}
 status_t test_helper_dbi_entry_count(db_txn_t txn, MDB_dbi dbi, size_t* result) {
   status_declare;
   MDB_stat stat;
@@ -358,7 +358,7 @@ status_t test_helper_dbi_entry_count(db_txn_t txn, MDB_dbi dbi, size_t* result) 
   *result = stat.ms_entries;
 exit:
   return (status);
-};
+}
 /** float data currently not implemented because it is unknown how to store it in the id */
 status_t test_record_virtual(db_env_t* env) {
   status_declare;
@@ -394,7 +394,7 @@ status_t test_record_virtual(db_env_t* env) {
   test_helper_assert("data float32", (data_float32 == data_result_float32));
 exit:
   return (status);
-};
+}
 status_t test_index(db_env_t* env) {
   status_declare;
   db_txn_declare(env, txn);
@@ -465,7 +465,7 @@ status_t test_index(db_env_t* env) {
 exit:
   db_txn_abort_if_active(txn);
   return (status);
-};
+}
 int main() {
   db_env_t* env;
   status_declare;
@@ -490,4 +490,4 @@ exit:
     printf(("\ntests failed. %d %s\n"), (status.id), (db_status_description(status)));
   };
   return ((status.id));
-};
+}

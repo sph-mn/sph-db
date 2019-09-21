@@ -54,7 +54,7 @@ status_t db_record_values_to_data(db_record_values_t values, db_record_t* result
   result->size = size;
 exit:
   return (status);
-};
+}
 /** from the full btree value of a record (data with all fields), return a reference
   to the data for specific field and the size.
   if a trailing field is not stored with the data, record.data and .size are 0 */
@@ -103,7 +103,7 @@ db_record_value_t db_record_ref(db_type_t* type, db_record_t record, db_fields_l
     result.size = 0;
     return (result);
   };
-};
+}
 /** allocate memory for a new record values array. all fields an sizes are zero.
   "extent" is the last field index that is set plus one, zero if no field is set */
 status_t db_record_values_new(db_type_t* type, db_record_values_t* result) {
@@ -115,8 +115,8 @@ status_t db_record_values_new(db_type_t* type, db_record_values_t* result) {
   (*result).extent = 0;
 exit:
   return (status);
-};
-void db_record_values_free(db_record_values_t* a) { free_and_set_null((a->data)); };
+}
+void db_record_values_free(db_record_values_t* a) { free_and_set_null((a->data)); }
 /** set a value for a field in record values.
   a failure status is returned if size is too large for the field */
 status_t db_record_values_set(db_record_values_t* a, db_fields_len_t field, void* data, size_t size) {
@@ -125,7 +125,7 @@ status_t db_record_values_set(db_record_values_t* a, db_fields_len_t field, void
   values = *a;
   /* reject invalid sizes for fixed/variable fields */
   if ((field < (values.type)->fields_fixed_count) ? ((((values.type)->fields)[field]).size < size) : ((1 << (8 * (((values.type)->fields)[field]).size)) <= size)) {
-    status_set_both_goto(db_status_group_db, db_status_id_data_length);
+    status_set_goto(db_status_group_db, db_status_id_data_length);
   };
   ((values.data)[field]).data = data;
   ((values.data)[field]).size = size;
@@ -135,7 +135,7 @@ status_t db_record_values_set(db_record_values_t* a, db_fields_len_t field, void
   *a = values;
 exit:
   return (status);
-};
+}
 status_t db_record_create(db_txn_t txn, db_record_values_t values, db_id_t* result) {
   status_declare;
   db_mdb_declare_val_id;
@@ -159,8 +159,8 @@ exit:
   db_mdb_cursor_close_if_active(records);
   free((record.data));
   return (status);
-};
-void db_free_record_values(db_record_values_t* values) { free_and_set_null((values->data)); };
+}
+void db_free_record_values(db_record_values_t* values) { free_and_set_null((values->data)); }
 status_t db_record_data_to_values(db_type_t* type, db_record_t data, db_record_values_t* result) {
   status_declare;
   db_record_value_t field_data;
@@ -182,7 +182,7 @@ exit:
     db_free_record_values((&values));
   };
   return (status);
-};
+}
 status_t db_record_read(db_record_selection_t selection, db_count_t count, db_records_t* result_records) {
   status_declare;
   db_mdb_declare_val_id;
@@ -222,7 +222,7 @@ status_t db_record_read(db_record_selection_t selection, db_count_t count, db_re
 exit:
   db_mdb_status_notfound_if_notfound;
   return (status);
-};
+}
 /** skip the next count matches */
 status_t db_record_skip(db_record_selection_t selection, db_count_t count) {
   status_declare;
@@ -230,7 +230,7 @@ status_t db_record_skip(db_record_selection_t selection, db_count_t count) {
   status = db_record_read(selection, count, 0);
   selection.options = (selection.options ^ db_selection_flag_skip);
   return (status);
-};
+}
 /** get records by type and optionally filtering data.
   result count is unknown on call or can be large, that is why a selection state
   for partial reading is used.
@@ -248,7 +248,7 @@ status_t db_record_select(db_txn_t txn, db_type_t* type, db_record_matcher_t mat
   val_id.mv_data = &id;
   db_mdb_status_require((mdb_cursor_get(records, (&val_id), (&val_null), MDB_SET_RANGE)));
   if (!(type->id == db_id_type((db_pointer_to_id((val_id.mv_data)))))) {
-    status_set_both_goto(db_status_group_db, db_status_id_notfound);
+    status_set_goto(db_status_group_db, db_status_id_notfound);
   };
   result_selection->type = type;
   result_selection->cursor = records;
@@ -261,7 +261,7 @@ exit:
     db_mdb_status_notfound_if_notfound;
   };
   return (status);
-};
+}
 /** get records by id.
   returns status notfound if any id could not be found if match-all is true.
   like record-get with a given mdb-cursor */
@@ -281,10 +281,11 @@ status_t db_record_get_internal(MDB_cursor* records_cursor, db_ids_t ids, boolea
     } else {
       if (db_mdb_status_is_notfound) {
         if (match_all) {
-          status_set_both_goto(db_status_group_db, db_status_id_notfound);
+          status_set_goto(db_status_group_db, db_status_id_notfound);
         };
       } else {
-        status_set_group_goto(db_status_group_lmdb);
+        status.group = db_status_group_lmdb;
+        goto exit;
       };
     };
     i_array_forward(ids);
@@ -293,7 +294,7 @@ exit:
   /* only acts on a status-group-lmdb status */
   db_mdb_status_success_if_notfound;
   return (status);
-};
+}
 /** get a reference to data for one record identified by id.
   fields can be accessed with db-record-ref.
   if a record could not be found and match-all is true, status is status-id-notfound */
@@ -305,7 +306,7 @@ status_t db_record_get(db_txn_t txn, db_ids_t ids, boolean match_all, db_records
 exit:
   db_mdb_cursor_close(records);
   return (status);
-};
+}
 /** declare because it is defined later */
 status_t db_relation_internal_delete(db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal, MDB_cursor* relation_lr, MDB_cursor* relation_rl, MDB_cursor* relation_ll);
 /** delete records and all their relations. status  */
@@ -343,7 +344,8 @@ status_t db_record_delete(db_txn_t txn, db_ids_t ids) {
       if (db_mdb_status_is_notfound) {
         status.id = status_id_success;
       } else {
-        status_set_group_goto(db_status_group_lmdb);
+        status.group = db_status_group_lmdb;
+        goto exit;
       };
     };
     i_array_forward(ids);
@@ -354,7 +356,7 @@ exit:
   db_mdb_cursor_close_if_active(relation_ll);
   db_mdb_cursor_close_if_active(records);
   return (status);
-};
+}
 /** delete any records of type and all their relations */
 status_t db_record_delete_type(db_txn_t txn, db_type_id_t type_id) {
   status_declare;
@@ -374,8 +376,8 @@ exit:
   db_mdb_status_success_if_notfound;
   db_mdb_cursor_close_if_active(records);
   return (status);
-};
-void db_record_selection_finish(db_record_selection_t* a) { db_mdb_cursor_close_if_active((a->cursor)); };
+}
+void db_record_selection_finish(db_record_selection_t* a) { db_mdb_cursor_close_if_active((a->cursor)); }
 /** set new data for the record with the given id */
 status_t db_record_update(db_txn_t txn, db_id_t id, db_record_values_t values) {
   status_declare;
@@ -397,7 +399,7 @@ exit:
   db_mdb_cursor_close_if_active(records);
   free((record.data));
   return (status);
-};
+}
 /** delete records selected by type or custom matcher routine.
   collects ids in batches and calls db-record-delete */
 status_t db_record_select_delete(db_txn_t txn, db_type_t* type, db_record_matcher_t matcher, void* matcher_state) {
@@ -423,7 +425,7 @@ exit:
   i_array_free(ids);
   i_array_free(records);
   return (status);
-};
+}
 status_t db_record_index_read(db_record_index_selection_t selection, db_count_t count, db_records_t* result_records) {
   status_declare;
   db_ids_declare(ids);
@@ -432,11 +434,11 @@ status_t db_record_index_read(db_record_index_selection_t selection, db_count_t 
   status_require((db_record_get_internal((selection.records_cursor), ids, 1, result_records)));
 exit:
   return (status);
-};
+}
 void db_record_index_selection_finish(db_record_index_selection_t* selection) {
   db_index_selection_finish((&(selection->index_selection)));
   db_mdb_cursor_close_if_active((selection->records_cursor));
-};
+}
 status_t db_record_index_select(db_txn_t txn, db_index_t index, db_record_values_t values, db_record_index_selection_t* result_selection) {
   status_declare;
   db_mdb_cursor_declare(records);
@@ -450,4 +452,4 @@ exit:
     db_mdb_cursor_close_if_active(records);
   };
   return (status);
-};
+}

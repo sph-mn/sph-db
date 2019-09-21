@@ -19,7 +19,7 @@ status_t db_index_system_key(db_type_id_t type_id, db_fields_len_t* fields, db_f
   *result_size = size;
 exit:
   return (status);
-};
+}
 /** create a string name from type-id and field offsets.
   i-{type-id}-{field-offset}-{field-offset}... */
 status_t db_index_name(db_type_id_t type_id, db_fields_len_t* fields, db_fields_len_t fields_len, uint8_t** result, size_t* result_len) {
@@ -38,7 +38,7 @@ status_t db_index_name(db_type_id_t type_id, db_fields_len_t* fields, db_fields_
   /* type id */
   str = sph_helper_uint_to_string(type_id, (&str_len));
   if (!str) {
-    status_set_both_goto(db_status_group_db, db_status_id_memory);
+    status_set_goto(db_status_group_db, db_status_id_memory);
   };
   strings[0] = prefix;
   strings[1] = str;
@@ -46,13 +46,13 @@ status_t db_index_name(db_type_id_t type_id, db_fields_len_t* fields, db_fields_
   for (i = 0; (i < fields_len); i = (1 + i)) {
     str = sph_helper_uint_to_string((fields[i]), (&str_len));
     if (!str) {
-      status_set_both_goto(db_status_group_db, db_status_id_memory);
+      status_set_goto(db_status_group_db, db_status_id_memory);
     };
     strings[(2 + i)] = str;
   };
   name = string_join(strings, strings_len, "-", (&name_len));
   if (!name) {
-    status_set_both_goto(db_status_group_db, db_status_id_memory);
+    status_set_goto(db_status_group_db, db_status_id_memory);
   };
   *result = name;
   *result_len = name_len;
@@ -65,7 +65,7 @@ exit:
     free(strings);
   };
   return (status);
-};
+}
 /** create a key to be used in an index database.
   similar to db-record-values->data but only for indexed fields.
   key format: field-data ...
@@ -93,7 +93,7 @@ status_t db_index_key(db_env_t* env, db_index_t index, db_record_values_t values
     size = ((fields[field_index]).size + ((field_index < fields_fixed_count) ? 0 : ((field_index < values.extent) ? ((values.data)[field_index]).size : 0)) + size);
   };
   if (env->maxkeysize < size) {
-    status_set_both_goto(db_status_group_db, db_status_id_index_keysize);
+    status_set_goto(db_status_group_db, db_status_id_index_keysize);
   };
   /* allocate and prepare data */
   status_require((sph_helper_calloc(size, (&data))));
@@ -126,7 +126,7 @@ status_t db_index_key(db_env_t* env, db_index_t index, db_record_values_t values
   *result_size = size;
 exit:
   return (status);
-};
+}
 /** create entries in all indices of type for id and values.
   assumes that values has at least one entry set (values.extent unequal zero).
   index entry: field-value ... -> id */
@@ -159,7 +159,7 @@ exit:
   db_mdb_cursor_close_if_active(record_index_cursor);
   free(data);
   return (status);
-};
+}
 /** delete all entries from all indices of type for id and values */
 status_t db_indices_entry_delete(db_txn_t txn, db_record_values_t values, db_id_t id) {
   status_declare;
@@ -195,7 +195,7 @@ exit:
   db_mdb_cursor_close_if_active(record_index_cursor);
   free(data);
   return (status);
-};
+}
 /** fill one index from existing data */
 status_t db_index_build(db_env_t* env, db_index_t index) {
   status_declare;
@@ -241,7 +241,7 @@ exit:
   free(data);
   db_mdb_status_success_if_notfound;
   return (status);
-};
+}
 /** if found returns a pointer to an index struct in the cache array, zero otherwise */
 db_index_t* db_index_get(db_type_t* type, db_fields_len_t* fields, db_fields_len_t fields_len) {
   db_indices_len_t indices_len;
@@ -255,7 +255,7 @@ db_index_t* db_index_get(db_type_t* type, db_fields_len_t* fields, db_fields_len
     };
   };
   return (0);
-};
+}
 /** eventually resize type:indices and add index to type:indices.
   indices is extended and elements are set to zero on deletion.
   indices is currently never downsized, but a re-open of the db-env
@@ -286,7 +286,7 @@ status_t db_type_indices_add(db_type_t* type, db_index_t index, db_index_t** res
   *result = ((indices_len - 1) + indices);
 exit:
   return (status);
-};
+}
 status_t db_index_create(db_env_t* env, db_type_t* type, db_fields_len_t* fields, db_fields_len_t fields_len, db_index_t** result_index) {
   status_declare;
   db_mdb_declare_val_null;
@@ -311,7 +311,7 @@ status_t db_index_create(db_env_t* env, db_type_t* type, db_fields_len_t* fields
   /* check if already exists */
   index_temp = db_index_get(type, fields, fields_len);
   if (index_temp) {
-    status_set_both_goto(db_status_group_db, db_status_id_duplicate);
+    status_set_goto(db_status_group_db, db_status_id_duplicate);
   };
   /* prepare data */
   status_require((db_index_system_key((type->id), fields, fields_len, (&data), (&size))));
@@ -344,7 +344,7 @@ exit:
   free(name);
   free(data);
   return (status);
-};
+}
 /** index must be a pointer into env:types:indices.
   the cache entry struct has at least its type field set to zero */
 status_t db_index_delete(db_env_t* env, db_index_t* index) {
@@ -379,7 +379,7 @@ exit:
   db_mdb_cursor_close_if_active(system);
   db_txn_abort_if_active(txn);
   return (status);
-};
+}
 /** clear index and fill with data from existing records */
 status_t db_index_rebuild(db_env_t* env, db_index_t* index) {
   status_declare;
@@ -397,7 +397,7 @@ exit:
   free(name);
   db_txn_abort_if_active(txn);
   return (status);
-};
+}
 /** read index values (record ids).
   count must be positive.
   if no more value is found, status is db-notfound.
@@ -415,8 +415,8 @@ status_t db_index_read(db_index_selection_t selection, db_count_t count, db_ids_
 exit:
   db_mdb_status_notfound_if_notfound;
   return (status);
-};
-void db_index_selection_finish(db_index_selection_t* selection) { db_mdb_cursor_close_if_active((selection->cursor)); };
+}
+void db_index_selection_finish(db_index_selection_t* selection) { db_mdb_cursor_close_if_active((selection->cursor)); }
 /** open the cursor and set to the index key matching values.
   selection is positioned at the first match.
   if no match found then status is db-notfound */
@@ -439,4 +439,4 @@ exit:
     db_mdb_status_notfound_if_notfound;
   };
   return (status);
-};
+}

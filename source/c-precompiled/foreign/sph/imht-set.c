@@ -29,7 +29,7 @@ size_t imht_set_calculate_hash_table_size(size_t min_size) {
     return ((*primes));
   };
   return ((1 | min_size));
-};
+}
 uint8_t imht_set_create(size_t min_size, imht_set_t** result) {
   *result = malloc((sizeof(imht_set_t)));
   if (!*result) {
@@ -39,13 +39,13 @@ uint8_t imht_set_create(size_t min_size, imht_set_t** result) {
   (**result).content = calloc(min_size, (sizeof(imht_set_key_t)));
   (**result).size = min_size;
   return (((*result)->content ? 0 : 1));
-};
+}
 void imht_set_destroy(imht_set_t* a) {
   if (a) {
     free((a->content));
     free(a);
   };
-};
+}
 #if imht_set_can_contain_zero
 #define imht_set_hash(value, hash_table) (value ? (1 + (value % (hash_table.size - 1))) : 0)
 #else
@@ -98,7 +98,7 @@ imht_set_key_t* imht_set_find(imht_set_t* a, imht_set_key_t value) {
     };
   };
   return (0);
-};
+}
 #define imht_set_contains(a, value) ((0 == imht_set_find(a, value)) ? 0 : 1)
 /** returns 1 if the element was removed, 0 if it was not found */
 uint8_t imht_set_remove(imht_set_t* a, imht_set_key_t value) {
@@ -109,7 +109,7 @@ uint8_t imht_set_remove(imht_set_t* a, imht_set_key_t value) {
   } else {
     return (0);
   };
-};
+}
 /** returns the address of the added or already included element, 0 if there is no space left in the set */
 imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
   imht_set_key_t* h = (a->content + imht_set_hash(value, (*a)));
@@ -157,4 +157,4 @@ imht_set_key_t* imht_set_add(imht_set_t* a, imht_set_key_t value) {
 #endif
     return (h);
   };
-};
+}

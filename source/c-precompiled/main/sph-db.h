@@ -24,53 +24,41 @@
 /** display current function name and given number.
     example call: (debug-trace 1) */
 #define debug_trace(n) fprintf(stdout, "%s %d\n", __func__, n)
-/* return status code and error handling. uses a local variable named "status" and a goto label named "exit".
-      a status has an identifier and a group to discern between status identifiers of different libraries.
-      status id 0 is success, everything else can be considered a failure or special case.
-      status ids are 32 bit signed integers for compatibility with error return codes from many other existing libraries.
-      group ids are strings to make it easier to create new groups that dont conflict with others compared to using numbers */
-#define sph_status 1
+/* return status as integer code with group identifier
+for exception handling with a local variable and a goto label
+status id 0 is success, everything else can be considered a special case or failure
+status ids are signed integers for compatibility with error return codes from other existing libraries
+group ids are strings used to categorise sets of errors codes from different libraries for example */
+typedef struct {
+  int id;
+  uint8_t* group;
+} status_t;
 #define status_id_success 0
-#define status_group_undefined ""
+#define status_group_undefined ((uint8_t*)(""))
 #define status_declare status_t status = { status_id_success, status_group_undefined }
-#define status_reset status_set_both(status_group_undefined, status_id_success)
 #define status_is_success (status_id_success == status.id)
 #define status_is_failure !status_is_success
-#define status_goto goto exit
-/** like status declare but with a default group */
-#define status_declare_group(group) status_t status = { status_id_success, group }
-#define status_set_both(group_id, status_id) \
-  status.group = group_id; \
+#define status_return return (status)
+#define status_set(group_id, status_id) \
+  status.group = ((uint8_t*)(group_id)); \
   status.id = status_id
-/** update status with the result of expression and goto error on failure */
+#define status_set_goto(group_id, status_id) \
+  status_set(group_id, status_id); \
+  goto exit
 #define status_require(expression) \
   status = expression; \
   if (status_is_failure) { \
-    status_goto; \
+    goto exit; \
   }
-/** set the status id and goto error */
-#define status_set_id_goto(status_id) \
-  status.id = status_id; \
-  status_goto
-#define status_set_group_goto(group_id) \
-  status.group = group_id; \
-  status_goto
-#define status_set_both_goto(group_id, status_id) \
-  status_set_both(group_id, status_id); \
-  status_goto
-/** like status-require but expression returns only status.id */
-#define status_id_require(expression) \
+#define status_i_require(expression) \
   status.id = expression; \
   if (status_is_failure) { \
-    status_goto; \
+    goto exit; \
   }
-typedef int32_t status_id_t;
-typedef struct {
-  status_id_t id;
-  uint8_t* group;
-} status_t;
 /* "iteration array" - an array with variable length content that makes iteration easier to code.
-  most bindings are generic macros that will work on all i-array types. i-array-add and i-array-forward go from left to right.
+  saves the size argument that usually has to be passed with arrays and saves the declaration of index counter variables.
+  the data structure consists of only 4 pointers in a struct.
+  most bindings are generic macros that will work on any i-array type. i-array-add and i-array-forward go from left to right.
   examples:
     i_array_declare_type(my_type, int);
     my_type a;
@@ -107,9 +95,10 @@ typedef struct {
     a->unused = start; \
     a->end = (length + start); \
     return (0); \
-  }; \
+  } \
   uint8_t i_array_allocate_##name(size_t length, name* a) { return ((i_array_allocate_custom_##name(length, malloc, a))); }
-/** define so that in-range is false, length is zero and free doesnt fail */
+/** define so that in-range is false, length is zero and free doesnt fail.
+     can be used to create empty/null i-arrays */
 #define i_array_declare(a, type) type a = { 0, 0, 0, 0 }
 #define i_array_add(a, value) \
   *(a.unused) = value; \
@@ -128,6 +117,18 @@ typedef struct {
 #define i_array_length(a) (a.unused - a.start)
 #define i_array_max_length(a) (a.end - a.start)
 #define i_array_free(a) free((a.start))
+/** create an i-array from a standard array.
+     sets source as data array to use, with the first count number of slots used.
+     source will not be copied but used as is, and i-array-free would free it.
+     # example with a stack allocated array
+     int other_array[4] = {1, 2, 0, 0};
+     my_type a;
+     i_array_take(a, other_array, 4 2); */
+#define i_array_take(a, source, size, count) \
+  a->start = source; \
+  a->current = source; \
+  a->unused = (count + source); \
+  a->end = (size + source)
 typedef struct {
   db_id_t left;
   db_id_t right;
@@ -139,9 +140,9 @@ typedef struct {
   void* data;
   size_t size;
 } db_record_t;
-i_array_declare_type(db_ids_t, db_id_t);
-i_array_declare_type(db_records_t, db_record_t);
-i_array_declare_type(db_relations_t, db_relation_t);
+i_array_declare_type(db_ids_t, db_id_t)
+  i_array_declare_type(db_records_t, db_record_t)
+    i_array_declare_type(db_relations_t, db_relation_t)
 #define db_format_version 1
 #define db_status_group_sph "sph"
 #define db_status_group_db "sph-db"
@@ -225,11 +226,11 @@ i_array_declare_type(db_relations_t, db_relation_t);
 #define db_field_type_float64f 30
 #define db_id_type_mask ((db_id_t)(db_type_id_mask))
 #define db_id_element_mask ~db_id_type_mask
-#define db_status_set_id_goto(status_id) status_set_both_goto(db_status_group_db, status_id)
+#define db_status_set_id_goto(status_id) status_set_goto(db_status_group_db, status_id)
 #define status_require_read(expression) \
   status = expression; \
   if (!(status_is_success || (status.id == db_status_id_notfound))) { \
-    status_goto; \
+    goto exit; \
   }
 #define db_status_success_if_notfound \
   if (status.id == db_status_id_notfound) { \
@@ -289,26 +290,26 @@ i_array_declare_type(db_relations_t, db_relation_t);
 #define db_type_is_virtual(type) (db_type_flag_virtual & type->flags)
 #define db_record_is_virtual(env, record_id) db_type_is_virtual((db_type_get_by_id(env, (db_id_type(record_id)))))
 #define db_record_virtual_from_uint(type_id, data) db_id_add_type(data, type_id)
-enum { db_status_id_success,
-  db_status_id_undefined,
-  db_status_id_condition_unfulfilled,
-  db_status_id_data_length,
-  db_status_id_different_format,
-  db_status_id_duplicate,
-  db_status_id_input_type,
-  db_status_id_invalid_argument,
-  db_status_id_max_element_id,
-  db_status_id_max_type_id,
-  db_status_id_max_type_id_size,
-  db_status_id_memory,
-  db_status_id_missing_argument_db_root,
-  db_status_id_notfound,
-  db_status_id_not_implemented,
-  db_status_id_path_not_accessible_db_root,
-  db_status_id_index_keysize,
-  db_status_id_type_field_order,
-  db_status_id_invalid_field_type,
-  db_status_id_last };
+      enum { db_status_id_success,
+        db_status_id_undefined,
+        db_status_id_condition_unfulfilled,
+        db_status_id_data_length,
+        db_status_id_different_format,
+        db_status_id_duplicate,
+        db_status_id_input_type,
+        db_status_id_invalid_argument,
+        db_status_id_max_element_id,
+        db_status_id_max_type_id,
+        db_status_id_max_type_id_size,
+        db_status_id_memory,
+        db_status_id_missing_argument_db_root,
+        db_status_id_notfound,
+        db_status_id_not_implemented,
+        db_status_id_path_not_accessible_db_root,
+        db_status_id_index_keysize,
+        db_status_id_type_field_order,
+        db_status_id_invalid_field_type,
+        db_status_id_last };
 typedef uint8_t db_field_type_size_t;
 typedef struct {
   uint8_t* name;

@@ -3,19 +3,8 @@
 (sc-include "main/config" "foreign/sph" "foreign/sph/status" "foreign/sph/i-array")
 
 (declare
-  db-relation-t
-  (type
-    (struct
-      (left db-id-t)
-      (right db-id-t)
-      (label db-id-t)
-      (ordinal db-ordinal-t)))
-  db-record-t
-  (type
-    (struct
-      (id db-id-t)
-      (data void*)
-      (size size-t))))
+  db-relation-t (type (struct (left db-id-t) (right db-id-t) (label db-id-t) (ordinal db-ordinal-t)))
+  db-record-t (type (struct (id db-id-t) (data void*) (size size-t))))
 
 (i-array-declare-type db-ids-t db-id-t)
 (i-array-declare-type db-records-t db-record-t)
@@ -105,11 +94,11 @@
   db-field-type-float64f 30
   db-id-type-mask (convert-type db-type-id-mask db-id-t)
   db-id-element-mask (bit-not db-id-type-mask)
-  (db-status-set-id-goto status-id) (status-set-both-goto db-status-group-db status-id)
+  (db-status-set-id-goto status-id) (status-set-goto db-status-group-db status-id)
   (status-require-read expression)
   (begin
     (set status expression)
-    (if (not (or status-is-success (= status.id db-status-id-notfound))) status-goto))
+    (if (not (or status-is-success (= status.id db-status-id-notfound))) (goto exit)))
   db-status-success-if-notfound
   (if (= status.id db-status-id-notfound) (set status.id status-id-success))
   (db-record-values-declare name) (define name db-record-values-t (struct-literal 0 0 0))
@@ -122,8 +111,7 @@
   (begin
     "convert id and type-id to db-id-t to be able to pass c literals which might be initialised with some other type.
     string type part from id with db-id-element in case there are type bits set after for example typecasting from a smaller datatype"
-    (bit-or
-      (db-id-type (convert-type type-id db-id-t))
+    (bit-or (db-id-type (convert-type type-id db-id-t))
       (bit-shift-left (convert-type id db-id-t) (* 8 (sizeof db-type-id-t)))))
   (db-id-type id)
   (begin
@@ -135,44 +123,24 @@
     (bit-shift-right id (* 8 (sizeof db-type-id-t))))
   (db-txn-declare env name) (define name db-txn-t (struct-literal 0 env))
   (db-txn-abort-if-active a) (if a.mdb-txn (db-txn-abort &a))
-  (db-txn-is-active a)
-  (if* a.mdb-txn #t
-    #f)
-  (db-field-set a a-type a-name)
-  (set
-    a.type a-type
-    a.name a-name)
+  (db-txn-is-active a) (if* a.mdb-txn #t #f)
+  (db-field-set a a-type a-name) (set a.type a-type a.name a-name)
   (db-relation-selection-set-null name)
   (begin
     "set so that *-finish succeeds even if it has not yet been initialised.
       for having cleanup tasks at one place like with a goto exit label"
-    (set
-      name.cursor 0
-      name.cursor-2 0
-      name.options 0
-      name.ids-set 0))
+    (set name.cursor 0 name.cursor-2 0 name.options 0 name.ids-set 0))
   (db-relation-selection-declare name)
-  (begin
-    (declare name db-relation-selection-t)
-    (db-relation-selection-set-null name))
+  (begin (declare name db-relation-selection-t) (db-relation-selection-set-null name))
   (db-record-selection-set-null name) (set name.cursor 0)
   (db-record-selection-declare name)
-  (begin
-    (declare name db-record-selection-t)
-    (db-record-selection-set-null name))
+  (begin (declare name db-record-selection-t) (db-record-selection-set-null name))
   (db-index-selection-set-null name) (set name.cursor 0)
   (db-index-selection-declare name)
-  (begin
-    (declare name db-index-selection-t)
-    (db-index-selection-set-null name))
-  (db-record-index-selection-set-null name)
-  (set
-    name.records-cursor 0
-    name.index-selection.cursor 0)
+  (begin (declare name db-index-selection-t) (db-index-selection-set-null name))
+  (db-record-index-selection-set-null name) (set name.records-cursor 0 name.index-selection.cursor 0)
   (db-record-index-selection-declare name)
-  (begin
-    (declare name db-record-index-selection-t)
-    (db-record-index-selection-set-null name)))
+  (begin (declare name db-record-index-selection-t) (db-record-index-selection-set-null name)))
 
 (sc-comment "virtual records")
 
@@ -187,24 +155,13 @@
   (db-record-virtual-from-uint type-id data) (db-id-add-type data type-id))
 
 (enum
-  (db-status-id-success
-    db-status-id-undefined
-    db-status-id-condition-unfulfilled
-    db-status-id-data-length
-    db-status-id-different-format
-    db-status-id-duplicate
-    db-status-id-input-type
-    db-status-id-invalid-argument
-    db-status-id-max-element-id
-    db-status-id-max-type-id
-    db-status-id-max-type-id-size
-    db-status-id-memory
-    db-status-id-missing-argument-db-root
-    db-status-id-notfound
-    db-status-id-not-implemented
-    db-status-id-path-not-accessible-db-root
-    db-status-id-index-keysize
-    db-status-id-type-field-order db-status-id-invalid-field-type db-status-id-last))
+  (db-status-id-success db-status-id-undefined db-status-id-condition-unfulfilled
+    db-status-id-data-length db-status-id-different-format db-status-id-duplicate
+    db-status-id-input-type db-status-id-invalid-argument db-status-id-max-element-id
+    db-status-id-max-type-id db-status-id-max-type-id-size db-status-id-memory
+    db-status-id-missing-argument-db-root db-status-id-notfound db-status-id-not-implemented
+    db-status-id-path-not-accessible-db-root db-status-id-index-keysize db-status-id-type-field-order
+    db-status-id-invalid-field-type db-status-id-last))
 
 (declare
   ; types
@@ -226,9 +183,7 @@
       (fields db-field-t*)
       (flags uint8-t)
       (id db-type-id-t)
-      (indices
-        (struct
-          db-index-t*))
+      (indices (struct db-index-t*))
       (indices-len db-indices-len-t)
       (name uint8-t*)
       (sequence db-id-t)))
@@ -256,11 +211,7 @@
       (format uint32-t)
       (types db-type-t*)
       (types-len db-type-id-t)))
-  db-txn-t
-  (type
-    (struct
-      (mdb-txn MDB-txn*)
-      (env db-env-t*)))
+  db-txn-t (type (struct (mdb-txn MDB-txn*) (env db-env-t*)))
   db-statistics-t
   (type
     (struct
@@ -280,32 +231,14 @@
       (env-open-flags uint-least32-t)
       (file-permissions uint16-t)))
   db-relation-ordinal-generator-t (type (function-pointer db-ordinal-t void*))
-  db-ordinal-condition-t
-  (type
-    (struct
-      (min db-ordinal-t)
-      (max db-ordinal-t)))
-  db-record-value-t
-  (type
-    (struct
-      (size size-t)
-      (data void*)))
+  db-ordinal-condition-t (type (struct (min db-ordinal-t) (max db-ordinal-t)))
+  db-record-value-t (type (struct (size size-t) (data void*)))
   db-record-values-t
-  (type
-    (struct
-      (data db-record-value-t*)
-      (extent db-fields-len-t)
-      (type db-type-t*)))
+  (type (struct (data db-record-value-t*) (extent db-fields-len-t) (type db-type-t*)))
   db-record-matcher-t (type (function-pointer boolean db-type-t* db-record-t void*))
-  db-index-selection-t
-  (type
-    (struct
-      (cursor MDB-cursor*)))
+  db-index-selection-t (type (struct (cursor MDB-cursor*)))
   db-record-index-selection-t
-  (type
-    (struct
-      (index-selection db-index-selection-t)
-      (records-cursor MDB-cursor*)))
+  (type (struct (index-selection db-index-selection-t) (records-cursor MDB-cursor*)))
   db-record-selection-t
   (type
     (struct

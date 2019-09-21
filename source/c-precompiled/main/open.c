@@ -10,10 +10,10 @@ status_t db_open_root(db_env_t* env, db_open_options_t* options, uint8_t* path) 
   path_temp = 0;
   path_temp = string_clone(path);
   if (!path_temp) {
-    status_set_both_goto(db_status_group_db, db_status_id_memory);
+    status_set_goto(db_status_group_db, db_status_id_memory);
   };
   if (!ensure_directory_structure(path_temp, (73 | options->file_permissions))) {
-    status_set_both_goto(db_status_group_db, db_status_id_path_not_accessible_db_root);
+    status_set_goto(db_status_group_db, db_status_id_path_not_accessible_db_root);
   };
   env->root = path_temp;
 exit:
@@ -21,8 +21,8 @@ exit:
     free(path_temp);
   };
   return (status);
-};
-uint32_t db_open_mdb_env_flags(db_open_options_t* options) { return ((options->env_open_flags ? options->env_open_flags : (MDB_NOSUBDIR | (options->is_read_only ? MDB_RDONLY : 0) | (options->filesystem_has_ordered_writes ? MDB_MAPASYNC : 0)))); };
+}
+uint32_t db_open_mdb_env_flags(db_open_options_t* options) { return ((options->env_open_flags ? options->env_open_flags : (MDB_NOSUBDIR | (options->is_read_only ? MDB_RDONLY : 0) | (options->filesystem_has_ordered_writes ? MDB_MAPASYNC : 0)))); }
 status_t db_open_mdb_env(db_env_t* env, db_open_options_t* options) {
   status_declare;
   uint8_t* data_path;
@@ -30,7 +30,7 @@ status_t db_open_mdb_env(db_env_t* env, db_open_options_t* options) {
   mdb_env = 0;
   data_path = string_append((env->root), "/data");
   if (!data_path) {
-    status_set_both_goto(db_status_group_db, db_status_id_memory);
+    status_set_goto(db_status_group_db, db_status_id_memory);
   };
   db_mdb_status_require((mdb_env_create((&mdb_env))));
   db_mdb_status_require((mdb_env_set_maxdbs(mdb_env, (options->maximum_db_count))));
@@ -47,7 +47,7 @@ exit:
     };
   };
   return (status);
-};
+}
 /** check that the format the database was created with matches the current configuration.
   id, type and ordinal sizes are set at compile time and cant be changed for a database
   after data has been inserted */
@@ -81,7 +81,7 @@ status_t db_open_format(MDB_cursor* system, db_txn_t txn) {
         db_mdb_status_require((mdb_cursor_put(system, (&val_key), (&val_data), 0)));
       } else {
         fprintf(stderr, ("database sizes: (id %u) (type: %u) (ordinal %u)"), (data[0]), (data[1]), (data[2]));
-        status_set_both_goto(db_status_group_db, db_status_id_different_format);
+        status_set_goto(db_status_group_db, db_status_id_different_format);
       };
     };
   } else {
@@ -93,7 +93,7 @@ status_t db_open_format(MDB_cursor* system, db_txn_t txn) {
   (txn.env)->format = format_data;
 exit:
   return (status);
-};
+}
 /** initialise the sequence for system ids like type ids in result.
   set result to the next sequence value. id zero is reserved for null */
 status_t db_open_system_sequence(MDB_cursor* system, db_type_id_t* result) {
@@ -144,7 +144,7 @@ exit:
   db_mdb_status_success_if_notfound;
   *result = ((db_type_id_limit == current) ? current : (1 + current));
   return (status);
-};
+}
 /** get the first data id of type and save it in result. result is set to zero if none has been found */
 status_t db_type_first_id(MDB_cursor* records, db_type_id_t type_id, db_id_t* result) {
   status_declare;
@@ -163,12 +163,13 @@ status_t db_type_first_id(MDB_cursor* records, db_type_id_t type_id, db_id_t* re
     if (db_mdb_status_is_notfound) {
       status.id = status_id_success;
     } else {
-      status_set_group_goto(db_status_group_lmdb);
+      status.group = db_status_group_lmdb;
+      goto exit;
     };
   };
 exit:
   return (status);
-};
+}
 /** sets result to the last key id if the last key is of type, otherwise sets result to zero.
   leaves cursor at last key. status is mdb-notfound if database is empty */
 status_t db_type_last_key_id(MDB_cursor* records, db_type_id_t type_id, db_id_t* result) {
@@ -181,7 +182,7 @@ status_t db_type_last_key_id(MDB_cursor* records, db_type_id_t type_id, db_id_t*
     *result = db_pointer_to_id((val_id.mv_data));
   };
   return (status);
-};
+}
 /** get the last existing record id for type or zero if none exist.
    algorithm: check if data of type exists, if yes then check if last key is of type or
    position next type and step back */
@@ -202,9 +203,9 @@ status_t db_type_last_id(MDB_cursor* records, db_type_id_t type_id, db_id_t* res
     if (db_mdb_status_is_notfound) {
       /* database is empty */
       *result = 0;
-      status_set_both_goto(db_status_group_db, status_id_success);
+      status_set_goto(db_status_group_db, status_id_success);
     } else {
-      status_goto;
+      goto exit;
     };
   };
   /* database is not empty and the last key is not of searched type.
@@ -221,7 +222,7 @@ status_t db_type_last_id(MDB_cursor* records, db_type_id_t type_id, db_id_t* res
   *result = ((type_id == db_id_type((db_pointer_to_id((val_id.mv_data))))) ? db_pointer_to_id((val_id.mv_data)) : 0);
 exit:
   return (status);
-};
+}
 /** initialise the sequence for a type by searching the max used id for the type.
    lowest sequence value is 1.
    algorithm:
@@ -235,7 +236,7 @@ status_t db_open_sequence(MDB_cursor* records, db_type_t* type) {
   type->sequence = ((id < db_element_id_limit) ? (1 + id) : id);
 exit:
   return (status);
-};
+}
 /** read information for fields from system btree type data.
   assumes that pointer is positioned at field-count */
 status_t db_open_type_read_fields(uint8_t** data_pointer, db_type_t* type) {
@@ -289,7 +290,7 @@ exit:
     db_free_env_types_fields((&fields), count);
   };
   return (status);
-};
+}
 status_t db_open_type(uint8_t* system_key, uint8_t* system_value, db_type_t* types, MDB_cursor* records, db_type_t** result_type) {
   status_declare;
   db_type_id_t id;
@@ -307,7 +308,7 @@ status_t db_open_type(uint8_t* system_key, uint8_t* system_value, db_type_t* typ
   *result_type = type_pointer;
 exit:
   return (status);
-};
+}
 /** load type info into cache. open all dbi.
    max type id size is currently 16 bit because of using an array to cache types
    instead of a slower hash table which would be needed otherwise.
@@ -325,7 +326,7 @@ status_t db_open_types(MDB_cursor* system, MDB_cursor* records, db_txn_t txn) {
   db_type_id_t system_sequence;
   types = 0;
   if (db_size_type_id_max < sizeof(db_type_id_t)) {
-    status_set_both_goto(db_status_group_db, db_status_id_max_type_id_size);
+    status_set_goto(db_status_group_db, db_status_id_max_type_id_size);
   };
   /* initialise system sequence, type id zero */
   status_require((db_open_system_sequence(system, (&system_sequence))));
@@ -350,7 +351,7 @@ status_t db_open_types(MDB_cursor* system, MDB_cursor* records, db_txn_t txn) {
   if (db_mdb_status_is_notfound) {
     status.id = status_id_success;
   } else {
-    status_goto;
+    goto exit;
   };
   (txn.env)->types = types;
   (txn.env)->types_len = types_len;
@@ -359,7 +360,7 @@ exit:
     db_free_env_types((&types), types_len);
   };
   return (status);
-};
+}
 /** extend type cache with index information. there can be multiple indices per type */
 status_t db_open_indices(MDB_cursor* system, db_txn_t txn) {
   status_declare;
@@ -422,7 +423,7 @@ readjust size to save memory */
   if (db_mdb_status_is_notfound) {
     status.id = status_id_success;
   } else {
-    status_goto;
+    goto exit;
   };
   if (current_type_id) {
     (types[current_type_id]).indices = indices;
@@ -432,7 +433,7 @@ exit:
     db_free_env_types_indices((&indices), indices_len);
   };
   return (status);
-};
+}
 /** ensure that the system tree exists with default values.
   check format and load cached values */
 status_t db_open_system(db_txn_t txn) {
@@ -448,7 +449,7 @@ exit:
   db_mdb_cursor_close_if_active(system);
   db_mdb_cursor_close_if_active(records);
   return (status);
-};
+}
 /** ensure that the trees used for the relation exist, configure and open dbi */
 status_t db_open_relation(db_txn_t txn) {
   status_declare;
@@ -471,7 +472,7 @@ status_t db_open_relation(db_txn_t txn) {
   (txn.env)->dbi_relation_ll = dbi_relation_ll;
 exit:
   return (status);
-};
+}
 void db_open_options_set_defaults(db_open_options_t* a) {
   a->is_read_only = 0;
   a->maximum_size = 17179869183;
@@ -480,26 +481,26 @@ void db_open_options_set_defaults(db_open_options_t* a) {
   a->env_open_flags = 0;
   a->filesystem_has_ordered_writes = 1;
   a->file_permissions = 384;
-};
+}
 status_t db_open_records(db_txn_t txn) {
   status_declare;
   db_mdb_status_require((mdb_dbi_open((txn.mdb_txn), "records", MDB_CREATE, (&((txn.env)->dbi_records)))));
   db_mdb_status_require((mdb_set_compare((txn.mdb_txn), ((txn.env)->dbi_records), ((MDB_cmp_func*)(db_mdb_compare_id)))));
 exit:
   return (status);
-};
+}
 status_t db_open(uint8_t* path, db_open_options_t* options_pointer, db_env_t* env) {
   status_declare;
   db_open_options_t options;
   if (!(sizeof(db_id_t) > sizeof(db_type_id_t))) {
-    status_set_both_goto(db_status_group_db, db_status_id_max_type_id_size);
+    status_set_goto(db_status_group_db, db_status_id_max_type_id_size);
   };
   db_txn_declare(env, txn);
   if (env->is_open) {
     return (status);
   };
   if (!path) {
-    status_set_both_goto(db_status_group_db, db_status_id_missing_argument_db_root);
+    status_set_goto(db_status_group_db, db_status_id_missing_argument_db_root);
   };
   if (options_pointer) {
     options = *options_pointer;
@@ -521,4 +522,4 @@ exit:
     db_close(env);
   };
   return (status);
-};
+}

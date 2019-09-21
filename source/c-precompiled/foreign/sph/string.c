@@ -18,7 +18,7 @@ uint8_t ensure_trailing_slash(uint8_t* a, uint8_t** result) {
     *result = new_a;
     return (2);
   };
-};
+}
 /** always returns a new string */
 uint8_t* string_append(uint8_t* a, uint8_t* b) {
   size_t a_length = strlen(a);
@@ -29,7 +29,7 @@ uint8_t* string_append(uint8_t* a, uint8_t* b) {
     memcpy((result + a_length), b, (1 + b_length));
   };
   return (result);
-};
+}
 /** return a new string with the same contents as the given string. return 0 if the memory allocation failed */
 uint8_t* string_clone(uint8_t* a) {
   size_t a_size = (1 + strlen(a));
@@ -38,7 +38,7 @@ uint8_t* string_clone(uint8_t* a) {
     memcpy(result, a, a_size);
   };
   return (result);
-};
+}
 /** join strings into one string with each input string separated by delimiter.
   zero if strings-len is zero or memory could not be allocated */
 uint8_t* string_join(uint8_t** strings, size_t strings_len, uint8_t* delimiter, size_t* result_len) {
@@ -75,4 +75,4 @@ uint8_t* string_join(uint8_t** strings, size_t strings_len, uint8_t* delimiter, 
   result[(size - 1)] = 0;
   *result_len = (size - 1);
   return (result);
-};
+}

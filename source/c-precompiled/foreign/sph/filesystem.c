@@ -9,7 +9,7 @@
 uint8_t* dirname_2(uint8_t* a) {
   uint8_t* path_copy = string_clone(a);
   return ((dirname(path_copy)));
-};
+}
 /** return 1 if the path exists or has been successfully created */
 uint8_t ensure_directory_structure(uint8_t* path, mode_t mkdir_mode) {
   if (file_exists(path)) {
@@ -20,4 +20,4 @@ uint8_t ensure_directory_structure(uint8_t* path, mode_t mkdir_mode) {
     free(path_dirname);
     return ((status && ((EEXIST == errno) || (0 == mkdir(path, mkdir_mode)))));
   };
-};
+}

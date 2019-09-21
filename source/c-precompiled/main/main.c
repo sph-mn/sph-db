@@ -69,7 +69,7 @@ uint8_t* db_status_description(status_t a) {
     };
   };
   return (((uint8_t*)(b)));
-};
+}
 /** get the name if available for a status */
 uint8_t* db_status_name(status_t a) {
   char* b;
@@ -121,42 +121,42 @@ uint8_t* db_status_name(status_t a) {
     b = "unknown";
   };
   return (((uint8_t*)(b)));
-};
+}
 status_t db_txn_begin(db_txn_t* a) {
   status_declare;
   db_mdb_status_require((mdb_txn_begin((a->env->mdb_env), 0, MDB_RDONLY, (&(a->mdb_txn)))));
 exit:
   return (status);
-};
+}
 status_t db_txn_write_begin(db_txn_t* a) {
   status_declare;
   db_mdb_status_require((mdb_txn_begin((a->env->mdb_env), 0, 0, (&(a->mdb_txn)))));
 exit:
   return (status);
-};
+}
 status_t db_txn_begin_child(db_txn_t parent_txn, db_txn_t* a) {
   status_declare;
   db_mdb_status_require((mdb_txn_begin((a->env->mdb_env), (parent_txn.mdb_txn), MDB_RDONLY, (&(a->mdb_txn)))));
 exit:
   return (status);
-};
+}
 status_t db_txn_write_begin_child(db_txn_t parent_txn, db_txn_t* a) {
   status_declare;
   db_mdb_status_require((mdb_txn_begin((a->env->mdb_env), (parent_txn.mdb_txn), 0, (&(a->mdb_txn)))));
 exit:
   return (status);
-};
+}
 void db_txn_abort(db_txn_t* a) {
   mdb_txn_abort((a->mdb_txn));
   a->mdb_txn = 0;
-};
+}
 status_t db_txn_commit(db_txn_t* a) {
   status_declare;
   db_mdb_status_require((mdb_txn_commit((a->mdb_txn))));
   a->mdb_txn = 0;
 exit:
   return (status);
-};
+}
 void db_debug_log_id_bits(db_id_t a) {
   db_id_t index;
   printf("%u", (1 & a));
@@ -164,7 +164,7 @@ void db_debug_log_id_bits(db_id_t a) {
     printf("%u", (((((db_id_t)(1)) << index) & a) ? 1 : 0));
   };
   printf("\n");
-};
+}
 /** display an ids array */
 void db_debug_log_ids(db_ids_t a) {
   printf(("ids (%lu):"), (i_array_length(a)));
@@ -173,7 +173,7 @@ void db_debug_log_ids(db_ids_t a) {
     i_array_forward(a);
   };
   printf("\n");
-};
+}
 /** display an ids set */
 void db_debug_log_ids_set(imht_set_t a) {
   uint32_t i = 0;
@@ -183,7 +183,7 @@ void db_debug_log_ids_set(imht_set_t a) {
     i = (1 + i);
   };
   printf("\n");
-};
+}
 void db_debug_log_relations(db_relations_t a) {
   db_relation_t b;
   printf(("relation records (ll -> or)\n"));
@@ -192,7 +192,7 @@ void db_debug_log_relations(db_relations_t a) {
     printf(("  %lu %lu -> %lu %lu\n"), (b.left), (b.label), (b.ordinal), (b.right));
     i_array_forward(a);
   };
-};
+}
 status_t db_debug_log_btree_counts(db_txn_t txn) {
   status_declare;
   db_statistics_t stat;
@@ -200,7 +200,7 @@ status_t db_debug_log_btree_counts(db_txn_t txn) {
   printf("btree entry count: system %zu, records %zu, relation-lr %zu, relation-rl %zu, relation-ll %zu\n", (stat.system.ms_entries), (stat.records.ms_entries), (stat.relation_lr.ms_entries), (stat.relation_rl.ms_entries), (stat.relation_ll.ms_entries));
 exit:
   return (status);
-};
+}
 /** sum of all entries in all btrees used by the database */
 status_t db_debug_count_all_btree_entries(db_txn_t txn, uint32_t* result) {
   status_declare;
@@ -209,7 +209,7 @@ status_t db_debug_count_all_btree_entries(db_txn_t txn, uint32_t* result) {
   *result = (stat.system.ms_entries + stat.records.ms_entries + stat.relation_lr.ms_entries + stat.relation_rl.ms_entries + stat.relation_ll.ms_entries);
 exit:
   return (status);
-};
+}
 /** size in octets. size of the size prefix for variable size types */
 db_field_type_size_t db_field_type_size(db_field_type_t a) {
   if ((db_field_type_binary64f == a) || (db_field_type_uint64f == a) || (db_field_type_int64f == a) || (db_field_type_string64f == a) || (db_field_type_float64f == a) || (db_field_type_binary64 == a) || (db_field_type_string64 == a)) {
@@ -227,24 +227,24 @@ db_field_type_size_t db_field_type_size(db_field_type_t a) {
   } else {
     return (0);
   };
-};
+}
 db_id_t db_record_virtual(db_type_id_t type_id, void* data, size_t data_size) {
   db_id_t id;
   id = 0;
   memcpy((&id), data, data_size);
   return ((db_id_add_type(id, type_id)));
-};
+}
 /** result is allocated and owned by callee */
 void* db_record_virtual_data(db_id_t id, void* result, size_t result_size) {
   id = db_id_element(id);
   memcpy(result, (&id), result_size);
   return (result);
-};
+}
 status_t db_ids_to_set(db_ids_t a, imht_set_t** result) {
   status_declare;
   imht_set_t* b;
   if (imht_set_create((db_ids_length(a)), (&b))) {
-    status_set_both_goto(db_status_group_db, db_status_id_memory);
+    status_set_goto(db_status_group_db, db_status_id_memory);
   };
   while (i_array_in_range(a)) {
     imht_set_add(b, (i_array_get(a)));
@@ -253,7 +253,7 @@ status_t db_ids_to_set(db_ids_t a, imht_set_t** result) {
   *result = b;
 exit:
   return (status);
-};
+}
 /** read a length prefixed string.
   on success set result to a newly allocated, null terminated string and
   data-pointer is positioned at the first byte after the string */
@@ -271,7 +271,7 @@ status_t db_read_name(uint8_t** data_pointer, uint8_t** result) {
   *result = name;
 exit:
   return (status);
-};
+}
 #define db_define_i_array_new(name, type) \
   /** like i-array-allocate-* but returns status-t */ \
   status_t name(size_t length, type* result) { \
@@ -282,16 +282,16 @@ exit:
     }; \
     return (status); \
   }
-db_define_i_array_new(db_ids_new, db_ids_t);
-db_define_i_array_new(db_records_new, db_records_t);
-db_define_i_array_new(db_relations_new, db_relations_t);
-/** copies to a db-ids-t array all ids from a db-records-t array. result-ids is allocated by the caller */
-void db_records_to_ids(db_records_t records, db_ids_t* result_ids) {
+db_define_i_array_new(db_ids_new, db_ids_t)
+  db_define_i_array_new(db_records_new, db_records_t)
+    db_define_i_array_new(db_relations_new, db_relations_t)
+  /** copies to a db-ids-t array all ids from a db-records-t array. result-ids is allocated by the caller */
+  void db_records_to_ids(db_records_t records, db_ids_t* result_ids) {
   while (i_array_in_range(records)) {
     i_array_add((*result_ids), ((i_array_get(records)).id));
     i_array_forward(records);
   };
-};
+}
 /** expects an allocated db-statistics-t */
 status_t db_statistics(db_txn_t txn, db_statistics_t* result) {
   status_declare;
@@ -302,7 +302,7 @@ status_t db_statistics(db_txn_t txn, db_statistics_t* result) {
   db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_relation_rl), (&(result->relation_rl)))));
 exit:
   return (status);
-};
+}
 /** return one new unique type identifier.
   the maximum identifier returned is db-type-id-limit minus one */
 status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result) {
@@ -316,11 +316,11 @@ status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result) {
     *result = sequence;
   } else {
     pthread_mutex_unlock((&(env->mutex)));
-    status_set_both_goto(db_status_group_db, db_status_id_max_type_id);
+    status_set_goto(db_status_group_db, db_status_id_max_type_id);
   };
 exit:
   return (status);
-};
+}
 /** return one new unique type record identifier.
   the maximum identifier returned is db-id-limit minus one */
 status_t db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result) {
@@ -334,11 +334,11 @@ status_t db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result) 
     *result = db_id_add_type(sequence, type_id);
   } else {
     pthread_mutex_unlock((&(env->mutex)));
-    status_set_both_goto(db_status_group_db, db_status_id_max_element_id);
+    status_set_goto(db_status_group_db, db_status_id_max_element_id);
   };
 exit:
   return (status);
-};
+}
 void db_free_env_types_indices(db_index_t** indices, db_fields_len_t indices_len) {
   db_fields_len_t i;
   db_index_t* index_pointer;
@@ -350,7 +350,7 @@ void db_free_env_types_indices(db_index_t** indices, db_fields_len_t indices_len
     free_and_set_null((index_pointer->fields));
   };
   free_and_set_null((*indices));
-};
+}
 void db_free_env_types_fields(db_field_t** fields, db_fields_len_t fields_len) {
   db_fields_len_t i;
   if (!*fields) {
@@ -360,7 +360,7 @@ void db_free_env_types_fields(db_field_t** fields, db_fields_len_t fields_len) {
     free_and_set_null(((i + *fields)->name));
   };
   free_and_set_null((*fields));
-};
+}
 void db_free_env_type(db_type_t* type) {
   if (!type->id) {
     return;
@@ -369,7 +369,7 @@ void db_free_env_type(db_type_t* type) {
   db_free_env_types_fields((&(type->fields)), (type->fields_len));
   db_free_env_types_indices((&(type->indices)), (type->indices_len));
   type->id = 0;
-};
+}
 void db_free_env_types(db_type_t** types, db_type_id_t types_len) {
   db_type_id_t i;
   if (!*types) {
@@ -379,7 +379,7 @@ void db_free_env_types(db_type_t** types, db_type_id_t types_len) {
     db_free_env_type((i + *types));
   };
   free_and_set_null((*types));
-};
+}
 /** caller has to free result when not needed anymore.
   this routine makes sure that .is-open is zero */
 status_t db_env_new(db_env_t** result) {
@@ -389,7 +389,7 @@ status_t db_env_new(db_env_t** result) {
   *result = a;
 exit:
   return (status);
-};
+}
 void db_close(db_env_t* env) {
   MDB_env* mdb_env = env->mdb_env;
   if (mdb_env) {
@@ -407,7 +407,7 @@ void db_close(db_env_t* env) {
   };
   env->is_open = 0;
   pthread_mutex_destroy((&(env->mutex)));
-};
+}
 #include "./open.c"
 #include "./type.c"
 #include "./index.c"

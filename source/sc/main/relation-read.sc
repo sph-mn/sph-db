@@ -1,5 +1,5 @@
 (pre-define
-  notfound-exit (status-set-both-goto db-status-group-db db-status-id-notfound)
+  notfound-exit (status-set-goto db-status-group-db db-status-id-notfound)
   (db-relation-select-cursor-initialise name selection selection-field-name)
   (begin
     (db-mdb-status-require (db-mdb-env-cursor-open txn name))
@@ -7,7 +7,7 @@
     (if (not db-mdb-status-is-success)
       (begin
         db-mdb-status-expect-notfound
-        (status-set-both-goto db-status-group-db db-status-id-notfound)))
+        (status-set-goto db-status-group-db db-status-id-notfound)))
     (set selection:selection-field-name name))
   (db-relation-reader-header selection)
   (begin

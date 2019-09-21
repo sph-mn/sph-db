@@ -1,10 +1,10 @@
-#define notfound_exit status_set_both_goto(db_status_group_db, db_status_id_notfound)
+#define notfound_exit status_set_goto(db_status_group_db, db_status_id_notfound)
 #define db_relation_select_cursor_initialise(name, selection, selection_field_name) \
   db_mdb_status_require((db_mdb_env_cursor_open(txn, name))); \
   db_mdb_status_require((mdb_cursor_get(name, (&val_null), (&val_null), MDB_FIRST))); \
   if (!db_mdb_status_is_success) { \
     db_mdb_status_expect_notfound; \
-    status_set_both_goto(db_status_group_db, db_status_id_notfound); \
+    status_set_goto(db_status_group_db, db_status_id_notfound); \
   }; \
   selection->selection_field_name = name
 #define db_relation_reader_header(selection) \
@@ -77,7 +77,7 @@ each_data:
 exit:
   selection->left.current = left.current;
   return (status);
-};
+}
 status_t db_relation_read_1010(db_relation_selection_t* selection, db_count_t count, db_relations_t* result) {
   db_relation_reader_header(selection);
   db_mdb_declare_val_relation_data;
@@ -138,7 +138,7 @@ exit:
   selection->left.current = left.current;
   selection->label.current = label.current;
   return (status);
-};
+}
 status_t db_relation_read_1100(db_relation_selection_t* selection, db_count_t count, db_relations_t* result) {
   db_mdb_declare_val_id;
   db_relation_reader_header(selection);
@@ -199,7 +199,7 @@ exit:
   selection->left.current = left.current;
   selection->right.current = right.current;
   return (status);
-};
+}
 status_t db_relation_read_1110(db_relation_selection_t* selection, db_count_t count, db_relations_t* result) {
   db_relation_reader_header(selection);
   db_mdb_declare_val_id;
@@ -265,7 +265,7 @@ exit:
   selection->right.current = right.current;
   selection->label.current = label.current;
   return (status);
-};
+}
 status_t db_relation_read_1001_1101(db_relation_selection_t* selection, db_count_t count, db_relations_t* result) {
   db_relation_reader_header(selection);
   relation_key[1] = 0;
@@ -337,7 +337,7 @@ each_data:
 exit:
   selection->left.current = left.current;
   return (status);
-};
+}
 status_t db_relation_read_1011_1111(db_relation_selection_t* selection, db_count_t count, db_relations_t* result) {
   db_relation_reader_header(selection);
   db_declare_relation_data(relation_data);
@@ -408,7 +408,7 @@ exit:
   selection->left.current = left.current;
   selection->label.current = label.current;
   return (status);
-};
+}
 status_t db_relation_read_0010(db_relation_selection_t* selection, db_count_t count, db_relations_t* result) {
   db_relation_reader_header(selection);
   db_mdb_declare_val_id;
@@ -494,7 +494,7 @@ each_left_data:
 exit:
   selection->label.current = label.current;
   return (status);
-};
+}
 status_t db_relation_read_0110(db_relation_selection_t* selection, db_count_t count, db_relations_t* result) {
   db_relation_reader_header(selection);
   db_mdb_declare_val_id;
@@ -553,7 +553,7 @@ exit:
   selection->right.current = right.current;
   selection->label.current = label.current;
   return (status);
-};
+}
 status_t db_relation_read_0100(db_relation_selection_t* selection, db_count_t count, db_relations_t* result) {
   db_relation_reader_header(selection);
   db_mdb_declare_val_id;
@@ -618,7 +618,7 @@ each_data:
 exit:
   selection->right.current = right.current;
   return (status);
-};
+}
 status_t db_relation_read_0000(db_relation_selection_t* selection, db_count_t count, db_relations_t* result) {
   db_relation_reader_header_0000(selection);
   db_mdb_declare_val_relation_data;
@@ -650,7 +650,7 @@ each_data:
   };
 exit:
   return (status);
-};
+}
 /** prepare the selection and select the reader.
   readers are specialised for filter combinations.
   the 1/0 pattern at the end of reader names corresponds to the filter combination the reader is supposed to handle.
@@ -735,7 +735,7 @@ status_t db_relation_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_id
 exit:
   db_mdb_status_notfound_if_notfound;
   return (status);
-};
+}
 /** skip the next count result matches */
 status_t db_relation_skip(db_relation_selection_t* selection, db_count_t count) {
   status_declare;
@@ -743,14 +743,14 @@ status_t db_relation_skip(db_relation_selection_t* selection, db_count_t count) 
   status = ((db_relation_reader_t)(selection->reader))(selection, count, 0);
   selection->options = (db_selection_flag_skip ^ selection->options);
   return (status);
-};
+}
 /** result memory is to be allocated by the caller */
 status_t db_relation_read(db_relation_selection_t* selection, db_count_t count, db_relations_t* result) {
   status_declare;
   status = ((db_relation_reader_t)(selection->reader))(selection, count, result);
   db_mdb_status_notfound_if_notfound;
   return (status);
-};
+}
 void db_relation_selection_finish(db_relation_selection_t* selection) {
   db_mdb_cursor_close_if_active((selection->cursor));
   db_mdb_cursor_close_if_active((selection->cursor_2));
@@ -758,4 +758,4 @@ void db_relation_selection_finish(db_relation_selection_t* selection) {
     imht_set_destroy((selection->ids_set));
     selection->ids_set = 0;
   };
-};
+}

@@ -21,7 +21,7 @@ status_t db_env_types_extend(db_env_t* env, db_type_id_t type_id) {
   env->types_len = types_len;
 exit:
   return (status);
-};
+}
 /** return a pointer to the type struct for the type with the given name. zero if not found */
 db_type_t* db_type_get(db_env_t* env, uint8_t* name) {
   db_type_id_t i;
@@ -35,7 +35,7 @@ db_type_t* db_type_get(db_env_t* env, uint8_t* name) {
     };
   };
   return (0);
-};
+}
 db_field_t* db_type_field_get(db_type_t* type, uint8_t* name) {
   db_fields_len_t index;
   db_fields_len_t fields_len;
@@ -48,7 +48,7 @@ db_field_t* db_type_field_get(db_type_t* type, uint8_t* name) {
     };
   };
   return (0);
-};
+}
 /** the data format is documented in main/open.c */
 status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fields_len_t fields_len, uint8_t flags, db_type_t** result) {
   status_declare;
@@ -71,21 +71,21 @@ status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fie
   data_start = 0;
   if (db_type_flag_virtual & flags) {
     if (!(1 == fields_len)) {
-      status_set_both_goto(db_status_group_db, db_status_id_not_implemented);
+      status_set_goto(db_status_group_db, db_status_id_not_implemented);
     };
     if (db_size_element_id < db_field_type_size((fields->type))) {
-      status_set_both_goto(db_status_group_db, db_status_id_invalid_field_type);
+      status_set_goto(db_status_group_db, db_status_id_invalid_field_type);
     };
   };
   /* check if type with name exists */
   if (db_type_get((txn.env), name)) {
-    status_set_both_goto(db_status_group_db, db_status_id_duplicate);
+    status_set_goto(db_status_group_db, db_status_id_duplicate);
   };
   /* get and check name-len */
   after_fixed_size_fields = 0;
   name_len = strlen(name);
   if (db_name_len_max < name_len) {
-    status_set_both_goto(db_status_group_db, db_status_id_data_length);
+    status_set_goto(db_status_group_db, db_status_id_data_length);
   };
   /* calculate data size */
   data_size = (1 + sizeof(db_name_len_t) + name_len + sizeof(db_fields_len_t));
@@ -93,7 +93,7 @@ status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fie
     /* fixed fields must come before variable length fields */
     if (db_field_type_is_fixed(((i + fields)->type))) {
       if (after_fixed_size_fields) {
-        status_set_both_goto(db_status_group_db, db_status_id_type_field_order);
+        status_set_goto(db_status_group_db, db_status_id_type_field_order);
       };
     } else {
       after_fixed_size_fields = 1;
@@ -148,7 +148,7 @@ exit:
     db_txn_abort((&txn));
   };
   return (status);
-};
+}
 /** delete all indices of type, all records of type, the system entry and clear cache entries, in this order */
 status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
   status_declare;
@@ -186,7 +186,8 @@ status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
     if (db_mdb_status_is_notfound) {
       status.id = status_id_success;
     } else {
-      status_set_group_goto(db_status_group_lmdb);
+      status.group = db_status_group_lmdb;
+      goto exit;
     };
   };
   db_mdb_cursor_close(records);
@@ -203,7 +204,7 @@ status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
     if (db_mdb_status_is_notfound) {
       status.id = status_id_success;
     } else {
-      status_goto;
+      goto exit;
     };
   };
   db_mdb_cursor_close(system);
@@ -218,4 +219,4 @@ exit:
     db_txn_abort((&txn));
   };
   return (status);
-};
+}

@@ -29,9 +29,7 @@
   (db-relation-data-set-id a value) (set (db-relation-data->id a) value)
   (db-relation-data-set-ordinal a value) (set (db-relation-data->ordinal a) value)
   (db-relation-data-set-both a ordinal id)
-  (begin
-    (db-relation-data-set-ordinal ordinal)
-    (db-relation-data-set-id id)))
+  (begin (db-relation-data-set-ordinal ordinal) (db-relation-data-set-id id)))
 
 (declare
   (db-sequence-next-system env result) (status-t db-env-t* db-type-id-t*)

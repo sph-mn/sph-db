@@ -13,24 +13,28 @@
   if (db_mdb_status_is_notfound) { \
     status.id = status_id_success; \
   }
-#define db_mdb_status_set_id_goto(id) status_set_both_goto(db_status_group_lmdb, id)
+#define db_mdb_status_set_id_goto(id) status_set_goto(db_status_group_lmdb, id)
 #define db_mdb_status_require(expression) \
   status.id = expression; \
   if (db_mdb_status_is_failure) { \
-    status_set_group_goto(db_status_group_lmdb); \
+    status.group = db_status_group_lmdb; \
+    goto exit; \
   }
 #define db_mdb_status_require_read(expression) \
   status.id = expression; \
   if (!(db_mdb_status_is_success || db_mdb_status_is_notfound)) { \
-    status_set_group_goto(db_status_group_lmdb); \
+    status_group = db_status_group_lmdb; \
+    goto exit; \
   }
 #define db_mdb_status_expect_notfound \
   if (!db_mdb_status_is_notfound) { \
-    status_set_group_goto(db_status_group_lmdb); \
+    status.group = db_status_group_lmdb; \
+    goto exit; \
   }
 #define db_mdb_status_expect_read \
   if (!(db_mdb_status_is_success || db_mdb_status_is_notfound)) { \
-    status_set_group_goto(db_status_group_lmdb); \
+    status.group = db_status_group_lmdb; \
+    goto exit; \
   }
 #define db_mdb_cursor_declare(name) MDB_cursor* name = 0
 #define db_mdb_env_cursor_open(txn, name) mdb_cursor_open((txn.mdb_txn), ((txn.env)->dbi_##name), (&name))
@@ -66,7 +70,7 @@
   val_relation_key.mv_size = db_size_relation_key;
 #define db_mdb_reset_val_null val_null.mv_size = 0
 /** mdb comparison routines are used by lmdb for search, insert and delete */
-static int db_mdb_compare_id(const MDB_val* a, const MDB_val* b) { return ((db_id_compare((db_pointer_to_id((a->mv_data))), (db_pointer_to_id((b->mv_data)))))); };
+static int db_mdb_compare_id(const MDB_val* a, const MDB_val* b) { return ((db_id_compare((db_pointer_to_id((a->mv_data))), (db_pointer_to_id((b->mv_data)))))); }
 static int db_mdb_compare_relation_key(const MDB_val* a, const MDB_val* b) {
   if (db_pointer_to_id((a->mv_data)) < db_pointer_to_id((b->mv_data))) {
     return (-1);
@@ -75,7 +79,7 @@ static int db_mdb_compare_relation_key(const MDB_val* a, const MDB_val* b) {
   } else {
     return ((db_id_compare((db_pointer_to_id_at((a->mv_data), 1)), (db_pointer_to_id_at((b->mv_data), 1)))));
   };
-};
+}
 /** memcmp does not work here, gives -1 for 256 vs 1 */
 static int db_mdb_compare_relation_data(const MDB_val* a, const MDB_val* b) {
   if (db_relation_data_to_ordinal((a->mv_data)) < db_relation_data_to_ordinal((b->mv_data))) {
@@ -85,8 +89,8 @@ static int db_mdb_compare_relation_data(const MDB_val* a, const MDB_val* b) {
   } else {
     return ((db_id_compare((db_relation_data_to_id((a->mv_data))), (db_relation_data_to_id((b->mv_data))))));
   };
-};
+}
 static int db_mdb_compare_data(const MDB_val* a, const MDB_val* b) {
   ssize_t length_difference = (((ssize_t)(a->mv_size)) - ((ssize_t)(b->mv_size)));
   return ((length_difference ? ((length_difference < 0) ? -1 : 1) : memcmp((a->mv_data), (b->mv_data), (a->mv_size))));
-};
+}

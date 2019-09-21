@@ -23,14 +23,13 @@ copy_example_config() {
 copy_submodules() {
   # copy code files from submodules.
   # to not have the whole submodule repository in the source directory
-  a=submodules/sph-sc-lib/source/sc
-  b="$a/sph"
+  a=submodules/sph-sc-lib/source/sc/main
   f="$s/foreign"
   mkdir -p "$f/sph" &&
   cp --update --target-directory="$f" "$a/sph.sc" &&
   cp --update --target-directory="$f/sph" \
-     "$b/status.sc" "$b/i-array.sc" "$b/imht-set.sc" \
-     "$b/string.sc" "$b/filesystem.sc" "$b/helper.sc"
+     "$a/status.sc" "$a/i-array.sc" "$a/imht-set.sc" \
+     "$a/string.sc" "$a/filesystem.sc" "$a/helper.sc"
 }
 
 compile_sc() {

@@ -13,7 +13,7 @@ status_t db_relation_internal_delete_relation_ll(MDB_cursor* relation_ll, db_id_
   status.id = status_id_success;
 exit:
   return (status);
-};
+}
 status_t db_relation_internal_delete_relation_ll_conditional(MDB_cursor* relation_lr, MDB_cursor* relation_ll, db_id_t id_label, db_id_t id_left) {
   status_declare;
   db_mdb_declare_val_null;
@@ -24,7 +24,7 @@ status_t db_relation_internal_delete_relation_ll_conditional(MDB_cursor* relatio
   val_relation_key.mv_data = relation_key;
   status.id = mdb_cursor_get(relation_lr, (&val_relation_key), (&val_null), MDB_SET);
   return ((db_mdb_status_is_notfound ? db_relation_internal_delete_relation_ll(relation_ll, id_label, id_left) : status));
-};
+}
 status_t db_relation_internal_delete_relation_rl(MDB_cursor* relation_rl, db_id_t id_left, db_id_t id_right, db_id_t id_label) {
   status_declare;
   db_mdb_declare_val_id;
@@ -42,7 +42,7 @@ status_t db_relation_internal_delete_relation_rl(MDB_cursor* relation_rl, db_id_
   };
 exit:
   return (status);
-};
+}
 #define db_relation_internal_delete_0010 \
   label = *label_pointer; \
   set_key_0010: \
@@ -318,7 +318,8 @@ exit:
   } else if (status.id == MDB_NOTFOUND) { \
     goto set_range_1100; \
   } else { \
-    status_set_group_goto(db_status_group_lmdb); \
+    status.group = db_status_group_lmdb; \
+    goto exit; \
   };
 #define db_relation_internal_delete_1110 \
   status_require((db_ids_to_set((*right_pointer), (&right_set)))); \
@@ -417,7 +418,8 @@ exit:
   } else if (status.id == MDB_NOTFOUND) { \
     goto set_range_1001_1101; \
   } else { \
-    status_set_group_goto(db_status_group_lmdb); \
+    status.group = db_status_group_lmdb; \
+    goto exit; \
   };
 #define db_relation_internal_delete_1011_1111 \
   if (right_pointer) { \
@@ -530,14 +532,14 @@ status_t db_relation_internal_delete(db_ids_t* left_pointer, db_ids_t* right_poi
       if (label_pointer) {
         db_relation_internal_delete_0010;
       } else {
-        status_set_both_goto(db_status_group_db, db_status_id_not_implemented);
+        status_set_goto(db_status_group_db, db_status_id_not_implemented);
       };
     };
   };
 exit:
   db_mdb_status_success_if_notfound;
   return (status);
-};
+}
 /** db-relation-delete differs from db-relation-read in that it does not support
   partial processing and therefore does not need a state for repeated calls.
    it also differs in that it always needs all relation dbi
@@ -557,4 +559,4 @@ exit:
   db_mdb_cursor_close_if_active(relation_rl);
   db_mdb_cursor_close_if_active(relation_ll);
   return (status);
-};
+}

@@ -7,10 +7,7 @@
   "create a key for an index to be used in the system btree.
    key-format: system-label-type type-id indexed-field-offset ..."
   status-declare
-  (declare
-    data uint8-t*
-    data-temp uint8-t*
-    size size-t)
+  (declare data uint8-t* data-temp uint8-t* size size-t)
   (sc-comment "system-label + type + fields")
   (set size (+ 1 (sizeof db-type-id-t) (* (sizeof db-fields-len-t) fields-len)))
   (status-require (sph-helper-malloc size &data))
@@ -20,11 +17,8 @@
     (pointer-get (convert-type data-temp db-type-id-t*)) type-id
     data-temp (+ (sizeof db-type-id-t) data-temp))
   (memcpy data-temp fields (* (sizeof db-fields-len-t) fields-len))
-  (set
-    *result-data data
-    *result-size size)
-  (label exit
-    (return status)))
+  (set *result-data data *result-size size)
+  (label exit (return status)))
 
 (define (db-index-name type-id fields fields-len result result-len)
   (status-t db-type-id-t db-fields-len-t* db-fields-len-t uint8-t** size-t*)
@@ -40,32 +34,25 @@
     strings-len int
     name uint8-t*)
   (define prefix uint8-t* "i")
-  (set
-    strings 0
-    strings-len (+ 2 fields-len))
+  (set strings 0 strings-len (+ 2 fields-len))
   (status-require (sph-helper-calloc (* strings-len (sizeof uint8-t*)) &strings))
   (sc-comment "type id")
   (set str (sph-helper-uint->string type-id &str-len))
-  (if (not str) (status-set-both-goto db-status-group-db db-status-id-memory))
-  (set
-    (array-get strings 0) prefix
-    (array-get strings 1) str)
+  (if (not str) (status-set-goto db-status-group-db db-status-id-memory))
+  (set (array-get strings 0) prefix (array-get strings 1) str)
   (sc-comment "field ids")
   (for ((set i 0) (< i fields-len) (set i (+ 1 i)))
     (set str (sph-helper-uint->string (array-get fields i) &str-len))
-    (if (not str) (status-set-both-goto db-status-group-db db-status-id-memory))
+    (if (not str) (status-set-goto db-status-group-db db-status-id-memory))
     (set (array-get strings (+ 2 i)) str))
   (set name (string-join strings strings-len "-" &name-len))
-  (if (not name) (status-set-both-goto db-status-group-db db-status-id-memory))
-  (set
-    *result name
-    *result-len name-len)
+  (if (not name) (status-set-goto db-status-group-db db-status-id-memory))
+  (set *result name *result-len name-len)
   (label exit
     (if strings
       (begin
         (sc-comment "dont free string[0] because it is the stack allocated prefix")
-        (for ((set i 1) (< i strings-len) (set i (+ 1 i)))
-          (free (array-get strings i)))
+        (for ((set i 1) (< i strings-len) (set i (+ 1 i))) (free (array-get strings i)))
         (free strings)))
     (return status)))
 
@@ -89,22 +76,18 @@
     i db-fields-len-t
     size size-t)
   (sc-comment "no fields set, no data stored")
-  (set
-    size 0
-    fields-fixed-count values.type:fields-fixed-count
-    fields values.type:fields)
+  (set size 0 fields-fixed-count values.type:fields-fixed-count fields values.type:fields)
   (sc-comment "calculate data size")
   (for ((set i 0) (< i index.fields-len) (set i (+ 1 i)))
     (set
       field-index (array-get index.fields i)
       size
-      (+
-        (struct-get (array-get fields field-index) size)
+      (+ (struct-get (array-get fields field-index) size)
         (if* (< field-index fields-fixed-count) 0
           (if* (< field-index values.extent) (struct-get (array-get values.data field-index) size)
             0))
         size)))
-  (if (< env:maxkeysize size) (status-set-both-goto db-status-group-db db-status-id-index-keysize))
+  (if (< env:maxkeysize size) (status-set-goto db-status-group-db db-status-id-index-keysize))
   (sc-comment "allocate and prepare data")
   (status-require (sph-helper-calloc size &data))
   (set data-temp data)
@@ -127,11 +110,8 @@
         (set data-temp (+ field-size data-temp))
         (if data-size (memcpy data-temp field-data data-size))
         (set data-temp (+ data-size data-temp)))))
-  (set
-    *result-data data
-    *result-size size)
-  (label exit
-    (return status)))
+  (set *result-data data *result-size size)
+  (label exit (return status)))
 
 (define (db-indices-entry-ensure txn values id) (status-t db-txn-t db-record-values-t db-id-t)
   "create entries in all indices of type for id and values.
@@ -160,10 +140,7 @@
     (db-mdb-status-require (mdb-cursor-open txn.mdb-txn record-index.dbi &record-index-cursor))
     (db-mdb-status-require (mdb-cursor-put record-index-cursor &val-data &val-id 0))
     (db-mdb-cursor-close record-index-cursor))
-  (label exit
-    (db-mdb-cursor-close-if-active record-index-cursor)
-    (free data)
-    (return status)))
+  (label exit (db-mdb-cursor-close-if-active record-index-cursor) (free data) (return status)))
 
 (define (db-indices-entry-delete txn values id) (status-t db-txn-t db-record-values-t db-id-t)
   "delete all entries from all indices of type for id and values"
@@ -194,10 +171,7 @@
     (db-mdb-status-require (mdb-cursor-get record-index-cursor &val-data &val-id MDB-GET-BOTH))
     (if status-is-success (db-mdb-status-require (mdb-cursor-del record-index-cursor 0)))
     (db-mdb-cursor-close record-index-cursor))
-  (label exit
-    (db-mdb-cursor-close-if-active record-index-cursor)
-    (free data)
-    (return status)))
+  (label exit (db-mdb-cursor-close-if-active record-index-cursor) (free data) (return status)))
 
 (define (db-index-build env index) (status-t db-env-t* db-index-t)
   "fill one index from existing data"
@@ -213,21 +187,14 @@
     type db-type-t
     record db-record-t
     values db-record-values-t)
-  (set
-    values.data 0
-    data 0
-    type *index.type
-    id (db-id-add-type 0 type.id)
-    val-id.mv-data &id)
+  (set values.data 0 data 0 type *index.type id (db-id-add-type 0 type.id) val-id.mv-data &id)
   (status-require (db-txn-write-begin &txn))
   (db-mdb-status-require (mdb-cursor-open txn.mdb-txn index.dbi &index-cursor))
   (db-mdb-status-require (db-mdb-env-cursor-open txn records))
   (db-mdb-status-require (mdb-cursor-get records &val-id &val-data MDB-SET-RANGE))
   (sc-comment "for each record of type")
   (while (and db-mdb-status-is-success (= type.id (db-id-type (db-pointer->id val-id.mv-data))))
-    (set
-      record.data val-data.mv-data
-      record.size val-data.mv-size)
+    (set record.data val-data.mv-data record.size val-data.mv-size)
     (status-require (db-record-data->values &type record &values))
     (status-require (db-index-key env index values &data &val-data.mv-size))
     (db-free-record-values &values)
@@ -250,22 +217,14 @@
 (define (db-index-get type fields fields-len)
   (db-index-t* db-type-t* db-fields-len-t* db-fields-len-t)
   "if found returns a pointer to an index struct in the cache array, zero otherwise"
-  (declare
-    indices-len db-indices-len-t
-    index db-indices-len-t
-    indices db-index-t*)
-  (set
-    indices type:indices
-    indices-len type:indices-len)
+  (declare indices-len db-indices-len-t index db-indices-len-t indices db-index-t*)
+  (set indices type:indices indices-len type:indices-len)
   (for ((set index 0) (< index indices-len) (set index (+ 1 index)))
     (if
-      (and
-        (struct-get (array-get indices index) fields-len)
-        (=
-          0
-          (memcmp
-            (struct-get (array-get indices index) fields)
-            fields (* fields-len (sizeof db-fields-len-t)))))
+      (and (struct-get (array-get indices index) fields-len)
+        (= 0
+          (memcmp (struct-get (array-get indices index) fields) fields
+            (* fields-len (sizeof db-fields-len-t)))))
       (return (+ index indices))))
   (return 0))
 
@@ -275,20 +234,12 @@
   indices is currently never downsized, but a re-open of the db-env
   reallocates it in appropriate size (and invalidates all db-index-t pointers)"
   status-declare
-  (declare
-    indices-len db-indices-len-t
-    indices db-index-t*
-    i db-indices-len-t)
-  (set
-    indices type:indices
-    indices-len type:indices-len)
+  (declare indices-len db-indices-len-t indices db-index-t* i db-indices-len-t)
+  (set indices type:indices indices-len type:indices-len)
   (sc-comment "search unset index")
   (for ((set i 0) (< i indices-len) (set i (+ 1 i)))
     (if (not (struct-get (array-get indices i) fields-len)) break))
-  (if (< i indices-len)
-    (begin
-      (set (array-get indices i) index)
-      (goto exit)))
+  (if (< i indices-len) (begin (set (array-get indices i) index) (goto exit)))
   (sc-comment "reallocate")
   (set indices-len (+ 1 indices-len))
   (status-require (sph-helper-realloc (* indices-len (sizeof db-index-t)) &indices))
@@ -297,8 +248,7 @@
     type:indices indices
     type:indices-len indices-len
     *result (+ (- indices-len 1) indices))
-  (label exit
-    (return status)))
+  (label exit (return status)))
 
 (define (db-index-create env type fields fields-len result-index)
   (status-t db-env-t* db-type-t* db-fields-len-t* db-fields-len-t db-index-t**)
@@ -315,25 +265,16 @@
     name-len size-t
     index-temp db-index-t*
     record-index db-index-t)
-  (if (not fields-len)
-    (begin
-      (set status.id db-status-id-invalid-argument)
-      (return status)))
-  (set
-    fields-copy 0
-    name 0
-    data 0
-    size 0)
+  (if (not fields-len) (begin (set status.id db-status-id-invalid-argument) (return status)))
+  (set fields-copy 0 name 0 data 0 size 0)
   (sc-comment "check if already exists")
   (set index-temp (db-index-get type fields fields-len))
-  (if index-temp (status-set-both-goto db-status-group-db db-status-id-duplicate))
+  (if index-temp (status-set-goto db-status-group-db db-status-id-duplicate))
   (sc-comment "prepare data")
   (status-require (db-index-system-key type:id fields fields-len &data &size))
   (status-require (db-index-name type:id fields fields-len &name &name-len))
   (sc-comment "add to system btree")
-  (set
-    val-data.mv-data data
-    val-data.mv-size size)
+  (set val-data.mv-data data val-data.mv-size size)
   (status-require (db-txn-write-begin &txn))
   (db-mdb-status-require (db-mdb-env-cursor-open txn system))
   (db-mdb-status-require (mdb-cursor-put system &val-data &val-null 0))
@@ -344,10 +285,7 @@
   (sc-comment "update cache. fields might be stack allocated")
   (status-require (sph-helper-malloc (* fields-len (sizeof db-fields-len-t)) &fields-copy))
   (memcpy fields-copy fields (* fields-len (sizeof db-fields-len-t)))
-  (struct-set record-index
-    fields fields-copy
-    fields-len fields-len
-    type type)
+  (struct-set record-index fields fields-copy fields-len fields-len type type)
   (status-require (db-type-indices-add type record-index &index-temp))
   (status-require (db-txn-commit &txn))
   (status-require (db-index-build env record-index))
@@ -367,15 +305,10 @@
   db-mdb-declare-val-null
   (db-txn-declare env txn)
   (db-mdb-cursor-declare system)
-  (declare
-    key-data void*
-    key-size size-t
-    val-data MDB-val)
+  (declare key-data void* key-size size-t val-data MDB-val)
   (status-require
     (db-index-system-key index:type:id index:fields index:fields-len &key-data &key-size))
-  (set
-    val-data.mv-data key-data
-    val-data.mv-size key-size)
+  (set val-data.mv-data key-data val-data.mv-size key-size)
   (status-require (db-txn-write-begin &txn))
   (sc-comment "remove data btree. closes the handle")
   (db-mdb-status-require (mdb-drop txn.mdb-txn index:dbi 1))
@@ -388,21 +321,14 @@
   (status-require (db-txn-commit &txn))
   (sc-comment "update cache")
   (free-and-set-null index:fields)
-  (set
-    index:fields-len 0
-    index:type 0)
-  (label exit
-    (db-mdb-cursor-close-if-active system)
-    (db-txn-abort-if-active txn)
-    (return status)))
+  (set index:fields-len 0 index:type 0)
+  (label exit (db-mdb-cursor-close-if-active system) (db-txn-abort-if-active txn) (return status)))
 
 (define (db-index-rebuild env index) (status-t db-env-t* db-index-t*)
   "clear index and fill with data from existing records"
   status-declare
   (db-txn-declare env txn)
-  (declare
-    name uint8-t*
-    name-len size-t)
+  (declare name uint8-t* name-len size-t)
   (set name 0)
   (status-require (db-index-name index:type:id index:fields index:fields-len &name &name-len))
   (status-require (db-txn-write-begin &txn))
@@ -410,10 +336,7 @@
   (db-mdb-status-require (mdb-dbi-open txn.mdb-txn name MDB-CREATE &index:dbi))
   (status-require (db-txn-commit &txn))
   (set status (db-index-build env *index))
-  (label exit
-    (free name)
-    (db-txn-abort-if-active txn)
-    (return status)))
+  (label exit (free name) (db-txn-abort-if-active txn) (return status)))
 
 (define (db-index-read selection count result-ids)
   (status-t db-index-selection-t db-count-t db-ids-t*)
@@ -429,9 +352,7 @@
     (i-array-add *result-ids (db-pointer->id val-id.mv-data))
     (set count (- count 1))
     (db-mdb-status-require (mdb-cursor-get selection.cursor &val-null &val-id MDB-NEXT-DUP)))
-  (label exit
-    db-mdb-status-notfound-if-notfound
-    (return status)))
+  (label exit db-mdb-status-notfound-if-notfound (return status)))
 
 (define (db-index-selection-finish selection) (void db-index-selection-t*)
   (db-mdb-cursor-close-if-active selection:cursor))
@@ -444,9 +365,7 @@
   status-declare
   db-mdb-declare-val-id
   (db-mdb-cursor-declare cursor)
-  (declare
-    data void*
-    val-data MDB-val)
+  (declare data void* val-data MDB-val)
   (set data 0)
   (status-require (db-index-key txn.env index values &data &val-data.mv-size))
   (set val-data.mv-data data)
@@ -456,7 +375,5 @@
   (label exit
     (free data)
     (if status-is-failure
-      (begin
-        (db-mdb-cursor-close-if-active cursor)
-        db-mdb-status-notfound-if-notfound))
+      (begin (db-mdb-cursor-close-if-active cursor) db-mdb-status-notfound-if-notfound))
     (return status)))

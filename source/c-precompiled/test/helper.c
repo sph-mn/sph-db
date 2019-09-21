@@ -17,7 +17,8 @@
 #define test_helper_assert(description, expression) \
   if (!expression) { \
     printf("%s failed\n", description); \
-    status_set_id_goto(1); \
+    status.id = 1; \
+    goto exit; \
   }
 /** define a function that searches for an id in an array of relations at field */
 #define test_helper_define_relations_contains_at(field_name) \
@@ -90,7 +91,7 @@ uint32_t test_helper_estimate_relation_read_btree_entry_count(uint32_t e_left_co
     label_count = (1 + label_count);
   };
   return ((left_right_count + right_left_count + label_left_count));
-};
+}
 status_t test_helper_display_all_relations(db_txn_t txn, uint32_t left_count, uint32_t right_count, uint32_t label_count) {
   status_declare;
   db_relation_selection_declare(selection);
@@ -104,7 +105,7 @@ status_t test_helper_display_all_relations(db_txn_t txn, uint32_t left_count, ui
   i_array_free(relations);
 exit:
   return (status);
-};
+}
 /** 1101 -> "1101" */
 uint8_t* test_helper_reader_suffix_integer_to_string(uint8_t a) {
   uint8_t* result = malloc(40);
@@ -114,14 +115,14 @@ uint8_t* test_helper_reader_suffix_integer_to_string(uint8_t a) {
   result[3] = ((1 & a) ? '1' : '0');
   result[4] = 0;
   return (result);
-};
-test_helper_define_relations_contains_at(left);
-test_helper_define_relations_contains_at(right);
-test_helper_define_relations_contains_at(label);
-test_helper_define_relation_get(left);
-test_helper_define_relation_get(right);
-test_helper_define_relation_get(label);
-status_t test_helper_reset(db_env_t* env, boolean re_use) {
+}
+test_helper_define_relations_contains_at(left)
+  test_helper_define_relations_contains_at(right)
+    test_helper_define_relations_contains_at(label)
+      test_helper_define_relation_get(left)
+        test_helper_define_relation_get(right)
+          test_helper_define_relation_get(label)
+            status_t test_helper_reset(db_env_t* env, boolean re_use) {
   status_declare;
   if (env->is_open) {
     db_close(env);
@@ -129,13 +130,13 @@ status_t test_helper_reset(db_env_t* env, boolean re_use) {
   if (!re_use && file_exists(test_helper_path_data)) {
     status.id = system("rm " test_helper_path_data);
     if (status_is_failure) {
-      status_goto;
+      goto exit;
     };
   };
   status_require((db_open(test_helper_db_root, 0, env)));
 exit:
   return (status);
-};
+}
 void test_helper_print_binary_uint64_t(uint64_t a) {
   size_t i;
   uint8_t result[65];
@@ -144,14 +145,14 @@ void test_helper_print_binary_uint64_t(uint64_t a) {
     *(i + result) = (((((uint64_t)(1)) << i) & a) ? '1' : '0');
   };
   printf("%s\n", result);
-};
+}
 void test_helper_display_array_uint8_t(uint8_t* a, size_t size) {
   size_t i;
   for (i = 0; (i < size); i = (1 + i)) {
     printf("%lu ", (a[i]));
   };
   printf("\n");
-};
+}
 boolean db_ids_contains(db_ids_t ids, db_id_t id) {
   while (i_array_in_range(ids)) {
     if (id == i_array_get(ids)) {
@@ -160,7 +161,7 @@ boolean db_ids_contains(db_ids_t ids, db_id_t id) {
     i_array_forward(ids);
   };
   return (0);
-};
+}
 status_t db_ids_reverse(db_ids_t a, db_ids_t* result) {
   status_declare;
   db_ids_t temp;
@@ -172,7 +173,7 @@ status_t db_ids_reverse(db_ids_t a, db_ids_t* result) {
   *result = temp;
 exit:
   return (status);
-};
+}
 /** create a new type with four fields, fixed and variable length, for testing */
 status_t test_helper_create_type_1(db_env_t* env, db_type_t** result) {
   status_declare;
@@ -184,7 +185,7 @@ status_t test_helper_create_type_1(db_env_t* env, db_type_t** result) {
   status_require((db_type_create(env, "test-type-1", fields, 4, 0, result)));
 exit:
   return (status);
-};
+}
 /** create multiple record-values */
 status_t test_helper_create_values_1(db_env_t* env, db_type_t* type, db_record_values_t** result_values, uint32_t* result_values_len) {
   status_declare;
@@ -215,7 +216,7 @@ status_t test_helper_create_values_1(db_env_t* env, db_type_t* type, db_record_v
   *result_values = values;
 exit:
   return (status);
-};
+}
 /** creates several records with the given values */
 status_t test_helper_create_records_1(db_env_t* env, db_record_values_t* values, db_id_t** result_ids, uint32_t* result_len) {
   status_declare;
@@ -232,7 +233,7 @@ status_t test_helper_create_records_1(db_env_t* env, db_record_values_t* values,
   *result_len = 4;
 exit:
   return (status);
-};
+}
 /** create only ids, without records. doesnt depend on record creation.
   especially with relation reading where order lead to lucky success results */
 status_t test_helper_create_ids(db_txn_t txn, uint32_t count, db_ids_t* result) {
@@ -250,7 +251,7 @@ status_t test_helper_create_ids(db_txn_t txn, uint32_t count, db_ids_t* result) 
 exit:
   i_array_free(result_temp);
   return (status);
-};
+}
 /** merge ids from two lists into a new list, interleave at half the size of the arrays.
    result is as long as both id lists combined.
    approximately like this: 1 1 1 1 + 2 2 2 2 -> 1 1 2 1 2 1 2 2 */
@@ -290,9 +291,9 @@ exit:
     i_array_free(ids_result);
   };
   return (status);
-};
-uint32_t test_helper_calculate_relation_count(uint32_t left_count, uint32_t right_count, uint32_t label_count) { return ((left_count * right_count * label_count)); };
-uint32_t test_helper_calculate_relation_count_from_ids(db_ids_t left, db_ids_t right, db_ids_t label) { return ((test_helper_calculate_relation_count((i_array_length(left)), (i_array_length(right)), (i_array_length(label))))); };
+}
+uint32_t test_helper_calculate_relation_count(uint32_t left_count, uint32_t right_count, uint32_t label_count) { return ((left_count * right_count * label_count)); }
+uint32_t test_helper_calculate_relation_count_from_ids(db_ids_t left, db_ids_t right, db_ids_t label) { return ((test_helper_calculate_relation_count((i_array_length(left)), (i_array_length(right)), (i_array_length(label))))); }
 /** test if the result relations contain all filter-ids,
   and the filter-ids contain all result record values for field "name". */
 status_t test_helper_relation_read_relations_validate_one(uint8_t* name, db_ids_t e_ids, db_relations_t relations) {
@@ -312,7 +313,8 @@ status_t test_helper_relation_read_relations_validate_one(uint8_t* name, db_ids_
   while (i_array_in_range(relations)) {
     if (!db_ids_contains(e_ids, (record_get((i_array_get(relations)))))) {
       printf("\n result relations contain inexistant %s ids\n", name);
-      status_set_id_goto(1);
+      status.id = 1;
+      goto exit;
     };
     i_array_forward(relations);
   };
@@ -320,13 +322,14 @@ status_t test_helper_relation_read_relations_validate_one(uint8_t* name, db_ids_
   while (i_array_in_range(e_ids)) {
     if (!contains_at(relations, (i_array_get(e_ids)))) {
       printf("\n  %s result relations do not contain all existing-ids\n", name);
-      status_set_id_goto(2);
+      status.id = 2;
+      goto exit;
     };
     i_array_forward(e_ids);
   };
 exit:
   return (status);
-};
+}
 status_t test_helper_relation_read_relations_validate(test_helper_relation_read_data_t data) {
   status_declare;
   status_require((test_helper_relation_read_relations_validate_one("left", (data.e_left), (data.relations))));
@@ -334,13 +337,13 @@ status_t test_helper_relation_read_relations_validate(test_helper_relation_read_
   status_require((test_helper_relation_read_relations_validate_one("label", (data.e_label), (data.relations))));
 exit:
   return (status);
-};
+}
 db_ordinal_t test_helper_default_ordinal_generator(void* ordinal_state) {
   db_ordinal_t* ordinal_pointer = ordinal_state;
   db_ordinal_t result = (1 + *ordinal_pointer);
   *ordinal_pointer = result;
   return (result);
-};
+}
 /** create relations with linearly increasing ordinal starting from zero */
 status_t test_helper_create_relations(db_txn_t txn, db_ids_t left, db_ids_t right, db_ids_t label) {
   status_declare;
@@ -349,7 +352,7 @@ status_t test_helper_create_relations(db_txn_t txn, db_ids_t left, db_ids_t righ
   status_require((db_relation_ensure(txn, left, right, label, test_helper_default_ordinal_generator, (&ordinal_state_value))));
 exit:
   return (status);
-};
+}
 /** assumes linearly set-plus-oneed ordinal integers starting at 1 and queries for all or no ids */
 uint32_t test_helper_estimate_relation_read_result_count(uint32_t left_count, uint32_t right_count, uint32_t label_count, db_ordinal_condition_t* ordinal) {
   uint32_t count = (left_count * right_count * label_count);
@@ -364,7 +367,7 @@ uint32_t test_helper_estimate_relation_read_result_count(uint32_t left_count, ui
     max = count;
   };
   return ((count - min - (count - max)));
-};
+}
 status_t test_helper_relation_read_one(db_txn_t txn, test_helper_relation_read_data_t data, boolean use_left, boolean use_right, boolean use_label, boolean use_ordinal, uint32_t offset) {
   status_declare;
   db_relation_selection_declare(selection);
@@ -403,14 +406,16 @@ status_t test_helper_relation_read_one(db_txn_t txn, test_helper_relation_read_d
     status.id = status_id_success;
   } else {
     printf("\n  final read result does not indicate that there is no more data");
-    status_set_id_goto(1);
+    status.id = 1;
+    goto exit;
   };
   if (!(i_array_length((data.relations)) == expected_count)) {
     printf(("\n  expected %lu read %lu. ordinal min %d max %d\n"), expected_count, (i_array_length((data.relations))), (ordinal ? ordinal_min : 0), (ordinal ? ordinal_max : 0));
     printf("read ");
     db_debug_log_relations((data.relations));
     test_helper_display_all_relations(txn, (data.e_left_count), (data.e_right_count), (data.e_label_count));
-    status_set_id_goto(1);
+    status.id = 1;
+    goto exit;
   };
   if (!ordinal) {
     status_require((test_helper_relation_read_relations_validate(data)));
@@ -421,7 +426,7 @@ status_t test_helper_relation_read_one(db_txn_t txn, test_helper_relation_read_d
 exit:
   printf("\n");
   return (status);
-};
+}
 /** prepare arrays with ids to be used in the relation (e, existing) and ids unused in the relation
   (ne, non-existing) and with both partly interleaved (left, right, label) */
 status_t test_helper_relation_read_setup(db_env_t* env, uint32_t e_left_count, uint32_t e_right_count, uint32_t e_label_count, test_helper_relation_read_data_t* r) {
@@ -455,7 +460,7 @@ exit:
   i_array_free(ne_right);
   i_array_free(ne_label);
   return (status);
-};
+}
 void test_helper_relation_read_teardown(test_helper_relation_read_data_t* data) {
   i_array_free((data->relations));
   i_array_free((data->e_left));
@@ -464,7 +469,7 @@ void test_helper_relation_read_teardown(test_helper_relation_read_data_t* data) 
   i_array_free((data->left));
   i_array_free((data->right));
   i_array_free((data->label));
-};
+}
 status_t test_helper_relation_delete_setup(db_env_t* env, uint32_t e_left_count, uint32_t e_right_count, uint32_t e_label_count, test_helper_relation_delete_data_t* r) {
   status_declare;
   r->env = env;
@@ -472,7 +477,7 @@ status_t test_helper_relation_delete_setup(db_env_t* env, uint32_t e_left_count,
   r->e_right_count = e_right_count;
   r->e_label_count = e_label_count;
   return (status);
-};
+}
 /** for any given argument permutation:
      * checks btree entry count difference
      * checks read result count after deletion, using the same search query
@@ -518,7 +523,8 @@ status_t test_helper_relation_delete_one(test_helper_relation_delete_data_t data
   if (!(0 == i_array_length(relations))) {
     printf(("\n    failed deletion. %lu relations not deleted\n"), (i_array_length(relations)));
     db_debug_log_relations(relations);
-    status_set_id_goto(1);
+    status.id = 1;
+    goto exit;
   };
   i_array_clear(relations);
   /* test only if not using ordinal condition because the expected counts arent estimated */
@@ -532,7 +538,8 @@ status_t test_helper_relation_delete_one(test_helper_relation_delete_data_t data
     db_debug_log_relations(relations);
     db_relation_selection_finish((&selection));
     db_txn_abort((&txn));
-    status_set_id_goto(1);
+    status.id = 1;
+    goto exit;
   };
   db_status_success_if_notfound;
 exit:
@@ -542,4 +549,4 @@ exit:
   i_array_free(label);
   i_array_free(relations);
   return (status);
-};
+}

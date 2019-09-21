@@ -22,11 +22,11 @@
     (if db-mdb-status-is-success
       (if (= id-right (db-relation-data->id val-relation-data.mv-data)) (return status)
         (begin
-          (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP))
+          (set status.id
+            (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP))
           (goto each-data)))
       db-mdb-status-expect-notfound))
-  (label exit
-    (return status)))
+  (label exit (return status)))
 
 (define (db-relation-ensure txn left right label ordinal-generator ordinal-generator-state)
   (status-t db-txn-t db-ids-t db-ids-t db-ids-t db-relation-ordinal-generator-t void*)
@@ -41,11 +41,7 @@
   (db-mdb-cursor-declare relation-lr)
   (db-mdb-cursor-declare relation-rl)
   (db-mdb-cursor-declare relation-ll)
-  (declare
-    id-label db-id-t
-    id-left db-id-t
-    id-right db-id-t
-    ordinal db-ordinal-t)
+  (declare id-label db-id-t id-left db-id-t id-right db-id-t ordinal db-ordinal-t)
   (db-mdb-status-require (db-mdb-env-cursor-open txn relation-lr))
   (db-mdb-status-require (db-mdb-env-cursor-open txn relation-rl))
   (db-mdb-status-require (db-mdb-env-cursor-open txn relation-ll))
@@ -56,9 +52,7 @@
   (while (i-array-in-range left)
     (set id-left (i-array-get left))
     (while (i-array-in-range label)
-      (set
-        id-label (i-array-get label)
-        val-id-2.mv-data &id-label)
+      (set id-label (i-array-get label) val-id-2.mv-data &id-label)
       (while (i-array-in-range right)
         (set
           id-right (i-array-get right)
@@ -71,16 +65,16 @@
           (begin
             (db-mdb-status-require (mdb-cursor-put relation-rl &val-relation-key &val-id 0))
             (db-mdb-status-require (mdb-cursor-put relation-ll &val-id-2 &val-id 0))
-            (set
-              (array-get relation-key 0) id-left
-              (array-get relation-key 1) id-label)
+            (set (array-get relation-key 0) id-left (array-get relation-key 1) id-label)
             (if ordinal-generator
               (set ordinal ((pointer-get ordinal-generator) ordinal-generator-state)))
             (db-relation-data-ordinal-set relation-data ordinal)
             (db-relation-data-id-set relation-data id-right)
             (set val-relation-data.mv-data relation-data)
-            (db-mdb-status-require (mdb-cursor-put relation-lr &val-relation-key &val-relation-data 0)))
-          (if (not db-mdb-status-is-success) (status-set-group-goto db-status-group-lmdb)))
+            (db-mdb-status-require
+              (mdb-cursor-put relation-lr &val-relation-key &val-relation-data 0)))
+          (if (not db-mdb-status-is-success)
+            (begin (set status.group db-status-group-lmdb) (goto exit))))
         (i-array-forward right))
       (i-array-rewind right)
       (i-array-forward label))
@@ -105,10 +99,7 @@
   (db-txn-declare env txn)
   (db-declare-relation-data relation-data)
   (db-declare-relation-key relation-key)
-  (declare
-    id-left db-id-t
-    id-right db-id-t
-    id-label db-id-t)
+  (declare id-left db-id-t id-right db-id-t id-label db-id-t)
   (status-require (db-txn-write-begin &txn))
   (db-mdb-status-require (mdb-drop txn.mdb-txn (: env dbi-relation-rl) 0))
   (db-mdb-status-require (mdb-drop txn.mdb-txn (: env dbi-relation-ll) 0))
@@ -117,9 +108,7 @@
   (db-mdb-status-require (db-mdb-env-cursor-open txn relation-lr))
   (db-mdb-status-require (db-mdb-env-cursor-open txn relation-rl))
   (db-mdb-status-require (db-mdb-env-cursor-open txn relation-ll))
-  (db-mdb-cursor-each-key
-    relation-lr
-    val-relation-key
+  (db-mdb-cursor-each-key relation-lr val-relation-key
     val-relation-data
     (compound-statement
       (set
@@ -128,19 +117,16 @@
       (do-while db-mdb-status-is-success
         (set id-right (db-pointer->id val-relation-data.mv-data))
         (sc-comment "relation-rl")
-        (set
-          (array-get relation-key 0) id-right
-          (array-get relation-key 1) id-label)
+        (set (array-get relation-key 0) id-right (array-get relation-key 1) id-label)
         (set val-relation-key.mv-data relation-key)
         (set val-id.mv-data &id-left)
         (db-mdb-status-require (mdb-cursor-put relation-rl &val-relation-key &val-id 0))
         (sc-comment "relation-ll")
         (set val-id-2.mv-data &id-label)
         (db-mdb-status-require (mdb-cursor-put relation-ll &val-id-2 &val-id 0))
-        (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP)))))
+        (set status.id
+          (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP)))))
   (status-require (db-txn-commit &txn))
-  (label exit
-    (db-txn-abort-if-active txn)
-    (return status)))
+  (label exit (db-txn-abort-if-active txn) (return status)))
 
 (pre-include "./relation-read.c" "./relation-delete.c")

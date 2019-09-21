@@ -25,7 +25,7 @@ each_data:
   };
 exit:
   return (status);
-};
+}
 /** check if a relation exists and create it if not */
 status_t db_relation_ensure(db_txn_t txn, db_ids_t left, db_ids_t right, db_ids_t label, db_relation_ordinal_generator_t ordinal_generator, void* ordinal_generator_state) {
   status_declare;
@@ -72,7 +72,8 @@ status_t db_relation_ensure(db_txn_t txn, db_ids_t left, db_ids_t right, db_ids_
           db_mdb_status_require((mdb_cursor_put(relation_lr, (&val_relation_key), (&val_relation_data), 0)));
         } else {
           if (!db_mdb_status_is_success) {
-            status_set_group_goto(db_status_group_lmdb);
+            status.group = db_status_group_lmdb;
+            goto exit;
           };
         };
         i_array_forward(right);
@@ -88,7 +89,7 @@ exit:
   db_mdb_cursor_close_if_active(relation_rl);
   db_mdb_cursor_close_if_active(relation_ll);
   return (status);
-};
+}
 /** rebuild relation-rl and relation-ll based on relation-lr */
 status_t db_relation_index_rebuild(db_env_t* env) {
   status_declare;
@@ -122,6 +123,6 @@ val_id_2.mv_data=&id_label;db_mdb_status_require((mdb_cursor_put(relation_ll,(&v
 exit:
   db_txn_abort_if_active(txn);
   return (status);
-};
+}
 #include "./relation-read.c"
 #include "./relation-delete.c"

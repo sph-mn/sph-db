@@ -1,6 +1,8 @@
 (sc-comment
   "\"iteration array\" - an array with variable length content that makes iteration easier to code.
-  most bindings are generic macros that will work on all i-array types. i-array-add and i-array-forward go from left to right.
+  saves the size argument that usually has to be passed with arrays and saves the declaration of index counter variables.
+  the data structure consists of only 4 pointers in a struct.
+  most bindings are generic macros that will work on any i-array type. i-array-add and i-array-forward go from left to right.
   examples:
     i_array_declare_type(my_type, int);
     my_type a;
@@ -36,28 +38,20 @@
       (declare start element-type*)
       (set start (alloc (* length (sizeof element-type))))
       (if (not start) (return 1))
-      (set
-        a:start start
-        a:current start
-        a:unused start
-        a:end (+ length start))
+      (set a:start start a:current start a:unused start a:end (+ length start))
       (return 0))
     (define ((pre-concat i-array-allocate_ name) length a) (uint8-t size-t name*)
       (return ((pre-concat i-array-allocate-custom_ name) length malloc a))))
   (i-array-declare a type)
   (begin
-    "define so that in-range is false, length is zero and free doesnt fail"
+    "define so that in-range is false, length is zero and free doesnt fail.
+     can be used to create empty/null i-arrays"
     (define a type (struct-literal 0 0 0 0)))
-  (i-array-add a value)
-  (set
-    *a.unused value
-    a.unused (+ 1 a.unused))
+  (i-array-add a value) (set *a.unused value a.unused (+ 1 a.unused))
   (i-array-set-null a)
   (begin
     "set so that in-range is false, length is zero and free doesnt fail"
-    (set
-      a.start 0
-      a.unused 0))
+    (set a.start 0 a.unused 0))
   (i-array-in-range a) (< a.current a.unused)
   (i-array-get-at a index) (array-get a.start index)
   (i-array-get a) *a.current
@@ -67,4 +61,14 @@
   (i-array-remove a) (set a.unused (- a.unused 1))
   (i-array-length a) (- a.unused a.start)
   (i-array-max-length a) (- a.end a.start)
-  (i-array-free a) (free a.start))
+  (i-array-free a) (free a.start)
+  (i-array-take a source size count)
+  (begin
+    "create an i-array from a standard array.
+     sets source as data array to use, with the first count number of slots used.
+     source will not be copied but used as is, and i-array-free would free it.
+     # example with a stack allocated array
+     int other_array[4] = {1, 2, 0, 0};
+     my_type a;
+     i_array_take(a, other_array, 4 2);"
+    (set a:start source a:current source a:unused (+ count source) a:end (+ size source))))

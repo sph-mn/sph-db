@@ -17,24 +17,13 @@
     i db-fields-len-t
     size size-t)
   (sc-comment "no fields set, no data stored")
-  (if (not values.extent)
-    (begin
-      (set
-        result:data 0
-        result:size 0)
-      (return status)))
-  (set
-    size 0
-    fields-fixed-count values.type:fields-fixed-count
-    fields values.type:fields)
+  (if (not values.extent) (begin (set result:data 0 result:size 0) (return status)))
+  (set size 0 fields-fixed-count values.type:fields-fixed-count fields values.type:fields)
   (sc-comment "calculate data size")
   (for ((set i 0) (< i values.extent) (set i (+ 1 i)))
     (set size
-      (+
-        (struct-get (array-get fields i) size)
-        (if* (< i fields-fixed-count) 0
-          (struct-get (array-get values.data i) size))
-        size)))
+      (+ (struct-get (array-get fields i) size)
+        (if* (< i fields-fixed-count) 0 (struct-get (array-get values.data i) size)) size)))
   (sc-comment "allocate and prepare data")
   (status-require (sph-helper-calloc size &data))
   (set data-temp data)
@@ -53,11 +42,8 @@
         (set data-temp (+ field-size data-temp))
         (if data-size (memcpy data-temp field-data data-size))
         (set data-temp (+ data-size data-temp)))))
-  (set
-    result:data data
-    result:size size)
-  (label exit
-    (return status)))
+  (set result:data data result:size size)
+  (label exit (return status)))
 
 (define (db-record-ref type record field)
   (db-record-value-t db-type-t* db-record-t db-fields-len-t)
@@ -80,9 +66,7 @@
         (set
           result.data (+ offset (convert-type record.data uint8-t*))
           result.size (struct-get (array-get type:fields field) size))
-        (set
-          result.data 0
-          result.size 0))
+        (set result.data 0 result.size 0))
       (return result))
     (begin
       (sc-comment "variable length field")
@@ -97,23 +81,12 @@
             i type:fields-fixed-count)
           (sc-comment "variable length data is prefixed by its size")
           (while (and (<= i field) (< data-temp end))
-            (set
-              size 0
-              prefix-size (struct-get (array-get type:fields i) size))
+            (set size 0 prefix-size (struct-get (array-get type:fields i) size))
             (memcpy &size data-temp prefix-size)
             (set data-temp (+ prefix-size data-temp))
-            (if (= i field)
-              (begin
-                (set
-                  result.data data-temp
-                  result.size size)
-                (return result)))
-            (set
-              i (+ 1 i)
-              data-temp (+ size data-temp)))))
-      (set
-        result.data 0
-        result.size 0)
+            (if (= i field) (begin (set result.data data-temp result.size size) (return result)))
+            (set i (+ 1 i) data-temp (+ size data-temp)))))
+      (set result.data 0 result.size 0)
       (return result))))
 
 (define (db-record-values-new type result) (status-t db-type-t* db-record-values-t*)
@@ -122,12 +95,8 @@
   status-declare
   (declare data db-record-value-t*)
   (status-require (sph-helper-calloc (* type:fields-len (sizeof db-record-value-t)) &data))
-  (struct-set *result
-    type type
-    data data
-    extent 0)
-  (label exit
-    (return status)))
+  (struct-set *result type type data data extent 0)
+  (label exit (return status)))
 
 (define (db-record-values-free a) (void db-record-values-t*) (free-and-set-null a:data))
 
@@ -143,30 +112,20 @@
     (if* (< field values.type:fields-fixed-count)
       (< (struct-get (array-get values.type:fields field) size) size)
       (<= (bit-shift-left 1 (* 8 (struct-get (array-get values.type:fields field) size))) size))
-    (status-set-both-goto db-status-group-db db-status-id-data-length))
-  (struct-set (array-get values.data field)
-    data data
-    size size)
+    (status-set-goto db-status-group-db db-status-id-data-length))
+  (struct-set (array-get values.data field) data data size size)
   (if (or (= 0 values.extent) (>= field values.extent)) (set values.extent (+ 1 field)))
   (set *a values)
-  (label exit
-    (return status)))
+  (label exit (return status)))
 
 (define (db-record-create txn values result) (status-t db-txn-t db-record-values-t db-id-t*)
   status-declare
   db-mdb-declare-val-id
   (db-mdb-cursor-declare records)
-  (declare
-    val-data MDB-val
-    id db-id-t
-    record db-record-t)
-  (set
-    record.data 0
-    val-id.mv-data &id)
+  (declare val-data MDB-val id db-id-t record db-record-t)
+  (set record.data 0 val-id.mv-data &id)
   (status-require (db-record-values->data values &record))
-  (set
-    val-data.mv-data record.data
-    val-data.mv-size record.size)
+  (set val-data.mv-data record.data val-data.mv-size record.size)
   (db-mdb-status-require (db-mdb-env-cursor-open txn records))
   (sc-comment "sequence updated as late as possible")
   (status-require (db-sequence-next txn.env values.type:id &id))
@@ -174,10 +133,7 @@
   (db-mdb-cursor-close records)
   (status-require (db-indices-entry-ensure txn values id))
   (set *result id)
-  (label exit
-    (db-mdb-cursor-close-if-active records)
-    (free record.data)
-    (return status)))
+  (label exit (db-mdb-cursor-close-if-active records) (free record.data) (return status)))
 
 (define (db-free-record-values values) (void db-record-values-t*) (free-and-set-null values:data))
 
@@ -196,9 +152,7 @@
     (if (not field-data.data) break)
     (db-record-values-set &values i field-data.data field-data.size))
   (set *result values)
-  (label exit
-    (if status-is-failure (db-free-record-values &values))
-    (return status)))
+  (label exit (if status-is-failure (db-free-record-values &values)) (return status)))
 
 (define (db-record-read selection count result-records)
   (status-t db-record-selection-t db-count-t db-records-t*)
@@ -239,9 +193,7 @@
             (i-array-add *result-records record)))
         (set count (- count 1))))
     (db-mdb-status-require (mdb-cursor-get selection.cursor &val-id &val-data MDB-NEXT-NODUP)))
-  (label exit
-    db-mdb-status-notfound-if-notfound
-    (return status)))
+  (label exit db-mdb-status-notfound-if-notfound (return status)))
 
 (define (db-record-skip selection count) (status-t db-record-selection-t db-count-t)
   "skip the next count matches"
@@ -266,12 +218,10 @@
   (declare id db-id-t)
   (db-mdb-status-require (db-mdb-env-cursor-open txn records))
   (sc-comment "position at first record of type")
-  (set
-    id (db-id-add-type 0 type:id)
-    val-id.mv-data &id)
+  (set id (db-id-add-type 0 type:id) val-id.mv-data &id)
   (db-mdb-status-require (mdb-cursor-get records &val-id &val-null MDB-SET-RANGE))
   (if (not (= type:id (db-id-type (db-pointer->id val-id.mv-data))))
-    (status-set-both-goto db-status-group-db db-status-id-notfound))
+    (status-set-goto db-status-group-db db-status-id-notfound))
   (set
     result-selection:type type
     result-selection:cursor records
@@ -279,10 +229,7 @@
     result-selection:matcher-state matcher-state
     result-selection:options 0)
   (label exit
-    (if status-is-failure
-      (begin
-        (mdb-cursor-close records)
-        db-mdb-status-notfound-if-notfound))
+    (if status-is-failure (begin (mdb-cursor-close records) db-mdb-status-notfound-if-notfound))
     (return status)))
 
 (define (db-record-get-internal records-cursor ids match-all result-records)
@@ -292,23 +239,18 @@
   like record-get with a given mdb-cursor"
   status-declare
   db-mdb-declare-val-id
-  (declare
-    val-data MDB-val
-    record db-record-t)
+  (declare val-data MDB-val record db-record-t)
   (while (i-array-in-range ids)
     (set
       val-id.mv-data ids.current
       status.id (mdb-cursor-get records-cursor &val-id &val-data MDB-SET-KEY))
     (if db-mdb-status-is-success
       (begin
-        (set
-          record.id (i-array-get ids)
-          record.data val-data.mv-data
-          record.size val-data.mv-size)
+        (set record.id (i-array-get ids) record.data val-data.mv-data record.size val-data.mv-size)
         (i-array-add *result-records record))
       (if db-mdb-status-is-notfound
-        (if match-all (status-set-both-goto db-status-group-db db-status-id-notfound))
-        (status-set-group-goto db-status-group-lmdb)))
+        (if match-all (status-set-goto db-status-group-db db-status-id-notfound))
+        (begin (set status.group db-status-group-lmdb) (goto exit))))
     (i-array-forward ids))
   (label exit
     (sc-comment "only acts on a status-group-lmdb status")
@@ -324,24 +266,18 @@
   (db-mdb-cursor-declare records)
   (db-mdb-status-require (db-mdb-env-cursor-open txn records))
   (set status (db-record-get-internal records ids match-all result-records))
-  (label exit
-    (db-mdb-cursor-close records)
-    (return status)))
+  (label exit (db-mdb-cursor-close records) (return status)))
 
 (define (db-relation-internal-delete left right label ordinal relation-lr relation-rl relation-ll)
-  (status-t
-    db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* MDB-cursor* MDB-cursor* MDB-cursor*)
+  (status-t db-ids-t* db-ids-t*
+    db-ids-t* db-ordinal-condition-t* MDB-cursor* MDB-cursor* MDB-cursor*)
   "declare because it is defined later")
 
 (define (db-record-delete txn ids) (status-t db-txn-t db-ids-t)
   "delete records and all their relations. status "
   status-declare
   db-mdb-declare-val-id
-  (declare
-    id db-id-t
-    val-data MDB-val
-    values db-record-values-t
-    record db-record-t)
+  (declare id db-id-t val-data MDB-val values db-record-values-t record db-record-t)
   (db-mdb-cursor-declare records)
   (db-mdb-cursor-declare relation-lr)
   (db-mdb-cursor-declare relation-rl)
@@ -361,16 +297,13 @@
       status.id (mdb-cursor-get records &val-id &val-data MDB-SET-KEY))
     (if db-mdb-status-is-success
       (begin
-        (set
-          id (i-array-get ids)
-          record.data val-data.mv-data
-          record.size val-data.mv-size)
+        (set id (i-array-get ids) record.data val-data.mv-data record.size val-data.mv-size)
         (status-require
           (db-record-data->values (db-type-get-by-id txn.env (db-id-type id)) record &values))
         (status-require (db-indices-entry-delete txn values id))
         (db-mdb-status-require (mdb-cursor-del records 0)))
       (if db-mdb-status-is-notfound (set status.id status-id-success)
-        (status-set-group-goto db-status-group-lmdb)))
+        (begin (set status.group db-status-group-lmdb) (goto exit))))
     (i-array-forward ids))
   (label exit
     (db-mdb-cursor-close-if-active relation-lr)
@@ -387,9 +320,7 @@
   (db-mdb-cursor-declare records)
   (declare id db-id-t)
   (db-mdb-status-require (db-mdb-env-cursor-open txn records))
-  (set
-    id (db-id-add-type (convert-type 0 db-id-t) type-id)
-    val-id.mv-data &id)
+  (set id (db-id-add-type (convert-type 0 db-id-t) type-id) val-id.mv-data &id)
   (db-mdb-status-require (mdb-cursor-get records &val-id &val-null MDB-SET-RANGE))
   (while (and db-mdb-status-is-success (= type-id (db-id-type (db-pointer->id val-id.mv-data))))
     (db-mdb-status-require (mdb-cursor-del records 0))
@@ -407,25 +338,16 @@
   status-declare
   db-mdb-declare-val-id
   (db-mdb-cursor-declare records)
-  (declare
-    val-data MDB-val
-    record db-record-t)
-  (set
-    val-id.mv-data &id
-    record.data 0)
+  (declare val-data MDB-val record db-record-t)
+  (set val-id.mv-data &id record.data 0)
   (status-require (db-record-values->data values &record))
   (db-mdb-status-require (db-mdb-env-cursor-open txn records))
   (db-mdb-status-require (mdb-cursor-get records &val-id &val-data MDB-SET))
-  (set
-    val-data.mv-data record.data
-    val-data.mv-size record.size)
+  (set val-data.mv-data record.data val-data.mv-size record.size)
   (db-mdb-status-require (mdb-cursor-put records &val-id &val-data 0))
   (db-mdb-cursor-close records)
   (status-require (db-indices-entry-ensure txn values id))
-  (label exit
-    (db-mdb-cursor-close-if-active records)
-    (free record.data)
-    (return status)))
+  (label exit (db-mdb-cursor-close-if-active records) (free record.data) (return status)))
 
 (define (db-record-select-delete txn type matcher matcher-state)
   (status-t db-txn-t db-type-t* db-record-matcher-t void*)
@@ -458,8 +380,7 @@
   (db-ids-new count &ids)
   (status-require-read (db-index-read selection.index-selection count &ids))
   (status-require (db-record-get-internal selection.records-cursor ids #t result-records))
-  (label exit
-    (return status)))
+  (label exit (return status)))
 
 (define (db-record-index-selection-finish selection) (void db-record-index-selection-t*)
   (db-index-selection-finish &selection:index-selection)
@@ -472,9 +393,5 @@
   (db-index-selection-declare index-selection)
   (status-require (db-index-select txn index values &index-selection))
   (db-mdb-status-require (db-mdb-env-cursor-open txn records))
-  (set
-    result-selection:index-selection index-selection
-    result-selection:records-cursor records)
-  (label exit
-    (if status-is-failure (db-mdb-cursor-close-if-active records))
-    (return status)))
+  (set result-selection:index-selection index-selection result-selection:records-cursor records)
+  (label exit (if status-is-failure (db-mdb-cursor-close-if-active records)) (return status)))
