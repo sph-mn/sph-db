@@ -1,14 +1,17 @@
 (sc-comment "this file is for declarations and macros needed to use sph-db as a shared library")
 (pre-include "inttypes.h" "math.h" "pthread.h" "lmdb.h")
-(sc-include "main/config" "foreign/sph" "foreign/sph/status" "foreign/sph/i-array")
+
+(sc-include "main/config" "foreign/sph"
+  "foreign/sph/status" "foreign/sph/i-array" "foreign/sph/set")
 
 (declare
   db-relation-t (type (struct (left db-id-t) (right db-id-t) (label db-id-t) (ordinal db-ordinal-t)))
   db-record-t (type (struct (id db-id-t) (data void*) (size size-t))))
 
-(i-array-declare-type db-ids-t db-id-t)
-(i-array-declare-type db-records-t db-record-t)
-(i-array-declare-type db-relations-t db-relation-t)
+(i-array-declare-type db-ids db-id-t)
+(i-array-declare-type db-records db-record-t)
+(i-array-declare-type db-relations db-relation-t)
+(sph-set-declare-type db-id-set db-id-t)
 
 (pre-define
   db-format-version 1
@@ -129,7 +132,7 @@
   (begin
     "set so that *-finish succeeds even if it has not yet been initialised.
       for having cleanup tasks at one place like with a goto exit label"
-    (set name.cursor 0 name.cursor-2 0 name.options 0 name.ids-set 0))
+    (set name.cursor 0 name.cursor-2 0 name.options 0 name.id-set 0))
   (db-relation-selection-declare name)
   (begin (declare name db-relation-selection-t) (db-relation-selection-set-null name))
   (db-record-selection-set-null name) (set name.cursor 0)
@@ -255,7 +258,7 @@
       (left db-ids-t)
       (right db-ids-t)
       (label db-ids-t)
-      (ids-set void*)
+      (id-set db-id-set-t*)
       (ordinal db-ordinal-condition-t)
       (options uint8-t)
       (reader void*)))
@@ -275,9 +278,6 @@
   (db-field-type-size a) (uint8-t db-field-type-t)
   (db-status-description a) (uint8-t* status-t)
   (db-status-name a) (uint8-t* status-t)
-  (db-ids-new length result-ids) (status-t size-t db-ids-t*)
-  (db-records-new length result-records) (status-t size-t db-records-t*)
-  (db-relations-new length result-relations) (status-t size-t db-relations-t*)
   (db-records->ids records result-ids) (void db-records-t db-ids-t*)
   ; -- relation
   (db-relation-selection-finish selection) (void db-relation-selection-t*)

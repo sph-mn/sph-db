@@ -1,7 +1,4 @@
 (sc-comment "secondary api for dealing with internals")
-(sc-comment "imht-set is used for example for matching ids in relation-read")
-(pre-define imht-set-key-t db-id-t)
-(sc-include "foreign/sph/imht-set")
 
 (pre-define
   db-system-label-format 0
@@ -37,7 +34,7 @@
   ; db-debug
   (db-debug-log-id-bits a) (void db-id-t)
   (db-debug-log-ids a) (void db-ids-t)
-  (db-debug-log-ids-set a) (void imht-set-t)
+  (db-debug-log-ids-set a) (void db-id-set-t)
   (db-debug-log-relations records) (void db-relations-t)
   (db-debug-log-btree-counts txn) (status-t db-txn-t)
   (db-debug-count-all-btree-entries txn result) (status-t db-txn-t db-count-t*)

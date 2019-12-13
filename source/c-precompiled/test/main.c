@@ -254,8 +254,8 @@ status_t test_record_create(db_env_t* env) {
   status_require((db_txn_commit((&txn))));
   status_require((db_txn_begin((&txn))));
   /* test record-get */
-  status_require((db_ids_new(3, (&ids))));
-  status_require((db_records_new(3, (&records))));
+  status_i_require((db_ids_new(3, (&ids))));
+  status_i_require((db_records_new(3, (&records))));
   i_array_add(ids, id_1);
   i_array_add(ids, id_2);
   status_require((db_record_get(txn, ids, 1, (&records))));
@@ -303,7 +303,7 @@ status_t test_record_select(db_env_t* env) {
   value_1 = *((uint8_t*)((((values[0]).data)[0]).data));
   status_require((db_txn_begin((&txn))));
   /* type */
-  status_require((db_records_new(4, (&records))));
+  status_i_require((db_records_new(4, (&records))));
   status_require((db_record_select(txn, type, 0, 0, (&selection))));
   status_require((db_record_read(selection, 1, (&records))));
   test_helper_assert("record-read size", (1 == i_array_length(records)));
@@ -337,7 +337,7 @@ status_t test_record_select(db_env_t* env) {
   status_require((db_txn_write_begin((&txn))));
   db_debug_count_all_btree_entries(txn, (&btree_size_before_delete));
   status_require((db_record_update(txn, (record_ids[1]), (values[1]))));
-  status_require((db_ids_new(4, (&ids))));
+  status_i_require((db_ids_new(4, (&ids))));
   i_array_add(ids, (record_ids[0]));
   i_array_add(ids, (record_ids[2]));
   status_require((db_record_delete(txn, ids)));
@@ -441,7 +441,7 @@ status_t test_index(db_env_t* env) {
   /* test index select */
   status_require((db_txn_begin((&txn))));
   status_require((db_index_select(txn, (*index), (values[1]), (&selection))));
-  db_ids_new(4, (&ids));
+  status_i_require((db_ids_new(4, (&ids))));
   status_require_read((db_index_read(selection, 2, (&ids))));
   test_helper_assert("index-read ids length", (2 == i_array_length(ids)));
   test_helper_assert("index-select type-id 1", (type->id == db_id_type((i_array_get_at(ids, 0)))));

@@ -1,5 +1,6 @@
-(sc-comment "depends on sph/status.c")
+(sc-comment "depends on sph/status.c and libc")
 (pre-include "stdlib.h" "inttypes.h" "stdio.h")
+(enum (sph-helper-status-id-memory))
 
 (pre-define
   sph-helper-status-group (convert-type "sph" uint8-t*)
@@ -12,8 +13,6 @@
   (sph-helper-calloc size result) (sph-helper-primitive-calloc size (convert-type result void**))
   (sph-helper-realloc size result) (sph-helper-primitive-realloc size (convert-type result void**)))
 
-(enum (sph-helper-status-id-memory))
-
 (define (sph-helper-status-description a) (uint8-t* status-t)
   (declare b uint8-t*)
   (case = a.id
@@ -25,6 +24,7 @@
   (case = a.id (sph-helper-status-id-memory (set b "memory")) (else (set b "unknown"))))
 
 (define (sph-helper-primitive-malloc size result) (status-t size-t void**)
+  "allocation helpers use status-t and have a consistent interface"
   status-declare
   (declare a void*)
   (set a (malloc size))
@@ -55,14 +55,6 @@
   (if a (set *block a)
     (set status.group sph-helper-status-group status.id sph-helper-status-id-memory))
   status-return)
-
-(define (sph-helper-uint->string a result-len) (uint8-t* uintmax-t size-t*)
-  "get a decimal string representation of an unsigned integer"
-  (declare size size-t result uint8-t*)
-  (set size (+ 1 (if* (= 0 a) 1 (+ 1 (log10 a)))) result (malloc size))
-  (if (not result) (return 0))
-  (if (< (snprintf result size "%ju" a) 0) (begin (free result) (return 0))
-    (begin (set *result-len (- size 1)) (return result))))
 
 (define (sph-helper-display-bits-u8 a) (void uint8-t)
   "display the bits of an octet"

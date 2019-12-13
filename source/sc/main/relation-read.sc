@@ -26,23 +26,15 @@
     (set skip (bit-and db-selection-flag-skip selection:options)))
   (db-relation-reader-define-ordinal-variables selection)
   (begin
-    (declare
-      ordinal-min db-ordinal-t
-      ordinal-max db-ordinal-t)
-    (set
-      ordinal-min selection:ordinal.min
-      ordinal-max selection:ordinal.max)))
+    (declare ordinal-min db-ordinal-t ordinal-max db-ordinal-t)
+    (set ordinal-min selection:ordinal.min ordinal-max selection:ordinal.max)))
 
 (define (db-relation-read-1000 selection count result)
   (status-t db-relation-selection-t* db-count-t db-relations-t*)
   (db-relation-reader-header selection)
   db-mdb-declare-val-relation-data
-  (declare
-    relation-lr MDB-cursor*
-    left db-ids-t)
-  (set
-    relation-lr selection:cursor
-    left selection:left)
+  (declare relation-lr MDB-cursor* left db-ids-t)
+  (set relation-lr selection:cursor left selection:left)
   (db-mdb-status-require
     (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-GET-CURRENT))
   (set (array-get relation-key 0) (i-array-get left))
@@ -58,9 +50,7 @@
           db-mdb-status-expect-notfound)
         (i-array-forward left)
         (if (i-array-in-range left)
-          (begin
-            (set (array-get relation-key 0) (i-array-get left))
-            (goto set-range))
+          (begin (set (array-get relation-key 0) (i-array-get left)) (goto set-range))
           notfound-exit))))
   (label each-data
     stop-if-count-zero
@@ -74,44 +64,30 @@
         (i-array-add *result relation)))
     reduce-count
     (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP))
-    (if db-mdb-status-is-success (goto each-data)
-      db-mdb-status-expect-notfound))
+    (if db-mdb-status-is-success (goto each-data) db-mdb-status-expect-notfound))
   (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-NODUP))
   (goto each-key)
-  (label exit
-    (set selection:left.current left.current)
-    (return status)))
+  (label exit (set selection:left.current left.current) (return status)))
 
 (define (db-relation-read-1010 selection count result)
   (status-t db-relation-selection-t* db-count-t db-relations-t*)
   (db-relation-reader-header selection)
   db-mdb-declare-val-relation-data
-  (declare
-    relation-lr MDB-cursor*
-    left db-ids-t
-    label db-ids-t)
-  (set
-    relation-lr selection:cursor
-    left selection:left
-    label selection:label)
+  (declare relation-lr MDB-cursor* left db-ids-t label db-ids-t)
+  (set relation-lr selection:cursor left selection:left label selection:label)
   (db-mdb-status-require
     (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-GET-CURRENT))
-  (set
-    (array-get relation-key 0) (i-array-get left)
-    (array-get relation-key 1) (i-array-get label))
+  (set (array-get relation-key 0) (i-array-get left) (array-get relation-key 1) (i-array-get label))
   (if (db-relation-key-equal relation-key (db-mdb-val->relation-key val-relation-key))
     (goto each-data)
     (label set-key
       (set val-relation-key.mv-data relation-key)
       (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-SET-KEY))
-      (if db-mdb-status-is-success (goto each-data)
-        db-mdb-status-expect-notfound)
+      (if db-mdb-status-is-success (goto each-data) db-mdb-status-expect-notfound)
       (label next-key
         (i-array-forward left)
         (if (i-array-in-range left)
-          (begin
-            (set (array-get relation-key 0) (i-array-get left))
-            (goto set-key))
+          (begin (set (array-get relation-key 0) (i-array-get left)) (goto set-key))
           (begin
             (i-array-forward label)
             (if (i-array-in-range label)
@@ -134,26 +110,17 @@
         (i-array-add *result relation)))
     reduce-count
     (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP))
-    (if db-mdb-status-is-success (goto each-data)
-      (goto next-key)))
+    (if db-mdb-status-is-success (goto each-data) (goto next-key)))
   (label exit
-    (set
-      selection:left.current left.current
-      selection:label.current label.current)
+    (set selection:left.current left.current selection:label.current label.current)
     (return status)))
 
 (define (db-relation-read-1100 selection count result)
   (status-t db-relation-selection-t* db-count-t db-relations-t*)
   db-mdb-declare-val-id
   (db-relation-reader-header selection)
-  (declare
-    relation-rl MDB-cursor*
-    left db-ids-t
-    right db-ids-t)
-  (set
-    relation-rl selection:cursor
-    left selection:left
-    right selection:right)
+  (declare relation-rl MDB-cursor* left db-ids-t right db-ids-t)
+  (set relation-rl selection:cursor left selection:left right selection:right)
   (db-mdb-status-require (mdb-cursor-get relation-rl &val-relation-key &val-id MDB-GET-CURRENT))
   (set (array-get relation-key 0) (i-array-get right))
   (if (= (db-pointer->id val-relation-key.mv-data) (array-get relation-key 0)) (goto each-left)
@@ -185,26 +152,18 @@
             reduce-count)))
       db-mdb-status-expect-notfound)
     (i-array-forward left)
-    (if (i-array-in-range left) (goto each-left)
-      (i-array-rewind left)))
+    (if (i-array-in-range left) (goto each-left) (i-array-rewind left)))
   (set status.id (mdb-cursor-get relation-rl &val-relation-key &val-id MDB-NEXT-NODUP))
   (goto each-right)
   (label exit
-    (set
-      selection:left.current left.current
-      selection:right.current right.current)
+    (set selection:left.current left.current selection:right.current right.current)
     (return status)))
 
 (define (db-relation-read-1110 selection count result)
   (status-t db-relation-selection-t* db-count-t db-relations-t*)
   (db-relation-reader-header selection)
   db-mdb-declare-val-id
-  (declare
-    relation-rl MDB-cursor*
-    left db-ids-t
-    right db-ids-t
-    label db-ids-t
-    id-left db-id-t)
+  (declare relation-rl MDB-cursor* left db-ids-t right db-ids-t label db-ids-t id-left db-id-t)
   (set
     relation-rl selection:cursor
     left selection:left
@@ -214,12 +173,9 @@
     id-left (i-array-get left)
     (array-get relation-key 0) (i-array-get right))
   (label set-cursor
-    (set
-      val-relation-key.mv-data relation-key
-      val-id.mv-data &id-left)
+    (set val-relation-key.mv-data relation-key val-id.mv-data &id-left)
     (set status.id (mdb-cursor-get relation-rl &val-relation-key &val-id MDB-GET-BOTH))
-    (if db-mdb-status-is-success (goto match)
-      db-mdb-status-expect-notfound)
+    (if db-mdb-status-is-success (goto match) db-mdb-status-expect-notfound)
     (label next-query
       (i-array-forward right)
       (if (i-array-in-range right)
@@ -232,10 +188,7 @@
           (set (array-get relation-key 0) (i-array-get right))
           (i-array-forward left)
           (if (i-array-in-range left)
-            (begin
-              stop-if-count-zero
-              (set id-left (i-array-get left))
-              (goto set-cursor))
+            (begin stop-if-count-zero (set id-left (i-array-get left)) (goto set-cursor))
             (begin
               (i-array-rewind left)
               (set id-left (i-array-get left))
@@ -269,14 +222,11 @@
   (set (array-get relation-key 1) 0)
   db-mdb-declare-val-relation-data
   (db-declare-relation-data relation-data)
-  (declare
-    relation-lr MDB-cursor*
-    left db-ids-t
-    right imht-set-t*)
+  (declare relation-lr MDB-cursor* left db-ids-t right db-id-set-t*)
   (set
     relation-lr selection:cursor
     left selection:left
-    right selection:ids-set
+    right selection:id-set
     (array-get relation-key 0) (i-array-get left))
   (db-relation-reader-define-ordinal-variables selection)
   (db-relation-data-set-ordinal relation-data ordinal-min)
@@ -295,15 +245,13 @@
               val-relation-data.mv-data relation-data
               status.id
               (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-GET-BOTH-RANGE))
-            (if db-mdb-status-is-success (goto each-data)
-              db-mdb-status-expect-notfound)
+            (if db-mdb-status-is-success (goto each-data) db-mdb-status-expect-notfound)
             (set status.id
               (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-NODUP))
             (goto each-key)))
         db-mdb-status-expect-notfound)
       (i-array-forward left)
-      (if (i-array-in-range left) (set (array-get relation-key 0) (i-array-get left))
-        notfound-exit)
+      (if (i-array-in-range left) (set (array-get relation-key 0) (i-array-get left)) notfound-exit)
       (goto each-left)))
   (label each-data
     stop-if-count-zero
@@ -313,11 +261,9 @@
         (sc-comment "ordinal-min is checked because the set-range can be skipped")
         (if
           (and
-            (or
-              (not ordinal-min)
+            (or (not ordinal-min)
               (>= (db-relation-data->ordinal val-relation-data.mv-data) ordinal-min))
-            (or
-              (not right) (imht-set-contains right (db-relation-data->id val-relation-data.mv-data))))
+            (or (not right) (db-id-set-get *right (db-relation-data->id val-relation-data.mv-data))))
           (begin
             (if (not skip)
               (begin
@@ -330,29 +276,22 @@
             reduce-count))
         (set status.id
           (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP))
-        (if db-mdb-status-is-success (goto each-data)
-          db-mdb-status-expect-notfound))))
+        (if db-mdb-status-is-success (goto each-data) db-mdb-status-expect-notfound))))
   (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-NODUP))
   (goto each-key)
-  (label exit
-    (set selection:left.current left.current)
-    (return status)))
+  (label exit (set selection:left.current left.current) (return status)))
 
 (define (db-relation-read-1011-1111 selection count result)
   (status-t db-relation-selection-t* db-count-t db-relations-t*)
   (db-relation-reader-header selection)
   (db-declare-relation-data relation-data)
   db-mdb-declare-val-relation-data
-  (declare
-    relation-lr MDB-cursor*
-    left db-ids-t
-    label db-ids-t
-    right imht-set-t*)
+  (declare relation-lr MDB-cursor* left db-ids-t label db-ids-t right db-id-set-t*)
   (set
     relation-lr selection:cursor
     left selection:left
     label selection:label
-    right selection:ids-set
+    right selection:id-set
     (array-get relation-key 0) (i-array-get left)
     (array-get relation-key 1) (i-array-get label))
   (db-relation-reader-define-ordinal-variables selection)
@@ -360,8 +299,7 @@
   (db-mdb-status-require
     (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-GET-CURRENT))
   (if
-    (and
-      (= (db-pointer->id val-relation-key.mv-data) (array-get relation-key 0))
+    (and (= (db-pointer->id val-relation-key.mv-data) (array-get relation-key 0))
       (= (db-pointer->id-at val-relation-key.mv-data 1) (array-get relation-key 1)))
     (goto each-data))
   (label set-key
@@ -392,11 +330,9 @@
         (sc-comment "ordinal-min is checked because the get-both-range can be skipped")
         (if
           (and
-            (or
-              (not ordinal-min)
+            (or (not ordinal-min)
               (>= (db-relation-data->ordinal val-relation-data.mv-data) ordinal-min))
-            (or
-              (not right) (imht-set-contains right (db-relation-data->id val-relation-data.mv-data))))
+            (or (not right) (db-id-set-get *right (db-relation-data->id val-relation-data.mv-data))))
           (begin
             (if (not skip)
               (begin
@@ -409,13 +345,10 @@
             reduce-count))
         (set status.id
           (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP))
-        (if db-mdb-status-is-success (goto each-data)
-          db-mdb-status-expect-notfound)))
+        (if db-mdb-status-is-success (goto each-data) db-mdb-status-expect-notfound)))
     (goto each-key))
   (label exit
-    (set
-      selection:left.current left.current
-      selection:label.current label.current)
+    (set selection:left.current left.current selection:label.current label.current)
     (return status)))
 
 (define (db-relation-read-0010 selection count result)
@@ -430,31 +363,22 @@
     label db-ids-t
     id-left db-id-t
     id-label db-id-t)
-  (set
-    relation-ll selection:cursor
-    relation-lr selection:cursor-2
-    label selection:label)
+  (set relation-ll selection:cursor relation-lr selection:cursor-2 label selection:label)
   (db-mdb-status-require (mdb-cursor-get relation-ll &val-id &val-id-2 MDB-GET-CURRENT))
   (db-mdb-status-require
     (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-GET-CURRENT))
-  (if (i-array-in-range label) (set id-label (i-array-get label))
-    notfound-exit)
+  (if (i-array-in-range label) (set id-label (i-array-get label)) notfound-exit)
   (if (= id-label (db-pointer->id val-id.mv-data))
-    (begin
-      (set (array-get relation-key 1) id-label)
-      (goto each-label-data))
+    (begin (set (array-get relation-key 1) id-label) (goto each-label-data))
     (label set-label-key
       (set val-id.mv-data &id-label)
       (set status.id (mdb-cursor-get relation-ll &val-id &val-id-2 MDB-SET-KEY))
       (if db-mdb-status-is-success
-        (begin
-          (set (array-get relation-key 1) id-label)
-          (goto each-label-data))
+        (begin (set (array-get relation-key 1) id-label) (goto each-label-data))
         (begin
           db-mdb-status-expect-notfound
           (i-array-forward label)
-          (if (i-array-in-range label) (set id-label (i-array-get label))
-            notfound-exit)
+          (if (i-array-in-range label) (set id-label (i-array-get label)) notfound-exit)
           (goto set-label-key)))))
   (label each-label-data
     (set id-left (db-pointer->id val-id-2.mv-data))
@@ -464,8 +388,7 @@
         (set val-relation-key.mv-data relation-key)
         (set status.id
           (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-SET-KEY))
-        (if db-mdb-status-is-success (goto each-left-data)
-          (goto exit))))
+        (if db-mdb-status-is-success (goto each-left-data) (goto exit))))
     (label each-left-data
       stop-if-count-zero
       (if (not skip)
@@ -477,31 +400,21 @@
           (i-array-add *result relation)))
       reduce-count
       (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP))
-      (if db-mdb-status-is-success (goto each-left-data)
-        db-mdb-status-expect-notfound))
+      (if db-mdb-status-is-success (goto each-left-data) db-mdb-status-expect-notfound))
     (set status.id (mdb-cursor-get relation-ll &val-id &val-id-2 MDB-NEXT-DUP))
     (if db-mdb-status-is-success (goto each-label-data)
       (begin
         (i-array-forward label)
-        (if (i-array-in-range label) (set id-label (i-array-get label))
-          notfound-exit)
+        (if (i-array-in-range label) (set id-label (i-array-get label)) notfound-exit)
         (goto set-label-key))))
-  (label exit
-    (set selection:label.current label.current)
-    (return status)))
+  (label exit (set selection:label.current label.current) (return status)))
 
 (define (db-relation-read-0110 selection count result)
   (status-t db-relation-selection-t* db-count-t db-relations-t*)
   (db-relation-reader-header selection)
   db-mdb-declare-val-id
-  (declare
-    relation-rl MDB-cursor*
-    label db-ids-t
-    right db-ids-t)
-  (set
-    relation-rl selection:cursor
-    label selection:label
-    right selection:right)
+  (declare relation-rl MDB-cursor* label db-ids-t right db-ids-t)
+  (set relation-rl selection:cursor label selection:label right selection:right)
   (db-mdb-status-require (mdb-cursor-get relation-rl &val-relation-key &val-id MDB-GET-CURRENT))
   (set
     (array-get relation-key 1) (i-array-get label)
@@ -537,24 +450,17 @@
         (i-array-add *result relation)))
     reduce-count
     (set status.id (mdb-cursor-get relation-rl &val-relation-key &val-id MDB-NEXT-DUP))
-    (if db-mdb-status-is-success (goto each-data)
-      (goto each-key)))
+    (if db-mdb-status-is-success (goto each-data) (goto each-key)))
   (label exit
-    (set
-      selection:right.current right.current
-      selection:label.current label.current)
+    (set selection:right.current right.current selection:label.current label.current)
     (return status)))
 
 (define (db-relation-read-0100 selection count result)
   (status-t db-relation-selection-t* db-count-t db-relations-t*)
   (db-relation-reader-header selection)
   db-mdb-declare-val-id
-  (declare
-    relation-rl MDB-cursor*
-    right db-ids-t)
-  (set
-    relation-rl selection:cursor
-    right selection:right)
+  (declare relation-rl MDB-cursor* right db-ids-t)
+  (set relation-rl selection:cursor right selection:right)
   (db-mdb-status-require (mdb-cursor-get relation-rl &val-relation-key &val-id MDB-GET-CURRENT))
   (set (array-get relation-key 0) (i-array-get right))
   (if (= (array-get relation-key 0) (db-pointer->id val-relation-key.mv-data)) (goto each-key)
@@ -581,19 +487,15 @@
           (i-array-add *result relation)))
       reduce-count
       (set status.id (mdb-cursor-get relation-rl &val-relation-key &val-id MDB-NEXT-DUP))
-      (if db-mdb-status-is-success (goto each-data)
-        db-mdb-status-expect-notfound))
+      (if db-mdb-status-is-success (goto each-data) db-mdb-status-expect-notfound))
     (set status.id (mdb-cursor-get relation-rl &val-relation-key &val-id MDB-NEXT-NODUP))
     (if db-mdb-status-is-success
       (if (= (array-get relation-key 0) (db-pointer->id val-relation-key.mv-data)) (goto each-key))
       db-mdb-status-expect-notfound)
     (i-array-forward right)
-    (if (i-array-in-range right) (set (array-get relation-key 0) (i-array-get right))
-      notfound-exit)
+    (if (i-array-in-range right) (set (array-get relation-key 0) (i-array-get right)) notfound-exit)
     (goto set-range))
-  (label exit
-    (set selection:right.current right.current)
-    (return status)))
+  (label exit (set selection:right.current right.current) (return status)))
 
 (define (db-relation-read-0000 selection count result)
   (status-t db-relation-selection-t* db-count-t db-relations-t*)
@@ -616,13 +518,10 @@
           (i-array-add *result relation)))
       reduce-count
       (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-DUP))
-      (if db-mdb-status-is-success (goto each-data)
-        db-mdb-status-expect-notfound))
+      (if db-mdb-status-is-success (goto each-data) db-mdb-status-expect-notfound))
     (set status.id (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-NEXT-NODUP))
-    (if db-mdb-status-is-success (goto each-key)
-      db-mdb-status-expect-notfound))
-  (label exit
-    (return status)))
+    (if db-mdb-status-is-success (goto each-key) db-mdb-status-expect-notfound))
+  (label exit (return status)))
 
 (define (db-relation-select txn left right label ordinal selection)
   (status-t db-txn-t db-ids-t* db-ids-t* db-ids-t* db-ordinal-condition-t* db-relation-selection-t*)
@@ -635,30 +534,24 @@
   internally in the selection if unset i-array-in-range and i-array-length is zero"
   status-declare
   db-mdb-declare-val-null
-  (declare right-set imht-set-t*)
+  (declare right-set db-id-set-t*)
   (db-mdb-cursor-declare relation-lr)
   (db-mdb-cursor-declare relation-rl)
   (db-mdb-cursor-declare relation-ll)
-  (if left (set selection:left *left)
-    (i-array-set-null selection:left))
-  (if right (set selection:right *right)
-    (i-array-set-null selection:right))
-  (if label (set selection:label *label)
-    (i-array-set-null selection:label))
+  (if left (set selection:left *left) (i-array-set-null selection:left))
+  (if right (set selection:right *right) (i-array-set-null selection:right))
+  (if label (set selection:label *label) (i-array-set-null selection:label))
   (if ordinal (set selection:ordinal *ordinal))
-  (set
-    selection:cursor 0
-    selection:cursor-2 0
-    selection:options 0
-    selection:ids-set 0)
+  (set selection:cursor 0 selection:cursor-2 0 selection:options 0 selection:id-set 0)
   (if left
     (if ordinal
       (begin
         (if right
           (begin
-            (status-require (db-ids->set *right &right-set))
+            (status-require (sph-helper-malloc (sizeof db-id-set-t) &right-set))
+            (status-require (db-ids->set *right right-set))
             (set
-              selection:ids-set right-set
+              selection:id-set right-set
               selection:options (bit-or db-relation-selection-flag-is-set-right selection:options))))
         (db-relation-select-cursor-initialise relation-lr selection cursor)
         (if label (set selection:reader db-relation-read-1011-1111)
@@ -675,9 +568,7 @@
     (if right
       (begin
         (db-relation-select-cursor-initialise relation-rl selection cursor)
-        (set selection:reader
-          (if* label db-relation-read-0110
-            db-relation-read-0100)))
+        (set selection:reader (if* label db-relation-read-0110 db-relation-read-0100)))
       (if label
         (begin
           (db-relation-select-cursor-initialise relation-ll selection cursor)
@@ -686,9 +577,7 @@
         (begin
           (db-relation-select-cursor-initialise relation-lr selection cursor)
           (set selection:reader db-relation-read-0000)))))
-  (label exit
-    db-mdb-status-notfound-if-notfound
-    (return status)))
+  (label exit db-mdb-status-notfound-if-notfound (return status)))
 
 (define (db-relation-skip selection count) (status-t db-relation-selection-t* db-count-t)
   "skip the next count result matches"
@@ -711,6 +600,4 @@
   (db-mdb-cursor-close-if-active selection:cursor)
   (db-mdb-cursor-close-if-active selection:cursor-2)
   (if (bit-and db-relation-selection-flag-is-set-right selection:options)
-    (begin
-      (imht-set-destroy selection:ids-set)
-      (set selection:ids-set 0))))
+    (begin (db-id-set-free *selection:id-set) (free selection:id-set) (set selection:id-set 0))))

@@ -250,7 +250,7 @@
           (goto exit))))
     (label each-data-1100
       (set id-right (db-relation-data->id val-relation-data.mv-data))
-      (if (imht-set-contains right-set id-right)
+      (if (db-id-set-get right-set id-right)
         (begin
           (set status
             (db-relation-internal-delete-relation-rl relation-rl id-left id-right id-label))
@@ -289,7 +289,7 @@
         (set status.id
           (mdb-cursor-get relation-lr &val-relation-key &val-relation-data MDB-SET-KEY))
         (while db-mdb-status-is-success
-          (if (imht-set-contains right-set (db-relation-data->id val-relation-data.mv-data))
+          (if (db-id-set-get right-set (db-relation-data->id val-relation-data.mv-data))
             (begin
               (set id-right (db-relation-data->id val-relation-data.mv-data))
               (set status
@@ -350,7 +350,7 @@
           (<= (db-relation-data->ordinal val-relation-data.mv-data) ordinal-max))
         (begin
           (set id-right (db-relation-data->id val-relation-data.mv-data))
-          (if (or (not right-pointer) (imht-set-contains right-set id-right))
+          (if (or (not right-pointer) (db-id-set-get right-set id-right))
             (begin
               (set status
                 (db-relation-internal-delete-relation-rl relation-rl id-left id-right id-label))
@@ -414,7 +414,7 @@
         (begin
           (if
             (or (not right-pointer)
-              (imht-set-contains right-set (db-relation-data->id val-relation-data.mv-data)))
+              (db-id-set-get right-set (db-relation-data->id val-relation-data.mv-data)))
             (begin
               (sc-comment "delete relation-rl")
               (set
@@ -450,7 +450,7 @@
     id-left db-id-t
     id-right db-id-t
     id-label db-id-t
-    right-set imht-set-t*)
+    right-set db-id-set-t)
   (i-array-declare left db-ids-t)
   (i-array-declare right db-ids-t)
   (i-array-declare label db-ids-t)

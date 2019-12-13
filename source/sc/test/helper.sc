@@ -98,7 +98,7 @@
   status-declare
   (db-relation-selection-declare selection)
   (i-array-declare relations db-relations-t)
-  (status-require (db-relations-new (* left-count right-count label-count) &relations))
+  (status-i-require (db-relations-new (* left-count right-count label-count) &relations))
   (status-require-read (db-relation-select txn 0 0 0 0 &selection))
   (status-require-read (db-relation-read &selection 0 &relations))
   (printf "all ")
@@ -155,7 +155,7 @@
 (define (db-ids-reverse a result) (status-t db-ids-t db-ids-t*)
   status-declare
   (declare temp db-ids-t)
-  (status-require (db-ids-new (i-array-length a) &temp))
+  (status-i-require (db-ids-new (i-array-length a) &temp))
   (while (i-array-in-range a) (i-array-add temp (i-array-get a)) (i-array-forward a))
   (set *result temp)
   (label exit (return status)))
@@ -222,7 +222,7 @@
   especially with relation reading where order lead to lucky success results"
   status-declare
   (declare id db-id-t result-temp db-ids-t)
-  (status-require (db-ids-new count &result-temp))
+  (status-i-require (db-ids-new count &result-temp))
   (while count
     (sc-comment "use type id zero to have small record ids for testing which are easier to debug")
     (status-require (db-sequence-next txn.env 0 &id))
@@ -243,7 +243,7 @@
     target-count (+ (i-array-length ids-a) (i-array-length ids-b))
     start-mixed (/ target-count 4)
     start-new (- target-count start-mixed))
-  (status-require (db-ids-new target-count &ids-result))
+  (status-i-require (db-ids-new target-count &ids-result))
   (for ((set i 0) (< i target-count) (set i (+ 1 i)))
     (if (< i start-mixed)
       (begin (i-array-add ids-result (i-array-get ids-a)) (i-array-forward ids-a))
@@ -415,10 +415,10 @@
   (i-array-declare ne-left db-ids-t)
   (i-array-declare ne-right db-ids-t)
   (i-array-declare ne-label db-ids-t)
-  (status-require (db-relations-new (* e-left-count e-right-count e-label-count) &r:relations))
-  (status-require (db-ids-new e-left-count &r:e-left))
-  (status-require (db-ids-new e-right-count &r:e-right))
-  (status-require (db-ids-new e-label-count &r:e-label))
+  (status-i-require (db-relations-new (* e-left-count e-right-count e-label-count) &r:relations))
+  (status-i-require (db-ids-new e-left-count &r:e-left))
+  (status-i-require (db-ids-new e-right-count &r:e-right))
+  (status-i-require (db-ids-new e-label-count &r:e-label))
   (status-require (db-txn-write-begin &txn))
   (test-helper-create-ids txn e-left-count &r:e-left)
   (test-helper-create-ids txn e-right-count &r:e-right)
@@ -487,9 +487,9 @@
     btree-count-deleted-expected
     (test-helper-estimate-relation-read-btree-entry-count data.e-left-count data.e-right-count
       data.e-label-count ordinal))
-  (status-require (db-ids-new data.e-left-count &left))
-  (status-require (db-ids-new data.e-right-count &right))
-  (status-require (db-ids-new data.e-label-count &label))
+  (status-i-require (db-ids-new data.e-left-count &left))
+  (status-i-require (db-ids-new data.e-right-count &right))
+  (status-i-require (db-ids-new data.e-label-count &label))
   (db-relations-new (* data.e-left-count data.e-right-count data.e-label-count) &relations)
   (status-require (db-txn-write-begin &txn))
   (test-helper-create-ids txn data.e-left-count &left)

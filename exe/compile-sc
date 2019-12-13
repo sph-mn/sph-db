@@ -24,12 +24,12 @@ copy_submodules() {
   # copy code files from submodules.
   # to not have the whole submodule repository in the source directory
   a=submodules/sph-sc-lib/source/sc/main
-  f="$s/foreign"
-  mkdir -p "$f/sph" &&
-  cp --update --target-directory="$f" "$a/sph.sc" &&
-  cp --update --target-directory="$f/sph" \
-     "$a/status.sc" "$a/i-array.sc" "$a/imht-set.sc" \
-     "$a/string.sc" "$a/filesystem.sc" "$a/helper.sc"
+  b="$s/foreign/sph"
+  mkdir -p "$b" &&
+  cp --update --target-directory="$b" \
+     "$a/status.sc" "$a/i-array.sc" "$a/set.sc" \
+     "$a/string.sc" "$a/filesystem.sc" "$a/helper.sc" \
+     "$a/helper2.sc" "$a/sph.sc"
 }
 
 compile_sc() {
@@ -39,9 +39,9 @@ compile_sc() {
   cd "$s" &&
   find -type f -name "*.sc" -exec sc --parents '{}' "$c" \; &&
   cd "$root" &&
+  # config.c is user editable and already in sph-db.h
   find "$c" -type f -exec ./exe/format-c -i '{}' \; &&
-	# config.c is user variable and already in sph-db.h
-	rm "$c/main/config.c" &&
+  rm "$c/main/config.c" &&
   mv "$c/main/sph-db.c" "$c/main/sph-db.h"
   mv "$c/main/sph-db-extra.c" "$c/main/sph-db-extra.h"
 }

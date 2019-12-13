@@ -273,10 +273,10 @@ status_t db_relation_read_1001_1101(db_relation_selection_t* selection, db_count
   db_declare_relation_data(relation_data);
   MDB_cursor* relation_lr;
   db_ids_t left;
-  imht_set_t* right;
+  db_id_set_t* right;
   relation_lr = selection->cursor;
   left = selection->left;
-  right = selection->ids_set;
+  right = selection->id_set;
   relation_key[0] = i_array_get(left);
   db_relation_reader_define_ordinal_variables(selection);
   db_relation_data_set_ordinal(relation_data, ordinal_min);
@@ -315,7 +315,7 @@ each_data:
   stop_if_count_zero;
   if (!ordinal_max || (db_relation_data_to_ordinal((val_relation_data.mv_data)) <= ordinal_max)) {
     /* ordinal-min is checked because the set-range can be skipped */
-    if ((!ordinal_min || (db_relation_data_to_ordinal((val_relation_data.mv_data)) >= ordinal_min)) && (!right || imht_set_contains(right, (db_relation_data_to_id((val_relation_data.mv_data)))))) {
+    if ((!ordinal_min || (db_relation_data_to_ordinal((val_relation_data.mv_data)) >= ordinal_min)) && (!right || db_id_set_get((*right), (db_relation_data_to_id((val_relation_data.mv_data)))))) {
       if (!skip) {
         relation.left = db_pointer_to_id((val_relation_key.mv_data));
         relation.label = db_pointer_to_id_at((val_relation_key.mv_data), 1);
@@ -345,11 +345,11 @@ status_t db_relation_read_1011_1111(db_relation_selection_t* selection, db_count
   MDB_cursor* relation_lr;
   db_ids_t left;
   db_ids_t label;
-  imht_set_t* right;
+  db_id_set_t* right;
   relation_lr = selection->cursor;
   left = selection->left;
   label = selection->label;
-  right = selection->ids_set;
+  right = selection->id_set;
   relation_key[0] = i_array_get(left);
   relation_key[1] = i_array_get(label);
   db_relation_reader_define_ordinal_variables(selection);
@@ -386,7 +386,7 @@ each_data:
   stop_if_count_zero;
   if (!ordinal_max || (db_relation_data_to_ordinal((val_relation_data.mv_data)) <= ordinal_max)) {
     /* ordinal-min is checked because the get-both-range can be skipped */
-    if ((!ordinal_min || (db_relation_data_to_ordinal((val_relation_data.mv_data)) >= ordinal_min)) && (!right || imht_set_contains(right, (db_relation_data_to_id((val_relation_data.mv_data)))))) {
+    if ((!ordinal_min || (db_relation_data_to_ordinal((val_relation_data.mv_data)) >= ordinal_min)) && (!right || db_id_set_get((*right), (db_relation_data_to_id((val_relation_data.mv_data)))))) {
       if (!skip) {
         relation.left = db_pointer_to_id((val_relation_key.mv_data));
         relation.label = db_pointer_to_id_at((val_relation_key.mv_data), 1);
@@ -661,7 +661,7 @@ exit:
 status_t db_relation_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal, db_relation_selection_t* selection) {
   status_declare;
   db_mdb_declare_val_null;
-  imht_set_t* right_set;
+  db_id_set_t* right_set;
   db_mdb_cursor_declare(relation_lr);
   db_mdb_cursor_declare(relation_rl);
   db_mdb_cursor_declare(relation_ll);
@@ -686,12 +686,13 @@ status_t db_relation_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_id
   selection->cursor = 0;
   selection->cursor_2 = 0;
   selection->options = 0;
-  selection->ids_set = 0;
+  selection->id_set = 0;
   if (left) {
     if (ordinal) {
       if (right) {
-        status_require((db_ids_to_set((*right), (&right_set))));
-        selection->ids_set = right_set;
+        status_require((sph_helper_malloc((sizeof(db_id_set_t)), (&right_set))));
+        status_require((db_ids_to_set((*right), right_set)));
+        selection->id_set = right_set;
         selection->options = (db_relation_selection_flag_is_set_right | selection->options);
       };
       db_relation_select_cursor_initialise(relation_lr, selection, cursor);
@@ -755,7 +756,8 @@ void db_relation_selection_finish(db_relation_selection_t* selection) {
   db_mdb_cursor_close_if_active((selection->cursor));
   db_mdb_cursor_close_if_active((selection->cursor_2));
   if (db_relation_selection_flag_is_set_right & selection->options) {
-    imht_set_destroy((selection->ids_set));
-    selection->ids_set = 0;
+    db_id_set_free((*(selection->id_set)));
+    free((selection->id_set));
+    selection->id_set = 0;
   };
 }

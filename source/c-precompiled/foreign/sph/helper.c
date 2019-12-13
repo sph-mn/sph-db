@@ -1,14 +1,14 @@
-/* depends on sph/status.c */
+/* depends on sph/status.c and libc */
 #include <stdlib.h>
 #include <inttypes.h>
 #include <stdio.h>
+enum { sph_helper_status_id_memory };
 #define sph_helper_status_group ((uint8_t*)("sph"))
 /** add explicit type cast to prevent compiler warning */
 #define sph_helper_malloc(size, result) sph_helper_primitive_malloc(size, ((void**)(result)))
 #define sph_helper_malloc_string(size, result) sph_helper_primitive_malloc_string(size, ((uint8_t**)(result)))
 #define sph_helper_calloc(size, result) sph_helper_primitive_calloc(size, ((void**)(result)))
 #define sph_helper_realloc(size, result) sph_helper_primitive_realloc(size, ((void**)(result)))
-enum { sph_helper_status_id_memory };
 uint8_t* sph_helper_status_description(status_t a) {
   uint8_t* b;
   if (sph_helper_status_id_memory == a.id) {
@@ -25,6 +25,7 @@ uint8_t* sph_helper_status_name(status_t a) {
     b = "unknown";
   };
 }
+/** allocation helpers use status-t and have a consistent interface */
 status_t sph_helper_primitive_malloc(size_t size, void** result) {
   status_declare;
   void* a;
@@ -70,23 +71,6 @@ status_t sph_helper_primitive_realloc(size_t size, void** block) {
     status.id = sph_helper_status_id_memory;
   };
   status_return;
-}
-/** get a decimal string representation of an unsigned integer */
-uint8_t* sph_helper_uint_to_string(uintmax_t a, size_t* result_len) {
-  size_t size;
-  uint8_t* result;
-  size = (1 + ((0 == a) ? 1 : (1 + log10(a))));
-  result = malloc(size);
-  if (!result) {
-    return (0);
-  };
-  if (snprintf(result, size, "%ju", a) < 0) {
-    free(result);
-    return (0);
-  } else {
-    *result_len = (size - 1);
-    return (result);
-  };
 }
 /** display the bits of an octet */
 void sph_helper_display_bits_u8(uint8_t a) {

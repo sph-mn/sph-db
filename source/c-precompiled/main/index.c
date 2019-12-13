@@ -36,7 +36,7 @@ status_t db_index_name(db_type_id_t type_id, db_fields_len_t* fields, db_fields_
   strings_len = (2 + fields_len);
   status_require((sph_helper_calloc((strings_len * sizeof(uint8_t*)), (&strings))));
   /* type id */
-  str = sph_helper_uint_to_string(type_id, (&str_len));
+  str = sph_helper2_uint_to_string(type_id, (&str_len));
   if (!str) {
     status_set_goto(db_status_group_db, db_status_id_memory);
   };
@@ -44,7 +44,7 @@ status_t db_index_name(db_type_id_t type_id, db_fields_len_t* fields, db_fields_
   strings[1] = str;
   /* field ids */
   for (i = 0; (i < fields_len); i = (1 + i)) {
-    str = sph_helper_uint_to_string((fields[i]), (&str_len));
+    str = sph_helper2_uint_to_string((fields[i]), (&str_len));
     if (!str) {
       status_set_goto(db_status_group_db, db_status_id_memory);
     };

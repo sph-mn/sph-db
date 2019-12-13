@@ -295,7 +295,7 @@ exit:
   }; \
   each_data_1100: \
   id_right = db_relation_data_to_id((val_relation_data.mv_data)); \
-  if (imht_set_contains(right_set, id_right)) { \
+  if (db_id_set_get(right_set, id_right)) { \
     status = db_relation_internal_delete_relation_rl(relation_rl, id_left, id_right, id_label); \
     db_mdb_status_expect_read; \
     db_mdb_status_require((mdb_cursor_del(relation_lr, 0))); \
@@ -334,7 +334,7 @@ exit:
       val_relation_key.mv_data = relation_key; \
       status.id = mdb_cursor_get(relation_lr, (&val_relation_key), (&val_relation_data), MDB_SET_KEY); \
       while (db_mdb_status_is_success) { \
-        if (imht_set_contains(right_set, (db_relation_data_to_id((val_relation_data.mv_data))))) { \
+        if (db_id_set_get(right_set, (db_relation_data_to_id((val_relation_data.mv_data))))) { \
           id_right = db_relation_data_to_id((val_relation_data.mv_data)); \
           status = db_relation_internal_delete_relation_rl(relation_rl, id_left, id_right, id_label); \
           db_mdb_status_expect_read; \
@@ -391,7 +391,7 @@ exit:
   /* get-both-range should have positioned cursor at >= ordinal-min */ \
   if (!ordinal_max || (db_relation_data_to_ordinal((val_relation_data.mv_data)) <= ordinal_max)) { \
     id_right = db_relation_data_to_id((val_relation_data.mv_data)); \
-    if (!right_pointer || imht_set_contains(right_set, id_right)) { \
+    if (!right_pointer || db_id_set_get(right_set, id_right)) { \
       status = db_relation_internal_delete_relation_rl(relation_rl, id_left, id_right, id_label); \
       db_mdb_status_expect_read; \
       db_mdb_status_require((mdb_cursor_del(relation_lr, 0))); \
@@ -458,7 +458,7 @@ exit:
   }; \
   each_data_1011_1111: \
   if (!ordinal_max || (db_relation_data_to_ordinal((val_relation_data.mv_data)) <= ordinal_max)) { \
-    if (!right_pointer || imht_set_contains(right_set, (db_relation_data_to_id((val_relation_data.mv_data))))) { \
+    if (!right_pointer || db_id_set_get(right_set, (db_relation_data_to_id((val_relation_data.mv_data))))) { \
       /* delete relation-rl */ \
       id_right = db_relation_data_to_id((val_relation_data.mv_data)); \
       status = db_relation_internal_delete_relation_rl(relation_rl, id_left, id_right, id_label); \
@@ -489,7 +489,7 @@ status_t db_relation_internal_delete(db_ids_t* left_pointer, db_ids_t* right_poi
   db_id_t id_left;
   db_id_t id_right;
   db_id_t id_label;
-  imht_set_t* right_set;
+  db_id_set_t right_set;
   i_array_declare(left, db_ids_t);
   i_array_declare(right, db_ids_t);
   i_array_declare(label, db_ids_t);

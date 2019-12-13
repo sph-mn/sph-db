@@ -5,8 +5,8 @@
   most bindings are generic macros that will work on any i-array type. i-array-add and i-array-forward go from left to right.
   examples:
     i_array_declare_type(my_type, int);
-    my_type a;
-    if(i_array_allocate_my_type(4, &a)) {
+    my_type_t a;
+    if(my_type_new(4, &a)) {
       // memory allocation error
     }
     i_array_add(a, 1);
@@ -26,22 +26,33 @@
      .unused: to have variable length content in a fixed length array. points outside the memory area after the last element has been added
      .end: start + max-length. (last-index + 1) of the allocated array
      .start: the beginning of the allocated array and used for rewind and free"
-    (declare name
+    (declare (pre-concat name _t)
       (type
         (struct
           (current element-type*)
           (unused element-type*)
           (end element-type*)
           (start element-type*))))
-    (define ((pre-concat i-array-allocate-custom_ name) length alloc a)
-      (uint8-t size-t (function-pointer void* size-t) name*)
+    (define ((pre-concat name _new-custom) length alloc a)
+      ; to use a custom allocator
+      (uint8-t size-t (function-pointer void* size-t) (pre-concat name _t*))
       (declare start element-type*)
       (set start (alloc (* length (sizeof element-type))))
       (if (not start) (return 1))
       (set a:start start a:current start a:unused start a:end (+ length start))
       (return 0))
-    (define ((pre-concat i-array-allocate_ name) length a) (uint8-t size-t name*)
-      (return ((pre-concat i-array-allocate-custom_ name) length malloc a))))
+    (define ((pre-concat name _new) length a) (uint8-t size-t (pre-concat name _t*))
+      (return ((pre-concat name _new-custom) length malloc a)))
+    (define ((pre-concat name _resize) a new-length) (uint8-t (pre-concat name _t*) size-t)
+      (declare start element-type*)
+      (set start (realloc a:start (* new-length (sizeof element-type))))
+      (if (not start) (return 1))
+      (set
+        a:current (+ start (- a:current a:start))
+        a:unused (+ start (- a:unused a:start))
+        a:start start
+        a:end (+ new-length start))
+      (return 0)))
   (i-array-declare a type)
   (begin
     "define so that in-range is false, length is zero and free doesnt fail.
@@ -55,6 +66,7 @@
   (i-array-in-range a) (< a.current a.unused)
   (i-array-get-at a index) (array-get a.start index)
   (i-array-get a) *a.current
+  (i-array-get-index a) (- a.current a.start)
   (i-array-forward a) (set a.current (+ 1 a.current))
   (i-array-rewind a) (set a.current a.start)
   (i-array-clear a) (set a.unused a.start)
@@ -70,5 +82,5 @@
      # example with a stack allocated array
      int other_array[4] = {1, 2, 0, 0};
      my_type a;
-     i_array_take(a, other_array, 4 2);"
+     i_array_take(a, other_array, 4, 2);"
     (set a:start source a:current source a:unused (+ count source) a:end (+ size source))))

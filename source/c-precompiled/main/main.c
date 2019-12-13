@@ -1,6 +1,7 @@
 #include <math.h>
 #include "./sph-db.h"
 #include "../foreign/sph/helper.c"
+#include "../foreign/sph/helper2.c"
 #include "../foreign/sph/string.c"
 #include "../foreign/sph/filesystem.c"
 #include "./sph-db-extra.h"
@@ -175,11 +176,13 @@ void db_debug_log_ids(db_ids_t a) {
   printf("\n");
 }
 /** display an ids set */
-void db_debug_log_ids_set(imht_set_t a) {
+void db_debug_log_ids_set(db_id_set_t a) {
   uint32_t i = 0;
   printf(("id set (%lu):"), (a.size));
   while ((i < a.size)) {
-    printf(" %lu", ((a.content)[i]));
+    if ((a.values)[i]) {
+      printf(" %lu", ((a.values)[i]));
+    };
     i = (1 + i);
   };
   printf("\n");
@@ -240,14 +243,14 @@ void* db_record_virtual_data(db_id_t id, void* result, size_t result_size) {
   memcpy(result, (&id), result_size);
   return (result);
 }
-status_t db_ids_to_set(db_ids_t a, imht_set_t** result) {
+status_t db_ids_to_set(db_ids_t a, db_id_set_t* result) {
   status_declare;
-  imht_set_t* b;
-  if (imht_set_create((db_ids_length(a)), (&b))) {
+  db_id_set_t b;
+  if (db_id_set_new((db_ids_length(a)), (&b))) {
     status_set_goto(db_status_group_db, db_status_id_memory);
   };
   while (i_array_in_range(a)) {
-    imht_set_add(b, (i_array_get(a)));
+    db_id_set_add(b, (i_array_get(a)));
     i_array_forward(a);
   };
   *result = b;
@@ -272,21 +275,8 @@ status_t db_read_name(uint8_t** data_pointer, uint8_t** result) {
 exit:
   return (status);
 }
-#define db_define_i_array_new(name, type) \
-  /** like i-array-allocate-* but returns status-t */ \
-  status_t name(size_t length, type* result) { \
-    status_declare; \
-    if (i_array_allocate_##type(length, result)) { \
-      status.id = db_status_id_memory; \
-      status.group = db_status_group_db; \
-    }; \
-    return (status); \
-  }
-db_define_i_array_new(db_ids_new, db_ids_t)
-  db_define_i_array_new(db_records_new, db_records_t)
-    db_define_i_array_new(db_relations_new, db_relations_t)
-  /** copies to a db-ids-t array all ids from a db-records-t array. result-ids is allocated by the caller */
-  void db_records_to_ids(db_records_t records, db_ids_t* result_ids) {
+/** copies to a db-ids-t array all ids from a db-records-t array. result-ids is allocated by the caller */
+void db_records_to_ids(db_records_t records, db_ids_t* result_ids) {
   while (i_array_in_range(records)) {
     i_array_add((*result_ids), ((i_array_get(records)).id));
     i_array_forward(records);

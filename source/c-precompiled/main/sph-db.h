@@ -61,8 +61,8 @@ typedef struct {
   most bindings are generic macros that will work on any i-array type. i-array-add and i-array-forward go from left to right.
   examples:
     i_array_declare_type(my_type, int);
-    my_type a;
-    if(i_array_allocate_my_type(4, &a)) {
+    my_type_t a;
+    if(my_type_new(4, &a)) {
       // memory allocation error
     }
     i_array_add(a, 1);
@@ -83,8 +83,8 @@ typedef struct {
     element_type* unused; \
     element_type* end; \
     element_type* start; \
-  } name; \
-  uint8_t i_array_allocate_custom_##name(size_t length, void* (*alloc)(size_t), name* a) { \
+  } name##_t; \
+  uint8_t name##_new_custom(size_t length, void* (*alloc)(size_t), name##_t* a) { \
     element_type* start; \
     start = alloc((length * sizeof(element_type))); \
     if (!start) { \
@@ -96,7 +96,19 @@ typedef struct {
     a->end = (length + start); \
     return (0); \
   } \
-  uint8_t i_array_allocate_##name(size_t length, name* a) { return ((i_array_allocate_custom_##name(length, malloc, a))); }
+  uint8_t name##_new(size_t length, name##_t* a) { return ((name##_new_custom(length, malloc, a))); } \
+  uint8_t name##_resize(name##_t* a, size_t new_length) { \
+    element_type* start; \
+    start = realloc((a->start), (new_length * sizeof(element_type))); \
+    if (!start) { \
+      return (1); \
+    }; \
+    a->current = (start + (a->current - a->start)); \
+    a->unused = (start + (a->unused - a->start)); \
+    a->start = start; \
+    a->end = (new_length + start); \
+    return (0); \
+  }
 /** define so that in-range is false, length is zero and free doesnt fail.
      can be used to create empty/null i-arrays */
 #define i_array_declare(a, type) type a = { 0, 0, 0, 0 }
@@ -110,6 +122,7 @@ typedef struct {
 #define i_array_in_range(a) (a.current < a.unused)
 #define i_array_get_at(a, index) (a.start)[index]
 #define i_array_get(a) *(a.current)
+#define i_array_get_index(a) (a.current - a.start)
 #define i_array_forward(a) a.current = (1 + a.current)
 #define i_array_rewind(a) a.current = a.start
 #define i_array_clear(a) a.unused = a.start
@@ -123,12 +136,160 @@ typedef struct {
      # example with a stack allocated array
      int other_array[4] = {1, 2, 0, 0};
      my_type a;
-     i_array_take(a, other_array, 4 2); */
+     i_array_take(a, other_array, 4, 2); */
 #define i_array_take(a, source, size, count) \
   a->start = source; \
   a->current = source; \
   a->unused = (count + source); \
   a->end = (size + source)
+/* a macro that defines set data types for arbitrary value types,
+using linear probing for collision resolve,
+with hash and equal functions customisable by defining macros and re-including the source.
+when sph-set-allow-empty-value is 1, then the empty value is stored at the first index of .values and the other values start at index 1.
+compared to hashtable.c, this uses less than half of the space and operations are faster (about 20% in first tests) */
+#include <stdlib.h>
+#include <inttypes.h>
+#define sph_set_hash_integer(value, hashtable_size) (value % hashtable_size)
+#define sph_set_equal_integer(value_a, value_b) (value_a == value_b)
+#ifndef sph_set_size_factor
+#define sph_set_size_factor 2
+#endif
+#ifndef sph_set_hash
+#define sph_set_hash sph_set_hash_integer
+#endif
+#ifndef sph_set_equal
+#define sph_set_equal sph_set_equal_integer
+#endif
+#ifndef sph_set_allow_empty_value
+#define sph_set_allow_empty_value 1
+#endif
+#ifndef sph_set_empty_value
+#define sph_set_empty_value 0
+#endif
+#ifndef sph_set_true_value
+#define sph_set_true_value 1
+#endif
+uint32_t sph_set_primes[] = { 53, 97, 193, 389, 769, 1543, 3079, 6151, 12289, 24593, 49157, 98317, 196613, 393241, 786433, 1572869, 3145739, 6291469, 12582917, 25165843, 50331653, 100663319, 201326611, 402653189, 805306457, 1610612741 };
+uint32_t* sph_set_primes_end = (sph_set_primes + 25);
+size_t sph_set_calculate_size(size_t min_size) {
+  min_size = (sph_set_size_factor * min_size);
+  uint32_t* primes;
+  for (primes = sph_set_primes; (primes <= sph_set_primes_end); primes += 1) {
+    if (min_size <= *primes) {
+      return ((*primes));
+    };
+  };
+  /* if no prime has been found, make size at least an odd number */
+  return ((1 | min_size));
+}
+#if sph_set_allow_empty_value
+#define sph_set_get_part_1 \
+  if (sph_set_equal(sph_set_empty_value, value)) { \
+    return ((sph_set_equal(sph_set_true_value, (*(a.values))) ? a.values : 0)); \
+  }; \
+  hash_i = (1 + sph_set_hash(value, (a.size - 1)));
+#define sph_set_get_part_2 i = 1
+#define sph_set_add_part_1 \
+  if (sph_set_equal(sph_set_empty_value, value)) { \
+    *(a.values) = sph_set_true_value; \
+    return ((a.values)); \
+  }; \
+  hash_i = (1 + sph_set_hash(value, (a.size - 1)));
+#define sph_set_add_part_2 i = 1
+#define sph_set_new_part_1 min_size += 1
+#else
+#define sph_set_get_part_1 hash_i = sph_set_hash(value, (a.size))
+#define sph_set_get_part_2 i = 0
+#define sph_set_add_part_1 hash_i = sph_set_hash(value, (a.size))
+#define sph_set_add_part_2 i = 0
+#define sph_set_new_part_1 0
+#endif
+#define sph_set_declare_type(name, value_type) \
+  typedef struct { \
+    size_t size; \
+    value_type* values; \
+  } name##_t; \
+  uint8_t name##_new(size_t min_size, name##_t* result) { \
+    value_type* values; \
+    min_size = sph_set_calculate_size(min_size); \
+    sph_set_new_part_1; \
+    values = calloc(min_size, (sizeof(value_type))); \
+    if (!values) { \
+      return (1); \
+    }; \
+    (*result).values = values; \
+    (*result).size = min_size; \
+    return (0); \
+  } \
+  void name##_free(name##_t a) { free((a.values)); } \
+\
+  /** returns the address of the value or 0 if it was not found. \
+        if sph-set-allow-empty-value is true and the value is included, then address points to a sph-set-true-value */ \
+  value_type* name##_get(name##_t a, value_type value) { \
+    size_t i; \
+    size_t hash_i; \
+    sph_set_get_part_1; \
+    i = hash_i; \
+    while ((i < a.size)) { \
+      if (sph_set_equal(sph_set_empty_value, ((a.values)[i]))) { \
+        return (0); \
+      } else { \
+        if (sph_set_equal(value, ((a.values)[i]))) { \
+          return ((i + a.values)); \
+        }; \
+      }; \
+      i += 1; \
+    }; \
+    /* wraps over */ \
+    sph_set_get_part_2; \
+    while ((i < hash_i)) { \
+      if (sph_set_equal(sph_set_empty_value, ((a.values)[i]))) { \
+        return (0); \
+      } else { \
+        if (sph_set_equal(value, ((a.values)[i]))) { \
+          return ((i + a.values)); \
+        }; \
+      }; \
+      i += 1; \
+    }; \
+    return (0); \
+  } \
+\
+  /** returns the address of the value or 0 if no space is left */ \
+  value_type* name##_add(name##_t a, value_type value) { \
+    size_t i; \
+    size_t hash_i; \
+    sph_set_add_part_1; \
+    i = hash_i; \
+    while ((i < a.size)) { \
+      if (sph_set_equal(sph_set_empty_value, ((a.values)[i]))) { \
+        (a.values)[i] = value; \
+        return ((i + a.values)); \
+      }; \
+      i += 1; \
+    }; \
+    /* wraps over */ \
+    sph_set_add_part_2; \
+    while ((i < hash_i)) { \
+      if (sph_set_equal(sph_set_empty_value, ((a.values)[i]))) { \
+        (a.values)[i] = value; \
+        return ((i + a.values)); \
+      }; \
+      i += 1; \
+    }; \
+    return (0); \
+  } \
+\
+  /** returns 0 if the element was removed, 1 if it was not found */ \
+  uint8_t name##_remove(name##_t a, value_type value) { \
+    value_type* v = name##_get(a, value); \
+    if (v) { \
+      *v = sph_set_empty_value; \
+      return (0); \
+    } else { \
+      return (1); \
+    }; \
+  }
 typedef struct {
   db_id_t left;
   db_id_t right;
@@ -140,9 +301,10 @@ typedef struct {
   void* data;
   size_t size;
 } db_record_t;
-i_array_declare_type(db_ids_t, db_id_t)
-  i_array_declare_type(db_records_t, db_record_t)
-    i_array_declare_type(db_relations_t, db_relation_t)
+i_array_declare_type(db_ids, db_id_t)
+  i_array_declare_type(db_records, db_record_t)
+    i_array_declare_type(db_relations, db_relation_t)
+      sph_set_declare_type(db_id_set, db_id_t)
 #define db_format_version 1
 #define db_status_group_sph "sph"
 #define db_status_group_db "sph-db"
@@ -264,7 +426,7 @@ i_array_declare_type(db_ids_t, db_id_t)
   name.cursor = 0; \
   name.cursor_2 = 0; \
   name.options = 0; \
-  name.ids_set = 0
+  name.id_set = 0
 #define db_relation_selection_declare(name) \
   db_relation_selection_t name; \
   db_relation_selection_set_null(name)
@@ -290,26 +452,26 @@ i_array_declare_type(db_ids_t, db_id_t)
 #define db_type_is_virtual(type) (db_type_flag_virtual & type->flags)
 #define db_record_is_virtual(env, record_id) db_type_is_virtual((db_type_get_by_id(env, (db_id_type(record_id)))))
 #define db_record_virtual_from_uint(type_id, data) db_id_add_type(data, type_id)
-      enum { db_status_id_success,
-        db_status_id_undefined,
-        db_status_id_condition_unfulfilled,
-        db_status_id_data_length,
-        db_status_id_different_format,
-        db_status_id_duplicate,
-        db_status_id_input_type,
-        db_status_id_invalid_argument,
-        db_status_id_max_element_id,
-        db_status_id_max_type_id,
-        db_status_id_max_type_id_size,
-        db_status_id_memory,
-        db_status_id_missing_argument_db_root,
-        db_status_id_notfound,
-        db_status_id_not_implemented,
-        db_status_id_path_not_accessible_db_root,
-        db_status_id_index_keysize,
-        db_status_id_type_field_order,
-        db_status_id_invalid_field_type,
-        db_status_id_last };
+        enum { db_status_id_success,
+          db_status_id_undefined,
+          db_status_id_condition_unfulfilled,
+          db_status_id_data_length,
+          db_status_id_different_format,
+          db_status_id_duplicate,
+          db_status_id_input_type,
+          db_status_id_invalid_argument,
+          db_status_id_max_element_id,
+          db_status_id_max_type_id,
+          db_status_id_max_type_id_size,
+          db_status_id_memory,
+          db_status_id_missing_argument_db_root,
+          db_status_id_notfound,
+          db_status_id_not_implemented,
+          db_status_id_path_not_accessible_db_root,
+          db_status_id_index_keysize,
+          db_status_id_type_field_order,
+          db_status_id_invalid_field_type,
+          db_status_id_last };
 typedef uint8_t db_field_type_size_t;
 typedef struct {
   uint8_t* name;
@@ -406,7 +568,7 @@ typedef struct {
   db_ids_t left;
   db_ids_t right;
   db_ids_t label;
-  void* ids_set;
+  db_id_set_t* id_set;
   db_ordinal_condition_t ordinal;
   uint8_t options;
   void* reader;
@@ -424,9 +586,6 @@ status_t db_type_delete(db_env_t* env, db_type_id_t id);
 uint8_t db_field_type_size(db_field_type_t a);
 uint8_t* db_status_description(status_t a);
 uint8_t* db_status_name(status_t a);
-status_t db_ids_new(size_t length, db_ids_t* result_ids);
-status_t db_records_new(size_t length, db_records_t* result_records);
-status_t db_relations_new(size_t length, db_relations_t* result_relations);
 void db_records_to_ids(db_records_t records, db_ids_t* result_ids);
 void db_relation_selection_finish(db_relation_selection_t* selection);
 status_t db_relation_select(db_txn_t txn, db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal, db_relation_selection_t* result);

@@ -1,6 +1,6 @@
 (pre-include "math.h" "./sph-db.h"
-  "../foreign/sph/helper.c" "../foreign/sph/string.c" "../foreign/sph/filesystem.c"
-  "./sph-db-extra.h" "./lmdb.c")
+  "../foreign/sph/helper.c" "../foreign/sph/helper2.c" "../foreign/sph/string.c"
+  "../foreign/sph/filesystem.c" "./sph-db-extra.h" "./lmdb.c")
 
 (pre-define
   (free-and-set-null a) (begin (free a) (set a 0))
@@ -113,11 +113,13 @@
   (while (i-array-in-range a) (printf " %lu" (i-array-get a)) (i-array-forward a))
   (printf "\n"))
 
-(define (db-debug-log-ids-set a) (void imht-set-t)
+(define (db-debug-log-ids-set a) (void db-id-set-t)
   "display an ids set"
   (define i uint32-t 0)
   (printf "id set (%lu):" a.size)
-  (while (< i a.size) (printf " %lu" (array-get a.content i)) (set i (+ 1 i)))
+  (while (< i a.size)
+    (if (array-get a.values i) (printf " %lu" (array-get a.values i)))
+    (set i (+ 1 i)))
   (printf "\n"))
 
 (define (db-debug-log-relations a) (void db-relations-t)
@@ -183,12 +185,11 @@
   (memcpy result &id result-size)
   (return result))
 
-(define (db-ids->set a result) (status-t db-ids-t imht-set-t**)
+(define (db-ids->set a result) (status-t db-ids-t db-id-set-t*)
   status-declare
-  (declare b imht-set-t*)
-  (if (imht-set-create (db-ids-length a) &b)
-    (status-set-goto db-status-group-db db-status-id-memory))
-  (while (i-array-in-range a) (imht-set-add b (i-array-get a)) (i-array-forward a))
+  (declare b db-id-set-t)
+  (if (db-id-set-new (db-ids-length a) &b) (status-set-goto db-status-group-db db-status-id-memory))
+  (while (i-array-in-range a) (db-id-set-add b (i-array-get a)) (i-array-forward a))
   (set *result b)
   (label exit (return status)))
 
@@ -206,18 +207,6 @@
   (memcpy name data len)
   (set *data-pointer (+ len data) *result name)
   (label exit (return status)))
-
-(pre-define (db-define-i-array-new name type)
-  (define (name length result) (status-t size-t type*)
-    "like i-array-allocate-* but returns status-t"
-    status-declare
-    (if ((pre-concat i-array-allocate_ type) length result)
-      (set status.id db-status-id-memory status.group db-status-group-db))
-    (return status)))
-
-(db-define-i-array-new db-ids-new db-ids-t)
-(db-define-i-array-new db-records-new db-records-t)
-(db-define-i-array-new db-relations-new db-relations-t)
 
 (define (db-records->ids records result-ids) (void db-records-t db-ids-t*)
   "copies to a db-ids-t array all ids from a db-records-t array. result-ids is allocated by the caller"

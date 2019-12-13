@@ -96,7 +96,7 @@ status_t test_helper_display_all_relations(db_txn_t txn, uint32_t left_count, ui
   status_declare;
   db_relation_selection_declare(selection);
   i_array_declare(relations, db_relations_t);
-  status_require((db_relations_new((left_count * right_count * label_count), (&relations))));
+  status_i_require((db_relations_new((left_count * right_count * label_count), (&relations))));
   status_require_read((db_relation_select(txn, 0, 0, 0, 0, (&selection))));
   status_require_read((db_relation_read((&selection), 0, (&relations))));
   printf("all ");
@@ -165,7 +165,7 @@ boolean db_ids_contains(db_ids_t ids, db_id_t id) {
 status_t db_ids_reverse(db_ids_t a, db_ids_t* result) {
   status_declare;
   db_ids_t temp;
-  status_require((db_ids_new((i_array_length(a)), (&temp))));
+  status_i_require((db_ids_new((i_array_length(a)), (&temp))));
   while (i_array_in_range(a)) {
     i_array_add(temp, (i_array_get(a)));
     i_array_forward(a);
@@ -240,7 +240,7 @@ status_t test_helper_create_ids(db_txn_t txn, uint32_t count, db_ids_t* result) 
   status_declare;
   db_id_t id;
   db_ids_t result_temp;
-  status_require((db_ids_new(count, (&result_temp))));
+  status_i_require((db_ids_new(count, (&result_temp))));
   while (count) {
     /* use type id zero to have small record ids for testing which are easier to debug */
     status_require((db_sequence_next((txn.env), 0, (&id))));
@@ -265,7 +265,7 @@ status_t test_helper_interleave_ids(db_txn_t txn, db_ids_t ids_a, db_ids_t ids_b
   target_count = (i_array_length(ids_a) + i_array_length(ids_b));
   start_mixed = (target_count / 4);
   start_new = (target_count - start_mixed);
-  status_require((db_ids_new(target_count, (&ids_result))));
+  status_i_require((db_ids_new(target_count, (&ids_result))));
   for (i = 0; (i < target_count); i = (1 + i)) {
     if (i < start_mixed) {
       i_array_add(ids_result, (i_array_get(ids_a)));
@@ -435,10 +435,10 @@ status_t test_helper_relation_read_setup(db_env_t* env, uint32_t e_left_count, u
   i_array_declare(ne_left, db_ids_t);
   i_array_declare(ne_right, db_ids_t);
   i_array_declare(ne_label, db_ids_t);
-  status_require((db_relations_new((e_left_count * e_right_count * e_label_count), (&(r->relations)))));
-  status_require((db_ids_new(e_left_count, (&(r->e_left)))));
-  status_require((db_ids_new(e_right_count, (&(r->e_right)))));
-  status_require((db_ids_new(e_label_count, (&(r->e_label)))));
+  status_i_require((db_relations_new((e_left_count * e_right_count * e_label_count), (&(r->relations)))));
+  status_i_require((db_ids_new(e_left_count, (&(r->e_left)))));
+  status_i_require((db_ids_new(e_right_count, (&(r->e_right)))));
+  status_i_require((db_ids_new(e_label_count, (&(r->e_label)))));
   status_require((db_txn_write_begin((&txn))));
   test_helper_create_ids(txn, e_left_count, (&(r->e_left)));
   test_helper_create_ids(txn, e_right_count, (&(r->e_right)));
@@ -500,9 +500,9 @@ status_t test_helper_relation_delete_one(test_helper_relation_delete_data_t data
   ordinal = &ordinal_condition;
   read_count_before_expected = test_helper_estimate_relation_read_result_count((data.e_left_count), (data.e_right_count), (data.e_label_count), ordinal);
   btree_count_deleted_expected = test_helper_estimate_relation_read_btree_entry_count((data.e_left_count), (data.e_right_count), (data.e_label_count), ordinal);
-  status_require((db_ids_new((data.e_left_count), (&left))));
-  status_require((db_ids_new((data.e_right_count), (&right))));
-  status_require((db_ids_new((data.e_label_count), (&label))));
+  status_i_require((db_ids_new((data.e_left_count), (&left))));
+  status_i_require((db_ids_new((data.e_right_count), (&right))));
+  status_i_require((db_ids_new((data.e_label_count), (&label))));
   db_relations_new((data.e_left_count * data.e_right_count * data.e_label_count), (&relations));
   status_require((db_txn_write_begin((&txn))));
   test_helper_create_ids(txn, (data.e_left_count), (&left));
