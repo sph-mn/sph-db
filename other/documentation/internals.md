@@ -120,15 +120,15 @@ not supported
     * 3e6 relations: 768 megabit
 
 ## potential new features to reduce this
-* optional unidirectional relations
+* optional unidirectional relations - records might already be the solution
 * no label-to-left indexing
-* shorter identifiers for labels by not using records but a new label datatype
+* shorter identifiers for labels by not using (virtual-) record ids but a custom size label datatype
 
 this could together reduce the minimum required size per relation to (2 * id-size + label-size + ordinal-size)
 
 # code
 * ``sph-db-extra.h`` contains declarations for internally used things
-* the code assumes that "mdb_cursor_close" can be called with null pointers at some places
+* the code assumes at some places that "mdb_cursor_close" can be called with null pointers
 
 ## db-relation-select
 * chooses the reader, relevant databases and other values to use for the search

@@ -5,7 +5,7 @@ sph-db is considered feature complete and in beta as of 2018-10, you can try it 
 * license: lgpl3+
 
 # project goals
-* a fast nosql database as a shared library to store records
+* a (very) fast nosql database as a shared library to store records
 * graph-like many-to-many relations without having to manage junction tables
 
 # features
@@ -125,8 +125,8 @@ status_require(db_type_create(env, "test-type-name", fields, 4, 0, &type));
 
 fields can be fixed length (for example for integers and floating point values) or variable length.
 all fixed size fields must come before variable size fields or an error is returned.
-possible field types are db_field_type_* macro variables, see api reference below. field types with ``f`` at the end
-are of fixed size, others are variable size and the number is the size of the datatype where the actual data size is stored.
+possible field types are db_field_type_* macro variables, see api reference below. field type names ending with ``f``
+are of fixed size, others are variable size. on variable size type names, the affixed number is the number of bits for storing the actual size.
 apart from indicating storage type and size, field types are a hint because no conversions take place
 
 ## create records
@@ -143,7 +143,7 @@ uint8_t* value_4 = "abcde";
 status_require(db_record_values_new(type, &values));
 // set field values.
 // size argument is ignored for fixed length types.
-// strings can be stored with or without a trailing null character.
+// in this example the strings are stored without a trailing null character.
 // arguments: db_record_values_t*, field_index, value_address, size.
 db_record_values_set(&values, 0, &value_1, 0);
 db_record_values_set(&values, 1, &value_2, 0);
@@ -350,7 +350,7 @@ if(db_status_id_notfound != status.id) {
 
 ## virtual records
 virtual records carry the data in the identifier and only exist in relations or field data. one use-case are relations with a possibly large number of numeric values that dont need a separate data record, for example timestamps. they are to save space and processing costs. they can store data of any type that is equal to or smaller than id-size minus type-size.
-to create a virtual record type, pass ``db_type_flag_virtual`` to ``db_type_create`` and only specify one field
+to create a virtual record type, use ``db_type_flag_virtual`` with ``db_type_create`` and only define a single field
 
 ```c
 db_id_t id;
@@ -709,10 +709,10 @@ these values can be set before compilation in ``c-precompiled/main/sph-db.h``. o
 * ordinals are primarily intended to store relations in a pre-calculated order for fast ordered retrieval
 * to use db_relation_select and a filter by ordinal, "left" filter values must be given
 * readers can return results and indicate the end of results in the same call
-* the maximum number types, or type creations more precisely, is currently 65535. this limit could be removed in the future
+* the maximum number of types, or type creations more precisely, is currently 65535. this limit could be removed in the future
 
 # possible enhancements
-* having the compile-time configuration in the versioned sph-db.h isnt a good solution
+* having the compile-time configuration in the versioned sph-db.h isnt ideal
 * float values as ordinals has not been tested
 * currently index inserts with data too large are rejected with an error. maybe add an option to control what happens, for example to truncate instead
 * signal error when creating index for fields that are or might be too large
@@ -724,7 +724,7 @@ these values can be set before compilation in ``c-precompiled/main/sph-db.h``. o
 * partial indices. with a data filter function given at index definition
 * at some places MDB_SET_RANGE and MDB_GET_BOTH_RANGE is used in succession. maybe get-both-range includes set-range and the latter can be left out
 * search with matcher functions in index keys
-* simplified naming for status bindings. status_require is a long word to be written frequently
+* aliases for status bindings. status_require is a relatively long word to be written repeatedly
 
 # development
 this section is for when you want to change sph-db itself.
