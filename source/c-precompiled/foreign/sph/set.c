@@ -1,12 +1,15 @@
 /* a macro that defines set data types for arbitrary value types,
 using linear probing for collision resolve,
-with hash and equal functions customisable by defining macros and re-including the source.
+hash and equal functions are customisable by defining macros and re-including the source.
+sph-set-empty-value and sph-set-true-value need to be set for values types other than integers.
 when sph-set-allow-empty-value is 1, then the empty value is stored at the first index of .values and the other values start at index 1.
+the default hash functions work on integers.
 compared to hashtable.c, this uses less than half of the space and operations are faster (about 20% in first tests) */
 #include <stdlib.h>
 #include <inttypes.h>
 #define sph_set_hash_integer(value, hashtable_size) (value % hashtable_size)
 #define sph_set_equal_integer(value_a, value_b) (value_a == value_b)
+/* sph-set-true-value is used only at index 0 for the empty-value */
 #ifndef sph_set_size_factor
 #define sph_set_size_factor 2
 #endif
@@ -80,7 +83,7 @@ size_t sph_set_calculate_size(size_t min_size) {
   void name##_free(name##_t a) { free((a.values)); } \
 \
   /** returns the address of the value or 0 if it was not found. \
-        if sph-set-allow-empty-value is true and the value is included, then address points to a sph-set-true-value */ \
+        if sph_set_allow_empty_value is true and the value is included, then address points to a sph_set_true_value */ \
   value_type* name##_get(name##_t a, value_type value) { \
     size_t i; \
     size_t hash_i; \

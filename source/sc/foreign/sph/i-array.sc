@@ -1,21 +1,21 @@
 (sc-comment
   "\"iteration array\" - an array with variable length content that makes iteration easier to code.
-  saves the size argument that usually has to be passed with arrays and saves the declaration of index counter variables.
-  the data structure consists of only 4 pointers in a struct.
-  most bindings are generic macros that will work on any i-array type. i-array-add and i-array-forward go from left to right.
-  examples:
-    i_array_declare_type(my_type, int);
-    my_type_t a;
-    if(my_type_new(4, &a)) {
-      // memory allocation error
-    }
-    i_array_add(a, 1);
-    i_array_add(a, 2);
-    while(i_array_in_range(a)) {
-      i_array_get(a);
-      i_array_forward(a);
-    }
-    i_array_free(a);")
+   saves the size argument that usually has to be passed with arrays and saves the declaration of index counter variables.
+   the data structure consists of only 4 pointers in a struct.
+   most bindings are generic macros that will work on any i-array type. i-array-add and i-array-forward go from left to right.
+   examples:
+     i_array_declare_type(my_type, int);
+     my_type_t a;
+     if(my_type_new(4, &a)) {
+       // memory allocation error
+     }
+     i_array_add(a, 1);
+     i_array_add(a, 2);
+     while(i_array_in_range(a)) {
+       i_array_get(a);
+       i_array_forward(a);
+     }
+     i_array_free(a);")
 
 (pre-include "stdlib.h")
 
@@ -34,7 +34,6 @@
           (end element-type*)
           (start element-type*))))
     (define ((pre-concat name _new-custom) length alloc a)
-      ; to use a custom allocator
       (uint8-t size-t (function-pointer void* size-t) (pre-concat name _t*))
       (declare start element-type*)
       (set start (alloc (* length (sizeof element-type))))
@@ -42,17 +41,21 @@
       (set a:start start a:current start a:unused start a:end (+ length start))
       (return 0))
     (define ((pre-concat name _new) length a) (uint8-t size-t (pre-concat name _t*))
+      "return 0 on success, 1 for memory allocation error"
       (return ((pre-concat name _new-custom) length malloc a)))
-    (define ((pre-concat name _resize) a new-length) (uint8-t (pre-concat name _t*) size-t)
-      (declare start element-type*)
-      (set start (realloc a:start (* new-length (sizeof element-type))))
+    (define ((pre-concat name _resize-custom) a new-length realloc)
+      (uint8-t (pre-concat name _t*) size-t (function-pointer void* void* size-t))
+      (define start element-type* (realloc a:start (* new-length (sizeof element-type))))
       (if (not start) (return 1))
       (set
         a:current (+ start (- a:current a:start))
         a:unused (+ start (- a:unused a:start))
         a:start start
         a:end (+ new-length start))
-      (return 0)))
+      (return 0))
+    (define ((pre-concat name _resize) a new-length) (uint8-t (pre-concat name _t*) size-t)
+      "return 0 on success, 1 for realloc error"
+      (return ((pre-concat name _resize-custom) a new-length realloc))))
   (i-array-declare a type)
   (begin
     "define so that in-range is false, length is zero and free doesnt fail.
@@ -76,7 +79,7 @@
   (i-array-free a) (free a.start)
   (i-array-take a source size count)
   (begin
-    "create an i-array from a standard array.
+    "move a standard array into an i-array
      sets source as data array to use, with the first count number of slots used.
      source will not be copied but used as is, and i-array-free would free it.
      # example with a stack allocated array
