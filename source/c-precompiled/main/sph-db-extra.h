@@ -1,4 +1,6 @@
+
 /* secondary api for dealing with internals */
+
 #define db_system_label_format 0
 #define db_system_label_type 1
 #define db_system_label_index 2

@@ -1,3 +1,4 @@
+
 #include "./helper.c"
 /* the following values should not be below 3, or important cases would not be tested.
    the values should also not be so high that the linearly created ordinals exceed the size of the ordinal type.
@@ -81,6 +82,7 @@ status_t test_type_create_get_delete(db_env_t* env) {
 exit:
   return (status);
 }
+
 /** create several types, particularly to test automatic env:types array resizing */
 status_t test_type_create_many(db_env_t* env) {
   status_declare;
@@ -139,6 +141,7 @@ status_t test_open_nonempty(db_env_t* env) {
 exit:
   return (status);
 }
+
 /** test features related to the combination of element and type id to record id */
 status_t test_id_construction(db_env_t* env) {
   status_declare;
@@ -177,6 +180,7 @@ exit:
   test_helper_relation_read_teardown((&data));
   return (status);
 }
+
 /** some assertions depend on the correctness of relation-read */
 status_t test_relation_delete(db_env_t* env) {
   status_declare;
@@ -359,6 +363,7 @@ status_t test_helper_dbi_entry_count(db_txn_t txn, MDB_dbi dbi, size_t* result) 
 exit:
   return (status);
 }
+
 /** float data currently not implemented because it is unknown how to store it in the id */
 status_t test_record_virtual(db_env_t* env) {
   status_declare;

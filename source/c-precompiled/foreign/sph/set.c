@@ -1,3 +1,4 @@
+
 /* a macro that defines set data types for arbitrary value types,
 using linear probing for collision resolve,
 hash and equal functions are customisable by defining macros and re-including the source.
@@ -7,9 +8,12 @@ the default hash functions work on integers.
 compared to hashtable.c, this uses less than half of the space and operations are faster (about 20% in first tests) */
 #include <stdlib.h>
 #include <inttypes.h>
+
 #define sph_set_hash_integer(value, hashtable_size) (value % hashtable_size)
 #define sph_set_equal_integer(value_a, value_b) (value_a == value_b)
+
 /* sph-set-true-value is used only at index 0 for the empty-value */
+
 #ifndef sph_set_size_factor
 #define sph_set_size_factor 2
 #endif

@@ -1,3 +1,4 @@
+
 #define notfound_exit status_set_goto(db_status_group_db, db_status_id_notfound)
 #define db_relation_select_cursor_initialise(name, selection, selection_field_name) \
   db_mdb_status_require((db_mdb_env_cursor_open(txn, name))); \
@@ -651,6 +652,7 @@ each_data:
 exit:
   return (status);
 }
+
 /** prepare the selection and select the reader.
   readers are specialised for filter combinations.
   the 1/0 pattern at the end of reader names corresponds to the filter combination the reader is supposed to handle.
@@ -737,6 +739,7 @@ exit:
   db_mdb_status_notfound_if_notfound;
   return (status);
 }
+
 /** skip the next count result matches */
 status_t db_relation_skip(db_relation_selection_t* selection, db_count_t count) {
   status_declare;
@@ -745,6 +748,7 @@ status_t db_relation_skip(db_relation_selection_t* selection, db_count_t count) 
   selection->options = (db_selection_flag_skip ^ selection->options);
   return (status);
 }
+
 /** result memory is to be allocated by the caller */
 status_t db_relation_read(db_relation_selection_t* selection, db_count_t count, db_relations_t* result) {
   status_declare;

@@ -1,11 +1,13 @@
-#!/usr/bin/guile
+#!/usr/bin/env guile
 !#
 
 ; offers more installation options.
 ; depends on "sph-lib".
 ; see "./exe/install-extended --help"
+
 (import (sph install))
 
-(install-cli-guile ("/usr/lib" 493 "temp/libsph-db.so")
-  ("/usr/include" 493 "source/c-precompiled/main/sph-db.h"
+(install-cli
+  ("/usr/lib" 644 "temp/libsph-db.so")
+  ("/usr/include" 644 "source/c-precompiled/main/sph-db.h"
     "source/c-precompiled/main/sph-db-extra.h"))

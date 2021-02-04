@@ -1,3 +1,4 @@
+
 /* return status as integer code with group identifier
 for exception handling with a local variable and a goto label
 status id 0 is success, everything else can be considered a special case or failure

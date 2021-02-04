@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -8,6 +9,7 @@
 #include "../foreign/sph/helper.c"
 #include "../foreign/sph/string.c"
 #include "../foreign/sph/filesystem.c"
+
 #define test_helper_db_root "/tmp/sph-db-test"
 #define test_helper_path_data test_helper_db_root "/data"
 #define test_helper_test_one(f, env) \
@@ -20,6 +22,7 @@
     status.id = 1; \
     goto exit; \
   }
+
 /** define a function that searches for an id in an array of relations at field */
 #define test_helper_define_relations_contains_at(field_name) \
   boolean db_debug_relations_contains_at_##field_name(db_relations_t relations, db_id_t id) { \
@@ -33,6 +36,7 @@
     }; \
     return (0); \
   }
+
 /** define a function for getting a field from a relation record, to use with a function pointer */
 #define test_helper_define_relation_get(field_name) \
   db_id_t test_helper_relation_get_##field_name(db_relation_t record) { return ((record.field_name)); }
@@ -106,6 +110,7 @@ status_t test_helper_display_all_relations(db_txn_t txn, uint32_t left_count, ui
 exit:
   return (status);
 }
+
 /** 1101 -> "1101" */
 uint8_t* test_helper_reader_suffix_integer_to_string(uint8_t a) {
   uint8_t* result = malloc(40);
@@ -174,6 +179,7 @@ status_t db_ids_reverse(db_ids_t a, db_ids_t* result) {
 exit:
   return (status);
 }
+
 /** create a new type with four fields, fixed and variable length, for testing */
 status_t test_helper_create_type_1(db_env_t* env, db_type_t** result) {
   status_declare;
@@ -186,6 +192,7 @@ status_t test_helper_create_type_1(db_env_t* env, db_type_t** result) {
 exit:
   return (status);
 }
+
 /** create multiple record-values */
 status_t test_helper_create_values_1(db_env_t* env, db_type_t* type, db_record_values_t** result_values, uint32_t* result_values_len) {
   status_declare;
@@ -217,6 +224,7 @@ status_t test_helper_create_values_1(db_env_t* env, db_type_t* type, db_record_v
 exit:
   return (status);
 }
+
 /** creates several records with the given values */
 status_t test_helper_create_records_1(db_env_t* env, db_record_values_t* values, db_id_t** result_ids, uint32_t* result_len) {
   status_declare;
@@ -234,6 +242,7 @@ status_t test_helper_create_records_1(db_env_t* env, db_record_values_t* values,
 exit:
   return (status);
 }
+
 /** create only ids, without records. doesnt depend on record creation.
   especially with relation reading where order lead to lucky success results */
 status_t test_helper_create_ids(db_txn_t txn, uint32_t count, db_ids_t* result) {
@@ -252,6 +261,7 @@ exit:
   i_array_free(result_temp);
   return (status);
 }
+
 /** merge ids from two lists into a new list, interleave at half the size of the arrays.
    result is as long as both id lists combined.
    approximately like this: 1 1 1 1 + 2 2 2 2 -> 1 1 2 1 2 1 2 2 */
@@ -294,6 +304,7 @@ exit:
 }
 uint32_t test_helper_calculate_relation_count(uint32_t left_count, uint32_t right_count, uint32_t label_count) { return ((left_count * right_count * label_count)); }
 uint32_t test_helper_calculate_relation_count_from_ids(db_ids_t left, db_ids_t right, db_ids_t label) { return ((test_helper_calculate_relation_count((i_array_length(left)), (i_array_length(right)), (i_array_length(label))))); }
+
 /** test if the result relations contain all filter-ids,
   and the filter-ids contain all result record values for field "name". */
 status_t test_helper_relation_read_relations_validate_one(uint8_t* name, db_ids_t e_ids, db_relations_t relations) {
@@ -344,6 +355,7 @@ db_ordinal_t test_helper_default_ordinal_generator(void* ordinal_state) {
   *ordinal_pointer = result;
   return (result);
 }
+
 /** create relations with linearly increasing ordinal starting from zero */
 status_t test_helper_create_relations(db_txn_t txn, db_ids_t left, db_ids_t right, db_ids_t label) {
   status_declare;
@@ -353,6 +365,7 @@ status_t test_helper_create_relations(db_txn_t txn, db_ids_t left, db_ids_t righ
 exit:
   return (status);
 }
+
 /** assumes linearly set-plus-oneed ordinal integers starting at 1 and queries for all or no ids */
 uint32_t test_helper_estimate_relation_read_result_count(uint32_t left_count, uint32_t right_count, uint32_t label_count, db_ordinal_condition_t* ordinal) {
   uint32_t count = (left_count * right_count * label_count);
@@ -427,6 +440,7 @@ exit:
   printf("\n");
   return (status);
 }
+
 /** prepare arrays with ids to be used in the relation (e, existing) and ids unused in the relation
   (ne, non-existing) and with both partly interleaved (left, right, label) */
 status_t test_helper_relation_read_setup(db_env_t* env, uint32_t e_left_count, uint32_t e_right_count, uint32_t e_label_count, test_helper_relation_read_data_t* r) {
@@ -478,6 +492,7 @@ status_t test_helper_relation_delete_setup(db_env_t* env, uint32_t e_left_count,
   r->e_label_count = e_label_count;
   return (status);
 }
+
 /** for any given argument permutation:
      * checks btree entry count difference
      * checks read result count after deletion, using the same search query

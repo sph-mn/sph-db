@@ -1,3 +1,4 @@
+
 /** convert a record-values array to the data format that is used as btree value for records.
   the data for unset trailing fields is not included.
   assumes that fields are in the order (fixed-size-fields variable-size-fields).
@@ -55,6 +56,7 @@ status_t db_record_values_to_data(db_record_values_t values, db_record_t* result
 exit:
   return (status);
 }
+
 /** from the full btree value of a record (data with all fields), return a reference
   to the data for specific field and the size.
   if a trailing field is not stored with the data, record.data and .size are 0 */
@@ -104,6 +106,7 @@ db_record_value_t db_record_ref(db_type_t* type, db_record_t record, db_fields_l
     return (result);
   };
 }
+
 /** allocate memory for a new record values array. all fields an sizes are zero.
   "extent" is the last field index that is set plus one, zero if no field is set */
 status_t db_record_values_new(db_type_t* type, db_record_values_t* result) {
@@ -117,6 +120,7 @@ exit:
   return (status);
 }
 void db_record_values_free(db_record_values_t* a) { free_and_set_null((a->data)); }
+
 /** set a value for a field in record values.
   a failure status is returned if size is too large for the field */
 status_t db_record_values_set(db_record_values_t* a, db_fields_len_t field, void* data, size_t size) {
@@ -223,6 +227,7 @@ exit:
   db_mdb_status_notfound_if_notfound;
   return (status);
 }
+
 /** skip the next count matches */
 status_t db_record_skip(db_record_selection_t selection, db_count_t count) {
   status_declare;
@@ -231,6 +236,7 @@ status_t db_record_skip(db_record_selection_t selection, db_count_t count) {
   selection.options = (selection.options ^ db_selection_flag_skip);
   return (status);
 }
+
 /** get records by type and optionally filtering data.
   result count is unknown on call or can be large, that is why a selection state
   for partial reading is used.
@@ -262,6 +268,7 @@ exit:
   };
   return (status);
 }
+
 /** get records by id.
   returns status notfound if any id could not be found if match-all is true.
   like record-get with a given mdb-cursor */
@@ -295,6 +302,7 @@ exit:
   db_mdb_status_success_if_notfound;
   return (status);
 }
+
 /** get a reference to data for one record identified by id.
   fields can be accessed with db-record-ref.
   if a record could not be found and match-all is true, status is status-id-notfound */
@@ -307,6 +315,7 @@ exit:
   db_mdb_cursor_close(records);
   return (status);
 }
+
 /** declare because it is defined later */
 status_t db_relation_internal_delete(db_ids_t* left, db_ids_t* right, db_ids_t* label, db_ordinal_condition_t* ordinal, MDB_cursor* relation_lr, MDB_cursor* relation_rl, MDB_cursor* relation_ll);
 /** delete records and all their relations. status  */
@@ -357,6 +366,7 @@ exit:
   db_mdb_cursor_close_if_active(records);
   return (status);
 }
+
 /** delete any records of type and all their relations */
 status_t db_record_delete_type(db_txn_t txn, db_type_id_t type_id) {
   status_declare;
@@ -378,6 +388,7 @@ exit:
   return (status);
 }
 void db_record_selection_finish(db_record_selection_t* a) { db_mdb_cursor_close_if_active((a->cursor)); }
+
 /** set new data for the record with the given id */
 status_t db_record_update(db_txn_t txn, db_id_t id, db_record_values_t values) {
   status_declare;
@@ -400,6 +411,7 @@ exit:
   free((record.data));
   return (status);
 }
+
 /** delete records selected by type or custom matcher routine.
   collects ids in batches and calls db-record-delete */
 status_t db_record_select_delete(db_txn_t txn, db_type_t* type, db_record_matcher_t matcher, void* matcher_state) {

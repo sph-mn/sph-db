@@ -475,6 +475,7 @@ exit:
   status = db_relation_internal_delete_relation_ll_conditional(relation_lr, relation_ll, id_label, id_left); \
   db_mdb_status_expect_read; \
   goto each_key_1011_1111;
+
 /** db-relation-internal-delete does not open/close cursors.
    1111 / left-right-label-ordinal.
    tip: the code is nice to debug if current state information is displayed near the
@@ -540,6 +541,7 @@ exit:
   db_mdb_status_success_if_notfound;
   return (status);
 }
+
 /** db-relation-delete differs from db-relation-read in that it does not support
   partial processing and therefore does not need a state for repeated calls.
    it also differs in that it always needs all relation dbi

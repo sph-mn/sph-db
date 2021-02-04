@@ -1,3 +1,4 @@
+
 /** extend the size of the types array if type-id is an index out of bounds.
   entries from and including index type-id will be set to zero .id */
 status_t db_env_types_extend(db_env_t* env, db_type_id_t type_id) {
@@ -22,6 +23,7 @@ status_t db_env_types_extend(db_env_t* env, db_type_id_t type_id) {
 exit:
   return (status);
 }
+
 /** return a pointer to the type struct for the type with the given name. zero if not found */
 db_type_t* db_type_get(db_env_t* env, uint8_t* name) {
   db_type_id_t i;
@@ -49,6 +51,7 @@ db_field_t* db_type_field_get(db_type_t* type, uint8_t* name) {
   };
   return (0);
 }
+
 /** the data format is documented in main/open.c */
 status_t db_type_create(db_env_t* env, uint8_t* name, db_field_t* fields, db_fields_len_t fields_len, uint8_t flags, db_type_t** result) {
   status_declare;
@@ -149,6 +152,7 @@ exit:
   };
   return (status);
 }
+
 /** delete all indices of type, all records of type, the system entry and clear cache entries, in this order */
 status_t db_type_delete(db_env_t* env, db_type_id_t type_id) {
   status_declare;

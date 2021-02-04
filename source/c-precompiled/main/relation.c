@@ -1,3 +1,4 @@
+
 #define db_relation_key_equal(a, b) ((a[0] == b[0]) && (a[1] == b[1]))
 #define db_relation_data_ordinal_set(relation_data, value) ((db_ordinal_t*)(relation_data))[0] = value
 #define db_relation_data_id_set(relation_data, value) ((db_id_t*)((1 + ((db_ordinal_t*)(relation_data)))))[0] = value
@@ -6,6 +7,7 @@
   uint8_t relation_data[(sizeof(db_ordinal_t) + sizeof(db_id_t))]; \
   memset(relation_data, 0, (sizeof(db_ordinal_t) + sizeof(db_id_t)))
 #define db_declare_relation(name) db_relation_t name = { 0, 0, 0, 0 }
+
 /** search data until the given id-right has been found */
 status_t db_mdb_relation_lr_seek_right(MDB_cursor* relation_lr, db_id_t id_right) {
   status_declare;
@@ -26,6 +28,7 @@ each_data:
 exit:
   return (status);
 }
+
 /** check if a relation exists and create it if not */
 status_t db_relation_ensure(db_txn_t txn, db_ids_t left, db_ids_t right, db_ids_t label, db_relation_ordinal_generator_t ordinal_generator, void* ordinal_generator_state) {
   status_declare;
@@ -90,6 +93,7 @@ exit:
   db_mdb_cursor_close_if_active(relation_ll);
   return (status);
 }
+
 /** rebuild relation-rl and relation-ll based on relation-lr */
 status_t db_relation_index_rebuild(db_env_t* env) {
   status_declare;

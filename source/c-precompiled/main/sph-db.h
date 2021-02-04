@@ -1,9 +1,12 @@
+
 /* this file is for declarations and macros needed to use sph-db as a shared library */
 #include <inttypes.h>
 #include <math.h>
 #include <pthread.h>
 #include <lmdb.h>
+
 /* compile-time configuration start */
+
 #define db_id_t uint64_t
 #define db_type_id_t uint16_t
 #define db_ordinal_t uint16_t
@@ -15,12 +18,15 @@
 #define db_indices_len_t uint16_t
 #define db_count_t uint32_t
 #define db_batch_len 100
+
 /* compile-time configuration end */
 #include <stdio.h>
+
 /** writes values with current routine name and line info to standard output.
     example: (debug-log "%d" 1)
     otherwise like printf */
 #define debug_log(format, ...) fprintf(stdout, "%s:%d " format "\n", __func__, __LINE__, __VA_ARGS__)
+
 /** display current function name and given number.
     example call: (debug-trace 1) */
 #define debug_trace(n) fprintf(stdout, "%s %d\n", __func__, n)
@@ -73,6 +79,7 @@ typedef struct {
      }
      i_array_free(a); */
 #include <stdlib.h>
+
 /** .current: to avoid having to write for-loops. this would correspond to the index variable in loops
      .unused: to have variable length content in a fixed length array. points outside the memory area after the last element has been added
      .end: start + max-length. (last-index + 1) of the allocated array
@@ -113,12 +120,14 @@ typedef struct {
 \
   /** return 0 on success, 1 for realloc error */ \
   uint8_t name##_resize(name##_t* a, size_t new_length) { return ((name##_resize_custom(a, new_length, realloc))); }
+
 /** define so that in-range is false, length is zero and free doesnt fail.
      can be used to create empty/null i-arrays */
 #define i_array_declare(a, type) type a = { 0, 0, 0, 0 }
 #define i_array_add(a, value) \
   *(a.unused) = value; \
   a.unused = (1 + a.unused)
+
 /** set so that in-range is false, length is zero and free doesnt fail */
 #define i_array_set_null(a) \
   a.start = 0; \
@@ -134,6 +143,7 @@ typedef struct {
 #define i_array_length(a) (a.unused - a.start)
 #define i_array_max_length(a) (a.end - a.start)
 #define i_array_free(a) free((a.start))
+
 /** move a standard array into an i-array
      sets source as data array to use, with the first count number of slots used.
      source will not be copied but used as is, and i-array-free would free it.
@@ -155,9 +165,12 @@ the default hash functions work on integers.
 compared to hashtable.c, this uses less than half of the space and operations are faster (about 20% in first tests) */
 #include <stdlib.h>
 #include <inttypes.h>
+
 #define sph_set_hash_integer(value, hashtable_size) (value % hashtable_size)
 #define sph_set_equal_integer(value_a, value_b) (value_a == value_b)
+
 /* sph-set-true-value is used only at index 0 for the empty-value */
+
 #ifndef sph_set_size_factor
 #define sph_set_size_factor 2
 #endif
@@ -312,6 +325,7 @@ i_array_declare_type(db_ids, db_id_t)
   i_array_declare_type(db_records, db_record_t)
     i_array_declare_type(db_relations, db_relation_t)
       sph_set_declare_type(db_id_set, db_id_t)
+
 #define db_format_version 1
 #define db_status_group_sph "sph"
 #define db_status_group_db "sph-db"
@@ -411,11 +425,14 @@ i_array_declare_type(db_ids, db_id_t)
 #define db_relations_declare(name) i_array_declare(name, db_relations_t)
 #define db_records_declare(name) i_array_declare(name, db_records_t)
 #define db_type_get_by_id(env, type_id) (type_id + env->types)
+
 /** convert id and type-id to db-id-t to be able to pass c literals which might be initialised with some other type.
     string type part from id with db-id-element in case there are type bits set after for example typecasting from a smaller datatype */
 #define db_id_add_type(id, type_id) (db_id_type(((db_id_t)(type_id))) | (((db_id_t)(id)) << (8 * sizeof(db_type_id_t))))
+
 /** get the type id part from a record id. a record id minus element id */
 #define db_id_type(id) (db_id_type_mask & id)
+
 /** get the element id part from a record id. a record id minus type id */
 #define db_id_element(id) (id >> (8 * sizeof(db_type_id_t)))
 #define db_txn_declare(env, name) db_txn_t name = { 0, env }
@@ -427,6 +444,7 @@ i_array_declare_type(db_ids, db_id_t)
 #define db_field_set(a, a_type, a_name) \
   a.type = a_type; \
   a.name = a_name
+
 /** set so that *-finish succeeds even if it has not yet been initialised.
       for having cleanup tasks at one place like with a goto exit label */
 #define db_relation_selection_set_null(name) \
@@ -451,7 +469,9 @@ i_array_declare_type(db_ids, db_id_t)
 #define db_record_index_selection_declare(name) \
   db_record_index_selection_t name; \
   db_record_index_selection_set_null(name)
+
 /* virtual records */
+
 #define db_type_flag_virtual 1
 #define db_record_virtual_data_uint(id, type_name) ((type_name)(db_id_element(id)))
 #define db_record_virtual_data_int db_record_virtual_data_uint

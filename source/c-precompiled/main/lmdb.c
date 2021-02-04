@@ -1,5 +1,8 @@
+
 #include <string.h>
+
 /* lmdb helpers */
+
 #define db_id_compare(a, b) ((a < b) ? -1 : (a > b))
 #define db_mdb_status_is_notfound (MDB_NOTFOUND == status.id)
 #define db_mdb_status_is_success (MDB_SUCCESS == status.id)
@@ -69,6 +72,7 @@
   MDB_val val_relation_key; \
   val_relation_key.mv_size = db_size_relation_key;
 #define db_mdb_reset_val_null val_null.mv_size = 0
+
 /** mdb comparison routines are used by lmdb for search, insert and delete */
 static int db_mdb_compare_id(const MDB_val* a, const MDB_val* b) { return ((db_id_compare((db_pointer_to_id((a->mv_data))), (db_pointer_to_id((b->mv_data)))))); }
 static int db_mdb_compare_relation_key(const MDB_val* a, const MDB_val* b) {
@@ -80,6 +84,7 @@ static int db_mdb_compare_relation_key(const MDB_val* a, const MDB_val* b) {
     return ((db_id_compare((db_pointer_to_id_at((a->mv_data), 1)), (db_pointer_to_id_at((b->mv_data), 1)))));
   };
 }
+
 /** memcmp does not work here, gives -1 for 256 vs 1 */
 static int db_mdb_compare_relation_data(const MDB_val* a, const MDB_val* b) {
   if (db_relation_data_to_ordinal((a->mv_data)) < db_relation_data_to_ordinal((b->mv_data))) {

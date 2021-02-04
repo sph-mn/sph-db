@@ -1,3 +1,4 @@
+
 /* "iteration array" - an array with variable length content that makes iteration easier to code.
    saves the size argument that usually has to be passed with arrays and saves the declaration of index counter variables.
    the data structure consists of only 4 pointers in a struct.
@@ -16,6 +17,7 @@
      }
      i_array_free(a); */
 #include <stdlib.h>
+
 /** .current: to avoid having to write for-loops. this would correspond to the index variable in loops
      .unused: to have variable length content in a fixed length array. points outside the memory area after the last element has been added
      .end: start + max-length. (last-index + 1) of the allocated array
@@ -56,12 +58,14 @@
 \
   /** return 0 on success, 1 for realloc error */ \
   uint8_t name##_resize(name##_t* a, size_t new_length) { return ((name##_resize_custom(a, new_length, realloc))); }
+
 /** define so that in-range is false, length is zero and free doesnt fail.
      can be used to create empty/null i-arrays */
 #define i_array_declare(a, type) type a = { 0, 0, 0, 0 }
 #define i_array_add(a, value) \
   *(a.unused) = value; \
   a.unused = (1 + a.unused)
+
 /** set so that in-range is false, length is zero and free doesnt fail */
 #define i_array_set_null(a) \
   a.start = 0; \
@@ -77,6 +81,7 @@
 #define i_array_length(a) (a.unused - a.start)
 #define i_array_max_length(a) (a.end - a.start)
 #define i_array_free(a) free((a.start))
+
 /** move a standard array into an i-array
      sets source as data array to use, with the first count number of slots used.
      source will not be copied but used as is, and i-array-free would free it.

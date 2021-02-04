@@ -1,7 +1,9 @@
+
 /* system btree entry format. key -> value
      type-label type-id -> uint8_t:flags db-name-len-t:name-len name db-field-len-t:field-count (int8-t:field-type uint8-t:name-len name) ...
      index-label type-id db-field-len-t:field-offset ... -> () */
 #define db_env_types_extra_count 20
+
 /** prepare the database filesystem root path.
   create the full directory path if it does not exist */
 status_t db_open_root(db_env_t* env, db_open_options_t* options, uint8_t* path) {
@@ -48,6 +50,7 @@ exit:
   };
   return (status);
 }
+
 /** check that the format the database was created with matches the current configuration.
   id, type and ordinal sizes are set at compile time and cant be changed for a database
   after data has been inserted */
@@ -94,6 +97,7 @@ status_t db_open_format(MDB_cursor* system, db_txn_t txn) {
 exit:
   return (status);
 }
+
 /** initialise the sequence for system ids like type ids in result.
   set result to the next sequence value. id zero is reserved for null */
 status_t db_open_system_sequence(MDB_cursor* system, db_type_id_t* result) {
@@ -145,6 +149,7 @@ exit:
   *result = ((db_type_id_limit == current) ? current : (1 + current));
   return (status);
 }
+
 /** get the first data id of type and save it in result. result is set to zero if none has been found */
 status_t db_type_first_id(MDB_cursor* records, db_type_id_t type_id, db_id_t* result) {
   status_declare;
@@ -170,6 +175,7 @@ status_t db_type_first_id(MDB_cursor* records, db_type_id_t type_id, db_id_t* re
 exit:
   return (status);
 }
+
 /** sets result to the last key id if the last key is of type, otherwise sets result to zero.
   leaves cursor at last key. status is mdb-notfound if database is empty */
 status_t db_type_last_key_id(MDB_cursor* records, db_type_id_t type_id, db_id_t* result) {
@@ -183,6 +189,7 @@ status_t db_type_last_key_id(MDB_cursor* records, db_type_id_t type_id, db_id_t*
   };
   return (status);
 }
+
 /** get the last existing record id for type or zero if none exist.
    algorithm: check if data of type exists, if yes then check if last key is of type or
    position next type and step back */
@@ -223,6 +230,7 @@ status_t db_type_last_id(MDB_cursor* records, db_type_id_t type_id, db_id_t* res
 exit:
   return (status);
 }
+
 /** initialise the sequence for a type by searching the max used id for the type.
    lowest sequence value is 1.
    algorithm:
@@ -237,6 +245,7 @@ status_t db_open_sequence(MDB_cursor* records, db_type_t* type) {
 exit:
   return (status);
 }
+
 /** read information for fields from system btree type data.
   assumes that pointer is positioned at field-count */
 status_t db_open_type_read_fields(uint8_t** data_pointer, db_type_t* type) {
@@ -309,6 +318,7 @@ status_t db_open_type(uint8_t* system_key, uint8_t* system_value, db_type_t* typ
 exit:
   return (status);
 }
+
 /** load type info into cache. open all dbi.
    max type id size is currently 16 bit because of using an array to cache types
    instead of a slower hash table which would be needed otherwise.
@@ -361,6 +371,7 @@ exit:
   };
   return (status);
 }
+
 /** extend type cache with index information. there can be multiple indices per type */
 status_t db_open_indices(MDB_cursor* system, db_txn_t txn) {
   status_declare;
@@ -434,6 +445,7 @@ exit:
   };
   return (status);
 }
+
 /** ensure that the system tree exists with default values.
   check format and load cached values */
 status_t db_open_system(db_txn_t txn) {
@@ -450,6 +462,7 @@ exit:
   db_mdb_cursor_close_if_active(records);
   return (status);
 }
+
 /** ensure that the trees used for the relation exist, configure and open dbi */
 status_t db_open_relation(db_txn_t txn) {
   status_declare;

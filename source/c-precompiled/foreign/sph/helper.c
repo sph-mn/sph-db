@@ -1,9 +1,11 @@
+
 /* depends on sph/status.c and libc */
 #include <stdlib.h>
 #include <inttypes.h>
 #include <stdio.h>
 enum { sph_helper_status_id_memory };
 #define sph_helper_status_group ((uint8_t*)("sph"))
+
 /** add explicit type cast to prevent compiler warning */
 #define sph_helper_malloc(size, result) sph_helper_primitive_malloc(size, ((void**)(result)))
 #define sph_helper_malloc_string(size, result) sph_helper_primitive_malloc_string(size, ((uint8_t**)(result)))
@@ -25,6 +27,7 @@ uint8_t* sph_helper_status_name(status_t a) {
     b = "unknown";
   };
 }
+
 /** allocation helpers use status-t and have a consistent interface */
 status_t sph_helper_primitive_malloc(size_t size, void** result) {
   status_declare;
@@ -38,6 +41,7 @@ status_t sph_helper_primitive_malloc(size_t size, void** result) {
   };
   status_return;
 }
+
 /** like sph-helper-malloc but allocates one extra byte that is set to zero */
 status_t sph_helper_primitive_malloc_string(size_t length, uint8_t** result) {
   status_declare;
@@ -72,6 +76,7 @@ status_t sph_helper_primitive_realloc(size_t size, void** block) {
   };
   status_return;
 }
+
 /** display the bits of an octet */
 void sph_helper_display_bits_u8(uint8_t a) {
   uint8_t i;
@@ -80,6 +85,7 @@ void sph_helper_display_bits_u8(uint8_t a) {
     printf("%u", (((((uint8_t)(1)) << i) & a) ? 1 : 0));
   };
 }
+
 /** display the bits of the specified memory region */
 void sph_helper_display_bits(void* a, size_t size) {
   size_t i;

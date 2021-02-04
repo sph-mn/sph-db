@@ -1,6 +1,8 @@
+
 /* depends on libc and libm, -lm */
 #include <stdio.h>
 #include <math.h>
+
 /** get a decimal string representation of an unsigned integer */
 uint8_t* sph_helper2_uint_to_string(uintmax_t a, size_t* result_len) {
   size_t size;

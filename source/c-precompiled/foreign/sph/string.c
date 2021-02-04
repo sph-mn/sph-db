@@ -1,5 +1,7 @@
+
 #include <string.h>
 #include <stdlib.h>
+
 /** set result to a new string with a trailing slash added, or the given string if it already has a trailing slash.
   returns 0 if result is the given string, 1 if new memory could not be allocated, 2 if result is a new string */
 uint8_t ensure_trailing_slash(uint8_t* a, uint8_t** result) {
@@ -19,6 +21,7 @@ uint8_t ensure_trailing_slash(uint8_t* a, uint8_t** result) {
     return (2);
   };
 }
+
 /** always returns a new string */
 uint8_t* string_append(uint8_t* a, uint8_t* b) {
   size_t a_length = strlen(a);
@@ -30,6 +33,7 @@ uint8_t* string_append(uint8_t* a, uint8_t* b) {
   };
   return (result);
 }
+
 /** return a new string with the same contents as the given string. return 0 if the memory allocation failed */
 uint8_t* string_clone(uint8_t* a) {
   size_t a_size = (1 + strlen(a));
@@ -39,6 +43,7 @@ uint8_t* string_clone(uint8_t* a) {
   };
   return (result);
 }
+
 /** join strings into one string with each input string separated by delimiter.
   zero if strings-len is zero or memory could not be allocated */
 uint8_t* string_join(uint8_t** strings, size_t strings_len, uint8_t* delimiter, size_t* result_len) {

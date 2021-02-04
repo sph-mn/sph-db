@@ -1,3 +1,4 @@
+
 #include <math.h>
 #include "./sph-db.h"
 #include "../foreign/sph/helper.c"
@@ -6,6 +7,7 @@
 #include "../foreign/sph/filesystem.c"
 #include "./sph-db-extra.h"
 #include "./lmdb.c"
+
 #define free_and_set_null(a) \
   free(a); \
   a = 0
@@ -15,6 +17,7 @@
   if (0 == count) { \
     goto exit; \
   }
+
 /** get the description if available for a status */
 uint8_t* db_status_description(status_t a) {
   char* b;
@@ -71,6 +74,7 @@ uint8_t* db_status_description(status_t a) {
   };
   return (((uint8_t*)(b)));
 }
+
 /** get the name if available for a status */
 uint8_t* db_status_name(status_t a) {
   char* b;
@@ -166,6 +170,7 @@ void db_debug_log_id_bits(db_id_t a) {
   };
   printf("\n");
 }
+
 /** display an ids array */
 void db_debug_log_ids(db_ids_t a) {
   printf(("ids (%lu):"), (i_array_length(a)));
@@ -175,6 +180,7 @@ void db_debug_log_ids(db_ids_t a) {
   };
   printf("\n");
 }
+
 /** display an ids set */
 void db_debug_log_ids_set(db_id_set_t a) {
   uint32_t i = 0;
@@ -204,6 +210,7 @@ status_t db_debug_log_btree_counts(db_txn_t txn) {
 exit:
   return (status);
 }
+
 /** sum of all entries in all btrees used by the database */
 status_t db_debug_count_all_btree_entries(db_txn_t txn, uint32_t* result) {
   status_declare;
@@ -213,6 +220,7 @@ status_t db_debug_count_all_btree_entries(db_txn_t txn, uint32_t* result) {
 exit:
   return (status);
 }
+
 /** size in octets. size of the size prefix for variable size types */
 db_field_type_size_t db_field_type_size(db_field_type_t a) {
   if ((db_field_type_binary64f == a) || (db_field_type_uint64f == a) || (db_field_type_int64f == a) || (db_field_type_string64f == a) || (db_field_type_float64f == a) || (db_field_type_binary64 == a) || (db_field_type_string64 == a)) {
@@ -237,6 +245,7 @@ db_id_t db_record_virtual(db_type_id_t type_id, void* data, size_t data_size) {
   memcpy((&id), data, data_size);
   return ((db_id_add_type(id, type_id)));
 }
+
 /** result is allocated and owned by callee */
 void* db_record_virtual_data(db_id_t id, void* result, size_t result_size) {
   id = db_id_element(id);
@@ -257,6 +266,7 @@ status_t db_ids_to_set(db_ids_t a, db_id_set_t* result) {
 exit:
   return (status);
 }
+
 /** read a length prefixed string.
   on success set result to a newly allocated, null terminated string and
   data-pointer is positioned at the first byte after the string */
@@ -275,6 +285,7 @@ status_t db_read_name(uint8_t** data_pointer, uint8_t** result) {
 exit:
   return (status);
 }
+
 /** copies to a db-ids-t array all ids from a db-records-t array. result-ids is allocated by the caller */
 void db_records_to_ids(db_records_t records, db_ids_t* result_ids) {
   while (i_array_in_range(records)) {
@@ -282,6 +293,7 @@ void db_records_to_ids(db_records_t records, db_ids_t* result_ids) {
     i_array_forward(records);
   };
 }
+
 /** expects an allocated db-statistics-t */
 status_t db_statistics(db_txn_t txn, db_statistics_t* result) {
   status_declare;
@@ -293,6 +305,7 @@ status_t db_statistics(db_txn_t txn, db_statistics_t* result) {
 exit:
   return (status);
 }
+
 /** return one new unique type identifier.
   the maximum identifier returned is db-type-id-limit minus one */
 status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result) {
@@ -311,6 +324,7 @@ status_t db_sequence_next_system(db_env_t* env, db_type_id_t* result) {
 exit:
   return (status);
 }
+
 /** return one new unique type record identifier.
   the maximum identifier returned is db-id-limit minus one */
 status_t db_sequence_next(db_env_t* env, db_type_id_t type_id, db_id_t* result) {
@@ -370,6 +384,7 @@ void db_free_env_types(db_type_t** types, db_type_id_t types_len) {
   };
   free_and_set_null((*types));
 }
+
 /** caller has to free result when not needed anymore.
   this routine makes sure that .is-open is zero */
 status_t db_env_new(db_env_t** result) {
