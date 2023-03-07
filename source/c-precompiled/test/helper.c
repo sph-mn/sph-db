@@ -76,7 +76,7 @@ uint32_t test_helper_estimate_relation_read_btree_entry_count(uint32_t e_left_co
   uint32_t right_count = 0;
   uint32_t label_count = 0;
   /* the number of relations is not proportional to the number of entries in relation-ll.
-    use a process similar to relation creation to correctly calculate relation-ll and ordinal dependent entries */
+      use a process similar to relation creation to correctly calculate relation-ll and ordinal dependent entries */
   while ((label_count < e_label_count)) {
     while ((left_count < e_left_count)) {
       if ((ordinal_value <= ordinal_max) && (ordinal_value >= ordinal_min)) {

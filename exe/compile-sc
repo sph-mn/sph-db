@@ -37,12 +37,12 @@ compile_sc() {
   copy_example_config &&
   copy_submodules &&
   cd "$s" &&
-  find -type f -name "*.sc" -exec sc --parents '{}' "$c" \; &&
+  find -type f -name "*.sc" | sc --stdin-input-paths --parents "$c" &&
   cd "$root" &&
   # config.c is user editable and already in sph-db.h
   find "$c" -type f -exec ./exe/format-c -i '{}' \; &&
   rm "$c/main/config.c" &&
-  mv "$c/main/sph-db.c" "$c/main/sph-db.h"
+  mv "$c/main/sph-db.c" "$c/main/sph-db.h" &&
   mv "$c/main/sph-db-extra.c" "$c/main/sph-db-extra.h"
 }
 

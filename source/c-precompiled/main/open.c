@@ -77,7 +77,7 @@ status_t db_open_format(MDB_cursor* system, db_txn_t txn) {
     data = val_data.mv_data;
     if (!((4 == val_data.mv_size) && (data[0] == format[0]) && (data[1] == format[1]) && (data[2] == format[2]) && (data[3] == format[3]))) {
       /* differing type sizes are not a problem if there is no data yet.
-             this only checks if any tables/indices exist by checking the contents of the system btree */
+                   this only checks if any tables/indices exist by checking the contents of the system btree */
       db_mdb_status_require((mdb_stat((txn.mdb_txn), ((txn.env)->dbi_system), (&stat_info))));
       if (1 == stat_info.ms_entries) {
         val_data.mv_data = format;
@@ -199,7 +199,7 @@ status_t db_type_last_id(MDB_cursor* records, db_type_id_t type_id, db_id_t* res
   db_mdb_declare_val_null;
   db_id_t id;
   /* if last key is of type then there are no greater type-ids and data of type exists.
-    if there is no last key, the database is empty */
+      if there is no last key, the database is empty */
   status = db_type_last_key_id(records, type_id, (&id));
   if (db_mdb_status_is_success) {
     if (id) {
@@ -216,11 +216,11 @@ status_t db_type_last_id(MDB_cursor* records, db_type_id_t type_id, db_id_t* res
     };
   };
   /* database is not empty and the last key is not of searched type.
-     type-id +1 is not greater than max possible type-id */
+       type-id +1 is not greater than max possible type-id */
   status_require((db_type_first_id(records, (1 + type_id), (&id))));
   if (!id) {
     /* no greater type-id found. since the searched type is not the last,
-         all existing type-ids are smaller */
+             all existing type-ids are smaller */
     *result = 0;
     goto exit;
   };
@@ -280,7 +280,7 @@ status_t db_open_type_read_fields(uint8_t** data_pointer, db_type_t* type) {
     };
   };
   /* fixed-field offsets
-example: field-sizes-in-bytes: 1 4 2. fields-fixed-offsets: 1 5 7 */
+  example: field-sizes-in-bytes: 1 4 2. fields-fixed-offsets: 1 5 7 */
   if (fixed_count) {
     status_require((sph_helper_malloc(((1 + fixed_count) * sizeof(size_t)), (&fixed_offsets))));
     for (i = 0; (i < fixed_count); i = (1 + i)) {
@@ -340,7 +340,7 @@ status_t db_open_types(MDB_cursor* system, MDB_cursor* records, db_txn_t txn) {
   };
   /* initialise system sequence, type id zero */
   status_require((db_open_system_sequence(system, (&system_sequence))));
-  types_len = (((db_env_types_extra_count > (db_type_id_limit - system_sequence)) ? db_type_id_limit : (system_sequence + db_env_types_extra_count)));
+  types_len = (+((db_env_types_extra_count > (db_type_id_limit - system_sequence)) ? db_type_id_limit : (system_sequence + db_env_types_extra_count)));
   db_system_key_label(key) = db_system_label_type;
   db_system_key_id(key) = 0;
   val_key.mv_size = db_size_system_key;
@@ -412,7 +412,7 @@ status_t db_open_indices(MDB_cursor* system, db_txn_t txn) {
       /* index for the first or a different type */
       if (indices_len) {
         /* not the first
-readjust size to save memory */
+        readjust size to save memory */
         if (indices_alloc_len > indices_len) {
           status_require((sph_helper_realloc((indices_len * sizeof(db_index_t)), (&indices))));
         };
