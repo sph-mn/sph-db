@@ -42,11 +42,11 @@
 * fields are accessed by field index/offset and by name via translation function
 * fixed size columns are stored before variable size columns. fixed size field byte offsets are pre-calculated and cached
 * field types
-  * identified by integers
+  * identified by signed integers
   * fixed length field type ids are positive, variable length field type ids are negative
   * fixed
-    * binary, unsigned integer, integer, string, float
-    * float available in 64 and 32 bit, others in 2**3 to 2**9
+    * types: binary, unsigned integer, integer, string, float
+    * sizes: float available in 64 and 32 bit, others in size from ``2**3`` to ``2**9``
   * variable
     * binary
     * string
