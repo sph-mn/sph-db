@@ -1,6 +1,6 @@
 # about
 
-sph-db is considered feature complete and in beta as of 2018-10, you can try it and report any issues
+status: the library is feature complete and expected to work - feedback is appreciated. however, it has not yet undergone extensive use, so additional testing is encouraged.
 
 * license: lgpl3+
 
@@ -18,7 +18,7 @@ sph-db is considered feature complete and in beta as of 2018-10, you can try it 
 * acid compliant, memory-mapped database that can grow to any size that fits on the local filesystem, unrestricted by available ram
 * direct, high-speed interface using c data structures. no overhead from sql or similar query language parsing and processing
 * embeddable by linking or code inclusion
-* read-optimised design with full support for parallel database reads
+* read-optimized design with full support for parallel database reads
 * efficient through focus on limited feature-set and thin abstraction over lmdb. benchmarks for lmdb can be found [here](https://symas.com/lmdb/technical/)
 * written in c, currently via [sc](https://github.com/sph-mn/sph-sc)
 
@@ -56,7 +56,7 @@ gcc example.c -o example-executable -lsph-db
 
 ## error handling
 db routines return a "status_t" object that contains a status and a status-group identifier (error code and source library identifier). bindings to work with this small object are included with the main header "sph-db.h". sph-db internally usually uses a goto label named "exit" per routine where undesired return stati are handled. ``status_require`` goes to exit on any failure status (status.id not zero).
-the following examples assume this pattern of calling ``status_declare`` to introduce an initialised variable named ``status`` and having a label named ``exit``
+the following examples assume this pattern of calling ``status_declare`` to introduce an initialized variable named ``status`` and having a label named ``exit``
 
 ```c
 int main() {
@@ -67,7 +67,7 @@ exit:
 }
 ```
 
-## initialisation
+## initialization
 ```c
 db_env_declare(env);
 status_require(db_env_new(&env));
