@@ -4,4 +4,4 @@
 
 config="$PWD/other/sc-documentor-config.scm"
 export SC_LOAD_PATH="$PWD/source/sc"
-sc-documentor source/sc/main/sph-db.sc --config="$config" --md-level=2
+sc-documentor src/sc/sph-db/sph-db.h.sc --config="$config" --md-level=2

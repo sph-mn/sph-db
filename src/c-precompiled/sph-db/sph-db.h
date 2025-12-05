@@ -54,6 +54,7 @@ sph_array_current_declare_type(db_ids, db_id_t)
 #define db_ids_in_range sph_array_current_in_range
 #define db_ids_length(a) a.used
 #define db_ids_max_length(a) a.size
+#define db_ids_remove sph_array_remove
 #define db_ids_rewind sph_array_current_rewind
 #define db_ids_set_null sph_array_current_set_null
 #define db_relations_add sph_array_add
@@ -64,6 +65,7 @@ sph_array_current_declare_type(db_ids, db_id_t)
 #define db_relations_in_range sph_array_current_in_range
 #define db_relations_length(a) a.used
 #define db_relations_max_length(a) a.size
+#define db_relations_remove sph_array_remove
 #define db_relations_rewind sph_array_current_rewind
 #define db_relations_set_null sph_array_current_set_null
 #define db_records_add sph_array_add
@@ -74,6 +76,7 @@ sph_array_current_declare_type(db_ids, db_id_t)
 #define db_records_in_range sph_array_current_in_range
 #define db_records_length(a) a.used
 #define db_records_max_length(a) a.size
+#define db_records_remove sph_array_remove
 #define db_records_rewind sph_array_current_rewind
 #define db_records_set_null sph_array_current_set_null
 #define boolean uint8_t

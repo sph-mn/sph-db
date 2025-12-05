@@ -40,6 +40,7 @@
   db-ids-in-range sph-array-current-in-range
   (db-ids-length a) a.used
   (db-ids-max-length a) a.size
+  db-ids-remove sph-array-remove
   db-ids-rewind sph-array-current-rewind
   db-ids-set-null sph-array-current-set-null
   db-relations-add sph-array-add
@@ -50,6 +51,7 @@
   db-relations-in-range sph-array-current-in-range
   (db-relations-length a) a.used
   (db-relations-max-length a) a.size
+  db-relations-remove sph-array-remove
   db-relations-rewind sph-array-current-rewind
   db-relations-set-null sph-array-current-set-null
   db-records-add sph-array-add
@@ -60,6 +62,7 @@
   db-records-in-range sph-array-current-in-range
   (db-records-length a) a.used
   (db-records-max-length a) a.size
+  db-records-remove sph-array-remove
   db-records-rewind sph-array-current-rewind
   db-records-set-null sph-array-current-set-null
   boolean uint8-t

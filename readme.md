@@ -19,26 +19,28 @@ status: the library is feature complete and expected to work - feedback is appre
 * direct, high-speed interface using c data structures. no overhead from sql or similar query language parsing, optimization, and mapping
 * embeddable by linking or code inclusion
 * read-optimized design with full support for parallel database reads
-* efficient through focus on limited feature-set and thin abstraction over lmdb. benchmarks for lmdb can be found [here](https://symas.com/lmdb/technical/)
-* written in c, currently via [sc](https://github.com/sph-mn/sph-sc)
+* efficient through focus on limited feature-set and thin abstraction over lmdb. benchmarks for lmdb can be found [here](http://www.lmdb.tech/bench/microbench/)
 
 # dependencies
-* run-time
-  * [lmdb](http://www.lmdb.tech/doc/) -  (bsd-style license), code [here](https://github.com/LMDB/lmdb)
-  * c standard library, for example glibc
-* quick build
-  * gcc and shell for the provided compile script
-* development build
-  * [sc](https://github.com/sph-mn/sph-sc)
-  * clang-format (part of cmake)
+* [lmdb](http://www.lmdb.tech/doc/) -  (bsd-style license), code [here](https://github.com/LMDB/lmdb)
+* c 2017 standard library (for example [musl-libc](https://musl.libc.org/) or [glibc](https://www.gnu.org/software/libc/))
+* posix 2008 (for example linux or freebsd)
+* for the provided compile script: shell, gcc
 
-# setup
-1. install run-time and quick build dependencies
-1. maybe adjust the compile-time configuration at the beginning of ``source/c-precompiled/main/sph-db.h``. these settings are fixed for compiled shared libraries and the settings in the header must match the values a shared library to use was compiled with
-1. change into the project directory and execute ``./exe/compile-c``
-1. execute ``./exe/install``. this supports one optional argument: a path prefix to install to
+# installation
+~~~
+./exe/compile-c
+~~~
 
-optionally execute ``./exe/test`` to see if the tests run successful
+execute with appropriate permissions
+~~~
+./exe/install /
+~~~
+
+~~~
+./exe/install-symlink /
+~~~
+installs to /usr/bin as symlinks pointing to files in the current directory.
 
 # usage in c
 the example code can be found in ![other/examples/example-usage.c](other/examples/example-usage.c)
@@ -380,7 +382,7 @@ db_index_read :: db_index_selection_t:selection db_count_t:count db_ids_t*:resul
 db_index_rebuild :: db_env_t*:env db_index_t*:index -> status_t
 db_index_select :: db_txn_t:txn db_index_t:index db_record_values_t:values db_index_selection_t*:result -> status_t
 db_index_selection_finish :: db_index_selection_t*:selection -> void
-db_open :: uint8_t*:root db_open_options_t*:options db_env_t*:env -> status_t
+db_open :: char*:root db_open_options_t*:options db_env_t*:env -> status_t
 db_open_options_set_defaults :: db_open_options_t*:a -> void
 db_record_create :: db_txn_t:txn db_record_values_t:values db_id_t*:result -> status_t
 db_record_data_to_values :: db_type_t*:type db_record_t:data db_record_values_t*:result -> status_t
@@ -410,18 +412,18 @@ db_relation_select :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:labe
 db_relation_selection_finish :: db_relation_selection_t*:selection -> void
 db_relation_skip :: db_relation_selection_t*:selection db_count_t:count -> status_t
 db_statistics :: db_txn_t:txn db_statistics_t*:result -> status_t
-db_status_description :: status_t:a -> uint8_t*
-db_status_name :: status_t:a -> uint8_t*
+db_status_description :: status_t:a -> char*
+db_status_name :: status_t:a -> char*
 db_txn_abort :: db_txn_t*:a -> void
 db_txn_begin :: db_txn_t*:a -> status_t
 db_txn_begin_child :: db_txn_t:parent_txn db_txn_t*:a -> status_t
 db_txn_commit :: db_txn_t*:a -> status_t
 db_txn_write_begin :: db_txn_t*:a -> status_t
 db_txn_write_begin_child :: db_txn_t:parent_txn db_txn_t*:a -> status_t
-db_type_create :: db_env_t*:env uint8_t*:name db_field_t*:fields db_fields_len_t:fields_len uint8_t:flags db_type_t**:result -> status_t
+db_type_create :: db_env_t*:env char*:name db_field_t*:fields db_fields_len_t:fields_len uint8_t:flags db_type_t**:result -> status_t
 db_type_delete :: db_env_t*:env db_type_id_t:id -> status_t
-db_type_field_get :: db_type_t*:type uint8_t*:name -> db_field_t*
-db_type_get :: db_env_t*:env uint8_t*:name -> db_type_t*
+db_type_field_get :: db_type_t*:type char*:name -> db_field_t*
+db_type_get :: db_env_t*:env char*:name -> db_type_t*
 ~~~
 
 ## macros
@@ -474,13 +476,11 @@ db_ids_add
 db_ids_clear
 db_ids_declare(name)
 db_ids_forward
-db_ids_free
 db_ids_get
 db_ids_get_at
 db_ids_in_range
-db_ids_length
-db_ids_max_length
-db_ids_remove
+db_ids_length(a)
+db_ids_max_length(a)
 db_ids_rewind
 db_ids_set_null
 db_index_selection_declare(name)
@@ -500,13 +500,11 @@ db_records_add
 db_records_clear
 db_records_declare(name)
 db_records_forward
-db_records_free
 db_records_get
 db_records_get_at
 db_records_in_range
-db_records_length
-db_records_max_length
-db_records_remove
+db_records_length(a)
+db_records_max_length(a)
 db_records_rewind
 db_records_set_null
 db_relation_selection_declare(name)
@@ -515,13 +513,11 @@ db_relations_add
 db_relations_clear
 db_relations_declare(name)
 db_relations_forward
-db_relations_free
 db_relations_get
 db_relations_get_at
 db_relations_in_range
-db_relations_length
-db_relations_max_length
-db_relations_remove
+db_relations_length(a)
+db_relations_max_length(a)
 db_relations_rewind
 db_relations_set_null
 db_size_element_id
@@ -539,6 +535,13 @@ db_txn_is_active(a)
 db_type_flag_virtual
 db_type_get_by_id(env, type_id)
 db_type_is_virtual(type)
+sph_array_current_declare_struct_type(name, element_type)
+sph_array_current_declare_type(name, element_type)
+sph_array_current_forward(a)
+sph_array_current_get(a)
+sph_array_current_in_range(a)
+sph_array_current_rewind(a)
+sph_array_current_set_null(a)
 status_require_read(expression)
 ~~~
 
@@ -547,7 +550,7 @@ status_require_read(expression)
 db_field_type_size_t: uint8_t
 db_record_matcher_t: db_type_t* db_record_t void* -> boolean
 db_relation_ordinal_generator_t: void* -> db_ordinal_t
-db_relation_reader_t: db_relation_selection_t* db_count_t db_relations_t* -> status_t
+db_relation_reader_t: struct db_relation_selection_t* db_count_t db_relations_t* -> status_t
 db_env_t: struct
   dbi_records: MDB_dbi
   dbi_relation_ll: MDB_dbi
@@ -556,14 +559,14 @@ db_env_t: struct
   dbi_system: MDB_dbi
   mdb_env: MDB_env*
   is_open: boolean
-  root: uint8_t*
+  root: char*
   mutex: pthread_mutex_t
   maxkeysize: uint32_t
   format: uint32_t
   types: db_type_t*
   types_len: db_type_id_t
 db_field_t: struct
-  name: uint8_t*
+  name: char*
   type: db_field_type_t
   offset: db_fields_len_t
   size: db_field_type_size_t
@@ -605,7 +608,7 @@ db_record_values_t: struct
   data: db_record_value_t*
   extent: db_fields_len_t
   type: db_type_t*
-db_relation_selection_t: struct
+db_relation_selection_t: struct db_relation_selection_t
   cursor: MDB_cursor* restrict
   cursor_2: MDB_cursor* restrict
   left: db_ids_t
@@ -614,7 +617,7 @@ db_relation_selection_t: struct
   id_set: db_id_set_t*
   ordinal: db_ordinal_condition_t
   options: uint8_t
-  reader: void*
+  reader: db_relation_reader_t
 db_relation_t: struct
   left: db_id_t
   right: db_id_t
@@ -638,7 +641,7 @@ db_type_t: struct
   id: db_type_id_t
   indices: struct db_index_t*
   indices_len: db_indices_len_t
-  name: uint8_t*
+  name: char*
   sequence: db_id_t
 ~~~
 
@@ -694,17 +697,12 @@ these values can be set before compilation in ``c-precompiled/main/sph-db.h``. o
 * search with matcher functions in index keys
 * aliases for status bindings. status_require is a relatively long word to be written repeatedly
 
-# development
+# development on sph-db
 this section is for when you want to change sph-db itself.
-the primary source code is currently under source/sc. source/c-precompiled is updated by ``exe/compile-sc``. code files from submodules are copied into source/sc/foreign before compilation from sc to c.
+
+sph-db is currently written in c via [sc](https://github.com/sph-mn/sph-sc).
+the primary source code is currently under source/sc. source/c-precompiled is updated by ``exe/compile-sc`` (depends on clang-format which is part of cmake). code files from submodules are copied into source/sc/foreign before compilation from sc to c.
 depending on circumstances, in the future, the sc dependency could be dropped and the c code could be made primary.
-
-the general development stages for new sph-db features is design, basic code implementation, tests that use the new features, debugging, memory-leak tests (``exe/valgrind-test``) and documentation
-
-## setup
-* install the development dependencies listed above
-* clone the sourcecode repository "git clone https://github.com/sph-mn/sph-db.git"
-* clone the submodule repositories. "git submodule init" "git submodule update"
 
 ## contribution
 * patches can be based on the precompiled c versions

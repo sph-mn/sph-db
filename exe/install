@@ -1,22 +1,35 @@
-#!/bin/sh
-
-# usage: ./exe/install [path-prefix]
-# installs /usr/lib/libsph-db.so and /usr/include/sph-db.h
+#!/bin/sh -e
+# usage: ./exe/install [prefix] [--symlink]
 
 prefix="$1"
-a="temp/libsph-db.so"
-b="source/c-precompiled/main/sph-db.h"
-c="source/c-precompiled/main/sph-db-extra.h"
-a_dest="$prefix/usr/lib"
-b_dest="$prefix/usr/include"
+mode="$2"
 
-mkdir -p "$a_dest" "$b_dest" &&
-echo "copying $a to $a_dest ..." &&
-cp -t "$a_dest" "$a" &&
-echo "copying $b to $b_dest ..." &&
-cp -t "$b_dest" "$b" &&
-echo "copying $c to $b_dest ..." &&
-cp -t "$b_dest" "$c" &&
-echo setting permissions rw-r--r-- for "$a_dest/libsph-db.so" "$b_dest/sph-db.h" "$b_dest/sph-db-extra.h" "..." &&
-chmod 644 "$a_dest/libsph-db.so" "$b_dest/sph-db.h" "$b_dest/sph-db-extra.h" &&
-echo "installation complete"
+put_file() {
+  if test "$mode" = "--symlink"
+  then
+    ln -sf "$@"
+  else
+    cp "$@"
+  fi
+}
+
+put_headers() {
+  source="$1"
+  target="$2"
+  mkdir -p "$target"
+  put_file "$source"/*.h "$target"
+  chmod 644 -R "$target"/*.h
+  chmod 755 "$target"
+}
+
+put_headers "$PWD/src/c-precompiled/sph-db" "$prefix/usr/include/sph-db/"
+put_headers "$PWD/src/c/foreign/sph-db/sph" "$prefix/usr/include/sph-db/sph"
+rm "$prefix/usr/include/sph-db/sph/test.h"
+if ! test -d "$prefix/usr/lib"
+then
+  mkdir -p "$prefix/usr/lib"
+  chmod 755 "$prefix/usr/lib"
+fi
+
+put_file "$PWD/tmp/libsph-db.so" "$prefix/usr/lib"
+chmod 644 "$prefix/usr/lib/libsph-db.so"

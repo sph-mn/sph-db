@@ -1,0 +1,2 @@
+#!/bin/sh
+./exe/install $1 --symlink
