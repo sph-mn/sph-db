@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -e
 
 # description
 # * compiles the sc source code to c
@@ -6,45 +6,21 @@
 # * sph-sc
 # * clang-format
 
+name=sph-db
 root="$PWD"
-s=source/sc
-sm="$s/main"
-c="$root/source/c-precompiled"
-export SC_LOAD_PATH="$root/$s"
-
-copy_example_config() {
-  # the config file is not versioned so that users can customise it
-  if [ ! -f "$sm/config.sc" ]
-  then
-    cp "$sm/config.example.sc" "$sm/config.sc"
-  fi
-}
-
-copy_submodules() {
-  # copy code files from submodules.
-  # to not have the whole submodule repository in the source directory
-  a=submodules/sph-sc-lib/source/sc/main
-  b="$s/foreign/sph"
-  mkdir -p "$b" &&
-  cp --update --target-directory="$b" \
-     "$a/status.sc" "$a/i-array.sc" "$a/set.sc" \
-     "$a/string.sc" "$a/filesystem.sc" "$a/helper.sc" \
-     "$a/helper2.sc" "$a/sph.sc"
-}
+sc=src/sc
+c=src/c-precompiled
 
 compile_sc() {
-  # create the c source code
-  copy_example_config &&
-  copy_submodules &&
-  cd "$s" &&
-  find -type f -name "*.sc" | sc --stdin-input-paths --parents "$c" &&
+  mkdir -p "$c" &&
+  cd "$sc" &&
+  find -type f -name "*.sc" | sc --stdin-input-paths --parents "$root/$c"
   cd "$root" &&
-  # config.c is user editable and already in sph-db.h
   find "$c" -type f -exec ./exe/format-c -i '{}' \; &&
-  rm "$c/main/config.c" &&
-  mv "$c/main/sph-db.c" "$c/main/sph-db.h" &&
-  mv "$c/main/sph-db-extra.c" "$c/main/sph-db-extra.h"
+  for path in "$c/$name"/*.h.c
+  do
+    mv "$path" "$(dirname $path)/$(basename $path .h.c).h"
+  done
 }
 
-mkdir -p "$c" &&
-compile_sc $@
+compile_sc

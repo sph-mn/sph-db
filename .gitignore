@@ -1,2 +1,3 @@
-temp/*
-source/sc/main/config.sc
+tmp/*
+src/c-precompiled/main/config.h.c
+src/sc/main/config.h.sc

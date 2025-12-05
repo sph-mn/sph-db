@@ -1,0 +1,21 @@
+#!/bin/sh
+
+sph_sc_root="$1"
+destination="$PWD/src/c/foreign/sph-db/sph"
+
+if test -d "$destination"
+then
+  rm "$destination"/*
+else
+  mkdir -p "$destination"
+fi
+
+cd "$sph_sc_root/src/c-precompiled/sph"
+
+cp status.h array.h set.h memreg.h memory.h memory.c string.h filesystem.h "$destination"
+
+# only for testing
+cp test.h "$destination"
+
+# replace include paths in copied files
+sed -i 's@#include <sph/@#include <sph-db/sph/@g' "$destination"/*

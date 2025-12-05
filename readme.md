@@ -1,22 +1,22 @@
 # about
 
-status: the library is feature complete and expected to work - feedback is appreciated. however, it has not yet undergone extensive use, so additional testing is encouraged.
+status: the library is feature complete and expected to work - feedback is appreciated. however, it has not yet undergone any extensive use, so additional testing is encouraged.
 
 * license: lgpl3+
 
 # project goals
-* a (very) fast nosql database as a shared library to store records
+* a (very) fast nosql database as a shared library using a c interface to store records
 * graph-like many-to-many relations without having to manage junction tables
 
 # features
 ## data model
-* records have identifiers for random access and fields of various types and are indexable. records are just like table rows in relational databases
+* records have identifiers for random access, fields of various types, and are indexable. records are just like table rows in relational databases
 * records can act as nodes in relations to build a graph
 * relations are directed, labeled, unidirectionally ordered and small
 
 ## technology
-* acid compliant, memory-mapped database that can grow to any size that fits on the local filesystem, unrestricted by available ram
-* direct, high-speed interface using c data structures. no overhead from sql or similar query language parsing and processing
+* acid compliant, memory-mapped, can grow to any size that fits on the local filesystem, unrestricted by available ram
+* direct, high-speed interface using c data structures. no overhead from sql or similar query language parsing, optimization, and mapping
 * embeddable by linking or code inclusion
 * read-optimized design with full support for parallel database reads
 * efficient through focus on limited feature-set and thin abstraction over lmdb. benchmarks for lmdb can be found [here](https://symas.com/lmdb/technical/)
@@ -24,12 +24,12 @@ status: the library is feature complete and expected to work - feedback is appre
 
 # dependencies
 * run-time
-  * lmdb - http://symas.com/mdb/ (bsd-style license), code here https://github.com/LMDB/lmdb
+  * [lmdb](http://www.lmdb.tech/doc/) -  (bsd-style license), code [here](https://github.com/LMDB/lmdb)
   * c standard library, for example glibc
 * quick build
   * gcc and shell for the provided compile script
 * development build
-  * sc - https://github.com/sph-mn/sph-sc
+  * [sc](https://github.com/sph-mn/sph-sc)
   * clang-format (part of cmake)
 
 # setup
@@ -368,12 +368,11 @@ data = db_record_virtual_data_uint(id, uint32_t);
 ```
 
 # api
-## routines
-```
+## functions
+~~~
 db_close :: db_env_t*:env -> void
 db_env_new :: db_env_t**:result -> status_t
 db_field_type_size :: db_field_type_t:a -> uint8_t
-db_ids_new :: size_t:length db_ids_t*:result_ids -> status_t
 db_index_create :: db_env_t*:env db_type_t*:type db_fields_len_t*:fields db_fields_len_t:fields_len db_index_t**:result_index -> status_t
 db_index_delete :: db_env_t*:env db_index_t*:index -> status_t
 db_index_get :: db_type_t*:type db_fields_len_t*:fields db_fields_len_t:fields_len -> db_index_t*
@@ -404,14 +403,12 @@ db_record_values_set :: db_record_values_t*:values db_fields_len_t:field_index v
 db_record_virtual :: db_type_id_t:type_id void*:data size_t:data_size -> db_id_t
 db_record_virtual_data :: db_id_t:id void*:result size_t:result_size -> void*
 db_records_to_ids :: db_records_t:records db_ids_t*:result_ids -> void
-db_records_new :: size_t:length db_records_t*:result_records -> status_t
 db_relation_delete :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal -> status_t
 db_relation_ensure :: db_txn_t:txn db_ids_t:left db_ids_t:right db_ids_t:label db_relation_ordinal_generator_t:ordinal_generator void*:ordinal_generator_state -> status_t
 db_relation_read :: db_relation_selection_t*:selection db_count_t:count db_relations_t*:result -> status_t
 db_relation_select :: db_txn_t:txn db_ids_t*:left db_ids_t*:right db_ids_t*:label db_ordinal_condition_t*:ordinal db_relation_selection_t*:result -> status_t
 db_relation_selection_finish :: db_relation_selection_t*:selection -> void
 db_relation_skip :: db_relation_selection_t*:selection db_count_t:count -> status_t
-db_relations_new :: size_t:length db_relations_t*:result_relations -> status_t
 db_statistics :: db_txn_t:txn db_statistics_t*:result -> status_t
 db_status_description :: status_t:a -> uint8_t*
 db_status_name :: status_t:a -> uint8_t*
@@ -425,13 +422,11 @@ db_type_create :: db_env_t*:env uint8_t*:name db_field_t*:fields db_fields_len_t
 db_type_delete :: db_env_t*:env db_type_id_t:id -> status_t
 db_type_field_get :: db_type_t*:type uint8_t*:name -> db_field_t*
 db_type_get :: db_env_t*:env uint8_t*:name -> db_type_t*
-```
+~~~
 
 ## macros
-```
+~~~
 boolean
-db_batch_len
-db_count_t
 db_env_declare(name)
 db_field_set(a, a_type, a_name)
 db_field_type_binary128f
@@ -469,13 +464,10 @@ db_field_type_uint256f
 db_field_type_uint32f
 db_field_type_uint64f
 db_field_type_uint8f
-db_fields_len_t
 db_format_version
 db_id_add_type(id, type_id)
 db_id_element(id)
 db_id_element_mask
-db_id_mask
-db_id_t
 db_id_type(id)
 db_id_type_mask
 db_ids_add
@@ -493,11 +485,7 @@ db_ids_rewind
 db_ids_set_null
 db_index_selection_declare(name)
 db_index_selection_set_null(name)
-db_indices_len_t
-db_name_len_max
-db_name_len_t
 db_null
-db_ordinal_t
 db_record_index_selection_declare(name)
 db_record_index_selection_set_null(name)
 db_record_is_virtual(env, record_id)
@@ -542,6 +530,7 @@ db_size_relation_key
 db_status_group_db
 db_status_group_libc
 db_status_group_lmdb
+db_status_group_sph
 db_status_set_id_goto(status_id)
 db_status_success_if_notfound
 db_txn_abort_if_active(a)
@@ -549,30 +538,13 @@ db_txn_declare(env, name)
 db_txn_is_active(a)
 db_type_flag_virtual
 db_type_get_by_id(env, type_id)
-db_type_id_mask
-db_type_id_t
 db_type_is_virtual(type)
-status_declare
-status_declare_group(group)
-status_goto
-status_group_undefined
-status_id_require(expression)
-status_id_success
-status_is_failure
-status_is_success
-status_require(expression)
 status_require_read(expression)
-status_reset
-status_set_both(group_id, status_id)
-status_set_both_goto(group_id, status_id)
-status_set_group_goto(group_id)
-status_set_id_goto(status_id)
-```
+~~~
 
 ## types
-```
+~~~
 db_field_type_size_t: uint8_t
-status_id_t: int32_t
 db_record_matcher_t: db_type_t* db_record_t void* -> boolean
 db_relation_ordinal_generator_t: void* -> db_ordinal_t
 db_relation_reader_t: db_relation_selection_t* db_count_t db_relations_t* -> status_t
@@ -639,7 +611,7 @@ db_relation_selection_t: struct
   left: db_ids_t
   right: db_ids_t
   label: db_ids_t
-  ids_set: void*
+  id_set: db_id_set_t*
   ordinal: db_ordinal_condition_t
   options: uint8_t
   reader: void*
@@ -668,13 +640,10 @@ db_type_t: struct
   indices_len: db_indices_len_t
   name: uint8_t*
   sequence: db_id_t
-status_t: struct
-  id: status_id_t
-  group: uint8_t*
-```
+~~~
 
 ## enum
-```
+~~~
 db_status_id_success db_status_id_undefined db_status_id_condition_unfulfilled
   db_status_id_data_length db_status_id_different_format db_status_id_duplicate
   db_status_id_input_type db_status_id_invalid_argument db_status_id_max_element_id
@@ -682,7 +651,7 @@ db_status_id_success db_status_id_undefined db_status_id_condition_unfulfilled
   db_status_id_missing_argument_db_root db_status_id_notfound db_status_id_not_implemented
   db_status_id_path_not_accessible_db_root db_status_id_index_keysize db_status_id_type_field_order
   db_status_id_invalid_field_type db_status_id_last
-```
+~~~
 
 # other language bindings
 * scheme: [sph-db-guile](https://github.com/sph-mn/sph-db-guile)
@@ -712,7 +681,6 @@ these values can be set before compilation in ``c-precompiled/main/sph-db.h``. o
 * the maximum number of types, or type creations more precisely, is currently 65535. this limit could be removed in the future
 
 # possible enhancements
-* having the compile-time configuration in the versioned sph-db.h isnt ideal
 * float values as ordinals has not been tested
 * currently index inserts with data too large are rejected with an error. maybe add an option to control what happens, for example to truncate instead
 * signal error when creating index for fields that are or might be too large
@@ -720,7 +688,7 @@ these values can be set before compilation in ``c-precompiled/main/sph-db.h``. o
 * validator functions for indices and relation data consistency
 * lift the type creation limit
 * remove ordinals entirely or allow zero size ordinals, as this feature adds at least 8 bit to every relation
-* nested transactions. supposedly possible in lmdb but not working
+* nested transactions. supposedly possible in lmdb but have not been working so far
 * partial indices. with a data filter function given at index definition
 * at some places MDB_SET_RANGE and MDB_GET_BOTH_RANGE is used in succession. maybe get-both-range includes set-range and the latter can be left out
 * search with matcher functions in index keys
@@ -730,6 +698,7 @@ these values can be set before compilation in ``c-precompiled/main/sph-db.h``. o
 this section is for when you want to change sph-db itself.
 the primary source code is currently under source/sc. source/c-precompiled is updated by ``exe/compile-sc``. code files from submodules are copied into source/sc/foreign before compilation from sc to c.
 depending on circumstances, in the future, the sc dependency could be dropped and the c code could be made primary.
+
 the general development stages for new sph-db features is design, basic code implementation, tests that use the new features, debugging, memory-leak tests (``exe/valgrind-test``) and documentation
 
 ## setup
@@ -738,8 +707,9 @@ the general development stages for new sph-db features is design, basic code imp
 * clone the submodule repositories. "git submodule init" "git submodule update"
 
 ## contribution
-* send feature requests, patches or pull requests via issues or e-mail and they will be considered
-* bug reports or design commentaries are welcome
+* patches can be based on the precompiled c versions
+* send feature requests, patches or pull requests via issues or e-mail and they will be considered.
+* bug reports and design comments are welcome
 
 # further reading
 see [other/documentation](other/documentation) for more details about internals and design considerations

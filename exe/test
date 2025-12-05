@@ -4,4 +4,4 @@
 
 export MALLOC_CHECK_=2
 export LD_LIBRARY_PATH="$PWD/temp"
-./temp/test-libsph-db
+./tmp/test-libsph-db

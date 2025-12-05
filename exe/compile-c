@@ -1,21 +1,29 @@
-#!/bin/sh
+#!/bin/sh -e
 
 optimisation=3
-warnings="-Wunused-label -Wunused-value -Wunused-variable"
-gcc_options="$warnings -Wfatal-errors -std=c11 -O$optimisation"
-c=source/c-precompiled
+target_dir=tmp
+c=src/c
+c_sc=src/c-precompiled
+root="$PWD"
+compiler=gcc
 
-compile_libsph_db() {
-  # compile from c to machine code in a shared library. the version-script specifies the list of exported bindings
-  gcc "$c/main/main.c" -o temp/libsph-db.so -Wl,--version-script=other/shared-library-exports -shared -fpic -llmdb -lm $gcc_options
+warnings="-Wall -Wfatal-errors"
+gcc_options="-std=c17 -pedantic-errors -D_POSIX_C_SOURCE=200809L -D_FILE_OFFSET_BITS=64 $warnings -fno-common -fno-math-errno -fPIC -O$optimisation -pthread -I$c/foreign -I$c_sc"
+
+compile_sph_db() {
+  src="$c_sc/sph-db/main.c"
+  obj="$target_dir/sph-db.o"
+  lib="$target_dir/libsph-db.so"
+  $compiler $gcc_options -c "$src" -o "$obj"
+  $compiler $gcc_options -shared "$obj" -llmdb -lm -o "$lib"
 }
 
-compile_test() {
-  export LIBRARY_PATH="$PWD/temp"
-  gcc "$c/test/main.c" -o temp/test-libsph-db -llmdb -lsph-db -lpthread -lm $gcc_options
+compile_test_sph_db() {
+  src="$c_sc/test/sph-db.c"
+  bin="$target_dir/test-libsph-db"
+  $compiler $gcc_options "$src" -Wl,-rpath,"$root/$target_dir" -L"$root/$target_dir" -llmdb -lsph-db -o "$bin"
 }
 
-mkdir -p temp &&
-compile_libsph_db $@ &&
-compile_test $@
-chmod 755 temp/*
+mkdir -p "$target_dir"
+compile_sph_db
+compile_test_sph_db
